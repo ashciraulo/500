@@ -58,16 +58,71 @@ fuzzy dash mat, phone holder, and gaffer tape on the driver's seat bolster.
 | `Lights_Head`, `Lights_Tail` | Lamp lenses; materials `LampHead` / `LampTail` are driven by `car_body.gd`. |
 | `Cam_Cockpit` | Driver's eye point. |
 | `Mount_Exhaust`, `Mount_Roof` | Where exhaust and roof parts attach. |
+| `Hub_FL/FR/RL/RR`, `WheelStyle_<style>` | Every car built by `build_modern.py` (not the Pop, whose rig is the game's default): hub centres and wheel style, as on the classics below, so the game fits wheels and collision to each car. |
 
 Wheels are separate so the car scene can put them under its suspension
 nodes: `cars/parts/wheel_<style>_l.glb` / `_r.glb`, origin at the hub, axle
 along X, outer face pointing away from the car. Styles: `pop_trim` (stock),
-`steel`, `alloy15`, `sport16`, `abarth17`. Exhausts: `cars/parts/exhaust_<style>.glb`
+`steel`, `alloy15`, `sport16`, `abarth17`, `turbine16` (the 2020 car's many
+thin spokes), `pepper15` (the 2013 500e's five-hole face). Exhausts: `cars/parts/exhaust_<style>.glb`
 (`stock`, `sport`, `twin`, `abarth_quad`), origin at the mount.
 `cars/paints.json` lists period 500 colours.
 
 Real proportions: length 3.55 m, width 1.63 m, height 1.49 m, wheelbase
 2.30 m, track 1.41 m, tyres 175/65 R14 (radius 0.29 m).
+
+### Electric and new-body 500s
+
+`build_modern.py` also writes these, with the same nodes as above plus the
+classics' `Hub_FL/FR/RL/RR` and `WheelStyle_<style>` empties, so the game
+fits its wheels to their own track, wheelbase and wheel style:
+
+- `e500e2013`: the 2013-2019 500e, the 2007 body with its intake blanked
+  by a pale perforated panel, pepper-pot wheels, a 500e badge low on each
+  rear quarter and no exhaust.
+- `new500e`: the 2020 500e on the new body (`fiat500_shell.use("gen2")`,
+  details in `lib/fiat500_gen2.py`): 2.322 m wheelbase, wider track, a flatter
+  roof carried back into a lip over a steep rear screen, the split "eyelid"
+  headlamps, a 500 script between chrome whiskers instead of a grille, a
+  perforated lower intake, flush door pulls, tall tail lamps with a light bar,
+  FIAT across the tailgate and a black diffuser with a strip lamp.
+- `abarth500e`: the same body with ABARTH on the nose, a honeycomb intake and
+  corner pockets over a silver splitter, side skirts, smoked tail lamps
+  (still the `LampTail` material, so they light up) and a bigger roof lip.
+- `hybrid2025`: the 2025 500 Hybrid, the new body with a black slot under the
+  whiskers for the radiator, a HYBRID badge and the stock exhaust mount.
+
+The 2020 body was shaped from Wikimedia Commons photos, used only as
+reference (none are traced or used as textures, and none are in the repo):
+"Fiat 500e (2020) IMG 3814" by Alexander Migl (CC BY-SA 4.0); "Fiat 500e Type
+332 Mineral Grey (1)" and "Onyx Black (14)" by Damian B Oh (CC BY-SA 4.0);
+"Fiat 500e La Prima" (f and h, 10032014), "Abarth 500e Turismo" (f and h,
+14072024) and "Fiat 500 Hybrid Torino (II)" (14022026, 25042026) by M 93
+(CC BY-SA 3.0 de); "2025 FIAT 500e (lights)" by Oleg Yunakov (CC BY-SA 4.0);
+"ABARTH 500e TURISMO Hatchback" by Tokumeigakarinoaoshima (CC BY-SA 4.0);
+"Abarth 500e 02" by AutoGids (CC BY 3.0); "2016 Fiat 500e, Silver Lake" by
+Mr.choppers (CC BY-SA 3.0); "Fiat 500e SDQ 03 2020" by Mariordo (CC BY-SA 4.0).
+
+### Soft tops
+
+`lounge_c` is a 500C (the 2009-on convertible) on the 2007 body: white with
+a red hood, chrome, 15" alloys. Its hood runs from the header rail over the
+roof and down the back to a small boot lid, with its own rear window sewn
+in; the steel side rails and C-pillars stay. The canvas-roof classics
+(`nuova`, `classic_d`, `classic_f`, `classic_l`, `classic_r`, `giardiniera`
+and both classic Abarths) work the same way. These cars have a real opening
+in the body under the fabric and two extra root nodes:
+
+| Node | What it is |
+| --- | --- |
+| `Roof_Closed` | The hood up: canvas lined underneath, the bows (classics) or seams (500C), and the 500C's rear window. |
+| `Roof_Open` | The hood folded back: the canvas rolled and strapped at the back of the opening (classics), or the 500C's pleat stack over the boot lid. |
+
+Both import visible; `car_body.gd` hides `Roof_Open` on load and
+`set_roof_open(open)` swaps them. On the Nuova only the front of the canvas
+rolls back; the panel with the sewn-in rear window stays on the body.
+`check_car_clipping.py` checks each state against the body, glass, interior
+and doors.
 
 ## Classic 500s
 

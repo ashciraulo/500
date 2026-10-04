@@ -199,6 +199,12 @@ def main(spec_name="pop"):
         bpy.context.view_layer.update()
         total += len(report("wheels steer %d vs body" % steer, wheels, {**body, **interior}))
         total += len(report("wheels steer %d vs doors" % steer, wheels, doors_closed))
+    # convertible roofs: each state against everything fixed around it
+    for rn in ("Roof_Closed", "Roof_Open"):
+        if rn in ob:
+            roof = part_trees(ob[rn])
+            total += len(report("%s vs body/glass" % rn, roof, {**body, **glass}))
+            total += len(report("%s vs interior/doors" % rn, roof, {**interior, **doors_closed}))
     lights = {**part_trees(ob["Lights_Head"]), **part_trees(ob["Lights_Tail"])}
     total += len(report("lights vs interior/doors", lights, {**interior, **doors_closed}))
     print("TOTAL intersecting pairs:", total)

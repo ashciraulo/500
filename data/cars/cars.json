@@ -19,6 +19,17 @@
 			}
 		},
 		{
+			"id": "lounge_c_14", "model": "lounge_c", "name": "500C Lounge 1.4", "years": "2009-2024", "ladder": "modern", "tier": 1,
+			"unlock": "tier", "price": 2700, "power_kw": 74,
+			"blurb": "The Lounge with a fabric roof that folds back to the boot. A little heavier, a lot more sky.",
+			"spec": {
+				"mass": 1015, "idle_rpm": 850, "redline_rpm": 6600, "limiter_rpm": 6900,
+				"torque_curve": [[800, 70], [1500, 92], [2500, 112], [3500, 124], [4250, 131], [5000, 128], [6000, 120], [6600, 104], [7000, 80]],
+				"gear_ratios": [3.909, 2.238, 1.520, 1.156, 0.919, 0.778], "final_drive": 4.071,
+				"auto_upshift_rpm": 5900, "brake_force": 9800, "tire_grip": 1.08
+			}
+		},
+		{
 			"id": "twinair_09", "model": "twinair", "name": "500 TwinAir 0.9", "years": "2010-2024", "ladder": "modern", "tier": 1,
 			"unlock": "tier", "price": 2900, "power_kw": 63,
 			"blurb": "Two cylinders, a turbo and a thrum like a tractor. Torquey low down and sips fuel.",
@@ -90,7 +101,7 @@
 			}
 		},
 		{
-			"id": "e_500e_2013", "model": "lounge", "name": "500e", "years": "2013-2019", "ladder": "electric", "tier": 2,
+			"id": "e_500e_2013", "model": "e500e2013", "name": "500e", "years": "2013-2019", "ladder": "electric", "tier": 2,
 			"unlock": "tier", "price": 7000, "power_kw": 83, "electric": true,
 			"blurb": "Silent, instant torque, and a range you'll learn to respect.",
 			"spec": {
@@ -102,7 +113,7 @@
 			}
 		},
 		{
-			"id": "e_500e_2020", "name": "New 500e", "years": "2020-", "ladder": "electric", "tier": 3,
+			"id": "e_500e_2020", "model": "new500e", "name": "New 500e", "years": "2020-", "ladder": "electric", "tier": 3,
 			"unlock": "tier", "price": 15000, "power_kw": 87, "electric": true,
 			"blurb": "The modern EV, with a 3+1 rear half-door for the groceries.",
 			"spec": {
@@ -114,7 +125,7 @@
 			}
 		},
 		{
-			"id": "abarth_500e", "name": "Abarth 500e", "years": "2023-", "ladder": "electric", "tier": 4,
+			"id": "abarth_500e", "model": "abarth500e", "name": "Abarth 500e", "years": "2023-", "ladder": "electric", "tier": 4,
 			"unlock": "tier", "price": 21000, "power_kw": 113, "electric": true,
 			"blurb": "The fast EV, with a speaker playing a fake exhaust note. Somehow it works.",
 			"spec": {
@@ -127,7 +138,7 @@
 			}
 		},
 		{
-			"id": "hybrid_10", "model": "sport", "name": "500 Hybrid", "years": "2025-", "ladder": "modern", "tier": 4,
+			"id": "hybrid_10", "model": "hybrid2025", "name": "500 Hybrid", "years": "2025-", "ladder": "modern", "tier": 4,
 			"unlock": "tier", "price": 12000, "power_kw": 48,
 			"blurb": "A petrol engine back in the new body. A late, gentle curiosity.",
 			"spec": {

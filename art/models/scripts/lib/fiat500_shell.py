@@ -77,6 +77,7 @@ KEYS = [
 
 # points generated per section segment P0-P1 ... P7-P8
 COUNTS = [1, 2, 2, 2, 3, 3, 2, 2]
+ARCH_R = 0.355
 
 # Window outlines (inner edge of the black surround). Side: (y, z) seen
 # from the side; windscreen: (x, y) from above; rear window: (x, z) from
@@ -98,6 +99,132 @@ REAR_WINDOW = [
     (-0.50, 1.085), (-0.545, 1.115), (-0.555, 1.20), (-0.53, 1.33), (-0.47, 1.385),
     (0.47, 1.385), (0.53, 1.33), (0.555, 1.20), (0.545, 1.115), (0.50, 1.085),
 ]
+
+
+GEN1_KEYS, GEN1_DLO, GEN1_B_PILLAR = KEYS, DLO, B_PILLAR
+GEN1_WINDSCREEN, GEN1_REAR_WINDOW, GEN1_DOOR_Y = WINDSCREEN, REAR_WINDOW, (DOOR_Y0, DOOR_Y1)
+BODY = "gen1"
+
+
+# ------------------------------------------------------------------ 2020 body
+#
+# The new 500 (500e, 2020 on; the Abarth 500e; the 2025 500 Hybrid): 2322 mm
+# wheelbase, 3632 x 1683 x 1527 mm. Read off a near-90-degree side photo
+# (scaled by the wheelbase, heights x1.03 to the published height; the
+# overhangs stretched to the published length, since the close camera
+# shrinks the ends) and straight-on front and rear photos for the widths.
+# Against the 2007 car: a touch longer in the nose, wider, a flatter roof
+# that runs further back over a more upright, fuller tail, and a
+# slightly higher belt.
+
+def _gen2_keys():
+    out = []
+    f_over, r_over = 0.69, 0.59
+    for y, (w, zb, zsh, zbelt, wbelt, zrs, wrs, zt) in GEN1_KEYS:
+        if y > 1.0:
+            break
+        if y < -1.15:
+            y2 = -1.161 + (y + 1.15) * f_over / 0.664
+        else:
+            y2 = y * 1.161 / 1.15
+        k = 1.033
+        rise = 0.04 * min(1.0, max(0.0, (1.0 - y2) / 1.6)) if y2 > -0.95 else 0.0
+        if y2 >= -0.30:
+            # flat roof, highest well behind the B-pillar
+            zt2 = float(_ROOF2(y2))
+            zrs2 = zt2 - (zt - zrs)
+        else:
+            zt2, zrs2 = zt + 0.01 * max(0.0, 1 + (y2 + 0.3) / 0.65), zrs + 0.01 * max(0.0, 1 + (y2 + 0.3) / 0.65)
+        out.append((round(y2, 4), (w * k, zb - 0.015, zsh, zbelt + rise, wbelt * k, zrs2, wrs * k, zt2)))
+    # the tail: the roof carries on to the spoiler at 1.16, then a steep
+    # rear screen down to 1.40 and a full, nearly upright tail face
+    #        y        w     zb     zsh   zbelt  wbelt   zrs    wrs    zt
+    out += [
+        (1.080, (0.838, 0.185, 0.70, 1.088, 0.735, 1.462, 0.605, 1.488)),
+        (1.160, (0.836, 0.188, 0.70, 1.085, 0.725, 1.425, 0.595, 1.450)),
+        (1.220, (0.834, 0.192, 0.70, 1.075, 0.700, 1.335, 0.585, 1.360)),
+        (1.280, (0.828, 0.196, 0.70, 1.060, 0.690, 1.225, 0.575, 1.250)),
+        (1.340, (0.818, 0.200, 0.70, 1.040, 0.680, 1.125, 0.565, 1.150)),
+        (1.400, (0.800, 0.205, 0.69, 1.010, 0.655, 1.055, 0.540, 1.070)),
+        (1.500, (0.775, 0.212, 0.66, 0.960, 0.620, 0.980, 0.480, 0.990)),
+        (1.590, (0.735, 0.222, 0.60, 0.880, 0.580, 0.890, 0.420, 0.900)),
+        (1.660, (0.665, 0.235, 0.54, 0.770, 0.520, 0.790, 0.360, 0.800)),
+        (1.705, (0.560, 0.250, 0.50, 0.700, 0.440, 0.702, 0.300, 0.710)),
+        (1.735, (0.420, 0.275, 0.48, 0.607, 0.330, 0.627, 0.230, 0.635)),
+        (1.750, (0.240, 0.305, 0.46, 0.550, 0.190, 0.568, 0.130, 0.575)),
+        (1.756, (0.120, 0.335, 0.45, 0.515, 0.095, 0.529, 0.065, 0.535)),
+    ]
+    return out
+
+
+def _roof2(pts):
+    ys, zs = zip(*pts)
+    return K.pchip(list(ys), list(zs))
+
+
+_ROOF2 = None
+
+GEN2_DLO = [
+    (-0.64, 1.050), (-0.59, 1.100), (-0.52, 1.170), (-0.43, 1.255), (-0.35, 1.325), (-0.27, 1.372),
+    (-0.18, 1.395), (-0.05, 1.405), (0.10, 1.408), (0.40, 1.408), (0.60, 1.402), (0.72, 1.390),
+    (0.80, 1.368), (0.86, 1.330), (0.92, 1.262), (0.97, 1.180), (1.010, 1.115), (1.018, 1.095),
+    (0.80, 1.084), (0.50, 1.078), (0.10, 1.072), (-0.30, 1.064), (-0.55, 1.056),
+]
+
+
+def _densify(poly, step):
+    """Closed outline with extra points every `step` m, so a seal projected
+    round it follows the curve up the A-pillar instead of zigzagging."""
+    out = []
+    for a, b in zip(poly, poly[1:] + poly[:1]):
+        n = max(1, int(math.dist(a, b) / step + 0.999))
+        out += [(round(a[0] + (b[0] - a[0]) * k / n, 4), round(a[1] + (b[1] - a[1]) * k / n, 4)) for k in range(n)]
+    return out
+
+
+GEN2_DLO = _densify(GEN2_DLO, 0.06)
+GEN2_B_PILLAR = (0.40, 0.49)
+GEN2_DOOR_Y = (-0.75, 0.51)
+
+
+def _gen2_windscreen():
+    out = []
+    for x, y in GEN1_WINDSCREEN:
+        out.append((x, round(-0.285 + (y + 0.272) * 0.665 / 0.718, 4)))
+    return out
+
+
+GEN2_REAR_WINDOW = [
+    (-0.50, 1.125), (-0.54, 1.155), (-0.555, 1.24), (-0.535, 1.345), (-0.48, 1.395),
+    (0.48, 1.395), (0.535, 1.345), (0.555, 1.24), (0.54, 1.155), (0.50, 1.125),
+]
+
+
+def use(body="gen1"):
+    """Switch every shape table in this module to one body: 'gen1' (the
+    2007-on car) or 'gen2' (the 2020-on car). Builders call this first."""
+    global KEYS, DLO, B_PILLAR, WINDSCREEN, REAR_WINDOW, DOOR_Y0, DOOR_Y1
+    global WHEELBASE, AXLE_F, AXLE_R, ARCH_R, _ROOF2, BODY
+    BODY = body
+    if body == "gen2":
+        _ROOF2 = _roof2([(-0.30, 1.452), (-0.20, 1.488), (-0.05, 1.512), (0.15, 1.524), (0.40, 1.527),
+                         (0.70, 1.524), (0.90, 1.514), (1.00, 1.503), (1.08, 1.488)])
+        KEYS = _gen2_keys()
+        DLO, B_PILLAR = GEN2_DLO, GEN2_B_PILLAR
+        # keep the glass, and the door frame round it, clear of the roof's
+        # turn: the frame's top edge then runs inside one row of loft faces
+        # instead of along the roof-side edge, where the cut would leave slivers
+        zrs = _curves()[1][5]
+        DLO = [(y, round(min(z, float(zrs(y)) - 0.072), 4)) if z > 1.2 else (y, z) for y, z in DLO]
+        WINDSCREEN, REAR_WINDOW = _gen2_windscreen(), GEN2_REAR_WINDOW
+        DOOR_Y0, DOOR_Y1 = GEN2_DOOR_Y
+        WHEELBASE, ARCH_R = 2.322, 0.355
+    else:
+        KEYS, DLO, B_PILLAR = GEN1_KEYS, GEN1_DLO, GEN1_B_PILLAR
+        WINDSCREEN, REAR_WINDOW = GEN1_WINDSCREEN, GEN1_REAR_WINDOW
+        DOOR_Y0, DOOR_Y1 = GEN1_DOOR_Y
+        WHEELBASE, ARCH_R = 2.30, 0.355
+    AXLE_F, AXLE_R = -WHEELBASE / 2, WHEELBASE / 2
 
 
 def _curves(abarth=False):
@@ -159,7 +286,7 @@ def shell(abarth=False):
     st = stations(abarth)
     verts, faces, tags, uvs = K.loft(st, lambda *a: K.T_PAINT)
     obj = K.shell_object("shell", verts, faces, tags, uvs)
-    K.cut_arches(obj, (AXLE_F, AXLE_R), 0.355, (0.44, 0.53), 0.30)
+    K.cut_arches(obj, (AXLE_F, AXLE_R), ARCH_R, (0.44, 0.53), 0.30)
     return obj, st
 
 
@@ -266,14 +393,67 @@ def door_frame_poly():
     """Side outline (y, z) of the door's window frame: the side glass grown
     by the frame width, ending at the back of the black B-pillar band (the
     quarter glass is in the body behind it)."""
-    return clip_y(K.offset_poly(DLO, -0.05), hi=B_PILLAR[1])
+    poly = clip_y(K.offset_poly(DLO, -0.05), hi=B_PILLAR[1])
+    return _simplify(poly, 0.008) if BODY == "gen2" else poly
+
+
+def _simplify(poly, eps):
+    """Ramer-Douglas-Peucker on a closed outline: fewer, longer straight runs
+    for the door frame, so its cut meets the loft at fewer joints."""
+    def rdp(pts):
+        if len(pts) < 3:
+            return pts
+        (ay, az), (by, bz) = pts[0], pts[-1]
+        L = math.hypot(by - ay, bz - az) or 1e-9
+        d = [abs((by - ay) * (az - pz) - (ay - py) * (bz - az)) / L for py, pz in pts[1:-1]]
+        i = max(range(len(d)), key=d.__getitem__)
+        if d[i] < eps:
+            return [pts[0], pts[-1]]
+        return rdp(pts[:i + 2])[:-1] + rdp(pts[i + 1:])
+    pts = list(poly)
+    far = max(range(len(pts)), key=lambda i: math.dist(pts[0], pts[i]))
+    return rdp(pts[:far + 1])[:-1] + rdp(pts[far:] + [pts[0]])[:-1]
+
+
+def _cut_frame_edge(obj, frame):
+    """Slice the shell along the top of the door frame (up the A-pillar and
+    along the roof to the B-pillar), so the door's faces end on that line
+    instead of a staircase of whole loft faces. Only the 2020 body's long
+    raked pillar needs it."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    # the frame's upper run: from its front foot up the pillar and back along
+    # the roof, until the outline turns forward again along the belt
+    edge = [(y, z) for y, z in frame if z > 1.0]
+    turn = next((i for i in range(1, len(edge)) if edge[i][0] < edge[i - 1][0]), len(edge))
+    edge = edge[:turn]
+    for (y0, z0), (y1, z1) in zip(edge, edge[1:]):
+        n = Vector((0, -(z1 - z0), y1 - y0)).normalized()
+        lo_y, hi_y = min(y0, y1) - 0.01, max(y0, y1) + 0.01
+        lo_z, hi_z = min(z0, z1) - 0.01, max(z0, z1) + 0.01
+
+        def near(f):
+            # the face's own extent overlaps this segment's box
+            ys = [v.co.y for v in f.verts]
+            zs = [v.co.z for v in f.verts]
+            return min(ys) < hi_y and max(ys) > lo_y and min(zs) < hi_z and max(zs) > lo_z
+
+        faces = [f for f in bm.faces if abs(f.calc_center_median().x) > 0.40 and near(f)]
+        if not faces:
+            continue
+        geom = list({e for f in faces for e in f.edges}) + faces + list({v for f in faces for v in f.verts})
+        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=Vector((0, y0, z0)), plane_no=n, dist=1e-4)
+    bm.to_mesh(obj.data)
+    bm.free()
 
 
 def classify(obj):
     """Retag the shell by geometry: doors and underside (window openings are
     already cut and tagged Glass by cut_windows)."""
-    me = obj.data
     door_frame = door_frame_poly()
+    if BODY == "gen2":
+        _cut_frame_edge(obj, door_frame)
+    me = obj.data
     _, f = _curves()
     belt = f[3]
     for p in me.polygons:

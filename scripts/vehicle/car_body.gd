@@ -5,7 +5,8 @@ extends Node3D
 ##
 ## Model contract (see art/models/README.md): nodes `SteeringWheel` (turns
 ## about its local Z), `Door_L` / `Door_R` (hinge on local Y), materials
-## `Paint`, `LampHead`, `LampTail`.
+## `Paint`, `LampHead`, `LampTail`. Convertibles add `Roof_Closed` and
+## `Roof_Open` (the hood up, and folded back); the roof starts closed.
 
 ## Steering wheel turns per radian of road-wheel angle (roughly a 14:1 rack,
 ## scaled down so it reads at low resolution).
@@ -31,6 +32,7 @@ var _swings: Array[Node3D] = []
 var _last_velocity := Vector3.ZERO
 var _sway := Vector2.ZERO
 var _sway_speed := Vector2.ZERO
+var roof_open := false
 
 
 func _ready() -> void:
@@ -47,6 +49,19 @@ func _ready() -> void:
 	if _steering_wheel:
 		_steering_rest = _steering_wheel.basis
 	_brake_lights = get_parent().get_node_or_null("BrakeLights")
+	set_roof_open(roof_open)
+
+
+## Convertibles: show the hood folded back (true) or up (false). No-op on
+## cars without a soft top.
+func set_roof_open(open: bool) -> void:
+	var closed := get_node_or_null("Roof_Closed") as Node3D
+	var folded := get_node_or_null("Roof_Open") as Node3D
+	if closed == null or folded == null:
+		return
+	roof_open = open
+	closed.visible = not open
+	folded.visible = open
 
 
 func _process(_delta: float) -> void:

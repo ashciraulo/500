@@ -202,7 +202,7 @@ def solidify_along(obj, thickness, inner_mat, normals, gap=0.0, level=0.0):
     (from vertex_normals() of the surface it was cut from); vertices not
     found fall back to their own normal. Call before moving any vertex.
     gap > 0 first pulls the open border in along the surface by that much
-    (a door's shut gap). level > 0 offsets surfaces facing up by less than
+    (a door's shut gap); it may be a function of the vertex position. level > 0 offsets surfaces facing up by less than
     that (normal z in 0..level) straight inward instead, so a door's inner
     skin never dips below its outer edge where it swings past the body."""
     me = obj.data
@@ -227,7 +227,7 @@ def solidify_along(obj, thickness, inner_mat, normals, gap=0.0, level=0.0):
             a, b = (e.other_vert(v).co for e in bed)
             d = nrm[v].cross((b - a).normalized()).normalized()
             inside = sum((f.calc_center_median() for f in v.link_faces), Vector()) / len(v.link_faces) - v.co
-            moves[v] = (d if d.dot(inside) > 0 else -d) * gap
+            moves[v] = (d if d.dot(inside) > 0 else -d) * (gap(v.co) if callable(gap) else gap)
         for v, m in moves.items():
             v.co += m
     inner = {}

@@ -8,7 +8,8 @@ drive: the driver sits at -X. The body shape lives in fiat500_shell.py.
 `build(spec)` returns the exported objects. Spec keys (all optional):
   paint            body colour (hex)
   wear             0..1 sun fade / grime on the paint texture (0 = showroom)
-  roof             'steel' | 'glass' | 'fabric';  roof_color for two-tone
+  roof             'steel' | 'glass' | 'cabrio' (500C roll-back fabric, fabric = colour);
+                   roof_color for two-tone
   front            'pop' | 'abarth'
   wheels           wheels.STYLES key
   chrome           chrome trim instead of satin/black
@@ -29,11 +30,12 @@ from mathutils import Vector
 from . import carkit as K
 from . import common as C
 from . import fiat500_shell as S
+from . import fiat500_gen2 as G2
 from . import textures as TX
 from . import wheels as W
 
 TRACK = 1.41
-AXLE_F, AXLE_R = S.AXLE_F, S.AXLE_R
+TRACK2 = 1.45   # the 2020 car
 DOOR_Y0, DOOR_Y1 = S.DOOR_Y0, S.DOOR_Y1
 
 
@@ -46,6 +48,7 @@ def materials(spec, st):
     else:
         paint_mat = C.mat("Paint", paint, rough=0.35, metal=0.15)
     satin = "#d8dadc" if spec.get("chrome") else "#4a4b4d"
+    cab = spec.get("roof") == "cabrio"
     return {
         "paint": paint_mat,
         "glass": _glass(),
@@ -59,8 +62,14 @@ def materials(spec, st):
         "insert": C.mat("BumperInsert", "#3c3d40", rough=0.6),
         "head": C.mat("LampHead", "#a3adb3", rough=0.05, metal=0.5, emit="#fff6dc", emit_strength=0.0),
         "reflector": C.mat("LampReflector", "#8a9094", rough=0.2, metal=0.9),
-        "tail": C.mat("LampTail", "#a8121a", rough=0.3, emit="#ff1a10", emit_strength=0.0),
+        # smoked lenses (Abarth 500e) keep the LampTail name so they still glow in game
+        "tail": C.mat("LampTail", "#4a0c10" if spec.get("smoked_tail") else "#a8121a",
+                      rough=0.3, emit="#ff1a10", emit_strength=0.0),
         "amber": C.mat("LampAmber", "#e08a20", rough=0.3),
+        "e_panel": C.mat("EPanel", spec.get("e_panel", "#dcdcd8"), rough=0.5) if spec.get("e_front") else None,
+        "fabric": C.mat("RoofFabric", image=TX.fabric("roof_canvas", spec.get("fabric", "#2a2826"), seed=31,
+                                                      seams=False), rough=1.0) if cab else None,
+        "fabric_seam": C.mat("RoofFabricSeam", "#0e0e0e", rough=1.0) if cab else None,
         "white": C.mat("LampClear", "#e6e6e6", rough=0.2),
         "badge": C.mat("BadgeRed", "#a0101a", rough=0.4),
         "dark": C.mat("Grille", "#0c0c0d", rough=0.8),
@@ -89,6 +98,8 @@ def _glass():
 
 def build(spec):
     C.clear_material_cache()
+    S.use(spec.get("body", "gen1"))
+    gen2 = S.BODY == "gen2"
     abarth = spec.get("front") == "abarth"
     shell, st = S.shell(abarth)
     M = materials(spec, st)
@@ -97,6 +108,9 @@ def build(spec):
     # an uncut copy of the surface: glass, seals and details are projected onto it
     ref = C.link(bpy.data.objects.new("ref", shell.data.copy()))
     S.cut_windows(shell)
+    cabrio = spec.get("roof") == "cabrio"
+    if cabrio:
+        _cabrio_opening(shell)
     S.classify(shell)
     seams = S.shut_lines(shell, M["seam"], width=0.009)   # narrower than the doors' shut gap
     nrm = K.vertex_normals(shell)
@@ -109,10 +123,34 @@ def build(spec):
     _two_tone_roof(body, M, spec)
 
     glass, door_glass = _windows(ref, M)
+    roof_closed, roof_open = [], []
+    if cabrio:
+        # the 500C's rear window is sewn into the hood and folds away with it
+        for k in ("panes", "seals"):
+            rw = [o for o in glass[k] if o.name.startswith("rear_window")]
+            glass[k] = [o for o in glass[k] if o not in rw]
+            if k == "panes":
+                # inside the opening rather than behind its rim, so it folds clear
+                for o in rw:
+                    bpy.data.objects.remove(o, do_unlink=True)
+                rw = [K.project_poly("rear_window", ref, CABRIO_GLASS, K.rear_frame(), M["glass"], offset=0.0,
+                                     cuts=3)]
+            else:
+                for o in rw:
+                    bpy.data.objects.remove(o, do_unlink=True)
+                rw = [_seal("rear_window_seal", ref, CABRIO_GLASS, K.rear_frame(), M, border=0.03)]
+            roof_closed += rw
+        roof_closed += _cabrio_hood(ref, M)
+        roof_open = _cabrio_stack(M)
     body_bits = [seams] + glass["seals"]
-    body_bits += _front(ref, M, spec, abarth)
-    body_bits += _rear(ref, M, spec, abarth)
-    body_bits += _sides(ref, M, spec, abarth)
+    if gen2:
+        body_bits += G2.front(ref, M, spec, abarth)
+        body_bits += G2.rear(ref, M, spec, abarth)
+        body_bits += G2.sides(ref, M, spec, abarth)
+    else:
+        body_bits += _front(ref, M, spec, abarth)
+        body_bits += _rear(ref, M, spec, abarth)
+        body_bits += _sides(ref, M, spec, abarth)
     door_bits = {1: [], -1: []}
     if spec.get("spoiler"):
         body_bits.append(_spoiler(ref, M, abarth))
@@ -123,8 +161,6 @@ def build(spec):
     roof = spec.get("roof", "steel")
     if roof == "glass":
         body_bits.append(K.stick_box("sunroof", K.on_top(ref, 0, 0.45), (1.0, 0.95, 0.012), M["glass"]))
-    elif roof == "fabric":
-        body_bits.append(_fabric_roof(ref, spec))
 
     K.solidify_along(body, 0.025, M["cabin"], nrm)
     _headliner(body, M)
@@ -132,15 +168,21 @@ def build(spec):
 
     for side, sx in (("L", 1), ("R", -1)):
         door = parts["Door_" + side]
-        handle = K.stick_box("handle", K.on_side(ref, sx, 0.33, 0.85), (0.19, 0.028, 0.03),
-                             M["chrome"] if spec.get("chrome", True) else M["trim"])
+        if gen2:
+            handle = G2.handle(ref, sx, M)
+        else:
+            handle = K.stick_box("handle", K.on_side(ref, sx, 0.33, 0.85), (0.19, 0.028, 0.03),
+                                 M["chrome"] if spec.get("chrome", True) else M["trim"])
         card = _door_card(door, sx, M)
-        K.solidify_along(door, 0.03, M["cabin"], nrm, gap=0.005, level=0.6)   # with a real shut gap
+        # with a real shut gap; the 2020 door's frame runs up a raked pillar
+        # onto the roof's turn, so up there it gets a wider gap and less levelling
+        gap = (lambda co: 0.008 if co.z > 1.0 else 0.005) if gen2 else 0.005
+        K.solidify_along(door, 0.03, M["cabin"], nrm, gap=gap, level=0.3 if gen2 else 0.6)
         door = C.join([door, handle, _mirror(ref, sx, M)] + card + door_glass[sx]["seals"] + door_bits[sx],
                       "Door_" + side)
         # hinge out at the skin and just ahead of the shut line, so the
         # frame up the A-pillar swings clear of the wing and the dash
-        C.set_origin(door, (sx * HINGE_X, HINGE_Y, 0.6))
+        C.set_origin(door, (sx * HINGE_X * (1.033 if gen2 else 1.0), S.DOOR_Y0 + HINGE_DY, 0.6))
         door["open_sign"] = -sx         # Door_L opens with a negative angle
         door["hinge"] = "front"
         g = C.join(door_glass[sx]["panes"], "Door_%s_Glass" % side)
@@ -155,8 +197,14 @@ def build(spec):
     root_objs[0] = body
     root_objs.append(C.join(lamps_h, "Lights_Head"))
     root_objs.append(C.join(lamps_t, "Lights_Tail"))
+    if cabrio:
+        root_objs.append(C.join(roof_closed, "Roof_Closed"))
 
     cab = _cabin_bvh(root_objs)
+    if cabrio:
+        stack = C.join(roof_open, "Roof_Open")
+        stack["hidden"] = True          # shown when the hood is folded back
+        root_objs.append(stack)
     interior, wheel_obj = _interior(M, spec, cab)
     root_objs += [interior, wheel_obj]
     # where a pair of period spotlights clamps on, just proud of the bumper
@@ -165,8 +213,15 @@ def build(spec):
 
     ws = spec.get("wheels", "pop_trim")
     hub_z = W.radius(ws)
-    for nm, x, y in (("FL", 1, AXLE_F), ("FR", -1, AXLE_F), ("RL", 1, AXLE_R), ("RR", -1, AXLE_R)):
-        root_objs.append(W.build("Wheel_" + nm, ws, loc=(x * TRACK / 2, y, hub_z), right=x < 0))
+    track = TRACK2 if gen2 else TRACK
+    for nm, x, y in (("FL", 1, S.AXLE_F), ("FR", -1, S.AXLE_F), ("RL", 1, S.AXLE_R), ("RR", -1, S.AXLE_R)):
+        root_objs.append(W.build("Wheel_" + nm, ws, loc=(x * track / 2, y, hub_z), right=x < 0))
+        if spec.get("hubs"):
+            # the game fits its wheels to these (car_controller._fit_rig)
+            C.empty("Hub_" + nm, (x * track / 2, y, hub_z + ride), size=0.1)
+    if spec.get("hubs"):
+        # Godot 4.3 drops glTF extras, so the wheel style rides on an empty's name
+        C.empty("WheelStyle_" + ws, (0, 0, 0), size=0.05)
 
     C.empty("Cam_Cockpit", (-0.36, 0.20, 1.17 + ride))
     C.empty("Mount_Exhaust", (0.42, 1.70, 0.24 + ride))
@@ -188,7 +243,7 @@ def build(spec):
 
 # The hinge sits a little ahead of the shut line so the top front corner of
 # the frame clears the A-pillar from the first degrees of the swing.
-HINGE_X, HINGE_Y = 0.83, -0.96
+HINGE_X, HINGE_DY = 0.83, -0.215   # hinge y relative to the front shut line
 DOOR_OPEN_DEG = 65
 
 
@@ -405,7 +460,17 @@ def _front(ref, M, spec, abarth):
         out.append(K.stick_disc("badge", ref, K.on_front(ref, 0, 0.672), 0.040, 0.03, M["badge"], segs=12))
         out.append(K.stick_disc("badge_ring", ref, K.on_front(ref, 0, 0.672), 0.046, 0.02, M["chrome"], segs=12))
         grille = [(-0.42, 0.30), (0.42, 0.30), (0.47, 0.33), (0.46, 0.43), (-0.46, 0.43), (-0.47, 0.33)]
-        out.append(K.project_poly("grille", ref, grille, K.front_frame(), M["dark"], offset=0.006, cuts=5))
+        if spec.get("e_front"):
+            # 2013 500e: the intake blanked off with a pale panel and a band of small holes
+            out.append(K.project_poly("e_panel", ref, grille, K.front_frame(), M["e_panel"], offset=0.006, cuts=5))
+            for row, z in enumerate((0.335, 0.365, 0.395)):
+                for i in range(-8, 9):
+                    x = i * 0.045 + (0.0225 if row % 2 else 0)
+                    if abs(x) < 0.40:
+                        out.append(K.stick_box("e_hole", K.on_front(ref, x, z), (0.016, 0.016, 0.01),
+                                               M["dark"], proud=0.003))
+        else:
+            out.append(K.project_poly("grille", ref, grille, K.front_frame(), M["dark"], offset=0.006, cuts=5))
         # black lower lip across the bottom of the bumper
         lip = [(-0.50, 0.24), (0.50, 0.24), (0.54, 0.265), (0.52, 0.30), (-0.52, 0.30), (-0.54, 0.265)]
         out.append(K.project_poly("bumper_lip", ref, lip, K.front_frame(), M["trim"], offset=0.006, cuts=6))
@@ -460,6 +525,9 @@ def _rear(ref, M, spec, abarth):
     gate = [(-0.47, 0.72), (-0.49, 0.85), (-0.51, 0.99), (-0.575, 1.065), (-0.585, 1.20), (-0.56, 1.34),
             (-0.49, 1.405), (0.49, 1.405), (0.56, 1.34), (0.585, 1.20), (0.575, 1.065), (0.51, 0.99),
             (0.49, 0.85), (0.47, 0.72)]
+    if spec.get("roof") == "cabrio":
+        # the 500C opens a small boot lid under the hood instead of a tailgate
+        gate = gate[:4] + [(-0.53, 1.05), (0.53, 1.05)] + gate[-4:]
     out.append(K.project_line("tailgate_line", ref, _densify(gate + gate[:1], 0.05), K.rear_frame(), 0.012,
                               M["seam"]))
     out.append(K.project_line("bumper_groove", ref, [(x / 20, 0.34) for x in range(-11, 12)], K.rear_frame(),
@@ -475,6 +543,8 @@ def _rear(ref, M, spec, abarth):
     else:
         out.append(K.stick_disc("badge_r", ref, K.on_rear(ref, 0, 1.025), 0.040, 0.02, M["badge"], segs=12))
         out.append(K.stick_disc("badge_r_ring", ref, K.on_rear(ref, 0, 1.025), 0.046, 0.015, chrome, segs=12))
+    if spec.get("roof") == "cabrio":
+        return out + _abarth_rear_bits(ref, M, abarth)
     # roof lip over the rear window
     out.append(K.stick_box("roof_lip", K.on_rear(ref, 0, 1.418), (0.84, 0.035, 0.03), M["paint"]))
     # rear wiper parked along the bottom of the glass
@@ -488,6 +558,11 @@ def _rear(ref, M, spec, abarth):
     C.apply_transform(ant)
     out.append(ant)
     out.append(K.stick_box("antenna_base", (loc, nor), (0.03, 0.07, 0.025), M["trim"]))
+    return out + _abarth_rear_bits(ref, M, abarth)
+
+
+def _abarth_rear_bits(ref, M, abarth):
+    out = []
     if abarth:
         # black diffuser across the bottom of the bumper, cut away for the pipes
         diff = [(-0.62, 0.235), (0.62, 0.235), (0.58, 0.31), (-0.58, 0.31)]
@@ -508,7 +583,11 @@ def _sides(ref, M, spec, abarth=False):
         out.append(K.stick_box("side_ind", K.on_side(ref, sx, -0.90, 0.80), (0.045, 0.022, 0.01), M["white"]))
         if spec.get("chrome"):
             out.append(K.stick_box("sill_trim", K.on_side(ref, sx, -0.10, 0.30), (1.10, 0.02, 0.01), M["chrome"]))
-    # round fuel flap on the right rear quarter
+        if spec.get("e_front"):
+            # the 500e's badge low on the rear quarter
+            out.append(K.stick_box("e_badge", K.on_side(ref, sx, 0.95, 0.45), (0.12, 0.03, 0.006), M["chrome"],
+                                   proud=0.003))
+    # round fuel flap (the 500e's charge port sits behind the same flap) on the right rear quarter
     w = K.on_side(ref, -1, 1.22, 0.84)
     out.append(K.stick_disc("fuel_seam", ref, w, 0.078, 0.01, M["seam"], segs=14, proud=0.001))
     out.append(K.stick_disc("fuel_flap", ref, w, 0.07, 0.01, M["paint"], segs=14, proud=0.003))
@@ -607,9 +686,102 @@ def _abarth_front(ref, M):
     return out
 
 
-def _fabric_roof(ref, spec):
-    fab = C.mat("RoofFabric", spec.get("fabric", "#2a1f1a"), rough=1.0)
-    return K.stick_box("fabric_roof", K.on_top(ref, 0, 0.42), (1.12, 1.30, 0.02), fab)
+# 500C: the hood runs from the header rail over the roof and down the back
+# to the tailgate, carrying the rear window. The steel side rails and the
+# C-pillars stay.
+CABRIO_TOP = [(-0.50, -0.15), (-0.47, -0.19), (0.47, -0.19), (0.50, -0.15), (0.50, 1.12), (-0.50, 1.12)]
+CABRIO_BACK = [(-0.50, 1.085), (-0.545, 1.115), (-0.555, 1.20), (-0.53, 1.33), (-0.50, 1.40), (-0.50, 1.60),
+               (0.50, 1.60), (0.50, 1.40), (0.53, 1.33), (0.555, 1.20), (0.545, 1.115), (0.50, 1.085)]
+# the hood's own rear window, smaller than the hatch glass it replaces
+CABRIO_GLASS = [(-0.43, 1.12), (0.43, 1.12), (0.47, 1.15), (0.48, 1.25), (0.45, 1.33), (-0.45, 1.33), (-0.48, 1.25),
+                (-0.47, 1.15)]
+HOOD_TOP = [(-0.525, -0.17), (-0.49, -0.215), (0.49, -0.215), (0.525, -0.17), (0.525, 1.105), (-0.525, 1.105)]
+HOOD_BACK = [(-0.52, 1.068), (0.52, 1.068), (0.565, 1.105), (0.578, 1.20), (0.555, 1.33), (0.53, 1.418),
+             (-0.53, 1.418), (-0.555, 1.33), (-0.578, 1.20), (-0.565, 1.105)]
+
+
+def _cabrio_opening(shell):
+    cutters = [S._prism(CABRIO_TOP, lambda u, v, d: (u, v, d), 1.30, 2.5),
+               S._prism(CABRIO_BACK, lambda u, v, d: (u, d, v), 1.05, 2.5)]
+    for c in cutters:
+        mod = shell.modifiers.new("hood", "BOOLEAN")
+        mod.operation = "DIFFERENCE"
+        mod.object = c
+        mod.solver = "EXACT"
+        mod.material_mode = "TRANSFER"
+        with bpy.context.temp_override(object=shell, active_object=shell):
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+        bpy.data.objects.remove(c, do_unlink=True)
+
+
+def _ruled_patch(name, ref, poly, frame, material, offset, nu, nv):
+    """An even grid over a left-right symmetric outline, projected onto the
+    surface: rows across v, each spanning the outline's width at that v.
+    Fewer, squarer faces than subdividing the outline, so it hugs the curve."""
+    vs = [p[1] for p in poly]
+    v0, v1 = min(vs), max(vs)
+
+    def half(v):
+        w = 0.0
+        for a, b in zip(poly, poly[1:] + poly[:1]):
+            if min(a[1], b[1]) <= v <= max(a[1], b[1]) and a[1] != b[1]:
+                w = max(w, abs(a[0] + (b[0] - a[0]) * (v - a[1]) / (b[1] - a[1])))
+        return w
+    verts, faces = [], []
+    for j in range(nv + 1):
+        v = v0 + (v1 - v0) * j / nv
+        v = min(max(v, v0 + 1e-4), v1 - 1e-4)
+        hw = half(v)
+        for i in range(nu + 1):
+            o, d = frame(-hw + 2 * hw * i / nu, v)
+            ok, loc, nor, _ = K.surface_ray(ref, o, d)
+            verts.append(loc + nor * offset if ok else Vector(o) + Vector(d) * 4.6)
+    for j in range(nv):
+        for i in range(nu):
+            a = j * (nu + 1) + i
+            faces.append((a, a + 1, a + nu + 2, a + nu + 1))
+    o = C.mesh_obj(name, verts, faces, material)
+    K.smooth(o, 60)
+    return o
+
+
+def _cabrio_hood(ref, M):
+    """The closed hood: fabric over the top and down the back round the
+    rear window, two lengthwise seams, lined underneath."""
+    top = _ruled_patch("hood_top", ref, HOOD_TOP, K.top_frame(), M["fabric"], 0.012, 14, 30)
+    K.planar_uv(top, 0, 1)
+    back = _ruled_patch("hood_back", ref, HOOD_BACK, K.rear_frame(), M["fabric"], 0.014, 16, 14)
+    K.planar_uv(back, 0, 2)
+    win = S._prism(K.offset_poly(CABRIO_GLASS, 0.01), lambda u, v, d: (u, d, v), 0.9, 2.6)
+    mod = back.modifiers.new("win", "BOOLEAN")
+    mod.operation, mod.object, mod.solver = "DIFFERENCE", win, "EXACT"
+    with bpy.context.temp_override(object=back, active_object=back):
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    bpy.data.objects.remove(win, do_unlink=True)
+    back.data.polygons.foreach_set("material_index", [0] * len(back.data.polygons))
+    for o, out_dir in ((top, Vector((0, 0, 1))), (back, Vector((0, 1, 0)))):
+        # fabric outside, lining underneath
+        if sum((p.normal.dot(out_dir) for p in o.data.polygons), 0.0) < 0:
+            o.data.flip_normals()
+        K.solidify(o, 0.004, M["headliner"])
+    out = [top, back]
+    for x in (-0.30, 0.30):
+        out.append(K.project_line("hood_seam", ref, [(x, -0.20 + 0.1 * i) for i in range(14)], K.top_frame(),
+                                  0.012, M["fabric_seam"], offset=0.0145))
+    return out
+
+
+def _cabrio_stack(M):
+    """The hood folded back: flat pleats piled up over the boot lid behind
+    the rear seats, the rear window folded in among them."""
+    out = []
+    for i, (y, z, ry, rz) in enumerate(((1.20, 1.16, 0.10, 0.045), (1.185, 1.225, 0.11, 0.045),
+                                        (1.17, 1.29, 0.11, 0.045), (1.155, 1.35, 0.10, 0.04))):
+        p = C.cylinder("pleat", 1.0, 0.98 - 0.01 * i, segs=14, axis="X", loc=(0, y, z), material=M["fabric"])
+        p.scale = (1, ry, rz)
+        C.apply_transform(p)
+        out.append(p)
+    return out
 
 
 # ------------------------------------------------------------------ interior

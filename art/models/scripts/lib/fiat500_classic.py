@@ -855,10 +855,12 @@ def side_details(ref, g, M, spec, door_bits):
     return out
 
 
-def fabric_roof(ref, g, M, spec):
-    roof = spec.get("roof")
-    if roof not in ("fabric", "fabric_full"):
-        return []
+ROOF_INSET = 0.045         # opening edge inside the canvas outline
+FULL_SPLIT = 0.62         # Nuova: the panel with the sewn-in window stays put
+
+
+def _canvas(g, roof):
+    """(outline, header y, rear end, half width) of the canvas roof."""
     hy = g.screen[6][1] + 0.035           # just behind the header rail
     if g.body == "estate":
         end, xw = 1.47, 0.43
@@ -873,21 +875,93 @@ def fabric_roof(ref, g, M, spec):
     else:
         poly = [(-xw + 0.02, hy), (xw - 0.02, hy), (xw, hy + 0.04), (xw, end - 0.04), (xw - 0.03, end),
                 (-xw + 0.03, end), (-xw, end - 0.04), (-xw, hy + 0.04)]
-    fab = K.project_poly("roof_canvas", ref, poly, K.top_frame(), M["fabric"], offset=0.008, cuts=5, border=0.022,
-                         border_mat=M["trim"])
-    K.planar_uv(fab, 0, 1)
+    return poly, hy, end, xw
+
+
+def _clip_v(poly, lo=None, hi=None):
+    """Clip an (x, y) top-view polygon to lo <= y <= hi."""
+    sw = S.clip_y([(v, u) for u, v in poly], lo=lo, hi=hi)
+    return [(u, v) for v, u in sw]
+
+
+def _sliding(g, roof):
+    """The part of the canvas that rolls back, and where its rear edge is."""
+    poly, hy, end, xw = _canvas(g, roof)
     if roof == "fabric_full" and g.body != "estate":
-        # the small plastic rear window is sewn into the canvas
+        return _clip_v(poly, hi=FULL_SPLIT - 0.005), FULL_SPLIT
+    return poly, end
+
+
+def roof_opening(obj, g, spec):
+    """Cut the hole the canvas covers, so the roof can be rolled back."""
+    roof = spec.get("roof")
+    if roof not in ("fabric", "fabric_full"):
+        return
+    poly, rear = _sliding(g, roof)
+    hole = K.offset_poly(poly, ROOF_INSET)
+    if rear != _canvas(g, roof)[2]:
+        # the fixed rear panel keeps its front rail: stop short of the split
+        hole = _clip_v(hole, hi=rear - 0.03)
+    _apply_cutters(obj, [S._prism(hole, lambda u, v, d: (u, v, d), 1.05, 2.5)])
+
+
+def fabric_roof(ref, g, M, spec):
+    """Canvas roof. Returns (fixed body bits, closed roof, rolled-back roof):
+    the sliding canvas and its bows are one object (Roof_Closed), the canvas
+    rolled up at the rear of the opening another (Roof_Open, hidden unless
+    the roof is down)."""
+    roof = spec.get("roof")
+    if roof not in ("fabric", "fabric_full"):
+        return [], [], []
+    poly, hy, end, xw = _canvas(g, roof)
+    slide, rear = _sliding(g, roof)
+    fixed = []
+    if rear != end:
+        # the small plastic rear window is sewn into the canvas behind the split
+        back = K.project_poly("roof_canvas_rear", ref, _clip_v(poly, lo=rear), K.top_frame(), M["fabric"],
+                              offset=0.008, cuts=5, border=0.022, border_mat=M["trim"])
+        K.planar_uv(back, 0, 1)
         cut = S._prism(K.offset_poly(g.rear, -0.012), lambda u, v, d: (u, d, v), g.rear_cut, 2.6)
-        _apply_cutters(fab, [cut])
-    out = [fab]
+        _apply_cutters(back, [cut])
+        fixed.append(back)
+    # the rail round the opening stays on the body; only the canvas moves
+    fixed.append(K.project_poly("roof_rail", ref, slide, K.top_frame(), None, offset=0.012, cuts=5,
+                                border=0.022, border_mat=M["trim"]))
+    fab = K.project_poly("roof_canvas", ref, K.offset_poly(slide, 0.022), K.top_frame(), M["fabric"],
+                         offset=0.012, cuts=5)
+    K.planar_uv(fab, 0, 1)
+    K.solidify(fab, 0.004, M["headliner"])
+    closed = [fab]
     n = max(2, int((end - hy) / 0.26))
     for i in range(1, n):
         y = hy + (end - hy) * i / n
-        if roof == "fabric_full" and y > 0.62 and g.body != "estate":
+        if y > rear - 0.05:
             continue
-        out.append(K.project_line("roof_bow", ref, [(x / 10 * (xw - 0.03), y) for x in range(-10, 11)],
-                                  K.top_frame(), 0.014, M["fabric_rib"], offset=0.012))
+        closed.append(K.project_line("roof_bow", ref, [(x / 10 * (xw - 0.03), y) for x in range(-10, 11)],
+                                     K.top_frame(), 0.014, M["fabric_rib"], offset=0.012))
+    return fixed, closed, _rolled_canvas(ref, M, xw, rear)
+
+
+def _rolled_canvas(ref, M, xw, rear):
+    """The canvas rolled up and strapped down at the rear of the opening."""
+    r = 0.055
+    y = rear - ROOF_INSET - 0.005
+    # follow the roof's camber across the car in short rolls
+    out = []
+    w = 2 * (xw - 0.03)
+    segs = 5
+    for i in range(segs):
+        x0 = -w / 2 + w * i / segs
+        x1 = x0 + w / segs
+        xc = (x0 + x1) / 2
+        zc = max(K.on_top(ref, xc, y + d)[0].z for d in (-r, 0, r))
+        out.append(C.cylinder("roof_roll", r, x1 - x0 + 0.004, segs=10, axis="X", loc=(xc, y, zc + r + 0.016),
+                              material=M["fabric"]))
+    for sx in (-1, 1):
+        xs = sx * w * 0.3
+        zs = max(K.on_top(ref, xs, y + d)[0].z for d in (-r, 0, r))
+        out.append(C.cylinder("roof_strap", r + 0.004, 0.03, segs=10, axis="X", loc=(xs, y, zs + r + 0.016),
+                              material=M["fabric_rib"]))
     return out
 
 
@@ -1325,6 +1399,7 @@ def build(spec):
         cut_jolly(shell_obj, g)
     else:
         cut_windows(shell_obj, g)
+        roof_opening(shell_obj, g, spec)
     if abarth:
         abarth_lid_cut(shell_obj)
     body_bits = []
@@ -1351,7 +1426,8 @@ def build(spec):
     body_bits += front_details(ref, g, M, spec)
     body_bits += rear_details(ref, g, M, spec, lid_bits)
     body_bits += side_details(ref, g, M, spec, door_bits)
-    body_bits += fabric_roof(ref, g, M, spec)
+    roof_fixed, roof_closed, roof_open = fabric_roof(ref, g, M, spec)
+    body_bits += roof_fixed
     if abarth:
         body_bits += abarth_lid(ref, M, lid_bits)
         body_bits += abarth_engine(M)
@@ -1395,8 +1471,13 @@ def build(spec):
     root[0] = body
     root.append(C.join(lamps_h, "Lights_Head"))
     root.append(C.join(lamps_t, "Lights_Tail"))
+    if roof_closed:
+        root.append(C.join(roof_closed, "Roof_Closed"))
+        rolled = C.join(roof_open, "Roof_Open")
+        rolled["hidden"] = True         # shown when the roof is rolled back
+        root.append(rolled)
 
-    cab = _cabin_bvh(root)
+    cab = _cabin_bvh([o for o in root if o.name != "Roof_Open"])
     inter, wheel_obj, mounts = interior(M, spec, g, cab)
     root += [inter, wheel_obj]
 

@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://5eu7jqphnklw"
+path="res://.godot/imported/e500e2013_seat_rear.png-e6c8cd2128e9bd1f0fc3ffb0de49332d.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "e7c2b14958e0c82ee097afecba66187c"
+}
+
+[deps]
+
+source_file="res://art/models/cars/e500e2013/e500e2013_seat_rear.png"
+dest_files=["res://.godot/imported/e500e2013_seat_rear.png-e6c8cd2128e9bd1f0fc3ffb0de49332d.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1

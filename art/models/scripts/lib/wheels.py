@@ -107,6 +107,39 @@ def _abarth17(r, t, rim):
     return (0.16, 0.16, 0.17) if a < 14 else (0.03, 0.03, 0.03)
 
 
+@style("turbine16", 0.203, 0.30, 0.195)
+def _turbine16(r, t, rim):
+    """2020 500: many thin swept spokes, machined silver on dark grey."""
+    c = _tyre(r, rim)
+    if c:
+        return c
+    rr = r / rim
+    if rr > 0.92:
+        return (0.70, 0.71, 0.74)
+    if rr < 0.24:
+        return (0.12, 0.12, 0.13) if rr < 0.17 else (0.66, 0.67, 0.70)
+    a = (math.degrees(t) + rr * 14) % 15      # a slight swirl outwards
+    return (0.74, 0.75, 0.78) if a < 5 else (0.10, 0.10, 0.11)
+
+
+@style("pepper15", 0.19, 0.29, 0.185)
+def _pepper15(r, t, rim):
+    """2013 500e: a smooth silver face pierced by five big round holes."""
+    c = _tyre(r, rim)
+    if c:
+        return c
+    rr = r / rim
+    if rr < 0.16:
+        return (0.12, 0.12, 0.13)
+    for ring_r, hole_r, n in ((0.56, 0.23, 5),):
+        ang = 2 * math.pi / n
+        a = (t + ang / 2) % ang - ang / 2
+        dx, dy = rr * math.cos(a) - ring_r, rr * math.sin(a)
+        if dx * dx + dy * dy < hole_r * hole_r:
+            return (0.07, 0.07, 0.08)
+    return (0.78, 0.79, 0.81)
+
+
 # ------------------------------------------------------------------ classics (12" rims, 125R12 tyres)
 
 def _holes(rr, t, ring_r, hole_r, n, phase=0.0):

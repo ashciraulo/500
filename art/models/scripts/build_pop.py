@@ -63,7 +63,7 @@ def main():
 
     # Swappable parts: one glb each, origin at the wheel centre / exhaust mount.
     # In Godot the car's left is -X, so the left wheel's face points to -X.
-    for style in ("pop_trim", "steel", "alloy15", "sport16", "abarth17"):
+    for style in ("pop_trim", "steel", "alloy15", "sport16", "abarth17", "turbine16", "pepper15"):
         for side, right in (("l", True), ("r", False)):
             C.reset()
             C.clear_material_cache()
