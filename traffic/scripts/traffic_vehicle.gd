@@ -50,6 +50,8 @@ var cleared: TrafficGraph.Lane
 var commits: Array = []
 ## Bus stops already served on the current lane.
 var served := {}
+## The bus route this bus is running ("" for none: it roams the big roads).
+var bus_route := ""
 var dwell := 0.0
 var lifetime := 0.0
 

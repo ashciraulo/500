@@ -318,6 +318,8 @@ var bus_stops: Array = []
 var stations: Array = []
 ## Parking spots from the map: { pos, yaw, kind, seed }. See TrafficParking.
 var parking: Array = []
+## Bus routes from the map: ref -> { ref, name, colour, roads: { road id: true } }.
+var bus_routes := {}
 
 ## Bumped whenever roads are added, so cached route facts get refreshed.
 var version := 0
@@ -360,6 +362,8 @@ func add_data(data: Dictionary) -> int:
 
 	for p in data.get("parking", []):
 		_add_parking(p)
+	for r in data.get("bus_routes", []):
+		_add_bus_route(r)
 	if added.is_empty() and data.get("rail", []).is_empty() and data.get("footways", []).is_empty():
 		return 0
 
@@ -1036,6 +1040,26 @@ func _add_parking(p: Dictionary) -> void:
 	if not _parking_cells.has(cell):
 		_parking_cells[cell] = []
 	_parking_cells[cell].append(spot)
+
+
+## A route can come in pieces, one per tile: pieces with the same ref join up.
+func _add_bus_route(r: Dictionary) -> void:
+	var ref := str(r.get("ref", r.get("name", "")))
+	if ref == "":
+		return
+	if not bus_routes.has(ref):
+		bus_routes[ref] = { "ref": ref, "name": str(r.get("name", ref)), "colour": r.get("colour", ""), "roads": {} }
+	for id in r.get("roads", []):
+		bus_routes[ref].roads[str(id)] = true
+
+
+## Refs of the bus routes that run along `road`.
+func routes_on(road: Road) -> Array:
+	var refs: Array = []
+	for ref in bus_routes:
+		if bus_routes[ref].roads.has(road.key):
+			refs.append(ref)
+	return refs
 
 
 ## Parking spots within `radius` of `p` (roughly: whole cells).

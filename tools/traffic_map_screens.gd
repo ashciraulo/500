@@ -34,7 +34,7 @@ func _init() -> void:
 		["barrack_street_level", 12.5, 0, 20.0, Vector3(553, 47, 1080), 1.7, 22.0],
 		["mitchell_freeway", 17.3, 0, 24.0, Vector3(-310, 20, 30), 14.0, 70.0],
 		["narrows_bridge", 17.5, 0, 22.0, Vector3(-1500, 35, 2300), 16.0, 90.0],
-		["perth_station", 9.0, 0, 4.0, Vector3.ZERO, 0.0, 0.0],
+		["perth_station", 9.0, 0, 8.0, Vector3(390, 25, 560), 0.0, 0.0],
 		["northbridge_rain", 18.4, 1, 22.0, Vector3(60, 18, 205), 9.0, 30.0],
 		["william_night", 22.0, 0, 22.0, Vector3(391, 25, 587), 6.0, 30.0],
 	]
@@ -65,6 +65,13 @@ func _process(_delta: float) -> bool:
 		return false
 	_frames += 1
 	var shot: Array = _shots[_shot]
+	if _frames == 300 and shot[0] == "perth_station":
+		# The tiles around the station have streamed in by now.
+		var pick := _station_view()
+		if pick.is_empty():
+			print("no station found (%d rail edges, %d stations); skipping" % [_traffic.graph.rail_edges.size(), _traffic.graph.stations.size()])
+		else:
+			_cam.look_at_from_position(pick[0], pick[1])
 	if _frames == int(shot[3] * 60.0) - 20 and shot[0] != "perth_station":
 		var view := _junction_view(shot[4], shot[5], shot[6]) if shot[5] <= 12.0 else _traffic_view(shot[4], shot[5], shot[6])
 		_cam.look_at_from_position(view[0], view[1])
@@ -94,14 +101,6 @@ func _next_shot() -> void:
 	weather.set_locked(true)
 	var target: Vector3 = shot[4]
 	var cam_pos := target + Vector3(30, 30, 30)
-	if shot[0] == "perth_station":
-		var pick := _station_view()
-		if pick.is_empty():
-			print("no station found (%d rail edges, %d stations); skipping" % [_traffic.graph.rail_edges.size(), _traffic.graph.stations.size()])
-			_frames = 1 << 30
-			return
-		cam_pos = pick[0]
-		target = pick[1]
 	_car.freeze = true
 	_car.global_position = target + Vector3(0, 30, 0)
 	_traffic.clear_all()
@@ -164,7 +163,7 @@ func _station_view() -> Array:
 	var pick = null
 	for edge in _traffic.graph.rail_edges:
 		for st in edge.stations:
-			if st.s < 80.0 or st.s > edge.length - 40.0:
+			if st.s > edge.length - 5.0:
 				continue
 			if pick == null or (st.name == "Perth" and pick[1].name != "Perth"):
 				pick = [edge, st]

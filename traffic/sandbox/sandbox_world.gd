@@ -49,6 +49,9 @@ func build(graph: TrafficGraph) -> void:
 			asphalt.disc(node.pos + Vector3(0, ROAD_Y + 0.004, 0), node.radius + 0.5, 14)
 		elif node.degree() == 2:
 			asphalt.disc(node.pos + Vector3(0, ROAD_Y + 0.004, 0), node.roads[0].half_width, 10)
+	# Tarmac under the parking spots: overlapping pads make the car park.
+	for spot in graph.parking:
+		asphalt.disc(spot.pos + Vector3(0, ROAD_Y + 0.002, 0), 3.4 if spot.kind == &"lot" else 2.6, 10)
 	if not ring_points.is_empty():
 		# The roundabout's island.
 		var center := Vector3.ZERO
@@ -209,7 +212,7 @@ func _tree(trees: Builder, trunks: Builder, p: Vector3) -> void:
 	trees.box(p + Vector3(0, h * 0.75, 0), Vector3(h * 0.6, h * 0.55, h * 0.6), Vector2(0.4, 0.4))
 
 
-## Distance from p to the nearest road edge, rail or platform.
+## Distance from p to the nearest road edge, rail, platform or parking spot.
 func _clearance(graph: TrafficGraph, p: Vector3) -> float:
 	var best := INF
 	for road in graph.roads:
@@ -219,6 +222,8 @@ func _clearance(graph: TrafficGraph, p: Vector3) -> float:
 	for edge in graph.rail_edges:
 		var s := TrafficGraph.closest_s(edge.pts, edge.cum, p)
 		best = minf(best, TrafficGraph.point_at(edge.pts, edge.cum, s).distance_to(p) - 8.0)
+	for spot in graph.parking:
+		best = minf(best, spot.pos.distance_to(p) - 4.0)
 	return best
 
 

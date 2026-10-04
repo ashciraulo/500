@@ -19,6 +19,7 @@ class Net:
 	var stations: Array = []
 	var bus_stops: Array = []
 	var parking: Array = []
+	var bus_routes: Array = []
 	var _ids := {}
 	var _next := 1
 
@@ -45,7 +46,7 @@ class Net:
 		return Vector3.ZERO
 
 	func road(a: int, b: int, extra := {}, pts: Array = []) -> void:
-		var r := { "a": a, "b": b, "kind": "residential" }
+		var r := { "a": a, "b": b, "kind": "residential", "id": "r%d" % roads.size() }
 		r.merge(extra, true)
 		r.pts = pts if not pts.is_empty() else [pos(a), pos(b)]
 		roads.append(r)
@@ -56,7 +57,7 @@ class Net:
 			road(points[i], points[i + 1], extra)
 
 	func data() -> Dictionary:
-		return { "nodes": nodes, "roads": roads, "rail": rail, "stations": stations, "bus_stops": bus_stops, "parking": parking }
+		return { "nodes": nodes, "roads": roads, "rail": rail, "stations": stations, "bus_stops": bus_stops, "parking": parking, "bus_routes": bus_routes }
 
 
 static func test_grid() -> Dictionary:
@@ -166,4 +167,16 @@ static func sandbox() -> Dictionary:
 		net.parking.append({ "pos": [-91.0, Y, -150.0 + k * 6.0], "yaw": PI, "kind": "street" })
 	net.parking.append({ "pos": [0.0, Y, -1.6], "yaw": PI * 0.5, "kind": "street" })
 	net.parking.append({ "pos": [20.0, Y, 4.8], "yaw": -PI * 0.5, "kind": "street" })
+
+	# Bus routes: the 950 runs the avenue and Station Street; the Blue CAT
+	# just the avenue.
+	var route_950: Array = []
+	var cat: Array = []
+	for road in net.roads:
+		if road.get("name", "") in ["Sandbox Avenue", "Station Street"]:
+			route_950.append(road.id)
+		if road.get("name", "") == "Sandbox Avenue":
+			cat.append(road.id)
+	net.bus_routes.append({ "ref": "950", "name": "950 Sandbox loop", "roads": route_950 })
+	net.bus_routes.append({ "ref": "Blue CAT", "name": "Blue CAT", "roads": cat })
 	return net.data()

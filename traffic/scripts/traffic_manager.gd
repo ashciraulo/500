@@ -82,6 +82,9 @@ var _time := 0.0
 var _focus: Node3D
 var _player: RigidBody3D
 var _player_proxy := PlayerProxy.new()
+## The player out of the car and walking (scripts/player/on_foot.gd).
+var _walker: CharacterBody3D
+var _walker_proxy := PlayerProxy.new()
 var _camera: Camera3D
 var _horn_car: AudioStreamWAV
 var _horn_bus: AudioStreamWAV
@@ -207,8 +210,24 @@ func _update_focus() -> void:
 			_player.collision_mask |= TRAFFIC_LAYER
 			if _player.has_signal(&"impact"):
 				_player.impact.connect(_on_player_impact)
+	if (_walker == null or not is_instance_valid(_walker)) and get_parent():
+		for n in get_parent().get_children():
+			# The on-foot player: a CharacterBody3D that knows whether it's in the car.
+			if n is CharacterBody3D and "in_car" in n:
+				_walker = n
+				_walker.collision_mask |= TRAFFIC_LAYER
+				_walker_proxy.length = 0.6
+				_walker_proxy.width = 0.6
+	_walker_proxy.present = _walker != null and is_instance_valid(_walker) and not _walker.in_car
+	if _walker_proxy.present:
+		_walker_proxy.position = _walker.global_position
+		_walker_proxy.velocity = _walker.velocity
+		_walker_proxy.speed = _walker.velocity.length()
+		_walker_proxy.forward = _walker.velocity.normalized() if _walker_proxy.speed > 0.2 else -_walker.global_basis.z
 	if focus_path != NodePath() and has_node(focus_path):
 		_focus = get_node(focus_path)
+	elif _walker_proxy.present:
+		_focus = _walker
 	elif _player:
 		_focus = _player
 	_player_proxy.present = _player != null
@@ -330,6 +349,8 @@ func _rebuild_hash() -> void:
 		_hash_add(p, p.position)
 	if _player_proxy.present:
 		_hash_add(_player_proxy, _player_proxy.position)
+	if _walker_proxy.present:
+		_hash_add(_walker_proxy, _walker_proxy.position)
 
 
 func _hash_add(agent: Object, p: Vector3) -> void:
@@ -448,7 +469,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 			var gate: TrafficGraph.Gate = st.gate
 			var halt := false
 			if gate.buses_only():
-				if v.is_bus and not v.served.has(gate):
+				if v.is_bus and not v.served.has(gate) and _bus_stops_here(v, l):
 					halt = true
 					if d < 1.5 and v.speed < 0.4:
 						v.dwell += dt
@@ -716,8 +737,8 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 				if gap < v.obstacle_gap:
 					v.obstacle_gap = gap
 					v.obstacle_who = o
-					if o == _player_proxy:
-						v.obstacle_speed = _player_proxy.velocity.dot(v.forward)
+					if o == _player_proxy or o == _walker_proxy:
+						v.obstacle_speed = o.velocity.dot(v.forward)
 						v.obstacle_reason = TrafficVehicle.Reason.PLAYER
 					elif o is TrafficPedestrian:
 						v.obstacle_speed = 0.0
@@ -798,7 +819,11 @@ func _choose_next(v: TrafficVehicle, lane: TrafficGraph.Lane) -> TrafficGraph.La
 		var rank: int = out.road.rank if out.road else 2
 		w *= 1.0 + rank * 0.15
 		if v.is_bus:
-			w *= 4.0 if rank >= 3 else 0.3
+			if v.bus_route != "" and out.road:
+				# Keep to the route wherever it goes on.
+				w *= 60.0 if graph.bus_routes[v.bus_route].roads.has(out.road.key) else 1.0
+			else:
+				w *= 4.0 if rank >= 3 else 0.3
 		weights.append(w)
 		total += w
 	var r := _rng.randf() * total
@@ -1141,7 +1166,9 @@ func _try_spawn_vehicle(focus: Vector3) -> void:
 	if _warm <= 0.0 and _visible(p) and d < 240.0:
 		return
 	var buses := vehicles.filter(func(o): return o.is_bus).size()
-	var type: StringName = &"bus" if lane.road.rank >= 3 and buses < max_buses and _rng.randf() < 0.1 else _pick_type()
+	# With real routes loaded, buses only start out on them.
+	var bus_road: bool = not graph.routes_on(lane.road).is_empty() if not graph.bus_routes.is_empty() else lane.road.rank >= 3
+	var type: StringName = &"bus" if bus_road and buses < max_buses and _rng.randf() < 0.1 else _pick_type()
 	var length: float = TrafficModels.TYPES[type].length
 	for o in lane.vehicles:
 		if absf(o.s - s) < (o.length + length) * 0.5 + 8.0:
@@ -1150,6 +1177,8 @@ func _try_spawn_vehicle(focus: Vector3) -> void:
 		if o.position.distance_to(p) < 8.0:
 			return
 	if _player_proxy.present and _player_proxy.position.distance_to(p) < 20.0:
+		return
+	if _walker_proxy.present and _walker_proxy.position.distance_to(p) < 20.0:
 		return
 	# Start slow enough to stop behind a queue just ahead, which can be on
 	# the next few short lanes rather than this one.
@@ -1217,6 +1246,11 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	v.cleared = null
 	v.commits = []
 	v.served.clear()
+	v.bus_route = ""
+	if v.is_bus:
+		var refs := graph.routes_on(lane.road)
+		if not refs.is_empty():
+			v.bus_route = refs[_rng.randi() % refs.size()]
 	v.dwell = 0.0
 	v.lateral = 0.0
 	v.change_from = null
@@ -1249,11 +1283,34 @@ func _paint(v: TrafficVehicle) -> void:
 	if v.is_bus:
 		var cat := _rng.randf() < 0.3
 		var livery: Color = TrafficModels.CAT_COLOURS[_rng.randi() % 4] if cat else TrafficModels.TRANSPERTH_GREEN
+		if v.bus_route != "":
+			# A route's own colours: CATs are white with the route's colour.
+			var route: Dictionary = graph.bus_routes[v.bus_route]
+			cat = "CAT" in route.ref or "CAT" in route.name
+			livery = TrafficModels.TRANSPERTH_GREEN
+			if cat:
+				livery = Color.from_string(str(route.colour), _cat_colour(route.name))
 		v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(Color(0.93, 0.93, 0.92) if cat else TrafficModels.BUS_SILVER))
 		v.mesh.set_surface_override_material(TrafficModels.Surf.LIVERY, TrafficModels.material(livery))
 	else:
 		v.paint = TrafficModels.pick_paint(_rng)
 		v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(v.paint))
+
+
+## Perth's CAT colours by name, for routes the map gives without a colour.
+func _cat_colour(route_name: String) -> Color:
+	var names := ["Blue", "Red", "Yellow", "Green"]
+	for i in names.size():
+		if names[i].to_lower() in route_name.to_lower():
+			return TrafficModels.CAT_COLOURS[i]
+	return TrafficModels.CAT_COLOURS[0]
+
+
+## Buses on a route stop only at the stops along it.
+func _bus_stops_here(v: TrafficVehicle, lane: TrafficGraph.Lane) -> bool:
+	if v.bus_route == "" or lane.road == null:
+		return true
+	return graph.bus_routes[v.bus_route].roads.has(lane.road.key)
 
 
 func _create_vehicle(type: StringName) -> TrafficVehicle:

@@ -1,6 +1,6 @@
 extends Node
 ## The traffic sandbox: the full game (car, camera, weather, HUD) with the
-## test grid swapped for a small suburb built to exercise traffic. Open
+## Perth map swapped for a small suburb built to exercise traffic. Open
 ## traffic/sandbox/traffic_sandbox.tscn and press F6 to drive around it.
 
 const MAIN := preload("res://scenes/main.tscn")
@@ -17,10 +17,12 @@ var world_root: Node3D
 func _ready() -> void:
 	main = MAIN.instantiate()
 	world_root = main.get_node("LoFi/SubViewport/World")
-	# Drop the test grid before it enters the tree.
-	var grid := world_root.get_node("TestGrid")
-	world_root.remove_child(grid)
-	grid.free()
+	# Drop the Perth map (or the old test grid) before it enters the tree.
+	for world_name in ["PerthMap", "TestGrid"]:
+		var world := world_root.get_node_or_null(world_name)
+		if world:
+			world_root.remove_child(world)
+			world.free()
 	traffic = world_root.get_node("Traffic")
 	traffic.use_test_grid_fallback = false
 	var car := world_root.get_node("Car") as Node3D

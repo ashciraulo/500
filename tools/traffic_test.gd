@@ -65,6 +65,8 @@ func _run_step() -> bool:
 				_check(_mark.max_peds >= 8, "people walk the footpaths (max %d)" % _mark.max_peds)
 				_check(_mark.crossers > 0, "people cross at junctions (%d seen crossing)" % _mark.crossers)
 				_check(_mark.buses > 0, "Transperth buses turn up (%d seen)" % _mark.buses)
+				var on_route: float = float(_mark.get("on_route", 0)) / maxf(_mark.get("route_samples", 0), 1.0)
+				_check(_mark.get("route_samples", 0) > 0 and on_route > 0.9, "buses keep to their routes (%.0f%% of samples)" % (on_route * 100.0))
 				_check(_traffic.step_ms < 12.0, "simulation is cheap enough (%.2f ms per frame)" % _traffic.step_ms)
 				_check_parking()
 				print("  [t] vehicles=%d peds=%d step=%.2fms created=%d spawned=%d" % [
@@ -137,9 +139,32 @@ func _run_step() -> bool:
 				_check(busy > quiet * 1.3, "the avenue is busier than the back streets (%.1f vs %.1f cars per lane-km)" % [busy, quiet])
 				root.get_node("Weather").set_state(0, true)
 				clock.set_time(8.0)
+				# The player gets out and stands in the avenue's westbound kerb lane.
+				var script := GDScript.new()
+				script.source_code = "extends CharacterBody3D\nvar in_car := false\n"
+				script.reload()
+				_mark.walker = CharacterBody3D.new()
+				_mark.walker.set_script(script)
+				_root3d.add_child(_mark.walker)
+				_mark.walker.global_position = Vector3(-40, 0, 4.8)
+				_mark.walker_hits = 0
+				_mark.waited = 0
+				_next()
+		5:  # Traffic stops for the player on foot.
+			var walker: Node3D = _mark.walker
+			for v in _traffic.vehicles:
+				if v.position.distance_to(walker.global_position) < (v.length * 0.5 + 0.2) and absf(v.position.y - walker.global_position.y) < 2.0:
+					var rel: Vector3 = walker.global_position - v.position
+					if absf(rel.dot(TrafficGraph.left_of(v.forward))) < v.width * 0.5 + 0.2:
+						_mark.walker_hits += 1
+				if v.reason == TrafficVehicle.Reason.PLAYER and v.speed < 0.3 and v.position.distance_to(walker.global_position) < 15.0:
+					_mark.waited += 1
+			if _seconds() >= 25.0:
+				_check(_mark.walker_hits == 0, "nobody drives through the player on foot (%d frames)" % _mark.walker_hits)
+				_check(_mark.waited > 0, "cars stop for the player standing in the road")
 				_root3d.queue_free()
 				_next()
-		5:  # The main scene gets traffic on the Perth map's roads.
+		6:  # The main scene gets traffic on the Perth map's roads.
 			if _main == null:
 				_main = load("res://scenes/main.tscn").instantiate()
 				root.add_child(_main)
@@ -187,6 +212,7 @@ func _check_graph() -> void:
 	_check(g.bus_stops.size() == 2, "bus stops placed on kerb lanes (%d)" % g.bus_stops.size())
 	_check(g.ped_edges.size() > 50, "footpaths built (%d edges)" % g.ped_edges.size())
 	_check(g.parking.size() == 38, "parking spots load (%d)" % g.parking.size())
+	_check(g.bus_routes.size() == 2 and g.bus_routes["950"].roads.size() > 8, "bus routes load (%d)" % g.bus_routes.size())
 	var dead := 0
 	var right_side := 0
 	for lane in g.lanes:
@@ -259,6 +285,10 @@ func _watch() -> void:
 		var v = vs[i]
 		if v.is_bus:
 			_mark.buses = maxi(_mark.buses, 1)
+			if _frame % 30 == 0 and v.bus_route != "" and not v.route[0].connector:
+				var on: bool = _graph.bus_routes[v.bus_route].roads.has(v.route[0].road.key)
+				_mark.route_samples = _mark.get("route_samples", 0) + 1
+				_mark.on_route = _mark.get("on_route", 0) + (1 if on else 0)
 		var lane = v.route[0]
 		var was = _mark.signal_lane.get(v)
 		if was != null and was != lane and was.signal_gate != null:

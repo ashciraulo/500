@@ -69,12 +69,17 @@ the old test grid get a network matching the grid's streets instead.
   there are two, stop at stations for about 14 s, and close the boom gates at
   level crossings. Crossings are found wherever rail and road meet at the
   same height.
-- **Buses** stick to bigger roads and stop at bus stops. About a third are
-  CAT buses in their route colours; the rest are Transperth silver and green.
+- **Buses** run the bus routes the map hands over, keep to them, and stop
+  only at stops along their route; CAT routes are white with the route's
+  colour, the rest Transperth silver and green. Without routes, buses stick
+  to bigger roads and stop at every bus stop, and about a third are CATs.
 - **The player.** Cars stuck behind the player toot after a few seconds;
   cars facing the player on the wrong side of the road flash, sound the horn
   and swerve towards the kerb; a car the player hits stops with its hazards
-  on and leans on the horn. People leap out of the way of a fast car.
+  on and leans on the horn. People leap out of the way of a fast car. On
+  foot, the player is someone in the road like anyone else: cars stop for
+  them (and toot if they stand there), they can't walk through cars, and
+  traffic spawns around them instead of the parked car.
 
 ## Road data format
 
@@ -119,6 +124,9 @@ World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 	# Optional parking spots, clear of footpaths, street lights and driveways.
 	# yaw: the way the nose points, radians about +Y (0 faces -Z).
 	"parking": [{ "pos": [x, y, z], "yaw": 1.57, "kind": "street" }],  # kind: "street" | "lot"
+	# Optional bus routes (OSM route=bus): the ids of the roads they run along.
+	# Pieces with the same ref in different tiles join up.
+	"bus_routes": [{ "ref": "950", "name": "950 Morley - UWA", "colour": "#0066b3", "roads": ["osm-way-1234/2", ...] }],
 }
 ```
 

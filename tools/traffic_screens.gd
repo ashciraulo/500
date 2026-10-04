@@ -51,6 +51,7 @@ func _process(_delta: float) -> bool:
 	if _traffic == null:
 		_traffic = _sandbox.traffic
 		_world = _sandbox.world_root
+		_sandbox.main.get_node("HUD").visible = false
 		_cam = Camera3D.new()
 		_cam.far = 1500.0
 		_world.add_child(_cam)
