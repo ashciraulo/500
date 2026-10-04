@@ -1,0 +1,129 @@
+# Audio
+
+Everything you hear in the game: engines, tyres, crashes, car foley, weather,
+Perth ambiences, the home, UI, music, and the car radio with its **My Music**
+station. This first pass is made by Claude: synthesised in code, plus a few
+CC0/CC-BY field recordings (see [CREDITS.md](CREDITS.md)). Any of it can be
+replaced by your own recordings, one file at a time.
+
+## Replacing a sound with your own
+
+1. Find the file in the tables in [docs/](docs/) (or by browsing the folders).
+2. Save your recording with **the same name** in the same folder, as `.ogg`,
+   `.wav` or `.mp3`. You can delete the generated `.ogg` or leave it: a `.wav`
+   or `.mp3` of the same name always wins.
+3. Open the project in Godot once so it imports the file. That's it.
+
+What makes a replacement fit (from the plan's delivery specs):
+
+- 48 kHz, 24-bit WAV masters are ideal; OGG q6+ is fine for the game.
+- **Mono** for anything at a point in the world (engines, tyres, impacts,
+  horns, doors, birds). **Stereo** for music, ambience beds and UI.
+- **Loops** (marked "yes" in the docs tables) must loop seamlessly: trimmed
+  to the loop point, no fades. The game turns looping on itself.
+- Levels: one-shots peak around -1 dBTP; ambience beds about -24 LUFS; music
+  about -16 LUFS. The mixer balances the rest.
+- **Variants** are numbered `_01`, `_02`, ... The game picks one at random and
+  never the same twice in a row. Add or remove variants freely.
+- Design from **outside the car**. The game makes the inside version by
+  filtering (except rain on the roof, which has its own inside files).
+
+### Engines
+
+An engine set is a folder in `engine/`, e.g. `engine/fire12/` for the 2013
+Pop's 1.2. It holds steady loops at a handful of RPM points:
+
+    eng_fire12_onload_2500.ogg     accelerating, under load, at 2500 rpm
+    eng_fire12_offload_2500.ogg    lifting off / engine braking at 2500 rpm
+    eng_fire12_startup.ogg  eng_fire12_shutdown.ogg  eng_fire12_limiter.ogg
+
+The game reads the RPM straight from the file names, crossfades the two loops
+either side of the current revs and pitch-shifts them, and blends on-load and
+off-load by throttle. So you can record your own car at whatever RPM points
+you like (2 to 4 seconds each, held steady), name them this way, and the game
+uses them. For electric sets the number is km/h instead of RPM.
+`python3 audio/tools/preview_drive.py fire12` renders a short drive from a
+set exactly as the game mixes it, so you can hear a set without Godot.
+
+Exhaust upgrades are their own sets: `fire12sport`, `fire12straight`.
+
+## What's here
+
+| Folder | What | Docs |
+| --- | --- | --- |
+| `engine/` | 8 engine families (Fire 1.2, 1.4 16v, TwinAir, T-Jet, classic twin, classic Abarth, electric, Abarth 500e generator), each petrol one with sport and straight-through exhausts, plus extras (gear clunks, turbo, blow-off, backfires, gearbox whine, carb gulp) | [engine](docs/engine.md) |
+| `car/` | Doors, horns, indicators, wipers, radio clicks, windows, roof, cargo... | [car](docs/car.md) |
+| `tyre/`, `impact/` | Rolling on each surface, skids, splashes, road features, crashes, street objects | [tyre](docs/tyre.md), [impact](docs/impact.md) |
+| `weather/` | Rain outside and on the roof, thunder, wind, cicadas, drips | [weather](docs/weather.md) |
+| `amb/` | Perth ambience beds by zone, day and night, and wildlife one-shots | [amb](docs/amb.md) |
+| `oddity/` | Night oddities: the midnight station, static whispers, river lights | [oddity](docs/oddity.md) |
+| `home/`, `garage/` | The townhouse and garage/servo/car-wash activities | [home](docs/home.md), [garage](docs/garage.md) |
+| `ui/` | Menu, jobs, checkpoints, stingers | [ui](docs/ui.md) |
+| `music/` | Main theme, Radio Cinquecento, Notte FM, mission and time-trial loops, stingers | [music](docs/music.md) |
+| `scripts/` | The game code (below) | |
+| `tools/` | Python generators that make every file here | |
+| `tests/` | Headless tests and a scripted demo drive | |
+
+## Regenerating
+
+Everything generated is reproducible (fixed random seeds):
+
+    python3 audio/tools/gen_engines.py        # or: gen_engines.py fire12 tjet
+    python3 audio/tools/gen_car.py            # car foley
+    python3 audio/tools/gen_tyres.py          # tyres, surfaces, impacts
+    python3 audio/tools/gen_weather.py
+    python3 audio/tools/gen_ui.py
+    python3 audio/tools/gen_home.py
+    python3 audio/tools/gen_garage.py
+    python3 audio/tools/fetch_sources.py && python3 audio/tools/gen_amb.py
+    python3 audio/tools/gen_music.py
+
+Needs Python 3 with numpy, scipy, soundfile and pyloudnorm, plus ffmpeg (and
+fluidsynth with the FluidR3_GM soundfont for music). Set `AUDIO_MASTERS=1` to
+also write 24-bit WAV masters to `build/audio_masters/`. **Re-running a
+generator overwrites its files**, including any you replaced, so after you
+start swapping in your own recordings, regenerate only what you need.
+
+## Game code (`scripts/`)
+
+- **`Audio` autoload** (`audio_manager.gd`): finds sounds by name,
+  `Audio.play_at("impact/impact_heavy", pos)`, `Audio.ui("ui_menu_move")`,
+  `Audio.play_music("mus_main_theme")`, `Audio.start_mission_music()` and
+  `Audio.set_mission_intensity(0..1)`, `Audio.sting("complete")`,
+  `Audio.set_bus_volume("Music", 0.8)` for the settings menu. It also sets up
+  the buses and muffles the world when the camera is inside the car.
+- **`EngineAudio`**, **`TyreAudio`**, **`CarSounds`**: nodes under the car's
+  `Audio` node. They read `get_telemetry()` and the car's signals
+  (docs/HOOKS.md). Set `EngineAudio.engine_set` to change engine or exhaust.
+- **`Audio.radio`** (`radio.gd`): Radio Cinquecento, Notte FM, My Music and
+  (after midnight only) an unlisted station. Keys: `.` / `,` change station,
+  `/` on/off, `M` next track, `N` next playlist.
+- **`Audio.ambience`** (`ambience_manager.gd`): `set_zone("kingspark")` for
+  the map; weather and time come from the `Weather` and `GameClock`
+  autoloads, with thunder following lightning at the speed of sound.
+
+## My Music
+
+The game makes a `Music` folder next to the save files:
+
+- Windows: `%APPDATA%\Godot\app_userdata\500\Music`
+- macOS: `~/Library/Application Support/Godot/app_userdata/500/Music`
+- Linux: `~/.local/share/godot/app_userdata/500/Music`
+
+(`Audio.radio.open_music_folder()` opens it; the settings menu should get an
+"Open folder" button that calls this.) Drop MP3, OGG or WAV files in. Each
+subfolder becomes a playlist; "All music" plays everything. Tune the radio to
+My Music: tracks play through the car-stereo filter, shuffle by default, and
+carry on faintly when you step out. Track names come from the files' tags, or
+from file names like `Artist - Title.mp3`. Spotify was ruled out in the plan, so
+the folder is the way.
+
+## Tests
+
+    godot --headless --path . res://audio/tests/test_audio.tscn
+
+checks the buses, every engine set, the engine node, tag reading and the My
+Music folder (with real MP3/OGG/WAV fixtures). CI runs it. To hear it all in
+the actual game:
+
+    godot --path . --fixed-fps 60 --write-movie build/demo.avi --script res://audio/tests/demo_drive.gd

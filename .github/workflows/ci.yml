@@ -40,3 +40,12 @@ jobs:
             echo "::error::GDScript errors while running the game"
             exit 1
           fi
+
+      - name: Audio tests
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . res://audio/tests/test_audio.tscn 2>&1 | tee audio.log
+          if grep -q "SCRIPT ERROR" audio.log; then
+            echo "::error::GDScript errors in the audio tests"
+            exit 1
+          fi

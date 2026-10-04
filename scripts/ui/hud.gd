@@ -9,7 +9,8 @@ E/Q or bumpers: gear up / down    G / Select: manual <-> auto    C / Y: camera
 L: headlights    R / D-pad down: reset car    Mouse click: look around (interior)
 F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
 F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)
-F / A: use a workshop, servo or spray shop when parked in its bay"""
+F / A: use a workshop, servo or spray shop when parked in its bay
+Radio: . / , station    / on-off    M next track    N next playlist (My Music)    H: horn"""
 
 var _car: CarController
 var _speed: Label

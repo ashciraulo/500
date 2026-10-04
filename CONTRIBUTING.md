@@ -45,9 +45,11 @@ area, keep it small and say so in your PR.
   them, keep the suspension numbers on the car in step.
 - **Map**: replace the `TestGrid` node in `scenes/main.tscn` with the map
   scene, and move the `Car` to the spawn point (15 Little Shenton Lane).
-- **Audio**: put engine/tyre players under the car's `Audio` node and read
-  `get_telemetry()` each frame. Buses: Music, Vehicles, SFX, Ambience, UI
-  (`default_bus_layout.tres`).
+- **Audio**: see `audio/README.md`. Sounds are found by file name, so a
+  recording dropped in with the same name (any of .ogg/.wav/.mp3) replaces the
+  generated one. Buses (`default_bus_layout.tres`): Music, UI, Radio, Cabin,
+  and World (muffled when the camera is inside the car) with Engine, Tyres,
+  SFX, Ambience and Weather under it.
 
 ## Before you push
 
