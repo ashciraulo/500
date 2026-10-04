@@ -49,6 +49,7 @@ func _ready() -> void:
 	await _test_traffic(audio)
 	await _test_footsteps(audio)
 	_test_programme(audio)
+	_test_field(audio)
 	_test_release(audio)
 	print("%d failure(s)" % failures)
 	quit(1 if failures else 0)
@@ -636,3 +637,33 @@ func _test_release(audio: Node) -> void:
 	check(left == 0, "release_all stops every player and drops its stream (%d left)" % left)
 	check(audio._cache.is_empty(), "release_all empties the stream cache")
 	check(audio.has_method("quit_game"), "Audio.quit_game() for the quit paths")
+
+
+func _test_field(audio: Node) -> void:
+	print("birds and fishing")
+	# The species the bird-watching journal asks for (field/bird_<id>).
+	for id in ["rainbow_lorikeet", "carnabys_black_cockatoo", "southern_boobook", "tawny_frogmouth",
+			"black_swan", "silver_gull", "willie_wagtail", "australian_pelican", "australian_magpie",
+			"laughing_kookaburra", "australian_raven", "australian_white_ibis", "galah", "osprey",
+			"rainbow_bee_eater", "splendid_fairywren", "eastern_barn_owl"]:
+		check(audio.has("field/bird_" + id), "bird " + id)
+	check(audio.variant("field/bird_australian_magpie") != null, "aliased magpie resolves to the amb recording")
+	check(not audio.has("field/bird_dodo"), "unknown species is missing (the journal plays nothing)")
+	check(audio.play_at("field/bird_black_swan", Vector3.ZERO, 0.0, "Ambience") != null, "a call plays in 3D")
+	var birds := 0
+	for n in audio.names_in("field"):
+		if n.begins_with("field/bird_"):
+			birds += 1
+	check(birds >= 70, "plenty of bird calls (%d)" % birds)
+	for n in ["wrong_magpie_song", "wrong_frogmouth", "wrong_boobook", "wrong_magpie_reversed",
+			"wrong_kookaburra_slow", "wrong_frogmouth_answer"]:
+		check(audio.has("field/" + n), "wrong call " + n)
+	for n in ["binoculars_up", "binoculars_down", "focus_tick", "focus_hit", "focus_miss", "shutter",
+			"film_full", "journal_open", "journal_close", "journal_page", "journal_new_entry", "flush"]:
+		check(audio.has("field/" + n), "field ui " + n)
+	for n in ["cast", "lure_plop", "bite_nibble", "reel_loop", "reel", "line_tension_loop", "strike",
+			"splash_small", "splash", "splash_big", "line_snap", "landed_flop", "bucket_drop", "esky_lid"]:
+		check(audio.has("field/" + n), "fishing " + n)
+	check(audio.stream("field/reel", true) != null, "the reel alias loops")
+	check(audio.ambience.PLACE_TYPES.has("jetty") and audio.has("amb/place/place_jetty_loop")
+			and audio.has("amb/place/place_jetty_night_loop"), "jetty place ambience, day and night")

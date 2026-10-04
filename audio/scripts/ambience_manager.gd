@@ -64,7 +64,7 @@ var zone := "cbd"
 ## dark). Places come from the map's points of interest (add_map_pois(), fed
 ## MapStreamer.get_pois() by Audio.hooks), from nodes in the "poi" group with
 ## meta "poi_type" (and optionally "radius", metres), or from add_place().
-const PLACE_TYPES := ["beach", "lookout", "bush", "quay", "riverside", "carpark"]
+const PLACE_TYPES := ["beach", "lookout", "bush", "quay", "riverside", "carpark", "jetty"]
 const PLACE_RADIUS := 120.0
 ## Full volume inside this fraction of the radius, fading out to the edge.
 const PLACE_FULL := 0.35
@@ -157,6 +157,8 @@ func add_map_pois(pois: Array) -> void:
 			add_place("lookout", at)
 		if kings_park and kind in ["lookout", "landmark"]:
 			add_place("bush", at)
+		if kind in ["jetty", "fishing_spot", "fishing"]:
+			add_place("jetty", at, 70.0)
 		if kind == "quiet_spot":
 			add_place("carpark", stop, 60.0)
 		elif kind == "servo" or kind == "drive_thru":

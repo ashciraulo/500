@@ -89,6 +89,8 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | place/place_riverside_night_loop | yes (55 s) | The river bank at night: lapping, reeds, crickets, banjo frogs bonking | P2 | lapping, crickets_sub, pobble1, pobble2 (+ synth reeds) |
 | place/place_carpark_loop | yes (50 s) | A big open car park by day: distant traffic, doors and boots shutting, a trolley rattling past, a car creeping by | P2 | traffic_peak (+ synth thuds, trolley, car) |
 | place/place_carpark_night_loop | yes (55 s) | A quiet car park at night: old fluorescent tubes buzzing (one flickering), a parked car ticking as it cools, the city a long way off, one car on the road beyond. Nearly empty, on purpose | P2 | traffic_night (+ synth buzz, hum, ticks, car) |
+| place/place_jetty_loop | yes (60 s) | An old timber jetty: water lapping round the pylons and slapping under the boards, timbers creaking, light breeze, gulls, a fish jumping now and then | P2 | lapping (+ synth slaps, creaks, wind, gulls, jumps) |
+| place/place_jetty_night_loop | yes (60 s) | The jetty after dark: quieter water, timbers, more fish jumping, the city a faint hum across the water | P2 | lapping (+ synth) |
 | amb_bird_raven_01..03 | no | Australian raven, the long mournful falling 'aah-aah-aaaah' | P1 | raven_db |
 | amb_bird_magpie_01..03 | no | Australian magpie warble/carol (01-02 Kings Park, 03 close suburban) | P1 | mag_kp2, mag_dl |
 | amb_bird_kookaburra_01..02 | no | Laughing kookaburra family laugh (Kings Park) | P1 | kook_kp |

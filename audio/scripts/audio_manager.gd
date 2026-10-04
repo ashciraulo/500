@@ -36,6 +36,17 @@ var radio: Node
 var hooks: Node
 var ambience: Node
 
+## Names that borrow another sound until a file of their own exists (a real
+## file with the alias's name always wins, so dropping one in just works).
+const ALIASES := {
+	"field/bird_australian_magpie": "amb/amb_bird_magpie",
+	"field/bird_laughing_kookaburra": "amb/amb_bird_kookaburra",
+	"field/bird_australian_raven": "amb/amb_bird_raven",
+	"field/flush": "traffic/traffic_wings_takeoff",
+	"field/reel": "field/reel_loop",
+	"field/splash": "field/splash_small",
+}
+
 var _index := {}            # "car/car_horn_modern_tap" -> "res://audio/car/car_horn_modern_tap.ogg"
 var _variants := {}         # "impact/imp_crash_medium" -> [paths...]
 var _cache := {}
@@ -298,6 +309,7 @@ func _variant_base(key: String) -> String:
 
 ## True if a sound (or a variant set) with this name exists.
 func has(sound_name: String) -> bool:
+	sound_name = _resolve(sound_name)
 	return _index.has(sound_name) or _variants.has(sound_name)
 
 
@@ -313,6 +325,7 @@ func names_in(folder: String) -> PackedStringArray:
 
 ## Load a sound by name ("car/car_horn_modern_tap"). Returns null if missing.
 func stream(sound_name: String, loop := false) -> AudioStream:
+	sound_name = _resolve(sound_name)
 	var path: String = _index.get(sound_name, "")
 	if path == "":
 		if _variants.has(sound_name):
@@ -324,6 +337,7 @@ func stream(sound_name: String, loop := false) -> AudioStream:
 
 ## A random variant of base_name (base_name_01.._NN), never the same twice in a row.
 func variant(base_name: String) -> AudioStream:
+	base_name = _resolve(base_name)
 	var list: Array = _variants.get(base_name, [])
 	if list.is_empty():
 		return stream(base_name) if _index.has(base_name) else null
@@ -332,6 +346,12 @@ func variant(base_name: String) -> AudioStream:
 		i = (i + 1) % list.size()
 	_last_variant[base_name] = i
 	return _load(list[i], false)
+
+
+func _resolve(sound_name: String) -> String:
+	if _index.has(sound_name) or _variants.has(sound_name):
+		return sound_name
+	return ALIASES.get(sound_name, sound_name)
 
 
 func _load(path: String, loop: bool) -> AudioStream:
@@ -369,6 +389,7 @@ func ui(sound_name: String, volume_db := 0.0) -> void:
 
 ## Non-positional one-shot on a bus. Picks a random variant if name is a set.
 func play_2d(sound_name: String, bus := "SFX", volume_db := 0.0, pitch := 1.0) -> AudioStreamPlayer:
+	sound_name = _resolve(sound_name)
 	var s := variant(sound_name) if _variants.has(sound_name) else stream(sound_name)
 	if s == null:
 		return null
@@ -390,6 +411,7 @@ func play_2d(sound_name: String, bus := "SFX", volume_db := 0.0, pitch := 1.0) -
 ## Positional one-shot in the world, with a little random pitch so repeats differ.
 func play_at(sound_name: String, pos: Vector3, volume_db := 0.0, bus := "SFX",
 		pitch_jitter := 0.04) -> AudioStreamPlayer3D:
+	sound_name = _resolve(sound_name)
 	var s := variant(sound_name) if _variants.has(sound_name) else stream(sound_name)
 	if s == null:
 		return null

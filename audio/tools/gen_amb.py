@@ -2762,6 +2762,67 @@ def place_quay_night():
     place_save("place_quay_night_loop", B.x)
 
 
+def timber_creaks(n, seed, count=8):
+    """Old jetty timbers taking the swell: slow stick-slip groans from the
+    boards and pylons (stereo, circular)."""
+    r = np.random.default_rng(seed)
+    y = np.zeros((n, 2))
+    for _ in range(count):
+        m = secs(r.uniform(0.3, 0.9))
+        rate = r.uniform(25, 60) * (1 + 0.3 * np.sin(np.linspace(0, np.pi * r.uniform(1, 3), m)))
+        pulses = np.diff(np.floor(np.cumsum(rate / SR)), prepend=0) * (0.5 + r.random(m))
+        c = S.resonator(pulses, r.uniform(250, 420), 4) + 0.5 * S.resonator(pulses, r.uniform(700, 1000), 5)
+        c *= np.sin(np.linspace(0, np.pi, m)) ** 1.5
+        S.place(y, S.pan(c, r.uniform(-0.7, 0.7)), secs(r.uniform(0, n / SR)), wrap=True)
+    return y
+
+
+def fish_jumps(n, seed, count=4):
+    """Mullet jumping now and then: a small slap and plop out on the water."""
+    r = np.random.default_rng(seed)
+    y = np.zeros((n, 2))
+    k = secs(0.3)
+    tk = S.t_axis(k)
+    for _ in range(count):
+        slap = S.bp(r.standard_normal(k), 700, 6000, 2) * np.exp(-tk / 0.02)
+        bloop = np.sin(2 * np.pi * np.cumsum(r.uniform(500, 800) * (1 + 2 * tk / 0.3)) / SR) * np.exp(-tk / 0.035)
+        s = distant(S.fade(slap + 0.6 * bloop, 0.002, 0.05), r.uniform(0.3, 0.6), r.uniform(-0.8, 0.8), int(r.integers(9)))
+        S.place(y, s, secs(r.uniform(0, n / SR)), wrap=True)
+    return y
+
+
+@builder("place_jetty")
+def place_jetty():
+    """Out on an old timber jetty (fishing spots on the river and the coast):
+    water lapping round the pylons and slapping up under the boards, the
+    timbers creaking, a light sea breeze, gulls, now and then a fish jumping."""
+    dur = 60
+    B = Bed(dur, 3601)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 36011, chunk=20), -26)
+    B.add(pontoon_slaps(n, 36012, 30), -27)
+    B.add(timber_creaks(n, 36013, 7), -31)
+    B.add(ear_wind(n, 36014, level=0.6), -36)
+    B.add(fish_jumps(n, 36015, 3), -24)
+    B.scatter(gull_pool(), 4, gain_db=(-20, -11), dist=(0.2, 0.6))
+    place_save("place_jetty_loop", B.x)
+
+
+@builder("place_jetty_night")
+def place_jetty_night():
+    """The jetty after dark: quieter water, the timbers, more fish jumping,
+    the city a faint hum across the water."""
+    dur = 60
+    B = Bed(dur, 3602)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 36021, chunk=20), -28)
+    B.add(pontoon_slaps(n, 36032, 20), -30)
+    B.add(timber_creaks(n, 36033, 6), -31)
+    B.add(fish_jumps(n, 36024, 6), -24)
+    B.add(city_hum(n, 36025, 30, 250), -40)
+    place_save("place_jetty_night_loop", B.x)
+
+
 @builder("place_riverside")
 def place_riverside():
     """On the river bank (the foreshore paths, Matilda Bay, Heirisson Island):

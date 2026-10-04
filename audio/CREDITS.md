@@ -18,13 +18,13 @@ Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.
 | mag_kp2 | Australian Magpie (family calling, Kings Park, Perth) | dbache | https://freesound.org/s/353060/ | amb_bird_magpie_01, _02; amb_kingspark_day, amb_river_day, amb_suburbs_day; place_bush, place_lookout, place_riverside |
 | mag_dl | AustralianMagpies.wav | DangerLaef | https://freesound.org/s/319767/ | amb_bird_magpie_03; amb_kingspark_day, amb_river_day, amb_suburbs_day; place_bush, place_lookout, place_riverside |
 | kook_kp | Kookaburra Australian Jackass.wav (Kings Park, WA) | dbache | https://freesound.org/s/671250/ | amb_bird_kookaburra_01, _02; amb_kingspark_day |
-| lorikeets | Rainbow Lorikeets.wav | dannydandanshababaloo | https://freesound.org/s/593156/ | amb_kingspark_day |
-| cockatoo_perth | Perth Black Cockatoos at Dusk | bushtobazaar | https://freesound.org/s/514053/ | amb_kingspark_day |
+| lorikeets | Rainbow Lorikeets.wav | dannydandanshababaloo | https://freesound.org/s/593156/ | amb_kingspark_day; field/bird_rainbow_lorikeet_01..03 |
+| cockatoo_perth | Perth Black Cockatoos at Dusk | bushtobazaar | https://freesound.org/s/514053/ | amb_kingspark_day; field/bird_carnabys_black_cockatoo_01..03 |
 | walyunga | Walyunga National Park, Western Australia.wav | bushtobazaar | https://freesound.org/s/523549/ | amb_kingspark_day; place_bush |
 | raven_db | Ravens (Australian raven) | dbache | https://freesound.org/s/555187/ | amb_bird_raven_01..03; amb_kingspark_day, amb_suburbs_day, amb_suburbs_night |
 | raven_yell | Murder Of Crows at Yellagonga (Perth: Australian ravens) | samarobryn | https://freesound.org/s/400395/ | amb_suburbs_day, amb_suburbs_night |
-| wagtail1 | Australian Willy Wagtail | Inkahootz81 | https://freesound.org/s/388734/ | amb_bird_wagtail_01, _02; amb_suburbs_day; place_bush |
-| boobook1 | Boobook Owl / Mopoke | Monkey Pants | https://freesound.org/s/409436/ | amb_kingspark_night; place_bush_night |
+| wagtail1 | Australian Willy Wagtail | Inkahootz81 | https://freesound.org/s/388734/ | amb_bird_wagtail_01, _02; field/bird_willie_wagtail_01, _02; amb_suburbs_day; place_bush |
+| boobook1 | Boobook Owl / Mopoke | Monkey Pants | https://freesound.org/s/409436/ | amb_kingspark_night; place_bush_night; field/bird_southern_boobook_01..02, field/wrong_boobook |
 | pobble1 | Pobblebonk (Eastern Banjo Frog) Call with Cicadas.wav | volition74 | https://freesound.org/s/512775/ | amb_kingspark_night; place_riverside_night |
 | pobble2 | pobblebonk frogs near an airport | Hypo_Mix | https://freesound.org/s/530274/ | amb_kingspark_night; place_riverside_night |
 | crickets_sub | Night_Crickets_Wind suburban adelaide.wav | roisin.gleeson | https://freesound.org/s/699142/ | amb_kingspark_night, amb_river_night, amb_suburbs_night; place_bush_night, place_lookout_night, place_riverside_night |
@@ -42,7 +42,7 @@ Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.
 | beach_day | Beach Atmos Australia Day | DeppStudios1977 | https://freesound.org/s/790724/ | amb_beach_day; place_beach |
 | beach_night | Australian Beach Night Waves | DeppStudios1977 | https://freesound.org/s/790720/ | amb_beach_night; place_beach_night |
 | laps_horn | Australia - Ocean Water Laps CU Active w Ship Horn, Bird and People in BG.wav | earsaregood | https://freesound.org/s/470781/ | amb_fremantle_day |
-| lapping | Ocean-WavesLapping | rj13 | https://freesound.org/s/570955/ | amb_river_day, amb_river_night, amb_fremantle_night; place_quay, place_quay_night, place_riverside, place_riverside_night; traffic_ferry_wake_loop |
+| lapping | Ocean-WavesLapping | rj13 | https://freesound.org/s/570955/ | amb_river_day, amb_river_night, amb_fremantle_night; place_quay, place_quay_night, place_riverside, place_riverside_night, place_jetty, place_jetty_night; traffic_ferry_wake_loop |
 | ferry | boat engine small ferry bassy NYC, USA.flac | kyles | https://freesound.org/s/452924/ | amb_river_day; place_quay; traffic_ferry_engine_loop, traffic_ferry_idle_loop |
 | freo_train | Railway Line & Signal Lights (freight train leaving Fremantle port) | dbache | https://freesound.org/s/351425/ | amb_fremantle_day |
 
@@ -52,8 +52,10 @@ the gums, traffic pass-bys, air-con units, club bass, car stereo, engine idles,
 ship horns, port clanks, all of `audio/oddity/` except the voices (below),
 every car door, seatbelt, key and start-up sound, both 500e motor sets and
 their pedestrian tones (the New 500e's is original, not the real car's
-tune), the kerbside vans, taxis, trolley, hazards and ticket printer, and
-the phone notification.
+tune), the kerbside vans, taxis, trolley, hazards and ticket printer, the
+phone notification, every bird call in `audio/field/` except the lorikeet, black cockatoo,
+boobook and wagtail chatter cuts (above), the camera, binocular and journal
+sounds, and all the fishing sounds.
 
 ## The cat and the midnight voices (`gen_home.py`, `gen_amb.py odd_`)
 

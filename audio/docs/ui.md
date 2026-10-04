@@ -27,3 +27,4 @@ hiss) and a small plate-like reverb. None are loops.
 | ui_map_close | no | Map close | P2 | Quicker fold-up crinkle, slap, felt click, vibe D4 |
 | ui_save_confirmed | no | Save confirmed | P2 | Tape-key clunk + FM bells A5 -> D6 over vibe D5 |
 | ui_phone_notify | no | Phone notification (fine notices, messages) | P2 | Two muffled pocket buzzes, then a dry FM ping falling A5 -> F5. `Audio.hooks.phone_notify()`; a parking ticket (`TrafficManager.kerbside.parking_ticket`) triggers it |
+
