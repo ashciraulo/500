@@ -8,7 +8,8 @@ Writes:
     audio/engine/sedan/      generic 2.0 petrol four (cars)
     audio/engine/diesel/     2.8 turbo-diesel four (utes, vans)
     audio/engine/busdiesel/  big six-cylinder diesel (buses)
-    audio/traffic/*.ogg      horns, air brake, train running loop and horn
+    audio/traffic/*.ogg      horns (from recordings: run fetch_sources.py first),
+                             air brake, train running loop and horn
 
 The engine sets use the same layout and synthesis as gen_engines.py (stock
 exhaust only), so the game drives them with the same EngineAudio node.
@@ -22,9 +23,10 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import engine_synth as E  # noqa: E402
+import gen_car as C  # noqa: E402
 import gen_engines as G  # noqa: E402
 import sfxlib as S  # noqa: E402
-from sfxlib import SR, bp, env_exp, fade, hp, lp, noise, secs, softclip, t_axis  # noqa: E402
+from sfxlib import SR, bp, env_exp, fade, hp, lp, noise, secs, t_axis  # noqa: E402
 
 OUT = "traffic"
 
@@ -76,31 +78,25 @@ def render_engines():
 # Horns
 # --------------------------------------------------------------------------
 
-def horn(dur: float, freqs: tuple, seed: int, buzz=1.0, body_hz=(300, 3500)) -> np.ndarray:
-    """Electric disc horns: a diaphragm buzzing at each pitch (a rich,
-    slightly square wave), through the horn's flare. Two pitches a third
-    apart is the usual car pair."""
-    n = secs(dur)
-    t = t_axis(n)
-    r = S.rng(seed)
-    x = np.zeros(n)
-    for f in freqs:
-        f = f * (1 + r.uniform(-0.01, 0.01))
-        wob = 1 + 0.003 * np.sin(2 * np.pi * r.uniform(4, 7) * t)
-        ph = 2 * np.pi * np.cumsum(f * wob) / SR
-        x += softclip(np.sin(ph) * (2.5 + buzz), 1.0)
-    x = bp(x, *body_hz)
-    x += 0.02 * bp(noise(n, seed), 1500, 5000)
-    env = np.minimum(1.0, t / 0.012) * np.minimum(1.0, (dur - t) / 0.03).clip(0, 1)
-    return x * env
+def horn(key: str, start: float, end: float, tail=0.3, ratio=1.0) -> np.ndarray:
+    """One real honk cut from a CC0 recording (gen_car.honk): own attack,
+    own release, room tail faded out. ratio > 1 pitches it up."""
+    return C.honk(key, start, end, tail=tail, ratio=ratio)
 
 
 def render_horns():
-    pairs = [(410, 510), (350, 440), (480, 600)]
-    for i, fr in enumerate(pairs, 1):
-        S.save(f"{OUT}/traffic_horn_car_{i:02d}", horn(0.9, fr, 10 + i), "peak")
-    # Buses: one big air horn, lower and brassier.
-    S.save(f"{OUT}/traffic_horn_bus", horn(1.1, (233, 294, 349), 30, buzz=2.0, body_hz=(150, 2500)), "peak")
+    # Three everyday cars: an Alfa MiTo twin (~400 + 500 Hz), a Skoda Fabia's
+    # single ~496 Hz horn, and a lower single horn (~355 Hz) honked twice.
+    S.save(f"{OUT}/traffic_horn_car_01", horn("horn_mito", 1.156, 1.43, tail=0.45), "peak")
+    S.save(f"{OUT}/traffic_horn_car_02", horn("horn_fabia", 0.328, 0.57, tail=0.35), "peak")
+    a = horn("horn_devern", 1.475, 1.625, tail=0.0)
+    b = horn("horn_devern", 1.747, 1.92, tail=0.3)
+    two = np.concatenate([a, np.zeros(secs(1.747 - 1.625 - 0.004)), b])
+    S.save(f"{OUT}/traffic_horn_car_03", C.repitch(two, 0.9), "peak")
+    # Buses: a deep truck air-horn chord (~187/280/374 Hz), held a little
+    # shorter than recorded and spliced onto its own let-go.
+    S.save(f"{OUT}/traffic_horn_bus", C.shortened_honk("horn_truck_air", 0.07, 0.95, 1.25, 1.75, fadeout=0.25),
+           "peak")
 
 
 # --------------------------------------------------------------------------
@@ -152,15 +148,23 @@ def train_loop(seconds=4.0) -> np.ndarray:
 
 def render_trains():
     S.save(f"{OUT}/traffic_train_running", train_loop(), "peak")
-    # Train horn: the two-tone warning sounded at level crossings.
-    a = horn(0.7, (311, 370), 60, buzz=2.5, body_hz=(150, 3000))
-    b = horn(1.0, (277, 330), 61, buzz=2.5, body_hz=(150, 3000))
-    gap = np.zeros(secs(0.12))
-    S.save(f"{OUT}/traffic_train_horn", np.concatenate([a, gap, b]), "peak")
+    # Train horn: the two-tone warning sounded at level crossings, high then
+    # low (~372 then ~311 Hz), both from one recorded air horn with its own
+    # attack and let-go.
+    try:
+        hi = C.shortened_honk("horn_airhorn", 0.333, 0.95, 1.62, 1.85, fadeout=0.12, ratio=1.06)
+        lo = C.shortened_honk("horn_airhorn", 0.333, 1.30, 1.62, 2.35, fadeout=0.4, ratio=0.885)
+    except C.MissingHornSource as e:
+        print(f"skipping the train horn, keeping the committed one: {e}")
+        return
+    S.save(f"{OUT}/traffic_train_horn", np.concatenate([hi, np.zeros(secs(0.08)), lo]), "peak")
 
 
 def main():
-    render_horns()
+    try:
+        render_horns()
+    except C.MissingHornSource as e:
+        print(f"skipping the traffic horns, keeping the committed ones: {e}")
     render_bus()
     render_trains()
     render_engines()

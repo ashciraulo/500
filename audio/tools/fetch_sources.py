@@ -66,6 +66,31 @@ SOURCES: dict[str, tuple[int, str, str, str]] = {
     "lapping":       (570955, "rj13", CC0, "Ocean waves lapping"),
     "ferry":         (452924, "kyles", CC0, "Small ferry engine, bassy"),
     "freo_train":    (351425, "dbache", CC0, "Cargo train leaving Port of Fremantle, signals"),
+    # --- the townhouse cat (gen_home.py) -------------------------------
+    "cat_meow_x5":   (214759, "peridactyloptrix", CC0, "Cat meowing x5 (clean, close)"),
+    "cat_chirp":     (451250, "dreamstobecome", CC0, "Cat chirps"),
+    "cat_wants_food": (120160, "Oneirophile", CC0, "Cat wants food: long plaintive meows"),
+    "cat_purr":      (449926, "Worldsday", CC0, "Cat purring, steady, close"),
+    # --- midnight station / static whispers (gen_amb.py odd_) ----------
+    "voice_reader":  (231368, "unfa", CC0, "Man reading a story aloud (used reversed, unintelligible)"),
+    "whisper_ind":   (377743, "BlueSiren", CC0, "Indistinct whispering"),
+    "whisper_four":  (143902, "geoneo0", CC0, "Four voices whispering"),
+    # --- horns (gen_car.py, gen_traffic.py) ----------------------------
+    "horn_wanaki":   (569613, "wanaki", CC0, "Twin disc car horn ~395/485 Hz, taps and long blasts"),
+    "horn_small":    (94868, "tm1000", CC0, "Small buzzy single disc horn ~430 Hz"),
+    "horn_twin_hi":  (635681, "LaurenPonder", CC0, "Bright twin horn ~585/705 Hz"),
+    "horn_mito":     (457425, "boedie", CC0, "Alfa Romeo MiTo twin horn ~400/500 Hz"),
+    "horn_fabia":    (871628, "innov8_Music", CC0, "Skoda Fabia single horn ~496 Hz"),
+    "horn_devern":   (349922, "DeVern", CC0, "Single car horn ~395 Hz, double honk"),
+    "horn_truck_air": (546528, "trezz77", CC0, "Deep truck air-horn chord"),
+    "horn_airhorn":  (68999, "guitarguy1985", CC0, "Steady air horn ~351 Hz with natural release"),
+    # --- thunder (gen_weather.py) --------------------------------------
+    "thunder_close1": (646912, "alexdarek", CC0, "Close lightning strike: rip, bang and long roll"),
+    "thunder_close2": (434359, "csengeri", CC0, "Close lightning strike, long rolling rumble"),
+    "thunder_close3": (243614, "foad", CC0, "Thunderstorm lightning strike, sharp crack, long roll"),
+    "thunder_far1":  (196125, "Yuval", CC0, "Distant thunders over a meadow"),
+    "thunder_far2":  (414050, "s-light", CC0, "Big dark thunder roll, no crack"),
+    "thunder_far3":  (319568, "Soojay", CC0, "Distant storm rolls"),
 }
 
 

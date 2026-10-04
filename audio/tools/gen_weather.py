@@ -10,15 +10,21 @@ short filtered burst, tick or bubble 'plink', chosen from a bank of kernels)
 at random times and pan positions, over filtered pink-noise wash. Drops are
 placed with wrap-around and rendered with circular convolution, so every bed
 loops seamlessly. Seeds are fixed, so output is identical on every run.
+
+Thunder is cut from real CC0 recordings (run fetch_sources.py first; see
+CREDITS.md), with a sub boom and building echoes added to the close strikes.
 """
 from __future__ import annotations
 
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np  # noqa: E402
+import soundfile as sf  # noqa: E402
 
 from sfxlib import (SR, bp, circ_convolve, circ_filter, circ_lp, env_exp, fade,  # noqa: E402
                     hp, lp, noise, pink, place, reverb, rng, save, secs,
@@ -260,72 +266,87 @@ def rain_windscreen():
 # --------------------------------------------------------------------------
 
 
-def rumble(dur, seed, n_bursts, start, spread, bright_hz, darken_s, width=0.8):
-    """Thunder rumble: many sub-bursts arriving from different parts of the
-    lightning channel; later (farther) ones are darker and quieter. Each
-    burst swells and decays and is panned somewhere across the sky."""
+# Recorded thunder (CC0, fetched by fetch_sources.py into build/sources/, see
+# CREDITS.md): key -> (where to look for the strike in s, length kept in s).
+SRC = Path(__file__).resolve().parents[2] / "build" / "sources"
+THUNDER_CLOSE = [("thunder_close1", 0.0, 9.0), ("thunder_close2", 1.5, 11.0), ("thunder_close3", 6.0, 13.0)]
+THUNDER_FAR = [("thunder_far1", 197.5, 8.0), ("thunder_far2", 0.4, 10.0), ("thunder_far3", 96.0, 12.0)]
+
+
+def recording(key, start, dur):
+    """dur seconds of a fetched recording from start, stereo 48 kHz,
+    with sub-25 Hz rumble removed."""
+    f = SRC / f"{key}.mp3"
+    if not f.exists():
+        raise FileNotFoundError(f"missing {f}: run audio/tools/fetch_sources.py first (thunder is recorded)")
+    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(f), "-ss", f"{start:.3f}",
+                        "-t", f"{dur:.3f}", "-ar", str(SR), "-ac", "2", "-c:a", "pcm_f32le", tmp.name],
+                       check=True)
+        x, _ = sf.read(tmp.name, dtype="float64")
+    return hp(x, 25, 2)
+
+
+def strike_onset(x, thresh_db=6.0):
+    """Sample index where the level first comes within thresh_db of the peak."""
+    m = np.abs(x).mean(axis=1)
+    hop = SR // 200
+    k = len(m) // hop
+    e = 20 * np.log10(np.sqrt(np.mean(m[: k * hop].reshape(k, hop) ** 2, 1)) + 1e-9)
+    return int(np.argmax(e > e.max() - thresh_db)) * hop
+
+
+def building_echoes(x, seed, n=6):
+    """Slap-back echoes off buildings: darker copies of the whole strike
+    arriving 0.1-0.9 s later, alternating left and right."""
     r = rng(seed)
-    n = secs(dur)
-    out = np.zeros((n, 2))
-    for i in range(n_bursts):
-        at = start + r.gamma(1.6, spread)
-        if at > dur - 1.0:
-            continue
-        bl = secs(r.uniform(0.6, 2.5))
-        tb = t_axis(bl)
-        rise = r.uniform(0.04, 0.3)
-        env = (1 - np.exp(-tb / rise)) * np.exp(-tb / r.uniform(0.25, 0.9))
-        fc = 90 + bright_hz * np.exp(-at / darken_s) * r.uniform(0.5, 1.2)
-        b = lp(noise(bl, seed + 100 + i), fc, 2) * env
-        b *= np.exp(-at / (dur * 0.5)) * r.uniform(0.4, 1.0)
-        a = (r.uniform(-width, width) + 1) * np.pi / 4
-        place(out[:, 0], b * np.cos(a), secs(at))
-        place(out[:, 1], b * np.sin(a), secs(at))
-    # rolling modulation: slow random amplitude wobble
-    out *= np.clip(1 + 0.5 * smooth_noise(n, 2.5, seed + 1, periodic=False), 0.15, None)[:, None]
+    out = x.copy()
+    for i in range(n):
+        d = secs(r.uniform(0.1, 0.9))
+        g = r.uniform(0.12, 0.3) * (1 - i / (n + 2)) * 1.4
+        e = lp(x, r.uniform(1500, 3500), 2)
+        a = (((i % 2) * 2 - 1) * r.uniform(0.4, 0.9) + 1) * np.pi / 4
+        out[d:, 0] += g * e[:-d, 0] * np.cos(a)
+        out[d:, 1] += g * e[:-d, 1] * np.sin(a)
     return out
 
 
-def crack(seed):
-    """Close lightning crack: a hard N-wave bang followed by a ~0.3 s
-    'ripping' tear (dense random shock pulses from the branching channel)."""
-    r = rng(seed)
-    n = secs(0.6)
+def boom(n, seed):
+    """Sub boom under the crack: a long low N-wave plus 30-90 Hz rumble."""
     t = t_axis(n)
-    imp = np.zeros(n)
-    k = 700
-    idx = (r.gamma(1.2, 0.07, k) * SR).astype(int)
-    idx = idx[idx < n]
-    np.add.at(imp, idx, r.standard_normal(len(idx)) * np.exp(-idx / SR / 0.15))
-    rip = hp(lp(imp, 9000), 250) * 1.2
-    m = secs(0.04)
-    nwave = np.concatenate([np.linspace(1, -1, m), np.zeros(n - m)])
-    bang = lp(nwave, 600) * 3.0 + lp(burst(0.6, 0.06, seed + 1), 300) * 1.5
-    out = np.stack([rip + bang, np.roll(rip, secs(0.0015)) * 0.9 + bang], axis=1)
-    del t
-    return out
+    m = secs(0.09)
+    nw = np.zeros(n)
+    nw[:m] = np.linspace(1, -1, m)
+    b = lp(nw, 120, 2) * 2.0 + lp(noise(n, seed), 90, 4) * (1 - np.exp(-t / 0.03)) * np.exp(-t / 0.9) * 3
+    return hp(b, 28, 2)
 
 
 def thunder_close(v):
-    """Close strike: crack, then a long, loud, low rumble rolling away."""
-    dur = [9.0, 11.0, 13.0][v]
+    """Close strike from a real recording (crack, then the long roll), cut to
+    start at the strike. The first 0.4 s gets extra top for a sharper rip, a
+    sub boom fills the low end the field mic missed, and slap-back echoes
+    off buildings make it a city strike."""
+    key, look, dur = THUNDER_CLOSE[v]
     seed = 8800 + 10 * v
-    cr = crack(seed)
-    rb = rumble(dur, seed + 1, 45, 0.15, 0.7, 1500, 1.5)
-    rb = rb / (np.sqrt(np.mean(rb[: secs(3)] ** 2)) + 1e-12)
-    x = add(cr * 1.0, rb * 0.35)
-    x = reverb(x, size_s=3.5, damp_hz=3000, wet=0.3, predelay_s=0.03, seed=seed + 2)
-    return fade(x, 0.0, 1.0)
+    x = recording(key, look, dur + 4.0)
+    a = max(0, strike_onset(x) - secs(0.04))
+    x = x[a:a + secs(dur)]
+    x = x / np.sqrt(np.mean(x[: secs(3)] ** 2))
+    t = t_axis(len(x))
+    x = x + hp(x, 2500, 2) * np.exp(-np.clip(t - 0.04, 0, None) / 0.35)[:, None] * 0.6
+    bm = boom(len(x), seed)
+    bm *= 0.8 * np.sqrt(np.mean(lp(x[: secs(2)], 120, 2) ** 2) / np.mean(bm[: secs(2)] ** 2))
+    x[secs(0.04):] += bm[: -secs(0.04), None]
+    x = building_echoes(x, seed + 3)
+    return fade(x, 0.005, 1.8)
 
 
 def thunder_distant(v):
-    """Distant thunder: no crack; air has eaten the highs, leaving a dark,
-    rolling rumble that swells in and out."""
-    dur = [8.0, 10.0, 12.0][v]
-    seed = 8900 + 10 * v
-    x = rumble(dur, seed, 30, 0.5, 1.4, 350, 2.5, width=0.6)
-    x = lp(x, 400, 2)
-    x = reverb(x, size_s=3.0, damp_hz=1500, wet=0.3, predelay_s=0.05, seed=seed + 2)
+    """Distant thunder from a real recording of far-off rolls: no crack, and
+    low-passed further as the air has eaten the highs."""
+    key, start, dur = THUNDER_FAR[v]
+    x = lp(recording(key, start, dur), 500, 2)
+    x = reverb(x, size_s=3.0, damp_hz=1500, wet=0.2, predelay_s=0.05, seed=8900 + 10 * v + 2)
     return fade(x, 0.3, 1.5)
 
 
@@ -484,9 +505,13 @@ def main():
     save(f"{OUT}/weather_rain_light_roof_fabric", rain_roof(False, fabric=True), norm="amb")
     save(f"{OUT}/weather_rain_heavy_roof_fabric", rain_roof(True, fabric=True), norm="lufs:-20")
     save(f"{OUT}/weather_rain_windscreen", rain_windscreen(), norm="amb")
-    for v in range(3):
-        save(f"{OUT}/weather_thunder_close_{v + 1:02d}", thunder_close(v))
-        save(f"{OUT}/weather_thunder_distant_{v + 1:02d}", thunder_distant(v))
+    try:
+        thunder = [(f"weather_thunder_{kind}_{v + 1:02d}", fn(v))
+                   for v in range(3) for kind, fn in (("close", thunder_close), ("distant", thunder_distant))]
+        for name, x in thunder:
+            save(f"{OUT}/{name}", x)
+    except FileNotFoundError as e:
+        print(f"skipping the thunder, keeping the committed files: {e}")
     save(f"{OUT}/weather_wind_bed", wind_bed(), norm="amb")
     for v in range(3):
         save(f"{OUT}/weather_wind_gust_{v + 1:02d}", wind_gust(v))

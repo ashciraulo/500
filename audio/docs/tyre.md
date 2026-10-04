@@ -9,8 +9,8 @@ Surface loops (gravel/grass/sand/brick/rumble strip/cat's eyes) are meant to lay
 | File | Loop? | What it is | Priority | How it's made (one line) |
 |---|---|---|---|---|
 | tyre_roll_dry_slow / _mid / _fast | yes | Dry asphalt roll at ~20 / 50 / 100 km/h (8 s each, shared gain) | P1 | Air-pumping hump rising with speed + road rumble + smeared tread tone + once-per-turn swell + grit ticks + faint hiss; FFT-domain so periodic |
-| tyre_skid_dry | yes | Dry skid squeal (4 s) | P1 | Two harmonic stick-slip voices (~900/1160 Hz) with zero-mean FM and fluttering level, soft clip, scrub noise, rumble |
-| tyre_skid_chirp_01..04 | no | Short squeal chirps | P1 | Rise-and-fall pitch harmonic squeal, fast attack, scrub, short reflection |
+| tyre_skid_dry | yes | Dry skid squeal (4 s) | P1 | Three stick-slip voices (~1050/1390/2150 Hz): wandering, wobbling pitch with smoothed mode hops, harmonics weighted by two drifting resonances so the loudest partial shifts (~0.9-2.5 kHz), 12-35 Hz chatter and grip dropouts; gritty scrub that swells as the squeal drops; all circular so it loops |
+| tyre_skid_chirp_01..04 | no | Short squeal chirps | P1 | Scrub transient, then the same stick-slip voice with a grab-rise-sag pitch bend, shifting partials and chatter, short reflection |
 | tyre_roll_wet | yes | Wet road hiss/spray (8 s) | P1 | High spray hiss + sloshing mid swish + 50 km/h dry roar underneath + droplet ticks |
 | tyre_skid_wet | yes | Wet skid hiss (4 s) | P1 | Loud squeegee hiss + gritty scrub + a faint smeared squeal |
 | tyre_splash_small_01..03 | no | Tyre through a small puddle | P1 | Low water slap + spray whoosh + 30-60 bubble 'plink' droplets falling back |

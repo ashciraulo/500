@@ -49,4 +49,47 @@ Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.
 Fully synthesised (no recordings): pedestrian-crossing signals (amb_ped_*),
 sirens, Transperth train pass-bys, level-crossing bells, silver gulls, wind in
 the gums, traffic pass-bys, air-con units, club bass, car stereo, engine idles,
-ship horns, port clanks, all of `audio/oddity/`.
+ship horns, port clanks, all of `audio/oddity/` except the voices (below).
+
+## The cat and the midnight voices (`gen_home.py`, `gen_amb.py odd_`)
+
+Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.0/).
+The voices are played backwards and buried in radio static, so no words survive.
+
+| Key | Title | Author | URL | Used in |
+|---|---|---|---|---|
+| cat_meow_x5 | Cat meowing x5 | peridactyloptrix | https://freesound.org/s/214759/ | home_cat_meow_01 |
+| cat_chirp | cat chirp.wav | dreamstobecome | https://freesound.org/s/451250/ | home_cat_meow_02 |
+| cat_wants_food | Cat Wants Food | Oneirophile | https://freesound.org/s/120160/ | home_cat_meow_03 |
+| cat_purr | Cat Purring | Worldsday | https://freesound.org/s/449926/ | home_cat_purr |
+| voice_reader | One-Word-At-A-Time: The Chaos Code / Chapter 1 (Read by: unfa) | unfa | https://freesound.org/s/231368/ | odd_midnight_station_01..03 |
+| whisper_ind | indistinctwhispering.wav | BlueSiren | https://freesound.org/s/377743/ | odd_static_whisper_02, _04 |
+| whisper_four | Four_Voices_Whispering.wav | geoneo0 | https://freesound.org/s/143902/ | odd_static_whisper_01..05 |
+
+## Horns (`gen_car.py`, `gen_traffic.py`)
+
+Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.0/).
+
+| Key | Title | Author | URL | Used in |
+|---|---|---|---|---|
+| horn_wanaki | Car Horn_Irritated driver stuck in traffic.wav | wanaki | https://freesound.org/s/569613/ | car_horn_modern_tap, car_horn_modern_hold |
+| horn_small | small horn.wav | tm1000 | https://freesound.org/s/94868/ | car_horn_classic_meep |
+| horn_twin_hi | BusHorn_LAURENPOND.wav | LaurenPonder | https://freesound.org/s/635681/ | car_horn_abarth |
+| horn_mito | boedie_alfa_romeo_MiTo_honking_car_horn.wav | boedie | https://freesound.org/s/457425/ | traffic_horn_car_01 |
+| horn_fabia | Car Horn Skoda Fabia | innov8_Music | https://freesound.org/s/871628/ | traffic_horn_car_02 |
+| horn_devern | Car Horn Honk.wav | DeVern | https://freesound.org/s/349922/ | traffic_horn_car_03 |
+| horn_truck_air | powerfull horn | trezz77 | https://freesound.org/s/546528/ | traffic_horn_bus |
+| horn_airhorn | airhorn-short.wav | guitarguy1985 | https://freesound.org/s/68999/ | traffic_train_horn |
+
+## Thunder (`gen_weather.py`)
+
+Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.0/).
+
+| Key | Title | Author | URL | Used in |
+|---|---|---|---|---|
+| thunder_close1 | Lightning strike 2 | alexdarek | https://freesound.org/s/646912/ | weather_thunder_close_01 |
+| thunder_close2 | Close lightning strike 2018 07 07 | csengeri | https://freesound.org/s/434359/ | weather_thunder_close_02 |
+| thunder_close3 | Thunderstorm lightning strike | foad | https://freesound.org/s/243614/ | weather_thunder_close_03 |
+| thunder_far1 | distant thunders meadow | Yuval | https://freesound.org/s/196125/ | weather_thunder_distant_01 |
+| thunder_far2 | Thunder big | s-light | https://freesound.org/s/414050/ | weather_thunder_distant_02 |
+| thunder_far3 | distant storm 1.WAV | Soojay | https://freesound.org/s/319568/ | weather_thunder_distant_03 |

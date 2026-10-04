@@ -12,6 +12,8 @@ extends Node
 ## they can be pushed in with set_weather() / set_time_of_day().
 
 const FADE_S := 4.0
+## Rain on the roof sits under the radio and engine in the cabin mix (-8 dB).
+const ROOF_TRIM := 0.4
 
 ## One-shots scattered over each zone's bed: [sound, when, min_gap_s, max_gap_s]
 ## where when is "day", "night" or "any". Names are variant sets in res://audio/amb.
@@ -232,11 +234,11 @@ func _process(delta: float) -> void:
 	_set_layer("rain_light_out", light * (0.5 if inside else 1.0), delta)
 	_set_layer("rain_heavy_out", heavy * (0.5 if inside else 1.0), delta)
 	var roof := 0.0 if fabric_roof else 1.0
-	_set_layer("rain_light_roof", light * roof * (1.0 if inside else 0.0), delta)
-	_set_layer("rain_heavy_roof", heavy * roof * (1.0 if inside else 0.0), delta)
-	_set_layer("rain_light_fabric", light * (1.0 - roof) * (1.0 if inside else 0.0), delta)
-	_set_layer("rain_heavy_fabric", heavy * (1.0 - roof) * (1.0 if inside else 0.0), delta)
-	_set_layer("rain_screen", maxf(light, heavy) * 0.6 * (1.0 if inside else 0.0), delta)
+	_set_layer("rain_light_roof", light * roof * ROOF_TRIM * (1.0 if inside else 0.0), delta)
+	_set_layer("rain_heavy_roof", heavy * roof * ROOF_TRIM * (1.0 if inside else 0.0), delta)
+	_set_layer("rain_light_fabric", light * (1.0 - roof) * ROOF_TRIM * (1.0 if inside else 0.0), delta)
+	_set_layer("rain_heavy_fabric", heavy * (1.0 - roof) * ROOF_TRIM * (1.0 if inside else 0.0), delta)
+	_set_layer("rain_screen", maxf(light, heavy) * 0.35 * (1.0 if inside else 0.0), delta)
 	_set_layer("wind", 0.15 + 0.85 * maxf(wind, storm), delta)
 	var clear_day := (1.0 if not is_night and hot_day else 0.0) * (1.0 - clampf(rain * 3.0, 0.0, 1.0))
 	_set_layer("cicadas", clear_day * (1.0 if zone in ["kingspark", "suburbs"] else 0.35), delta)

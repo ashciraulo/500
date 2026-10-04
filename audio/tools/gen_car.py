@@ -6,19 +6,22 @@ parking sensor. Writes audio/car/*.ogg.
     python3 audio/tools/gen_car.py
 
 Everything is synthesised from noise bursts and decaying modes (sums of damped
-sines) shaped after the physics of the real object. Seeds are fixed, so the
-output is identical on every run.
+sines) shaped after the physics of the real object, except the horns, which
+are cut from CC0 recordings (run fetch_sources.py first). Seeds are fixed, so
+the output is identical on every run.
 """
 from __future__ import annotations
 
 import sys
+from fractions import Fraction
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np  # noqa: E402
+from scipy import signal  # noqa: E402
 
-from sfxlib import (SR, bp, env_exp, fade, hp, lp, noise, peak_eq, place,  # noqa: E402
+from sfxlib import (SR, bp, env_exp, fade, hp, load, lp, noise, peak_eq, place,  # noqa: E402
                     resonator, reverb, rng, save, secs, smooth_noise, softclip,
                     t_axis)
 
@@ -335,83 +338,136 @@ def indicator_classic():
 # --------------------------------------------------------------------------
 
 
-def horn_voice(n, f, seed, even=0.6, tilt=0.75, freq_dev=None, loop=False):
-    """Electromagnetic disc horn: the diaphragm is slapped by a buzzer contact,
-    giving a pulse-like wave rich in harmonics (band-limited additive)."""
-    r = rng(seed)
-    inst = f * (1 + (freq_dev if freq_dev is not None else 0))
-    ph = 2 * np.pi * np.cumsum(inst) / SR
-    out = np.zeros(n)
-    k = 1
-    while k * f < 16000:
-        a = (1 if k % 2 else even) / k ** tilt
-        out += a * np.sin(k * ph + r.uniform(0, 2 * np.pi))
-        k += 1
-    # contact arcing: a little noise gated at the buzzer rate
-    gate = (np.sin(ph) > 0.7).astype(float)
-    hiss = noise(n, seed + 1)
-    hiss = periodic(hiss, lambda s: hp(s, 3000)) if loop else hp(hiss, 3000)
-    out += hiss * gate * 0.15
+# Horns are cut from CC0 recordings of real horns (audio/CREDITS.md, "Horns"),
+# fetched by fetch_sources.py into build/sources/. The helpers below are also
+# used by gen_traffic.py for the traffic, bus and train horns.
+
+HORN_SRC = Path(__file__).resolve().parents[2] / "build" / "sources"
+_horn_mem: dict[str, np.ndarray] = {}
+
+
+class MissingHornSource(Exception):
+    """A horn recording hasn't been fetched (audio/tools/fetch_sources.py)."""
+
+
+def horn_src(key):
+    """A horn recording, mono 48 kHz, rumble removed."""
+    if key not in _horn_mem:
+        f = HORN_SRC / f"{key}.mp3"
+        if not f.exists():
+            raise MissingHornSource(f"missing {f}: run audio/tools/fetch_sources.py first (the horns are recordings)")
+        _horn_mem[key] = hp(load(f, mono=True), 40, 2)
+    return _horn_mem[key]
+
+
+def repitch(x, ratio):
+    """Pitch change by resampling (ratio 1.06 = 6% higher and 6% shorter)."""
+    if ratio == 1:
+        return x
+    fr = Fraction(1 / ratio).limit_denominator(500)
+    return signal.resample_poly(x, fr.numerator, fr.denominator)
+
+
+def honk(key, start, end, tail=0.12, pre=0.004, ratio=1.0):
+    """One honk as recorded: from just before `start` to `end`, then its own
+    release and room tail faded out over `tail` s (which hides the street)."""
+    x = horn_src(key)
+    t, p = max(secs(tail), secs(0.004)), secs(pre)
+    seg = x[secs(start) - p:secs(end) + t].copy()
+    seg[:p] *= np.linspace(0, 1, p) ** 2
+    seg[-t:] *= np.linspace(1, 0, t) ** 2
+    return repitch(seg, ratio)
+
+
+def _ncc(ref, y):
+    """Normalised cross-correlation of ref against every window of y."""
+    n = len(ref)
+    num = signal.correlate(y, ref, mode="valid", method="fft")
+    e = np.concatenate([[0], np.cumsum(y ** 2)])
+    return num / (np.sqrt((e[n:] - e[:-n]) * np.dot(ref, ref)) + 1e-12)
+
+
+def splice(a, b, xf=0.02, search=0.06):
+    """a then b, joined by a short crossfade at the point in b whose waveform
+    best matches the end of a, so a steady tone carries on in phase."""
+    n = secs(xf)
+    lag = int(np.argmax(_ncc(a[-n:], b[:secs(search) + n])))
+    w = np.linspace(0, 1, n)
+    return np.concatenate([a[:-n], a[-n:] * (1 - w) + b[lag:lag + n] * w, b[lag + n:]])
+
+
+def shortened_honk(key, start, cut_at, release, end, fadeout=0.1, pre=0.004, ratio=1.0):
+    """A honk held for less time than in the recording: its steady part up to
+    `cut_at`, spliced in phase onto the real let-go (from `release` to `end`)."""
+    x = horn_src(key)
+    p = secs(pre)
+    a = x[secs(start) - p:secs(cut_at)].copy()
+    a[:p] *= np.linspace(0, 1, p) ** 2
+    out = splice(a, x[secs(release) - secs(0.06):secs(end)])
+    f = secs(fadeout)
+    out[-f:] *= np.linspace(1, 0, f) ** 2
+    return repitch(out, ratio)
+
+
+def splice_loop(a, b, length, xf=0.03, search=0.15, step=2):
+    """Exactly `length` samples that loop seamlessly, starting in steady
+    recording a and finishing in steady recording b: one crossfade a->b in
+    the middle, one from b's continuation into a's head at the wrap. The
+    start in a and the entry into b are searched together so both joins land
+    in phase (no level dip, no beating at either join)."""
+    n, s = secs(xf), secs(search)
+    ca = len(a) - n
+    q1 = _ncc(a[ca:], b[:2 * s + n])
+    best = (-9.0, 0, 0)
+    for s0 in range(0, 2 * s, step):
+        rest = length - (ca - s0)
+        if rest + 2 * s + n > len(b):
+            continue
+        q2 = _ncc(a[s0:s0 + n], b[rest:rest + 2 * s + n])
+        q = np.minimum(q1[:len(q2)], q2[:len(q1)])
+        k = int(np.argmax(q))
+        if q[k] > best[0]:
+            best = (q[k], s0, k)
+    q, s0, lb = best
+    rest = length - (ca - s0)
+    w = np.linspace(0, 1, n)
+    out = np.concatenate([a[s0:ca], a[ca:] * (1 - w) + b[lb:lb + n] * w, b[lb + n:lb + rest]])
+    out[:n] = b[lb + rest:lb + rest + n] * (1 - w) + out[:n] * w
+    print(f"  loop splice match {q:.2f}", file=sys.stderr)
     return out
 
 
-def horn_colour(x, formants=((1800, 9, 2.0), (2900, 6, 3.0), (900, 3, 1.5)), drive=2.2):
-    """Trumpet bell + small projector: nasal mid peaks, then light clipping."""
-    for f0, g, q in formants:
-        x = peak_eq(x, f0, g, q)
-    x = hp(lp(x, 7000, 2), 250, 2)
-    x = x / (np.std(x) + 1e-9) * 0.4
-    return softclip(x, drive)
-
-
-def horn_tone_set(dur, freqs, seed, attack=0.008, rel=0.03, levels=(1.0, 0.85), even=0.6, tilt=0.75,
-                  formants=None, drive=2.2):
-    n = secs(dur)
-    t = t_axis(n)
-    out = np.zeros(n)
-    for i, f in enumerate(freqs):
-        dev = -0.03 * np.exp(-t / 0.015) + 0.002 * smooth_noise(n, 8, seed + 10 + i, periodic=False)
-        out += levels[i] * horn_voice(n, f, seed + i, even, tilt, dev)
-    env = np.ones(n)
-    a, r_ = secs(attack), secs(rel)
-    env[:a] = np.linspace(0, 1, a) ** 0.5
-    env[-r_:] = np.linspace(1, 0, r_) ** 1.5
-    kw = {} if formants is None else {"formants": formants}
-    return horn_colour(out * env, drive=drive, **kw) * env
+def horn_drive(x, drive):
+    """Peak-normalise and saturate a little: a horn is a dense, loud sound."""
+    return softclip(x / np.max(np.abs(x)) * drive, 1.0)
 
 
 def horn_modern_tap():
-    """Short courtesy tap on the modern twin-tone horn (~410 + 510 Hz)."""
-    x = horn_tone_set(0.28, (410, 510), 1800)
-    return room(np.concatenate([x, np.zeros(secs(0.3))]), 0.35, 0.12, 3500, 53)
+    """Short courtesy tap on a twin disc horn (~395 + 485 Hz, a major third):
+    one quick honk from the same recording as the held horn."""
+    return horn_drive(honk("horn_wanaki", 0.345, 0.495, tail=0.25), 1.5)
 
 
 def horn_modern_loop():
-    """Held twin-tone horn as a seamless loop: exact-integer cycles in 2 s,
-    zero-mean wobble so phase closes, periodic filtering and clipping."""
-    L = secs(2.0)
-    out = np.zeros(L)
-    for i, f in enumerate((410, 510)):
-        wob = smooth_noise(L, 6, 1810 + i, periodic=True)
-        wob -= wob.mean()
-        out += (1.0, 0.85)[i] * horn_voice(L, f, 1820 + i, freq_dev=0.0015 * wob, loop=True)
-    # the contact-noise lowpass etc. are non-periodic; rebuild colour periodically
-    out = periodic(out, lambda s: horn_colour(s))
+    """Held twin-tone horn, 2 s seamless loop: the steady middles of the
+    recording's two long blasts, joined in phase."""
+    x = horn_src("horn_wanaki")
+    a, b = x[secs(5.05):secs(6.66)], x[secs(0.80):secs(1.96)]
+    b = b * np.sqrt(np.mean(a ** 2) / np.mean(b ** 2))
+    out = horn_drive(splice_loop(a, b, secs(2.0)), 1.5)
     return check_loop("horn_modern_loop", out)
 
 
 def horn_classic_meep():
-    """Classic 500 'meep': one small, weak, buzzy disc horn, short and pitchy."""
-    x = horn_tone_set(0.22, (465,), 1830, attack=0.012, rel=0.04, levels=(1.0,), even=0.8, tilt=0.6,
-                      formants=((2200, 10, 2.5), (3400, 6, 3.0), (1200, 4, 2.0)), drive=3.0)
-    x = hp(x, 450, 2)  # tiny horn, no low end
-    return room(np.concatenate([x, np.zeros(secs(0.3))]), 0.3, 0.12, 4000, 59)
+    """Classic 500 'meep': a small, thin, buzzy single disc horn, nudged up
+    to ~460 Hz, with no low end."""
+    return hp(honk("horn_small", 0.19, 0.42, tail=0.14, ratio=1.07), 300, 2)
 
 
 def horn_abarth():
-    """Abarth: louder, brassier twin trumpet pitched higher (~530 + 660 Hz)."""
-    x = horn_tone_set(0.45, (530, 662), 1840, attack=0.006, rel=0.04, levels=(1.0, 0.95), even=0.5,
-                      tilt=0.65, formants=((1500, 7, 1.8), (2500, 8, 2.5), (3600, 5, 3.0)), drive=3.0)
+    """Abarth: a brighter, brassier twin (~545 + 655 Hz), driven harder,
+    with a short street reflection."""
+    x = horn_drive(honk("horn_twin_hi", 0.398, 0.708, tail=0.0, pre=0.003, ratio=0.93), 2.5)
     return room(np.concatenate([x, np.zeros(secs(0.35))]), 0.35, 0.12, 3500, 61)
 
 
@@ -871,10 +927,13 @@ def main():
     save(f"{OUT}/car_seatbelt_click", seatbelt_click())
     save(f"{OUT}/car_indicator_modern", indicator_modern())
     save(f"{OUT}/car_indicator_classic", indicator_classic())
-    save(f"{OUT}/car_horn_modern_tap", horn_modern_tap())
-    save(f"{OUT}/car_horn_modern_hold", horn_modern_loop())
-    save(f"{OUT}/car_horn_classic_meep", horn_classic_meep())
-    save(f"{OUT}/car_horn_abarth", horn_abarth())
+    try:
+        horns = [("car_horn_modern_tap", horn_modern_tap()), ("car_horn_modern_hold", horn_modern_loop()),
+                 ("car_horn_classic_meep", horn_classic_meep()), ("car_horn_abarth", horn_abarth())]
+        for name, x in horns:
+            save(f"{OUT}/{name}", x)
+    except MissingHornSource as e:
+        print(f"skipping the horns, keeping the committed ones: {e}")
     save(f"{OUT}/car_wipers_slow", wipers(1.5, 4, 3200, 0.8))
     save(f"{OUT}/car_wipers_fast", wipers(0.95, 6, 3300, 1.0))
     for v in range(3):

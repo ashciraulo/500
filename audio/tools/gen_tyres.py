@@ -148,41 +148,91 @@ def tyre_roll(kmh, seed, L=secs(8.0)):
     return x * (kmh / 50) ** 1.2
 
 
-def skid_squeal_loop(L=secs(4.0)):
-    """Dry-tarmac skid: rubber stick-slip gives a harmonic squeal (~900 and
-    ~1150 Hz from two tyres) wandering in pitch, fluttering in level, over
-    broadband scrub noise. Whole-cycle base pitch + zero-mean FM = seamless."""
-    t = t_axis(L)
+def squeal_voice(L, f0, seed, periodic=True, hop_depth=0.12, jitter=0.004, contour=None, fhi=9000):
+    """One stick-slip squeal voice. The rubber sticks and slips at a pitch
+    that wanders slowly, wobbles a little, hops between stick-slip modes
+    (random steps held 0.1-0.6 s, edges smoothed) and jitters cycle to cycle.
+    Its harmonics are weighted by two drifting tread/belt resonances, so the
+    loudest partial keeps shifting. periodic=True keeps every modulation
+    circular and the mean pitch on a whole number of cycles (seamless loop)."""
+    r = rng(seed)
+
+    def sm(rate, s):
+        return smooth_noise(L, rate, s, periodic=periodic)
+
+    steps = np.zeros(L)
+    pos = 0
+    while pos < L:
+        ln = secs(r.uniform(0.1, 0.6))
+        steps[pos:pos + ln] = r.choice([-1.0, -0.4, 0.0, 0.0, 0.5, 1.0])
+        pos += ln
+    steps = circ_lp(steps, 9, 2) if periodic else lp(steps, 9, 2)
+    logf = 0.035 * sm(3, seed + 1) + 0.012 * sm(9, seed + 6) + hop_depth * steps + jitter * sm(300, seed + 2)
+    f = f0 * np.exp(logf - logf.mean())
+    if contour is not None:
+        f = f * contour
+    if periodic:
+        f *= snap(f.mean(), L) / f.mean()
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    fa = 1300 * np.exp(0.25 * sm(1.5, seed + 3))
+    fb = 2300 * np.exp(0.2 * sm(2.2, seed + 4))
+    wb = 0.6 + 0.4 * sm(4, seed + 5)
     out = np.zeros(L)
-    for i, (f0, g) in enumerate([(900, 1.0), (1160, 0.7)]):
-        f0 = snap(f0, L)
-        fm = smooth_noise(L, 4, 4000 + i)
-        fm -= fm.mean()
-        ph = 2 * np.pi * np.cumsum(f0 * (1 + 0.025 * fm)) / SR
-        voice = sum((1 / k ** 1.3) * np.sin(k * ph + k) for k in range(1, 8))
-        am = np.clip(0.75 + 0.35 * smooth_noise(L, 18, 4010 + i), 0.1, None)
-        out += g * voice * am
-    out = softclip(out * 0.6, 1.8)
-    scrub = norm_rms(circ_filter(noise(L, 4020), band(L, 300, 5000))) * 0.18
-    rumble = norm_rms(circ_lp(pink(L, 4021), 250)) * 0.25
-    del t
-    return check_loop("skid_dry", out + scrub + rumble)
+    for k in range(1, 16):
+        fk = k * f
+        if fk.min() > fhi:
+            break
+        g = (1 / k ** 0.9) * (1 / (1 + ((fk - fa) / 500) ** 2) + wb / (1 + ((fk - fb) / 700) ** 2) + 0.12)
+        out += g * (fk < fhi) * np.sin(k * ph + r.uniform(0, 2 * np.pi))
+    return out
+
+
+def squeal_flutter(L, seed, periodic=True):
+    """Level of a squeal voice: 12-35 Hz stick-slip chatter, a slow swell and
+    the odd brief loss of grip where the tone nearly drops out."""
+    def sm(rate, s):
+        return smooth_noise(L, rate, s, periodic=periodic)
+    drop = np.clip(sm(5, seed + 2) - 1.2, 0, None)
+    return np.clip(0.75 + 0.25 * sm(30, seed) + 0.25 * sm(2, seed + 1) - 0.9 * drop, 0.05, None)
+
+
+def skid_squeal_loop(L=secs(4.0)):
+    """Dry-tarmac skid: two tyres' stick-slip squeals (~1050 and ~1390 Hz)
+    plus a weak high mode (~2150 Hz), each wavering, hopping and fluttering
+    on its own, softly clipped together; over gritty scrub (rubber tearing on
+    asphalt, louder where the squeal loses grip) and a little rumble. All
+    modulation is circular and pitches whole-cycle, so it loops seamlessly."""
+    out = np.zeros(L)
+    level = np.zeros(L)
+    for f0, g, s in [(1050, 1.0, 4400), (1390, 0.65, 4410), (2150, 0.22, 4420)]:
+        a = squeal_flutter(L, s + 50)
+        out += g * norm_rms(squeal_voice(L, f0, s)) * a
+        level += g * a
+    out = softclip(out * 0.35, 1.5)
+    lvl = level / level.mean()
+    grit = circ_filter(sparse(L, 4000, 4450, 1.0), band(L, 600, 7000))
+    hiss = circ_filter(noise(L, 4451), band(L, 250, 4500))
+    scrub = (norm_rms(grit) * 0.5 + norm_rms(hiss) * 0.6) * (1.25 - 0.35 * np.clip(lvl, 0, 2))
+    rumble = norm_rms(circ_lp(pink(L, 4452), 220)) * 0.22
+    return check_loop("skid_dry", norm_rms(out) + 0.32 * scrub + rumble)
 
 
 def skid_chirp(v):
-    """Short squeal chirp (a quick turn-in or brake dab): rising then falling
-    pitch, fast attack, stick-slip harmonics."""
-    r = rng(4100 + v)
+    """Short squeal chirp (a quick turn-in or brake dab): a scrub transient,
+    then a stick-slip squeal that grabs fast, rises as the patch sticks and
+    sags as it lets go, with the loop's wavering, shifting partials."""
+    r = rng(4500 + v)
     dur = [0.18, 0.3, 0.25, 0.4][v]
     n = secs(dur)
     t = t_axis(n)
-    shape = np.sin(np.pi * t / dur) ** 0.6
-    f = r.uniform(820, 1050) * (1 + 0.08 * np.sin(np.pi * t / dur)) * (1 + 0.01 * smooth_noise(n, 30, 4110 + v, periodic=False))
-    ph = 2 * np.pi * np.cumsum(f) / SR
-    x = sum((1 / k ** 1.3) * np.sin(k * ph) for k in range(1, 8))
-    x = softclip(x * 0.6, 1.8) * shape
-    x = add(x, bp(noise(n, 4120 + v), 300, 5000) * 0.12 * shape)
-    return fade(room(np.concatenate([x, np.zeros(secs(0.3))]), 0.35, 0.15, 5000, 4130 + v), 0.003, 0.05)
+    u = t / dur
+    bend = np.exp(0.18 * np.sin(np.pi * u ** 0.7) - 0.08 * u)
+    sq = squeal_voice(n, r.uniform(950, 1250), 4510 + v, False, hop_depth=0.06, jitter=0.006, contour=bend)
+    env = (1 - np.exp(-t / 0.008)) * np.sin(np.pi * u) ** 0.5 * np.exp(-u * 0.7)
+    x = softclip(norm_rms(sq) * env * squeal_flutter(n, 4520 + v, False) * 0.4, 1.5)
+    scrub = bp(noise(n, 4530 + v), 300, 5000) * (np.exp(-t / 0.05) * 0.25) + bp(noise(n, 4531 + v), 300, 5000) * env * 0.1
+    x = norm_rms(x) + scrub
+    return fade(room(np.concatenate([x, np.zeros(secs(0.3))]), 0.35, 0.15, 5000, 4540 + v), 0.003, 0.05)
 
 
 def wet_roll_loop(L=secs(8.0)):

@@ -37,7 +37,7 @@ func _ready() -> void:
 			_car.connect("car_changed", _on_car_changed)
 		if "car_id" in _car:
 			_on_car_changed(String(_car.car_id))
-	_horn = _player("SFX", 6.0)
+	_horn = _player("SFX", 9.0)
 	_wipers = _player("Cabin", 2.0)
 	_indicator = _player("Cabin", 2.0)
 	_buffet = _player("Weather", 4.0)
@@ -140,7 +140,7 @@ func set_wipers(speed: int) -> void:
 		_wipers.stop()
 		return
 	_wipers.stream = Audio.stream("car/car_wipers_fast" if speed == 2 else "car/car_wipers_slow", true)
-	_wipers.volume_db = -6.0
+	_wipers.volume_db = -15.0
 	_wipers.play()
 
 

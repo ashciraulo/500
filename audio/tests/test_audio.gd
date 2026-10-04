@@ -47,6 +47,7 @@ func _ready() -> void:
 	await _test_car_scene(audio)
 	await _test_hooks(audio)
 	await _test_traffic(audio)
+	await _test_footsteps(audio)
 	print("%d failure(s)" % failures)
 	quit(1 if failures else 0)
 
@@ -346,4 +347,67 @@ func _test_traffic(audio: Node) -> void:
 				audio.hooks._home.toggle_door(doors[0])  # plays the door sound
 		check(amb.zone == amb.zone_at(audio.listener().global_position), "ambience zone follows the camera (%s)" % amb.zone)
 	main.queue_free()
+	await process_frame
+
+
+func _test_footsteps(audio: Node) -> void:
+	print("footsteps")
+	var fs_script: Script = load("res://audio/scripts/footsteps.gd")
+	for s in fs_script.SURFACES:
+		check(audio._variants.has("home/home_step_" + s), "step sounds for " + s)
+	for s in fs_script.MATERIAL_SURFACES.values() + fs_script.SURFACE_ALIAS.values():
+		check(s in fs_script.SURFACES, "mapped surface %s has sounds" % s)
+	# Walking over a floor tagged like the roads: steps at a walking cadence.
+	var world := Node3D.new()
+	root.add_child(world)
+	var floor := StaticBody3D.new()
+	floor.set_meta("surface", "wood")
+	var box := CollisionShape3D.new()
+	box.shape = BoxShape3D.new()
+	box.shape.size = Vector3(40, 1, 40)
+	floor.add_child(box)
+	floor.position.y = -0.5
+	world.add_child(floor)
+	var body := CharacterBody3D.new()
+	var cap := CollisionShape3D.new()
+	cap.shape = CapsuleShape3D.new()
+	cap.position.y = 0.9
+	body.add_child(cap)
+	var fs: Node3D = fs_script.new()
+	body.add_child(fs)
+	body.position = Vector3(-10, 0.05, 0)
+	world.add_child(body)
+	var walk := func() -> void:
+		body.velocity = Vector3(1.4, body.velocity.y - 9.8 / 60.0, 0)
+		body.move_and_slide()
+	get_tree().physics_frame.connect(walk)
+	await create_timer(3.0).timeout
+	get_tree().physics_frame.disconnect(walk)
+	check(fs.steps >= 4 and fs.steps <= 8, "about one step per 0.7 m at a walk (%d in ~4 m)" % fs.steps)
+	check(fs.surface == "timber", "tagged floor surface 'wood' walks as timber (%s)" % fs.surface)
+	world.queue_free()
+	# The townhouse's trimesh floors map to surfaces through their materials.
+	var home: Node = load("res://scenes/home/shenton.tscn").instantiate()
+	root.add_child(home)
+	await process_frame
+	var probe: Node3D = fs_script.new()
+	home.add_child(probe)
+	var found := {}
+	for col in home.find_children("*", "StaticBody3D", true, false):
+		var mi := col.get_parent() as MeshInstance3D
+		if mi == null or mi.mesh == null:
+			continue
+		var first := 0
+		for i in mi.mesh.get_surface_count():
+			var mat := mi.get_active_material(i)
+			var a := mi.mesh.surface_get_arrays(i)
+			var faces: int = (a[Mesh.ARRAY_INDEX].size() if a[Mesh.ARRAY_INDEX] != null else a[Mesh.ARRAY_VERTEX].size()) / 3
+			if mat and fs_script.MATERIAL_SURFACES.has(mat.resource_name) and faces > 0:
+				var got: String = probe._material_at(col, first + faces / 2)
+				check(got == mat.resource_name, "face lookup finds %s (%s)" % [mat.resource_name, got])
+				found[fs_script.MATERIAL_SURFACES[got]] = true
+			first += faces
+	for s in ["timber", "carpet", "tile", "brick"]:
+		check(found.has(s), "townhouse has %s floors" % s)
+	home.queue_free()
 	await process_frame

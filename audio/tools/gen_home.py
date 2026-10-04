@@ -8,7 +8,8 @@ couple of oddities and the 'day ends' sting. Writes audio/home/*.ogg.
 Small, dry room character: a short (~0.2-0.3 s), lightly mixed reflection
 tail. Point sources are mono; the rain-on-windows bed and the sting are
 stereo. Uses the rain drop field from gen_weather.py and the instruments
-from gen_ui.py so styles match. Seeds are fixed.
+from gen_ui.py so styles match. Seeds are fixed. The cat's meows and purr
+are CC0 recordings: run fetch_sources.py first (see audio/CREDITS.md).
 """
 from __future__ import annotations
 
@@ -21,8 +22,8 @@ import numpy as np  # noqa: E402
 
 import gen_ui as ui  # noqa: E402
 import gen_weather as wx  # noqa: E402
-from sfxlib import (SR, bp, circ_filter, circ_lp, env_exp, fade, hp, lp, noise,  # noqa: E402
-                    pink, place, resonator, reverb, rng, save, secs,
+from sfxlib import (AUDIO_ROOT, SR, bp, circ_filter, circ_lp, env_exp, fade, hp, load,  # noqa: E402
+                    lp, noise, pink, place, resonator, reverb, rng, save, secs,
                     smooth_noise, softclip, t_axis)
 
 OUT = "home"
@@ -614,67 +615,92 @@ def watering_can():
     return fade(room(x, 0.3, 0.05, 6000, 12804), fout=0.2)
 
 
-def cat_voice(dur, f0_curve, f1_curve, f2_curve, seed, breath=0.08):
-    """Cat vocal tract: harmonics of a time-varying f0, each weighted by two
-    moving formants (mouth opening m-e-o-w), plus breath noise."""
-    n = secs(dur)
-    t = t_axis(n)
-    f0 = f0_curve(t)
-    ph = 2 * np.pi * np.cumsum(f0) / SR
-    F1, F2 = f1_curve(t), f2_curve(t)
-    x = np.zeros(n)
-    for k in range(1, 24):
-        fk = k * f0
-        a = np.exp(-0.5 * ((fk - F1) / 220) ** 2) + 0.6 * np.exp(-0.5 * ((fk - F2) / 350) ** 2) + 0.03
-        x += a * np.sin(k * ph) / k ** 0.3 * (fk < 16000)
-    x += bp(noise(n, seed), 1500, 6000) * breath
-    env = np.sin(np.pi * np.clip(t / dur, 0, 1)) ** 0.6
-    return x * env
+# The cat's voice is real: CC0 recordings fetched by fetch_sources.py into
+# build/sources/ (see audio/CREDITS.md), trimmed, de-hissed and given the
+# same small room as everything else here.
+SRC = AUDIO_ROOT.parent / "build" / "sources"
+_recs: dict[str, np.ndarray] = {}
+
+
+def rec(key):
+    """A fetched recording, mono 48 kHz, rumble removed (None if missing)."""
+    if key not in _recs:
+        f = SRC / f"{key}.mp3"
+        if not f.exists():
+            return None
+        _recs[key] = hp(load(f, mono=True), 90, 2)
+    return _recs[key]
+
+
+def take(key, a, b):
+    return rec(key)[secs(a):secs(b)]
+
+
+def denoise(x, noise_part, reduce_db=18.0, over=2.0):
+    """Gentle spectral gate: subtract the hiss profile measured on
+    noise_part, at most reduce_db, smoothed over time and frequency."""
+    from scipy.ndimage import uniform_filter
+    from scipy.signal import istft, stft
+    nf = 1024
+    _, _, N = stft(noise_part, SR, nperseg=nf)
+    prof = np.sqrt(np.mean(np.abs(N) ** 2, axis=1))[:, None]
+    _, _, X = stft(x, SR, nperseg=nf)
+    g = np.clip(1 - over * prof / (np.abs(X) + 1e-12), 10 ** (-reduce_db / 20), 1)
+    _, y = istft(X * uniform_filter(g, (3, 5)), SR, nperseg=nf)
+    return y[:len(x)]
 
 
 def cat_meow(v):
-    """Meow: f0 rises then falls (~500-800 Hz), mouth opens (F1 up to
-    ~1 kHz) and closes at the end ('-ow')."""
-    r = rng(12900 + v)
-    dur = [0.75, 0.55, 1.0][v]
-    base = r.uniform(480, 600)
-    peak = base * r.uniform(1.25, 1.5)
-
-    def f0(t):
-        u = t / dur
-        return base + (peak - base) * np.sin(np.pi * np.clip(u * 1.1, 0, 1)) + 15 * np.sin(2 * np.pi * 6 * t)
-
-    def f1(t):
-        u = t / dur
-        return 500 + 600 * np.sin(np.pi * np.clip(u * 1.2, 0, 1)) ** 1.5
-
-    def f2(t):
-        u = t / dur
-        return 1600 + 900 * np.sin(np.pi * np.clip(u * 1.1, 0, 1)) - 600 * np.clip(u - 0.7, 0, 1)
-
-    x = cat_voice(dur, f0, f1, f2, 12910 + v)
-    x = np.concatenate([np.zeros(secs(0.02)), x, np.zeros(secs(0.2))])
-    return fade(room(x, 0.25, 0.1, 5000, 12920 + v), fout=0.05)
+    """01 an ordinary meow, 02 a short chirp ('mrrp'), 03 a long plaintive
+    'feed me' meow. Real recordings."""
+    if v == 0:
+        x = denoise(take("cat_meow_x5", 1.40, 2.24), take("cat_meow_x5", 0.3, 1.3), 20)
+        x = fade(x, 0.01, 0.1)
+    elif v == 1:
+        x = denoise(take("cat_chirp", 0.52, 0.95), take("cat_chirp", 1.2, 2.3), 22, 2.5)
+        x = fade(x, 0.005, 0.15)
+    else:
+        x = fade(take("cat_wants_food", 6.98, 8.25), 0.02, 0.12)
+    x = np.concatenate([np.zeros(secs(0.01)), x, np.zeros(secs(0.26 if v == 1 else 0.15))])
+    return fade(room(x, 0.25, 0.06, 6000, 12920 + v), fout=0.04)
 
 
 def cat_purr_loop():
-    """Purr (8 s loop): ~26 laryngeal pulses/s, louder on the out-breath,
-    quieter and slightly faster on the in-breath; breath cycle ~2 s."""
+    """Purr (8 s loop) from a real close purr (~25 pulses/s). Four breath
+    cycles are cut at the middle of each quieter in-breath, a little of each
+    in-breath is dropped so they total exactly 8 s (~2 s per breath), and
+    they are joined with equal-power crossfades, wrapping round the loop."""
+    x = rec("cat_purr")
+    hop = SR // 100
+    nf = len(x) // hop
+    e = np.sqrt(np.mean(bp(x, 30, 800)[:nf * hop].reshape(nf, hop) ** 2, axis=1))
+    edb = 20 * np.log10(np.convolve(e, np.ones(25) / 25, mode="same") + 1e-9)
+    quiet = edb < (np.percentile(edb, 20) + np.percentile(edb, 85)) / 2
+    runs, st = [], None
+    for i in range(1, nf):
+        if quiet[i] and not quiet[i - 1]:
+            st = i
+        elif not quiet[i] and quiet[i - 1] and st is not None:
+            if i - st > 40:
+                runs.append((st, i))
+            st = None
+    mids = [secs((a + b) / 200) for a, b in runs][:5]
     L = secs(8.0)
-    x = np.zeros(L)
-    r = rng(13000)
-    t = 0.0
-    while t < 8.0 - 1e-6:
-        cyc = (t % 2.0) / 2.0
-        out_breath = cyc < 0.6
-        rate = 25 if out_breath else 28
-        amp = (np.sin(np.pi * cyc / 0.6) if out_breath else 0.5 * np.sin(np.pi * (cyc - 0.6) / 0.4)) ** 0.5
-        m = secs(0.03)
-        p = lp(noise(m, int(t * 1000) + 13001), 600 if out_breath else 900) * np.hanning(m) * amp * r.uniform(0.8, 1.0)
-        place(x, p, secs(t), wrap=True)
-        t += 1 / rate
-    x = periodic(x, lambda s: lp(hp(s, 30), 1500))
-    return check_loop("purr", x)
+    trim = (mids[-1] - mids[0] - L) // 4
+    xf = secs(0.12)
+    w = np.sin(np.linspace(0, np.pi / 2, xf))
+    out = np.zeros(L)
+    pos = 0
+    for k in range(4):
+        a = mids[k] + trim
+        b = mids[k + 1] if k < 3 else a + (L - pos)
+        seg = x[a - xf // 2:b + xf // 2].copy()
+        seg[:xf] *= w
+        seg[-xf:] *= w[::-1]
+        place(out, seg, pos - xf // 2, wrap=True)
+        pos += b - a
+    out = periodic(out, lambda s: lp(hp(s, 25), 7000))
+    return check_loop("purr", out)
 
 
 def cat_food_bowl():
@@ -762,9 +788,12 @@ def main():
     save(f"{OUT}/home_watering_can", watering_can())
     for v in range(2):
         save(f"{OUT}/home_leaves_brush_{v + 1:02d}", leaves_brush(v))
-    for v in range(3):
-        save(f"{OUT}/home_cat_meow_{v + 1:02d}", cat_meow(v))
-    save(f"{OUT}/home_cat_purr", cat_purr_loop(), norm="amb")
+    if all(rec(k) is not None for k in ("cat_meow_x5", "cat_chirp", "cat_wants_food", "cat_purr")):
+        for v in range(3):
+            save(f"{OUT}/home_cat_meow_{v + 1:02d}", cat_meow(v))
+        save(f"{OUT}/home_cat_purr", cat_purr_loop(), norm="amb")
+    else:
+        print("  cat recordings missing (run fetch_sources.py): cat meows/purr left as they are", file=sys.stderr)
     save(f"{OUT}/home_cat_food_bowl", cat_food_bowl())
     for v in range(4):
         save(f"{OUT}/home_cat_steps_{v + 1:02d}", cat_steps(v))

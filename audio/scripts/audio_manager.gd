@@ -206,7 +206,7 @@ func _build_buses() -> void:
 ## bus levels (so 1 = as mixed, not 0 dB).
 const SETTINGS_BUSES := {
 	"volume_master": ["Master", 0.0], "volume_music": ["Music", -3.0],
-	"volume_radio": ["Radio", -6.0], "volume_effects": ["World", 0.0],
+	"volume_radio": ["Radio", -2.0], "volume_effects": ["World", 0.0],
 }
 
 
@@ -255,6 +255,9 @@ func _apply_inside() -> void:
 	# Cabin sounds (indicator, wipers, rain on the roof) are distant from outside.
 	# The radio applies its own outside trim (radio.gd listens for the signal).
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), -3.0 if _inside else -17.0)
+	# Inside, the street and the weather drop well under the radio and engine.
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Ambience"), -9.0 if _inside else 0.0)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Weather"), -12.0 if _inside else -4.0)
 
 
 # ---------------------------------------------------------------------------

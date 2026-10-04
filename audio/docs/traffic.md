@@ -19,12 +19,12 @@ only. The game fakes a gearbox for AI cars from their speed.
 
 | File | Loop | What |
 | --- | --- | --- |
-| `traffic_horn_car_01` to `_03` | no | car horns (each car keeps one) |
-| `traffic_horn_bus` | no | bus air horn |
+| `traffic_horn_car_01` to `_03` | no | car horns (each car keeps one): an Alfa MiTo twin, a Skoda Fabia single, a lower single honked twice (CC0 recordings) |
+| `traffic_horn_bus` | no | bus air horn: a recorded deep truck air-horn chord |
 | `traffic_bus_air_brake` | no | air brake release when a bus stops |
 | `traffic_bus_doors` | no | bus doors folding open |
 | `traffic_train_running` | yes | train at speed beside the line; pitched by speed |
-| `traffic_train_horn` | no | two-tone warning at level crossings |
+| `traffic_train_horn` | no | two-tone warning at level crossings, high then low, from one recorded air horn |
 
 Crossing bells and pedestrian beeps come from `amb/` (`amb_crossing_bells_loop`,
 `amb_ped_beep`).

@@ -5,7 +5,7 @@ Builds audio/amb/*.ogg and audio/oddity/*.ogg from:
   * recordings fetched by fetch_sources.py into build/sources/ (CC0 only,
     see audio/CREDITS.md), cut into short events and re-scattered, and
   * numpy synthesis (wind in the gums, traffic hum, pedestrian crossings,
-    sirens, trains, level crossing bells, idles, radio static, voices...).
+    sirens, trains, level crossing bells, idles, radio static...).
 
 Beds are stereo seamless loops: every layer is either built circularly (FFT
 filters, wrap-around placement) or turned into a loop by an equal-power
@@ -1216,117 +1216,89 @@ def misc_oneshots():
 # --------------------------------------------------------------------------
 # Night oddities (audio/oddity/)
 # --------------------------------------------------------------------------
-# No speech synthesiser is installed (no espeak/flite), so the "voices" are a
-# small formant synthesiser: a glottal pulse train (or noise, for whispers)
-# through three moving vowel formants, with fricative/plosive consonants and
-# phrase-level pitch declination. It sounds like calm speech in an unknown
-# language: rhythm and intonation of someone reading lists, but no words.
+# No speech synthesiser is installed (no espeak/flite), so the voices are real
+# CC0 recordings made wordless: a man reading a story (voice_reader), cut into
+# syllables that are each played backwards and re-sequenced into calm reading
+# groups, and real whispering (whisper_ind, whisper_four), also reversed. The
+# timbre, breath and cadence stay human; no words survive. VOWELS is still
+# used by the choir drone below.
 
 VOWELS = {  # F1, F2, F3 (Hz), adult male-ish
     "a": (730, 1090, 2440), "e": (530, 1840, 2480), "i": (270, 2290, 3010),
     "o": (570, 840, 2410), "u": (300, 870, 2240), "@": (500, 1500, 2500),
     "I": (390, 1990, 2550), "ae": (660, 1720, 2410), "O": (450, 950, 2500),
 }
-FRIC = {"s": (4500, 9000), "sh": (2200, 5000), "f": (1500, 7000), "h": (500, 3000)}
 
 
-def formant_voice(dur, seed, f0=108.0, rate=4.2, whisper=False, phrase=(1.6, 3.2), pause=(0.5, 1.2)):
-    """Unintelligible but speech-like voice, mono, `dur` seconds."""
+def level(v, ratio=0.35, ceil_pct=99.0):
+    """Broadcast-style levelling: a slow compressor, then soft limiting of the
+    rarest peaks, so a recorded voice sits steadily in the static."""
+    v = v / (np.abs(v).max() + 1e-9)
+    env = S.lp(np.abs(v), 12, 1)
+    thr = np.percentile(env[env > 1e-3], 50)
+    v = v * np.where(env > thr, (np.maximum(env, 1e-9) / thr) ** (ratio - 1), 1.0)
+    c = np.percentile(np.abs(v[np.abs(v) > 1e-4]), ceil_pct)
+    return np.tanh(v / c)
+
+
+_units: dict[str, list[np.ndarray]] = {}
+
+
+def reversed_syllables(key):
+    """Syllable/word-sized pieces of a recorded voice, each reversed so
+    nothing is intelligible."""
+    if key not in _units:
+        x = src(key)
+        us = []
+        for a, b, _ in find_events(x, 150, 5000, thresh_db=15, min_len=0.12, max_len=0.55, gap=0.04, pad=0.02):
+            u = x[a:b][::-1].copy()
+            us.append(S.fade(u, min(0.04, len(u) / SR / 4), min(0.06, len(u) / SR / 4)))
+        _units[key] = us
+    return _units[key]
+
+
+def reversed_reader(dur, seed, slow=0.88, group=(3, 6), pause=(0.7, 1.6)):
+    """A calm voice reading groups, built from reversed syllables of a real
+    reader, slowed a little: human timbre and cadence, no words."""
     r = np.random.default_rng(seed)
+    us = reversed_syllables("voice_reader")
     n = secs(dur)
-    hop = 240  # 5 ms control frames
-    nfr = n // hop + 1
-    F = np.zeros((nfr, 3))
-    amp = np.zeros(nfr)
-    fric = np.zeros(nfr)
-    fband = np.zeros((nfr, 2))
-    pitch = np.zeros(nfr)
-    vk = list(VOWELS)
-    t = 0.25
-    cur = np.array(VOWELS["@"], float)
-    while t < dur - 0.4:
-        plen = r.uniform(*phrase)
-        p_end = min(dur - 0.3, t + plen)
-        p0 = t
-        while t < p_end:
-            # optional consonant
-            c = r.random()
-            if c < 0.35:
-                k = list(FRIC)[int(r.integers(len(FRIC)))]
-                L = r.uniform(0.05, 0.1)
-                a, b = int(t * SR / hop), int((t + L) * SR / hop)
-                fric[a:b] = r.uniform(0.25, 0.5)
-                fband[a:b] = FRIC[k]
-                t += L
-            elif c < 0.6:
-                t += r.uniform(0.03, 0.06)  # plosive closure (silence)
-                a = int(t * SR / hop)
-                fric[a:a + 2] = 0.6
-                fband[a:a + 2] = (1000, 5000)
-            # vowel
-            L = r.uniform(0.09, 0.2) * 4.2 / rate
-            v = np.array(VOWELS[vk[int(r.integers(len(vk)))]], float) * r.uniform(0.95, 1.05)
-            a, b = int(t * SR / hop), int((t + L) * SR / hop)
-            k = max(1, b - a)
-            w = np.linspace(0, 1, k)[:, None] ** 0.5
-            F[a:a + k] = cur * (1 - w) + v * w
-            env = np.sin(np.linspace(0, np.pi, k)) ** 0.6
-            amp[a:a + k] = np.maximum(amp[a:a + k], env * r.uniform(0.7, 1.0))
-            prog = (t - p0) / max(plen, 0.1)
-            pitch[a:a + k] = f0 * (1.12 - 0.22 * prog) * (1 + 0.04 * r.standard_normal())
-            cur = v
-            t += L
-        t = p_end + r.uniform(*pause)
-    # hold formants/pitch through gaps
-    for arr in (F, pitch):
-        last = None
-        for i in range(nfr):
-            if (arr[i] == 0).all() if arr.ndim == 2 else arr[i] == 0:
-                if last is not None:
-                    arr[i] = last
-            else:
-                last = arr[i].copy() if arr.ndim == 2 else arr[i]
-    pitch[pitch == 0] = f0
-    F[(F == 0).all(axis=1)] = VOWELS["@"]
-    # sample-rate controls
-    xi = np.arange(n) / hop
-    up = lambda c: np.interp(xi, np.arange(nfr), c)
-    amp_s = S.lp(up(amp), 40, 1)
-    fr_s = S.lp(up(fric), 60, 1)
-    p_s = up(pitch) * (1 + 0.006 * np.sin(2 * np.pi * 5.5 * S.t_axis(n)))
-    if whisper:
-        srcv = S.hp(S.noise(n, seed + 1), 300, 1)
-    else:
-        ph = np.cumsum(p_s) / SR
-        saw = 2 * (ph % 1.0) - 1
-        srcv = S.lp(np.diff(np.concatenate([[0], saw])) * -1 + 0.02 * saw, 3500, 1)
-        srcv = srcv / (np.std(srcv) + 1e-9) + 0.08 * S.noise(n, seed + 2)
-    # time-varying formant filter, block by block with carried state
-    from scipy import signal as sg
-    out = np.zeros(n)
-    zi = [np.zeros(2) for _ in range(3)]
-    for i in range(0, n, hop):
-        blk = srcv[i:i + hop]
-        f = F[min(i // hop, nfr - 1)]
-        acc = 0
-        for j in range(3):
-            bw = (60, 90, 150)[j] * (2.5 if whisper else 1)
-            rr = np.exp(-np.pi * bw / SR)
-            th = 2 * np.pi * f[j] / SR
-            b = [1 - rr, 0, 0]
-            a = [1, -2 * rr * np.cos(th), rr * rr]
-            yj, zi[j] = sg.lfilter(b, a, blk, zi=zi[j])
-            acc = acc + yj * (1.0, 0.7, 0.35)[j]
-        out[i:i + hop] = acc
-    out = out / (np.std(out) + 1e-9) * amp_s
-    # fricatives
-    fr_noise = np.zeros(n)
-    nz = S.noise(n, seed + 3)
-    for lo, hi in {tuple(v) for v in FRIC.values()} | {(1000, 5000)}:
-        mask = up((fband[:, 0] == lo).astype(float))
-        fr_noise += S.bp(nz, lo, hi, 2) * mask
-    out = out + fr_noise / (np.std(fr_noise) + 1e-9) * fr_s * 0.35
-    return out
+    y = np.zeros(n + secs(2))
+    t = 0.2
+    while t < dur - 1.0:
+        g = r.uniform(0.7, 1.0)
+        for j in range(int(r.integers(*group))):
+            u = rate(us[int(r.integers(len(us)))], slow * r.uniform(0.98, 1.02))
+            u = u / (np.sqrt(np.mean(u ** 2)) + 1e-9) * g * (1 - 0.06 * j)
+            if t + len(u) / SR > dur - 0.3:
+                break
+            S.place(y, u, secs(t))
+            t += len(u) / SR + r.uniform(0.02, 0.12)
+        t += r.uniform(*pause)
+    y = y[:n]
+    # a faint second take a hair behind and detuned: two mouths, one voice
+    ghost = np.concatenate([np.zeros(secs(0.03)), rate(y, 0.995)])[:n]
+    return level(y + 0.3 * ghost)
+
+
+def reversed_whispers(dur, seed, key):
+    """Real whispering played backwards, cut into phrases with pauses."""
+    r = np.random.default_rng(seed)
+    x = src(key)
+    ref = np.std(x)
+    n = secs(dur)
+    y = np.zeros(n + secs(3))
+    t = r.uniform(0.2, 0.6)
+    while t < dur - 0.6:
+        L = r.uniform(0.8, 2.0)
+        for _ in range(20):  # skip stretches with no whispering in them
+            a = int(r.integers(0, len(x) - secs(L) - 1))
+            if np.std(x[a:a + secs(L)]) > 0.7 * ref:
+                break
+        seg = S.fade(x[a:a + secs(L)][::-1].copy(), 0.15, 0.25)
+        S.place(y, seg / (np.sqrt(np.mean(seg ** 2)) + 1e-9) * r.uniform(0.6, 1.0), secs(t))
+        t += L + r.uniform(0.25, 0.8)
+    return level(y[:n])
 
 
 def radio_static(n, seed, crackle=1.0, circular=False):
@@ -1380,13 +1352,13 @@ def interval_signal(seed):
 
 @builder("odd_midnight_station")
 def midnight_station():
-    for i, (dur, seed, f0) in enumerate(((28.0, 9001, 104.0), (35.0, 9002, 112.0), (24.0, 9003, 98.0))):
+    for i, (dur, seed) in enumerate(((28.0, 9001), (35.0, 9002), (24.0, 9003))):
         n = secs(dur)
         y = np.zeros(n)
         intro = interval_signal(seed)
         S.place(y, intro * 0.5, secs(0.8))
-        # the reading: phrases like street names then digit groups
-        v = formant_voice(dur - 4.0, seed, f0=f0, rate=3.6, phrase=(1.2, 2.6), pause=(0.7, 1.6))
+        # the reading: groups of reversed syllables from a real reader
+        v = reversed_reader(dur - 4.0, seed, slow=0.84 + 0.04 * i)
         S.place(y, v / (np.abs(v).max() + 1e-9), secs(3.6))
         # a pip between groups now and then
         r = np.random.default_rng(seed)
@@ -1407,14 +1379,11 @@ def static_whisper():
         r = np.random.default_rng(seed)
         dur = float(r.uniform(3.5, 8.0))
         n = secs(dur)
-        v = formant_voice(dur, seed, f0=100, rate=r.uniform(3.0, 4.5), whisper=True,
-                          phrase=(0.8, 2.0), pause=(0.3, 0.9))
-        v = v / (np.abs(v).max() + 1e-9)
+        v = reversed_whispers(dur, seed, ("whisper_ind", "whisper_four")[i % 2 == 0])
         # sometimes two voices overlapping, slightly apart
         if i % 2 == 1:
-            v2 = formant_voice(dur, seed + 50, f0=100, rate=3.8, whisper=True)
-            v = v + 0.6 * np.roll(v2 / (np.abs(v2).max() + 1e-9), secs(0.7))
-        sig = radio_fx(v, seed + 1, 0.7) * 0.5
+            v = v + 0.6 * np.roll(reversed_whispers(dur, seed + 50, "whisper_four"), secs(0.7))
+        sig = radio_fx(v, seed + 1, 0.7) * 0.65
         st = radio_static(n, seed + 2, crackle=0.6)
         mix = S.lp(S.fade(sig + st * 0.5, 0.6, 1.0), 3800, 4)
         S.save(f"oddity/odd_static_whisper_{i + 1:02d}", mix, norm="lufs:-28")

@@ -76,9 +76,14 @@ Everything generated is reproducible (fixed random seeds):
     python3 audio/tools/gen_weather.py
     python3 audio/tools/gen_ui.py
     python3 audio/tools/gen_home.py
+    python3 audio/tools/gen_steps.py          # tile, concrete, mulch, gravel steps
     python3 audio/tools/gen_garage.py
     python3 audio/tools/fetch_sources.py && python3 audio/tools/gen_amb.py
     python3 audio/tools/gen_music.py
+
+The horns, the cat and the midnight voices are cut from CC0 recordings, so
+run `fetch_sources.py` before regenerating them; without the downloads the
+horn generators keep the committed horns.
 
 Needs Python 3 with numpy, scipy, soundfile and pyloudnorm, plus ffmpeg (and
 fluidsynth with the FluidR3_GM soundfont for music). Set `AUDIO_MASTERS=1` to
@@ -116,6 +121,12 @@ start swapping in your own recordings, regenerate only what you need.
   suburbs (rough areas in `ZONE_AREAS` in `ambience_manager.gd`, until the map
   carries real zones). The townhouse's doors, going to bed (with the "day
   ends" sting) and the shed being unlocked have their sounds.
+- **Footsteps** (`footsteps.gd`, `FootstepAudio`): add one as a child of
+  whatever walks (the player on foot) and it plays a step every stride for
+  the floor underfoot: timber, carpet, stairs, tile, brick, concrete, mulch
+  or gravel. It reads a collider's `surface` metadata, or for the
+  townhouse's imported floors the material of the face it's standing on
+  (`MATERIAL_SURFACES`), so new floors need only a material name added there.
 - **Traffic** (`traffic_audio.gd`, made by `Audio.hooks` when the city's
   TrafficManager appears): pooled engine voices on the nearest cars (4),
   utes and vans (2) and buses (2), our horns on every vehicle, the bus air
