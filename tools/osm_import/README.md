@@ -49,10 +49,20 @@ renders a few views (needs a display or `xvfb-run`).
    the terrain), kerbs, lane markings (left-hand traffic), bridge decks with
    parapets and piers, tunnel boxes, rail, extruded buildings with facade
    bands and roofs, trees and street lights.
-5. **tilewriter.py** quantises and writes each tile as a zlib-compressed Godot
-   Variant (`.p5t`) that `map/scripts/tile_loader.gd` decodes natively.
-6. **overview.py** paints the far backdrop; **textures.py** generates the
-   placeholder textures and PS1 materials.
+5. **tilewriter.py** quantises and writes each tile as a brotli-compressed
+   Godot Variant (`.p5t`, magic `P5TB`) that `map/scripts/tile_loader.gd`
+   decodes natively. Tiles built before stage 4 are zlib (`P5TZ`) and are
+   still read; they aren't rewritten, since every rewrite adds a full copy of
+   the tile to git history.
+6. **traffic.py** writes each tile's road network for the traffic system
+   (`.p5r`, docs/TRAFFIC.md): junction-split roads, signals, rail, stations,
+   bus stops and, from **parking.py**, car parks, kerbside parking and bays.
+   Opposing one-way carriageways of one street are pushed apart where OSM
+   draws them closer than their lanes need.
+7. **overview.py** paints the far backdrop and adds every building 24 m or
+   taller as a plain block, so the skyline shows from across the city (lit
+   windows at night); **textures.py** generates the placeholder textures and
+   PS1 materials.
 
 `config.json` also places the player's townhouse (its block is levelled and
 OSM's buildings, roads and trees on it are dropped), the job sites and the
@@ -67,7 +77,9 @@ facades) and `textures.py` (colours, patterns).
 `config.json` lists the build regions from the plan: stage 1 is the first
 slice; stage 2 adds Leederville/Subiaco, East Perth and Victoria Park; stage 3
 adds the Stirling Highway, Canning Highway and coast road corridors (tiles
-within a buffer of the named roads).
+within a buffer of the named roads); stage 4 adds Mount Lawley, Osborne Park
+(reached up Oxford St and Scarborough Beach Rd, which runs on to the coast)
+and the Guildford Rd corridor to the Guildford antique shops.
 
 ## Tests
 

@@ -67,6 +67,19 @@
       "stage": 3,
       "description": "West Coast Highway / Marine Parade from Fremantle to Scarborough via Cottesloe",
       "corridor": {"roads": ["West Coast Highway", "Marine Parade", "Curtin Avenue", "West Coast Drive", "The Esplanade"], "buffer": 200, "bbox": [115.74, -32.05, 115.775, -31.88]}
+    },
+    "mount_lawley": {"stage": 4, "description": "Mount Lawley and the Beaufort Street strip up to Walcott Street", "bbox": [115.858, -31.938, 115.884, -31.921]},
+    "osborne_park": {
+      "stage": 4,
+      "description": "Osborne Park, reached from Leederville up Oxford Street and Scarborough Beach Road, which runs on to the coast",
+      "bbox": [115.808, -31.907, 115.832, -31.89],
+      "corridor": {"roads": ["Oxford Street", "Scarborough Beach Road"], "buffer": 110, "bbox": [115.75, -31.93, 115.85, -31.885]}
+    },
+    "guildford": {
+      "stage": 4,
+      "description": "Guildford Road from Mount Lawley through Maylands and Bassendean to the Guildford antique shops",
+      "corridor": {"roads": ["Guildford Road", "James Street", "Meadow Street"], "buffer": 110, "bbox": [115.86, -31.94, 115.98, -31.885]},
+      "extra_bbox": [115.963, -31.905, 115.978, -31.894]
     }
   },
   "cbd_bbox": [115.848, -31.962, 115.873, -31.9505]

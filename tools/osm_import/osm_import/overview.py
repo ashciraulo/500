@@ -18,6 +18,12 @@ from .fetch import osm_pbf
 from .terrain import build_heightfield
 from .variant import pack_tile
 
+TOWER_MIN_H = 24.0  # buildings at least this tall stand up out of the backdrop
+TOWER_COLORS = {"facade_glass": (118, 140, 158), "facade_office": (168, 168, 160),
+                "facade_apartment": (192, 184, 168), "facade_heritage": (176, 142, 112),
+                "facade_carpark": (150, 150, 146)}
+SUN = np.array([0.55, 0.0, -0.83])  # a north-easterly light for the baked wall shading
+
 PX = 10.0          # metres per texture pixel
 HSTEP = 50.0       # metres per height sample
 MARGIN = 3000.0    # backdrop extends this far past the outermost tile
@@ -80,6 +86,7 @@ def build_overview(cfg: dict, proj: Projector, tiles: dict, out_path):
         elif t.get("railway") == "rail" and not styles.is_tunnel(t):
             draw.line(px(wy.coords), fill=COLORS["rail"], width=1)
 
+    towers = _towers(cfg, proj, feats, hf)
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     heights = hf.H.astype(np.float32)
@@ -94,7 +101,85 @@ def build_overview(cfg: dict, proj: Projector, tiles: dict, out_path):
         "heights": heights.ravel(),  # row-major, rows going north
         "texture_png": np.frombuffer(buf.getvalue(), dtype=np.uint8),
         "texture_rect": [float(e0), float(-n1), float(e1 - e0), float(n1 - n0)],  # x, z, width, depth
+        # Tall buildings as plain blocks so the skyline shows from anywhere:
+        # triangle soup. uv = (metres along the wall, metres up) for walls,
+        # (-1, -1) on roofs; colour alpha is a per-building seed for which
+        # windows are lit at night.
+        **towers,
     }
     blob = pack_tile(data)
     out_path.write_bytes(blob)
     return len(blob)
+
+
+def _towers(cfg, proj, feats, hf) -> dict:
+    import shapely
+    from shapely.geometry import box as sbox
+    cb = cfg.get("cbd_bbox")
+    cbd = None
+    if cb:
+        (ce0, ce1), (cn0, cn1) = proj.fwd([cb[0], cb[2]], [cb[1], cb[3]])
+        cbd = sbox(ce0, cn0, ce1, cn1)
+    pos, uv, col = [], [], []
+    count = 0
+    for a in feats.areas:
+        t = a.tags
+        if not ("building" in t or "building:part" in t) or t.get("building") in ("no", "roof", "construction"):
+            continue
+        g = a.geom
+        if g.is_empty or g.area < 60:
+            continue
+        rp = g.representative_point()
+        incbd = bool(cbd is not None and cbd.contains(rp))
+        minh, h = styles.building_height(t, g.area, a.id, incbd)
+        if h < TOWER_MIN_H or (minh > 0 and "building:part" in t and minh > h * 0.8):
+            continue
+        poly = max(g.geoms, key=lambda p: p.area) if g.geom_type == "MultiPolygon" else g
+        poly = poly.buffer(-0.6).simplify(1.5)
+        if poly.is_empty or poly.geom_type != "Polygon":
+            continue
+        ring = np.asarray(poly.exterior.coords)[:-1]
+        if len(ring) > 24:
+            ring = np.asarray(poly.minimum_rotated_rectangle.exterior.coords)[:-1]
+        if not shapely.LinearRing(ring).is_ccw:
+            ring = ring[::-1]
+        base = min(float(hf.sample(e, n)) for e, n in ring)
+        y0, y1 = base + max(0.0, minh), base + h - 0.6
+        _, upper = styles.facade(t, h, g.area, incbd, a.id)
+        c = np.array(TOWER_COLORS.get(upper, TOWER_COLORS["facade_office"]), float)
+        seed = int(styles.stable_rng("tw", a.id).integers(0, 256))
+        along = 0.0
+        for k in range(len(ring)):
+            (ea, na), (eb, nb) = ring[k], ring[(k + 1) % len(ring)]
+            L = math.hypot(eb - ea, nb - na)
+            if L < 0.3:
+                continue
+            # Outward normal of a CCW ring in plan (e, n): (dn, -de).
+            nrm = np.array([(nb - na) / L, 0.0, (eb - ea) / L])  # Godot (x, y, z=-n)
+            shade = 0.72 + 0.28 * max(0.0, float(nrm @ SUN))
+            quad = [(ea, y0, na, along), (eb, y0, nb, along + L), (eb, y1, nb, along + L), (ea, y1, na, along)]
+            for i in (0, 1, 2, 0, 2, 3):
+                e, y, n, s = quad[i]
+                pos.append((e, y, -n))
+                uv.append((s, y - y0))
+                col.append((*np.clip(c * shade, 0, 255), seed))
+            along += L
+        roof = shapely.Polygon(ring)
+        try:
+            from .meshbuild import triangulate
+            v, tri = triangulate(roof)
+        except Exception:
+            continue
+        rc = np.clip(c * 0.82, 0, 255)
+        for t3 in tri:
+            for i in t3[::-1]:
+                pos.append((v[i][0], y1, -v[i][1]))
+                uv.append((-1.0, -1.0))
+                col.append((*rc, seed))
+        count += 1
+    print(f"  overview towers: {count}")
+    return {
+        "tower_pos": np.asarray(pos, np.float32).reshape(-1, 3),
+        "tower_uv": np.asarray(uv, np.float32).reshape(-1, 2),
+        "tower_col": np.asarray(col, np.uint8).reshape(-1),
+    }

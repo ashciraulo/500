@@ -13,7 +13,7 @@ import argparse
 import json
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -35,6 +35,7 @@ from .tilewriter import write_tile
 from .variant import pack_tile
 
 RIVER_LEVEL = 0.0
+HOME_RAMP = 30.0        # roads ease to the townhouse's ground over this distance
 ROAD_OFFSET = 0.02      # road surface above terrain
 PATH_OFFSET = 0.04
 SIDEWALK_TOP = 0.16
@@ -85,9 +86,17 @@ class World:
         else:
             self.cbd = Polygon()
 
-        node_h = compute_node_heights(feats.ways, hf)
+        # The townhouse scene is flat and replaces whatever OSM has on its block.
+        self.home = places.home_site(cfg, proj)
+        src_ways = feats.ways
+        if self.home:
+            self.home.h = self._home_ground()
+            src_ways = [_split_at_edge(w, self.home.footprint) for w in feats.ways]
+        node_h = compute_node_heights(src_ways, hf)
+        if self.home:
+            self._level_to_home(src_ways, node_h)
         self.ways: list[LinearWay] = []
-        for w in feats.ways:
+        for w in src_ways:
             g = way_group(w.tags)
             if not g:
                 continue
@@ -112,8 +121,11 @@ class World:
         self.buildings = []
         self.parts = []
         self.decks = []        # piers and platforms: (polygon, kind)
+        self.parking = []      # amenity=parking / parking_space areas, for traffic
         for a in feats.areas:
             t = a.tags
+            if t.get("amenity") in ("parking", "parking_space"):
+                self.parking.append(a)
             if "building:part" in t:
                 self.parts.append(a)
                 continue
@@ -133,8 +145,6 @@ class World:
             else:
                 self.cover.append((mat, prio, a.geom))
         self._resolve_building_parts()
-        # The townhouse scene replaces whatever OSM has on its block.
-        self.home = places.home_site(cfg, proj)
         if self.home:
             fp = self.home.footprint.buffer(0.5)
             self.buildings = [b for b in self.buildings if not fp.contains(b.geom.representative_point())]
@@ -145,11 +155,42 @@ class World:
             self.trees = self.trees[~inside]
         self.named = feats.named_nodes
         self.control_nodes = feats.control_nodes
+        self.bus_routes = getattr(feats, "bus_routes", [])
         self._sculpt_terrain()
         print(f"  world prepared in {time.time() - t0:.1f}s: {len(self.ways)} ways, "
               f"{len(self.buildings)} buildings, {len(self.water)} water bodies")
 
     # -- preparation helpers --
+    def _home_ground(self) -> float:
+        """Ground height for the townhouse scene: the median DEM height under it."""
+        hf = self.hf
+        nj, ni = hf.H.shape
+        E, N = np.meshgrid(hf.e0 + hf.step * np.arange(ni), hf.n0 + hf.step * np.arange(nj))
+        b = self.home.footprint.bounds
+        win = (E > b[0]) & (E < b[2]) & (N > b[1]) & (N < b[3])
+        inside = shapely.contains(self.home.footprint, shapely.points(E[win], N[win]))
+        return float(np.median(hf.H[win][inside])) if inside.any() else float(hf.sample(self.home.e, self.home.n))
+
+    def _level_to_home(self, ways, node_h, ramp=HOME_RAMP):
+        """Bring roads and paths up (or down) to the scene's flat ground where
+        they meet it, easing back to their own height over `ramp` metres. The
+        block falls about 2 m from Little Shenton Lane to the carport lane
+        behind, so without this the carport lane ends in a step the car can't
+        climb."""
+        fp, h0 = self.home.footprint, self.home.h
+        near = fp.buffer(ramp)
+        for w in ways:
+            g = way_group(w.tags)
+            if g not in node_h or g == "rail" or not near.intersects(LineString(w.coords)):
+                continue
+            hmap = node_h[g]
+            for nid, (e, n) in zip(w.nodes, w.coords):
+                d = fp.distance(Point(e, n))
+                if d < ramp:
+                    t = d / ramp
+                    t = t * t * (3 - 2 * t)
+                    hmap[int(nid)] = h0 + (hmap[int(nid)] - h0) * t
+
     def _junction_nodes(self) -> dict[int, int]:
         count: dict[int, int] = {}
         for w in self.ways:
@@ -259,7 +300,10 @@ class World:
 
     def _sculpt_home(self, es, ns, falloff=8.0, sink=0.35):
         """Level the townhouse block. The scene brings its own ground, so the
-        terrain under it sits a little lower and only shows through gaps."""
+        terrain under it sits a little lower and only shows through gaps. The
+        last grid cell in from the edge stays almost level with the scene:
+        roads are draped on the terrain, and a dip there would leave a lip
+        where the lanes run into the block."""
         H = self.hf.H
         fp = self.home.footprint
         E, N = np.meshgrid(es, ns)
@@ -271,12 +315,14 @@ class World:
         if not inside.any():
             return
         sub = H[win]
-        h = float(np.median(sub[inside]))
-        self.home.h = h
+        h = self.home.h
         ramp = (d > 0) & (d < falloff)
         w = d[ramp] / falloff
         sub[ramp] = h * (1 - w) + sub[ramp] * w
+        edge = np.zeros_like(inside)
+        edge[inside] = shapely.distance(fp.exterior, pts[inside]) < self.hf.step * 1.2
         sub[inside] = h - sink
+        sub[edge] = h - 0.03
         H[win] = sub
 
     # -- queries --
@@ -294,6 +340,35 @@ class World:
 # ---------------------------------------------------------------------------
 # Per-tile building
 # ---------------------------------------------------------------------------
+
+def _split_at_edge(w, poly):
+    """`w` with a node added wherever it crosses `poly`'s edge, so a road that
+    runs into the townhouse block is exactly level with it there."""
+    if len(w.coords) < 2:
+        return w
+    line = LineString(w.coords)
+    if not line.crosses(poly.boundary) and not line.touches(poly.boundary):
+        return w
+    xy, ids = [w.coords[0]], [int(w.nodes[0])]
+    added = 0
+    for k in range(len(w.coords) - 1):
+        a, b = w.coords[k], w.coords[k + 1]
+        cut = LineString([a, b]).intersection(poly.boundary)
+        pts = [cut] if cut.geom_type == "Point" else [g for g in getattr(cut, "geoms", []) if g.geom_type == "Point"]
+        seg = b - a
+        L2 = float(seg @ seg)
+        ts = sorted(float((np.array(p.coords[0]) - a) @ seg / L2) for p in pts) if L2 > 0 else []
+        for t in ts:
+            if 0.02 < t * math.sqrt(L2) < math.sqrt(L2) - 0.02:
+                added += 1
+                xy.append(a + seg * t)
+                ids.append(-(int(w.id) * 64 + added))
+        xy.append(b)
+        ids.append(int(w.nodes[k + 1]))
+    if not added:
+        return w
+    return replace(w, coords=np.array(xy), nodes=np.array(ids, dtype=np.int64))
+
 
 def _clip_runs(xy, h, bounds):
     """Split a polyline into runs whose segment midpoints lie inside bounds."""

@@ -11,6 +11,7 @@ import re
 import numpy as np
 
 from . import styles
+from .parking import Parking
 
 TRAFFIC_KINDS = {
     "motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link",
@@ -19,6 +20,10 @@ TRAFFIC_KINDS = {
 }
 SIGNAL_REACH = 35.0  # metres along a way a signal tag may sit from its junction
 SIGNAL_SPREAD = 30.0  # junctions this close along a road share one set of lights
+LANE_WIDTH = 3.2  # traffic/scripts/traffic_graph.gd
+CARRIAGEWAY_GAP = 0.6  # clear space kept between opposing one-way carriageways
+MAX_SHIFT = 3.0  # most two carriageways are pulled apart, in metres
+MERGE_ZONE = 15.0  # metres from a node both sides share where they may converge
 NO_CARS = {"private", "no"}
 
 
@@ -52,6 +57,22 @@ def drives(tags) -> bool:
 def _speed(tags):
     m = re.match(r"\s*(\d+)", tags.get("maxspeed", ""))
     return int(m.group(1)) if m else None
+
+
+def _densify(pts, step: float):
+    """pts with extra points so no segment is longer than `step` (float64)."""
+    pts = np.asarray(pts, dtype=np.float64)
+    out = [pts[:1]]
+    for a, b in zip(pts[:-1], pts[1:]):
+        n = max(1, int(np.ceil(np.linalg.norm(b[[0, 2]] - a[[0, 2]]) / step)))
+        t = (np.arange(1, n + 1) / n)[:, None]
+        out.append(a + (b - a) * t)
+    return np.concatenate(out)
+
+
+def _tangents(xyz):
+    d = np.gradient(xyz[:, [0, 2]], axis=0)
+    return d / np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-6)
 
 
 class TrafficNetwork:
@@ -124,6 +145,19 @@ class TrafficNetwork:
                     r["name"] = w.tags["name"]
                 self.roads.append(r)
         self._spread_signals(ways)
+        self.separate_carriageways()
+        self.parking = Parking(world, self.roads)
+        # Bus routes: OSM route=bus relations as the road pieces they use.
+        parts: dict[int, list[str]] = {}
+        for r in self.roads:
+            parts.setdefault(int(r["id"][1:].split("/")[0]), []).append(r["id"])
+        self.bus_routes = []
+        for rid, ref, name, colour, way_ids in getattr(world, "bus_routes", []):
+            ids = [pid for w in way_ids for pid in parts.get(int(w), [])]
+            if ids:
+                self.bus_routes.append({"ref": ref or f"r{rid}", "name": name or ref, "colour": colour,
+                                        "roads": ids})
+        self._road_mid = {r["id"]: r["_mid"] for r in self.roads}
         self.rails = [w for w in world.ways if w.group == "rail" and w.tags.get("railway") == "rail"]
         self.stations = []
         self.bus_stops = []
@@ -156,6 +190,101 @@ class TrafficNetwork:
                         add.add(nodes[kk])
         for n in add:
             self.ctrl[n] = "signals"
+
+    def separate_carriageways(self, passes: int = 1, step: float = 3.0) -> int:
+        """Dual carriageways are mapped as two one-way ways whose centre lines
+        can sit closer than their lanes need (Barrack St at the Esplanade is
+        6.5 m apart for five 3.2 m lanes), so opposing cars overlap. Push each
+        side away from the other until the lanes clear. Junction nodes move
+        with the average of what their roads ask for, so roads still meet.
+        Returns how many roads moved."""
+        from scipy.spatial import cKDTree
+        ow = [r for r in self.roads if r["oneway"] and not r["roundabout"]]
+        if len(ow) < 2:
+            return 0
+        work = [_densify(r["pts"], step) for r in ow]
+        lanes = np.array([r["lanes_fwd"] for r in ow])
+        touched = np.zeros(len(ow), bool)
+        ends_of = [{r["a"], r["b"]} for r in ow]
+        # Two sides of one street share its name; a different street close by
+        # (a ramp, a parallel service road) is left where OSM puts it.
+        names = [r.get("name", "") for r in ow]
+        node_moves: dict[int, np.ndarray] = {}
+        for _ in range(passes):
+            P = np.concatenate(work)
+            O = np.concatenate([np.full(len(w), k) for k, w in enumerate(work)])
+            T = np.concatenate([_tangents(w) for w in work])
+            tree = cKDTree(P[:, [0, 2]])
+            reach = lanes.max() * LANE_WIDTH + CARRIAGEWAY_GAP
+            push = np.zeros((len(P), 2))
+            for i, near in enumerate(tree.query_ball_point(P[:, [0, 2]], reach)):
+                best = None
+                for j in near:
+                    if O[j] == O[i] or names[O[i]] != names[O[j]] or T[i] @ T[j] > -0.9 \
+                            or abs(P[i, 1] - P[j, 1]) > 2.5:
+                        continue
+                    # Where the two sides split from or join one node they
+                    # are meant to converge.
+                    shared = ends_of[O[i]] & ends_of[O[j]]
+                    if any(np.hypot(*(P[i, [0, 2]] - self._xz(n))) < MERGE_ZONE for n in shared):
+                        continue
+                    need = (lanes[O[i]] + lanes[O[j]]) * LANE_WIDTH / 2 + CARRIAGEWAY_GAP
+                    off = P[i, [0, 2]] - P[j, [0, 2]]
+                    side = off - (off @ T[i]) * T[i]  # across the road only
+                    dist = np.linalg.norm(side)
+                    if dist < 1e-3 or dist >= need:
+                        continue
+                    want = min(need - dist, MAX_SHIFT) / 2 * side / dist
+                    if best is None or want @ want > best @ best:
+                        best = want
+                if best is not None:
+                    push[i] = best
+            if not push.any():
+                break
+            ends: dict[int, list] = {}
+            base = 0
+            for k, (r, w) in enumerate(zip(ow, work)):
+                n = len(w)
+                ends.setdefault(r["a"], []).append(push[base])
+                ends.setdefault(r["b"], []).append(push[base + n - 1])
+                inner = push[base + 1:base + n - 1]
+                if inner.any():
+                    touched[k] = True
+                    w[1:-1, 0] += inner[:, 0]
+                    w[1:-1, 2] += inner[:, 1]
+                base += n
+            # Shared ends move once per node, on every road that uses them.
+            users: dict[int, list] = {}
+            for k, r in enumerate(ow):
+                users.setdefault(r["a"], []).append((k, 0))
+                users.setdefault(r["b"], []).append((k, -1))
+            for nid, v in ends.items():
+                mv = np.mean(v, axis=0)
+                if not mv.any():
+                    continue
+                node_moves[nid] = node_moves.get(nid, 0) + mv
+                for k, idx in users[nid]:
+                    work[k][idx, 0] += mv[0]
+                    work[k][idx, 2] += mv[1]
+                    touched[k] = True
+        for k, r in enumerate(ow):
+            if touched[k]:
+                r["pts"] = work[k].astype(np.float32)
+        for nid, mv in node_moves.items():
+            x, y, z = self.pos[nid]
+            self.pos[nid] = (x + float(mv[0]), y, z + float(mv[1]))
+        moved_nodes = set(node_moves)
+        for r in self.roads:
+            if r["oneway"] and not r["roundabout"]:
+                continue
+            for end, idx in ((r["a"], 0), (r["b"], -1)):
+                if end in moved_nodes:
+                    r["pts"][idx, 0], r["pts"][idx, 2] = self.pos[end][0], self.pos[end][2]
+        return int(touched.sum())
+
+    def _xz(self, nid):
+        x, _, z = self.pos[nid]
+        return np.array([x, z])
 
     def tile_data(self, bounds) -> dict:
         e0, n0, e1, n1 = bounds
@@ -191,4 +320,18 @@ class TrafficNetwork:
                          for e, n, y, name in self.stations if inside(e, n)],
             "bus_stops": [{"p": np.array([e, y, -n], dtype=np.float32)}
                           for e, n, y in self.bus_stops if inside(e, n)],
+            "parking": self.parking.tile_data(bounds),
+            "bus_routes": self._bus_routes_in(inside),
         }
+
+    def _bus_routes_in(self, inside) -> list:
+        """Each route's pieces that lie in this tile; tiles join them by ref.
+        One OSM route usually has a relation per direction, so merge by ref."""
+        out: dict[str, dict] = {}
+        for br in self.bus_routes:
+            ids = [i for i in br["roads"] if inside(*self._road_mid[i])]
+            if not ids:
+                continue
+            e = out.setdefault(br["ref"], {"ref": br["ref"], "name": br["name"], "colour": br["colour"], "roads": []})
+            e["roads"].extend(i for i in ids if i not in e["roads"])
+        return list(out.values())

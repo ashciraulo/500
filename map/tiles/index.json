@@ -3107,7 +3107,7 @@
    "region": "first_slice",
    "hmin": 7.49,
    "hmax": 71.93,
-   "bytes": 726188,
+   "bytes": 569190,
    "traffic": "-1_-1.p5r"
   },
   "0_-1": {
@@ -3117,7 +3117,7 @@
    "region": "first_slice",
    "hmin": 4.69,
    "hmax": 109.06,
-   "bytes": 700507,
+   "bytes": 540413,
    "traffic": "0_-1.p5r"
   },
   "1_-1": {
@@ -3317,7 +3317,7 @@
    "region": "first_slice",
    "hmin": 9.63,
    "hmax": 39.29,
-   "bytes": 626660,
+   "bytes": 495692,
    "traffic": "-1_0.p5r"
   },
   "0_0": {
@@ -3327,7 +3327,7 @@
    "region": "first_slice",
    "hmin": 9.15,
    "hmax": 42.04,
-   "bytes": 678117,
+   "bytes": 524285,
    "traffic": "0_0.p5r"
   },
   "1_0": {
@@ -3720,6 +3720,76 @@
    "bytes": 510653,
    "traffic": "-3_2.p5r"
   },
+  "0_2": {
+   "i": 0,
+   "j": 2,
+   "file": "0_2.p5t",
+   "region": "mount_lawley",
+   "hmin": 22.04,
+   "hmax": 48.42,
+   "bytes": 356695,
+   "traffic": "0_2.p5r"
+  },
+  "1_2": {
+   "i": 1,
+   "j": 2,
+   "file": "1_2.p5t",
+   "region": "mount_lawley",
+   "hmin": 21.83,
+   "hmax": 51.64,
+   "bytes": 374392,
+   "traffic": "1_2.p5r"
+  },
+  "2_2": {
+   "i": 2,
+   "j": 2,
+   "file": "2_2.p5t",
+   "region": "mount_lawley",
+   "hmin": 24.71,
+   "hmax": 48.87,
+   "bytes": 447187,
+   "traffic": "2_2.p5r"
+  },
+  "3_2": {
+   "i": 3,
+   "j": 2,
+   "file": "3_2.p5t",
+   "region": "mount_lawley",
+   "hmin": 18.52,
+   "hmax": 48.07,
+   "bytes": 508532,
+   "traffic": "3_2.p5r"
+  },
+  "4_2": {
+   "i": 4,
+   "j": 2,
+   "file": "4_2.p5t",
+   "region": "mount_lawley",
+   "hmin": 17.34,
+   "hmax": 50.55,
+   "bytes": 327340,
+   "traffic": "4_2.p5r"
+  },
+  "5_2": {
+   "i": 5,
+   "j": 2,
+   "file": "5_2.p5t",
+   "region": "mount_lawley",
+   "hmin": 12.76,
+   "hmax": 48.48,
+   "bytes": 380048,
+   "traffic": "5_2.p5r"
+  },
+  "6_2": {
+   "i": 6,
+   "j": 2,
+   "file": "6_2.p5t",
+   "region": "guildford",
+   "hmin": -2.5,
+   "hmax": 64.3,
+   "bytes": 258083,
+   "traffic": "6_2.p5r"
+  },
   "-19_3": {
    "i": -19,
    "j": 3,
@@ -3829,6 +3899,106 @@
    "hmax": 49.1,
    "bytes": 405972,
    "traffic": "-3_3.p5r"
+  },
+  "0_3": {
+   "i": 0,
+   "j": 3,
+   "file": "0_3.p5t",
+   "region": "mount_lawley",
+   "hmin": 28.11,
+   "hmax": 64.41,
+   "bytes": 326563,
+   "traffic": "0_3.p5r"
+  },
+  "1_3": {
+   "i": 1,
+   "j": 3,
+   "file": "1_3.p5t",
+   "region": "mount_lawley",
+   "hmin": 23.16,
+   "hmax": 46.01,
+   "bytes": 291298,
+   "traffic": "1_3.p5r"
+  },
+  "2_3": {
+   "i": 2,
+   "j": 3,
+   "file": "2_3.p5t",
+   "region": "mount_lawley",
+   "hmin": 26.31,
+   "hmax": 53.96,
+   "bytes": 382327,
+   "traffic": "2_3.p5r"
+  },
+  "3_3": {
+   "i": 3,
+   "j": 3,
+   "file": "3_3.p5t",
+   "region": "mount_lawley",
+   "hmin": 25.76,
+   "hmax": 62.82,
+   "bytes": 329706,
+   "traffic": "3_3.p5r"
+  },
+  "4_3": {
+   "i": 4,
+   "j": 3,
+   "file": "4_3.p5t",
+   "region": "mount_lawley",
+   "hmin": 27.78,
+   "hmax": 80.94,
+   "bytes": 288685,
+   "traffic": "4_3.p5r"
+  },
+  "5_3": {
+   "i": 5,
+   "j": 3,
+   "file": "5_3.p5t",
+   "region": "mount_lawley",
+   "hmin": 23.34,
+   "hmax": 55.41,
+   "bytes": 360932,
+   "traffic": "5_3.p5r"
+  },
+  "6_3": {
+   "i": 6,
+   "j": 3,
+   "file": "6_3.p5t",
+   "region": "guildford",
+   "hmin": 21.09,
+   "hmax": 56.09,
+   "bytes": 365535,
+   "traffic": "6_3.p5r"
+  },
+  "7_3": {
+   "i": 7,
+   "j": 3,
+   "file": "7_3.p5t",
+   "region": "guildford",
+   "hmin": 18.66,
+   "hmax": 44.81,
+   "bytes": 373943,
+   "traffic": "7_3.p5r"
+  },
+  "8_3": {
+   "i": 8,
+   "j": 3,
+   "file": "8_3.p5t",
+   "region": "guildford",
+   "hmin": 19.02,
+   "hmax": 56.04,
+   "bytes": 323195,
+   "traffic": "8_3.p5r"
+  },
+  "9_3": {
+   "i": 9,
+   "j": 3,
+   "file": "9_3.p5t",
+   "region": "guildford",
+   "hmin": 13.73,
+   "hmax": 38.07,
+   "bytes": 259467,
+   "traffic": "9_3.p5r"
   },
   "-19_4": {
    "i": -19,
@@ -3940,6 +4110,146 @@
    "bytes": 406570,
    "traffic": "-3_4.p5r"
   },
+  "-2_4": {
+   "i": -2,
+   "j": 4,
+   "file": "-2_4.p5t",
+   "region": "osborne_park",
+   "hmin": 20.03,
+   "hmax": 51.17,
+   "bytes": 342777,
+   "traffic": "-2_4.p5r"
+  },
+  "-1_4": {
+   "i": -1,
+   "j": 4,
+   "file": "-1_4.p5t",
+   "region": "osborne_park",
+   "hmin": 18.26,
+   "hmax": 35.41,
+   "bytes": 330641,
+   "traffic": "-1_4.p5r"
+  },
+  "0_4": {
+   "i": 0,
+   "j": 4,
+   "file": "0_4.p5t",
+   "region": "mount_lawley",
+   "hmin": 29.1,
+   "hmax": 46.22,
+   "bytes": 253825,
+   "traffic": "0_4.p5r"
+  },
+  "1_4": {
+   "i": 1,
+   "j": 4,
+   "file": "1_4.p5t",
+   "region": "mount_lawley",
+   "hmin": 26.8,
+   "hmax": 48.53,
+   "bytes": 310481,
+   "traffic": "1_4.p5r"
+  },
+  "2_4": {
+   "i": 2,
+   "j": 4,
+   "file": "2_4.p5t",
+   "region": "mount_lawley",
+   "hmin": 29.97,
+   "hmax": 54.11,
+   "bytes": 276090,
+   "traffic": "2_4.p5r"
+  },
+  "3_4": {
+   "i": 3,
+   "j": 4,
+   "file": "3_4.p5t",
+   "region": "mount_lawley",
+   "hmin": 23.23,
+   "hmax": 56.58,
+   "bytes": 293762,
+   "traffic": "3_4.p5r"
+  },
+  "4_4": {
+   "i": 4,
+   "j": 4,
+   "file": "4_4.p5t",
+   "region": "mount_lawley",
+   "hmin": 22.17,
+   "hmax": 49.03,
+   "bytes": 325774,
+   "traffic": "4_4.p5r"
+  },
+  "5_4": {
+   "i": 5,
+   "j": 4,
+   "file": "5_4.p5t",
+   "region": "mount_lawley",
+   "hmin": 21.19,
+   "hmax": 41.2,
+   "bytes": 354821,
+   "traffic": "5_4.p5r"
+  },
+  "8_4": {
+   "i": 8,
+   "j": 4,
+   "file": "8_4.p5t",
+   "region": "guildford",
+   "hmin": 18.54,
+   "hmax": 33.09,
+   "bytes": 304448,
+   "traffic": "8_4.p5r"
+  },
+  "9_4": {
+   "i": 9,
+   "j": 4,
+   "file": "9_4.p5t",
+   "region": "guildford",
+   "hmin": 17.83,
+   "hmax": 37.18,
+   "bytes": 278880,
+   "traffic": "9_4.p5r"
+  },
+  "10_4": {
+   "i": 10,
+   "j": 4,
+   "file": "10_4.p5t",
+   "region": "guildford",
+   "hmin": 16.38,
+   "hmax": 33.85,
+   "bytes": 326664,
+   "traffic": "10_4.p5r"
+  },
+  "11_4": {
+   "i": 11,
+   "j": 4,
+   "file": "11_4.p5t",
+   "region": "guildford",
+   "hmin": 7.66,
+   "hmax": 29.69,
+   "bytes": 317973,
+   "traffic": "11_4.p5r"
+  },
+  "12_4": {
+   "i": 12,
+   "j": 4,
+   "file": "12_4.p5t",
+   "region": "guildford",
+   "hmin": -0.86,
+   "hmax": 40.26,
+   "bytes": 327583,
+   "traffic": "12_4.p5r"
+  },
+  "13_4": {
+   "i": 13,
+   "j": 4,
+   "file": "13_4.p5t",
+   "region": "guildford",
+   "hmin": -0.86,
+   "hmax": 17.76,
+   "bytes": 252601,
+   "traffic": "13_4.p5r"
+  },
   "-19_5": {
    "i": -19,
    "j": 5,
@@ -3959,6 +4269,136 @@
    "hmax": 52.52,
    "bytes": 395906,
    "traffic": "-18_5.p5r"
+  },
+  "-4_5": {
+   "i": -4,
+   "j": 5,
+   "file": "-4_5.p5t",
+   "region": "osborne_park",
+   "hmin": 24.84,
+   "hmax": 57.21,
+   "bytes": 348623,
+   "traffic": "-4_5.p5r"
+  },
+  "-3_5": {
+   "i": -3,
+   "j": 5,
+   "file": "-3_5.p5t",
+   "region": "osborne_park",
+   "hmin": 23.89,
+   "hmax": 65.5,
+   "bytes": 410288,
+   "traffic": "-3_5.p5r"
+  },
+  "-2_5": {
+   "i": -2,
+   "j": 5,
+   "file": "-2_5.p5t",
+   "region": "osborne_park",
+   "hmin": 20.17,
+   "hmax": 41.84,
+   "bytes": 297353,
+   "traffic": "-2_5.p5r"
+  },
+  "0_5": {
+   "i": 0,
+   "j": 5,
+   "file": "0_5.p5t",
+   "region": "mount_lawley",
+   "hmin": 26.1,
+   "hmax": 49.6,
+   "bytes": 317500,
+   "traffic": "0_5.p5r"
+  },
+  "1_5": {
+   "i": 1,
+   "j": 5,
+   "file": "1_5.p5t",
+   "region": "mount_lawley",
+   "hmin": 24.85,
+   "hmax": 44.11,
+   "bytes": 286175,
+   "traffic": "1_5.p5r"
+  },
+  "2_5": {
+   "i": 2,
+   "j": 5,
+   "file": "2_5.p5t",
+   "region": "mount_lawley",
+   "hmin": 23.51,
+   "hmax": 43.57,
+   "bytes": 295459,
+   "traffic": "2_5.p5r"
+  },
+  "3_5": {
+   "i": 3,
+   "j": 5,
+   "file": "3_5.p5t",
+   "region": "mount_lawley",
+   "hmin": 22.11,
+   "hmax": 55.13,
+   "bytes": 245340,
+   "traffic": "3_5.p5r"
+  },
+  "4_5": {
+   "i": 4,
+   "j": 5,
+   "file": "4_5.p5t",
+   "region": "mount_lawley",
+   "hmin": 21.57,
+   "hmax": 37.08,
+   "bytes": 357121,
+   "traffic": "4_5.p5r"
+  },
+  "5_5": {
+   "i": 5,
+   "j": 5,
+   "file": "5_5.p5t",
+   "region": "mount_lawley",
+   "hmin": 22.29,
+   "hmax": 35.46,
+   "bytes": 286406,
+   "traffic": "5_5.p5r"
+  },
+  "11_5": {
+   "i": 11,
+   "j": 5,
+   "file": "11_5.p5t",
+   "region": "guildford",
+   "hmin": 12.38,
+   "hmax": 40.37,
+   "bytes": 315054,
+   "traffic": "11_5.p5r"
+  },
+  "12_5": {
+   "i": 12,
+   "j": 5,
+   "file": "12_5.p5t",
+   "region": "guildford",
+   "hmin": -0.35,
+   "hmax": 43.36,
+   "bytes": 271904,
+   "traffic": "12_5.p5r"
+  },
+  "13_5": {
+   "i": 13,
+   "j": 5,
+   "file": "13_5.p5t",
+   "region": "guildford",
+   "hmin": -2.67,
+   "hmax": 25.05,
+   "bytes": 400387,
+   "traffic": "13_5.p5r"
+  },
+  "14_5": {
+   "i": 14,
+   "j": 5,
+   "file": "14_5.p5t",
+   "region": "guildford",
+   "hmin": 6.69,
+   "hmax": 31.6,
+   "bytes": 230146,
+   "traffic": "14_5.p5r"
   },
   "-19_6": {
    "i": -19,
@@ -3980,6 +4420,76 @@
    "bytes": 317693,
    "traffic": "-18_6.p5r"
   },
+  "-7_6": {
+   "i": -7,
+   "j": 6,
+   "file": "-7_6.p5t",
+   "region": "osborne_park",
+   "hmin": 11.17,
+   "hmax": 37.12,
+   "bytes": 347753,
+   "traffic": "-7_6.p5r"
+  },
+  "-6_6": {
+   "i": -6,
+   "j": 6,
+   "file": "-6_6.p5t",
+   "region": "osborne_park",
+   "hmin": 12.15,
+   "hmax": 38.79,
+   "bytes": 333483,
+   "traffic": "-6_6.p5r"
+  },
+  "-5_6": {
+   "i": -5,
+   "j": 6,
+   "file": "-5_6.p5t",
+   "region": "osborne_park",
+   "hmin": 20.1,
+   "hmax": 54.79,
+   "bytes": 345914,
+   "traffic": "-5_6.p5r"
+  },
+  "-4_6": {
+   "i": -4,
+   "j": 6,
+   "file": "-4_6.p5t",
+   "region": "osborne_park",
+   "hmin": 29.24,
+   "hmax": 63.41,
+   "bytes": 301096,
+   "traffic": "-4_6.p5r"
+  },
+  "13_6": {
+   "i": 13,
+   "j": 6,
+   "file": "13_6.p5t",
+   "region": "guildford",
+   "hmin": 10.23,
+   "hmax": 37.72,
+   "bytes": 248982,
+   "traffic": "13_6.p5r"
+  },
+  "14_6": {
+   "i": 14,
+   "j": 6,
+   "file": "14_6.p5t",
+   "region": "guildford",
+   "hmin": 12.22,
+   "hmax": 42.29,
+   "bytes": 251332,
+   "traffic": "14_6.p5r"
+  },
+  "15_6": {
+   "i": 15,
+   "j": 6,
+   "file": "15_6.p5t",
+   "region": "guildford",
+   "hmin": 13.38,
+   "hmax": 34.44,
+   "bytes": 257161,
+   "traffic": "15_6.p5r"
+  },
   "-19_7": {
    "i": -19,
    "j": 7,
@@ -3999,6 +4509,96 @@
    "hmax": 50.24,
    "bytes": 373688,
    "traffic": "-18_7.p5r"
+  },
+  "-8_7": {
+   "i": -8,
+   "j": 7,
+   "file": "-8_7.p5t",
+   "region": "osborne_park",
+   "hmin": 11.01,
+   "hmax": 33.09,
+   "bytes": 310339,
+   "traffic": "-8_7.p5r"
+  },
+  "-7_7": {
+   "i": -7,
+   "j": 7,
+   "file": "-7_7.p5t",
+   "region": "osborne_park",
+   "hmin": 12.37,
+   "hmax": 35.66,
+   "bytes": 283256,
+   "traffic": "-7_7.p5r"
+  },
+  "-6_7": {
+   "i": -6,
+   "j": 7,
+   "file": "-6_7.p5t",
+   "region": "osborne_park",
+   "hmin": 10.14,
+   "hmax": 31.74,
+   "bytes": 258328,
+   "traffic": "-6_7.p5r"
+  },
+  "-5_7": {
+   "i": -5,
+   "j": 7,
+   "file": "-5_7.p5t",
+   "region": "osborne_park",
+   "hmin": 17.0,
+   "hmax": 56.12,
+   "bytes": 272524,
+   "traffic": "-5_7.p5r"
+  },
+  "12_7": {
+   "i": 12,
+   "j": 7,
+   "file": "12_7.p5t",
+   "region": "guildford",
+   "hmin": 14.04,
+   "hmax": 37.07,
+   "bytes": 226708,
+   "traffic": "12_7.p5r"
+  },
+  "14_7": {
+   "i": 14,
+   "j": 7,
+   "file": "14_7.p5t",
+   "region": "guildford",
+   "hmin": 17.24,
+   "hmax": 40.24,
+   "bytes": 188580,
+   "traffic": "14_7.p5r"
+  },
+  "15_7": {
+   "i": 15,
+   "j": 7,
+   "file": "15_7.p5t",
+   "region": "guildford",
+   "hmin": 12.98,
+   "hmax": 36.66,
+   "bytes": 233452,
+   "traffic": "15_7.p5r"
+  },
+  "16_7": {
+   "i": 16,
+   "j": 7,
+   "file": "16_7.p5t",
+   "region": "guildford",
+   "hmin": 15.19,
+   "hmax": 43.56,
+   "bytes": 219236,
+   "traffic": "16_7.p5r"
+  },
+  "18_7": {
+   "i": 18,
+   "j": 7,
+   "file": "18_7.p5t",
+   "region": "guildford",
+   "hmin": 4.52,
+   "hmax": 22.28,
+   "bytes": 233470,
+   "traffic": "18_7.p5r"
   },
   "-19_8": {
    "i": -19,
@@ -4020,6 +4620,126 @@
    "bytes": 277865,
    "traffic": "-18_8.p5r"
   },
+  "-10_8": {
+   "i": -10,
+   "j": 8,
+   "file": "-10_8.p5t",
+   "region": "osborne_park",
+   "hmin": 1.7,
+   "hmax": 29.92,
+   "bytes": 298615,
+   "traffic": "-10_8.p5r"
+  },
+  "-9_8": {
+   "i": -9,
+   "j": 8,
+   "file": "-9_8.p5t",
+   "region": "osborne_park",
+   "hmin": 3.68,
+   "hmax": 34.22,
+   "bytes": 244932,
+   "traffic": "-9_8.p5r"
+  },
+  "-8_8": {
+   "i": -8,
+   "j": 8,
+   "file": "-8_8.p5t",
+   "region": "osborne_park",
+   "hmin": 11.01,
+   "hmax": 40.4,
+   "bytes": 273151,
+   "traffic": "-8_8.p5r"
+  },
+  "-7_8": {
+   "i": -7,
+   "j": 8,
+   "file": "-7_8.p5t",
+   "region": "osborne_park",
+   "hmin": 12.84,
+   "hmax": 44.47,
+   "bytes": 259609,
+   "traffic": "-7_8.p5r"
+  },
+  "-6_8": {
+   "i": -6,
+   "j": 8,
+   "file": "-6_8.p5t",
+   "region": "osborne_park",
+   "hmin": 9.99,
+   "hmax": 26.74,
+   "bytes": 218269,
+   "traffic": "-6_8.p5r"
+  },
+  "-5_8": {
+   "i": -5,
+   "j": 8,
+   "file": "-5_8.p5t",
+   "region": "osborne_park",
+   "hmin": 19.49,
+   "hmax": 56.22,
+   "bytes": 230185,
+   "traffic": "-5_8.p5r"
+  },
+  "11_8": {
+   "i": 11,
+   "j": 8,
+   "file": "11_8.p5t",
+   "region": "guildford",
+   "hmin": 19.18,
+   "hmax": 41.21,
+   "bytes": 225850,
+   "traffic": "11_8.p5r"
+  },
+  "12_8": {
+   "i": 12,
+   "j": 8,
+   "file": "12_8.p5t",
+   "region": "guildford",
+   "hmin": 19.11,
+   "hmax": 41.38,
+   "bytes": 262801,
+   "traffic": "12_8.p5r"
+  },
+  "15_8": {
+   "i": 15,
+   "j": 8,
+   "file": "15_8.p5t",
+   "region": "guildford",
+   "hmin": 16.92,
+   "hmax": 43.54,
+   "bytes": 244455,
+   "traffic": "15_8.p5r"
+  },
+  "16_8": {
+   "i": 16,
+   "j": 8,
+   "file": "16_8.p5t",
+   "region": "guildford",
+   "hmin": 15.99,
+   "hmax": 38.07,
+   "bytes": 374490,
+   "traffic": "16_8.p5r"
+  },
+  "17_8": {
+   "i": 17,
+   "j": 8,
+   "file": "17_8.p5t",
+   "region": "guildford",
+   "hmin": 12.15,
+   "hmax": 27.18,
+   "bytes": 224042,
+   "traffic": "17_8.p5r"
+  },
+  "18_8": {
+   "i": 18,
+   "j": 8,
+   "file": "18_8.p5t",
+   "region": "guildford",
+   "hmin": 6.38,
+   "hmax": 25.63,
+   "bytes": 187769,
+   "traffic": "18_8.p5r"
+  },
   "-19_9": {
    "i": -19,
    "j": 9,
@@ -4039,6 +4759,176 @@
    "hmax": 31.61,
    "bytes": 265146,
    "traffic": "-18_9.p5r"
+  },
+  "-13_9": {
+   "i": -13,
+   "j": 9,
+   "file": "-13_9.p5t",
+   "region": "osborne_park",
+   "hmin": 15.46,
+   "hmax": 71.22,
+   "bytes": 221023,
+   "traffic": "-13_9.p5r"
+  },
+  "-12_9": {
+   "i": -12,
+   "j": 9,
+   "file": "-12_9.p5t",
+   "region": "osborne_park",
+   "hmin": 12.81,
+   "hmax": 38.56,
+   "bytes": 260905,
+   "traffic": "-12_9.p5r"
+  },
+  "-11_9": {
+   "i": -11,
+   "j": 9,
+   "file": "-11_9.p5t",
+   "region": "osborne_park",
+   "hmin": 10.55,
+   "hmax": 36.61,
+   "bytes": 522375,
+   "traffic": "-11_9.p5r"
+  },
+  "-10_9": {
+   "i": -10,
+   "j": 9,
+   "file": "-10_9.p5t",
+   "region": "osborne_park",
+   "hmin": 10.29,
+   "hmax": 32.63,
+   "bytes": 353991,
+   "traffic": "-10_9.p5r"
+  },
+  "-9_9": {
+   "i": -9,
+   "j": 9,
+   "file": "-9_9.p5t",
+   "region": "osborne_park",
+   "hmin": 14.02,
+   "hmax": 39.2,
+   "bytes": 228234,
+   "traffic": "-9_9.p5r"
+  },
+  "-8_9": {
+   "i": -8,
+   "j": 9,
+   "file": "-8_9.p5t",
+   "region": "osborne_park",
+   "hmin": 17.86,
+   "hmax": 40.35,
+   "bytes": 230754,
+   "traffic": "-8_9.p5r"
+  },
+  "-7_9": {
+   "i": -7,
+   "j": 9,
+   "file": "-7_9.p5t",
+   "region": "osborne_park",
+   "hmin": 16.12,
+   "hmax": 44.06,
+   "bytes": 340121,
+   "traffic": "-7_9.p5r"
+  },
+  "-6_9": {
+   "i": -6,
+   "j": 9,
+   "file": "-6_9.p5t",
+   "region": "osborne_park",
+   "hmin": 18.51,
+   "hmax": 32.97,
+   "bytes": 200278,
+   "traffic": "-6_9.p5r"
+  },
+  "-5_9": {
+   "i": -5,
+   "j": 9,
+   "file": "-5_9.p5t",
+   "region": "osborne_park",
+   "hmin": 20.27,
+   "hmax": 67.64,
+   "bytes": 275814,
+   "traffic": "-5_9.p5r"
+  },
+  "16_9": {
+   "i": 16,
+   "j": 9,
+   "file": "16_9.p5t",
+   "region": "guildford",
+   "hmin": 17.09,
+   "hmax": 36.4,
+   "bytes": 273546,
+   "traffic": "16_9.p5r"
+  },
+  "17_9": {
+   "i": 17,
+   "j": 9,
+   "file": "17_9.p5t",
+   "region": "guildford",
+   "hmin": 12.32,
+   "hmax": 37.39,
+   "bytes": 356904,
+   "traffic": "17_9.p5r"
+  },
+  "18_9": {
+   "i": 18,
+   "j": 9,
+   "file": "18_9.p5t",
+   "region": "guildford",
+   "hmin": 9.66,
+   "hmax": 38.02,
+   "bytes": 358982,
+   "traffic": "18_9.p5r"
+  },
+  "19_9": {
+   "i": 19,
+   "j": 9,
+   "file": "19_9.p5t",
+   "region": "guildford",
+   "hmin": 5.76,
+   "hmax": 25.24,
+   "bytes": 247095,
+   "traffic": "19_9.p5r"
+  },
+  "20_9": {
+   "i": 20,
+   "j": 9,
+   "file": "20_9.p5t",
+   "region": "guildford",
+   "hmin": -2.5,
+   "hmax": 19.31,
+   "bytes": 157690,
+   "traffic": "20_9.p5r"
+  },
+  "21_9": {
+   "i": 21,
+   "j": 9,
+   "file": "21_9.p5t",
+   "region": "guildford",
+   "hmin": -2.5,
+   "hmax": 22.99,
+   "bytes": 219227,
+   "traffic": "21_9.p5r"
+  },
+  "22_9": {
+   "i": 22,
+   "j": 9,
+   "file": "22_9.p5t",
+   "region": "guildford",
+   "hmin": 0.59,
+   "hmax": 23.47,
+   "bytes": 181157,
+   "traffic": "22_9.p5r"
+  },
+  "23_9": {
+   "i": 23,
+   "j": 9,
+   "file": "23_9.p5t",
+   "region": "guildford",
+   "hmin": 1.44,
+   "hmax": 20.22,
+   "bytes": 191054,
+   "traffic": "23_9.p5r"
   },
   "-19_10": {
    "i": -19,
@@ -4060,6 +4950,156 @@
    "bytes": 277327,
    "traffic": "-18_10.p5r"
   },
+  "-14_10": {
+   "i": -14,
+   "j": 10,
+   "file": "-14_10.p5t",
+   "region": "osborne_park",
+   "hmin": 36.25,
+   "hmax": 77.83,
+   "bytes": 308888,
+   "traffic": "-14_10.p5r"
+  },
+  "-13_10": {
+   "i": -13,
+   "j": 10,
+   "file": "-13_10.p5t",
+   "region": "osborne_park",
+   "hmin": 22.08,
+   "hmax": 68.18,
+   "bytes": 288811,
+   "traffic": "-13_10.p5r"
+  },
+  "-12_10": {
+   "i": -12,
+   "j": 10,
+   "file": "-12_10.p5t",
+   "region": "osborne_park",
+   "hmin": 18.45,
+   "hmax": 40.47,
+   "bytes": 243069,
+   "traffic": "-12_10.p5r"
+  },
+  "-11_10": {
+   "i": -11,
+   "j": 10,
+   "file": "-11_10.p5t",
+   "region": "osborne_park",
+   "hmin": 12.52,
+   "hmax": 29.21,
+   "bytes": 309727,
+   "traffic": "-11_10.p5r"
+  },
+  "-9_10": {
+   "i": -9,
+   "j": 10,
+   "file": "-9_10.p5t",
+   "region": "osborne_park",
+   "hmin": 8.02,
+   "hmax": 32.27,
+   "bytes": 232324,
+   "traffic": "-9_10.p5r"
+  },
+  "-8_10": {
+   "i": -8,
+   "j": 10,
+   "file": "-8_10.p5t",
+   "region": "osborne_park",
+   "hmin": 15.66,
+   "hmax": 41.27,
+   "bytes": 261623,
+   "traffic": "-8_10.p5r"
+  },
+  "-7_10": {
+   "i": -7,
+   "j": 10,
+   "file": "-7_10.p5t",
+   "region": "osborne_park",
+   "hmin": 10.9,
+   "hmax": 33.68,
+   "bytes": 322237,
+   "traffic": "-7_10.p5r"
+  },
+  "-6_10": {
+   "i": -6,
+   "j": 10,
+   "file": "-6_10.p5t",
+   "region": "osborne_park",
+   "hmin": 20.71,
+   "hmax": 44.7,
+   "bytes": 291013,
+   "traffic": "-6_10.p5r"
+  },
+  "-5_10": {
+   "i": -5,
+   "j": 10,
+   "file": "-5_10.p5t",
+   "region": "osborne_park",
+   "hmin": 28.5,
+   "hmax": 50.42,
+   "bytes": 272166,
+   "traffic": "-5_10.p5r"
+  },
+  "19_10": {
+   "i": 19,
+   "j": 10,
+   "file": "19_10.p5t",
+   "region": "guildford",
+   "hmin": -2.5,
+   "hmax": 29.0,
+   "bytes": 262027,
+   "traffic": "19_10.p5r"
+  },
+  "20_10": {
+   "i": 20,
+   "j": 10,
+   "file": "20_10.p5t",
+   "region": "guildford",
+   "hmin": -4.0,
+   "hmax": 24.16,
+   "bytes": 289596,
+   "traffic": "20_10.p5r"
+  },
+  "21_10": {
+   "i": 21,
+   "j": 10,
+   "file": "21_10.p5t",
+   "region": "guildford",
+   "hmin": 3.17,
+   "hmax": 26.13,
+   "bytes": 297430,
+   "traffic": "21_10.p5r"
+  },
+  "22_10": {
+   "i": 22,
+   "j": 10,
+   "file": "22_10.p5t",
+   "region": "guildford",
+   "hmin": 7.41,
+   "hmax": 26.93,
+   "bytes": 384943,
+   "traffic": "22_10.p5r"
+  },
+  "23_10": {
+   "i": 23,
+   "j": 10,
+   "file": "23_10.p5t",
+   "region": "guildford",
+   "hmin": 4.83,
+   "hmax": 27.16,
+   "bytes": 299181,
+   "traffic": "23_10.p5r"
+  },
+  "24_10": {
+   "i": 24,
+   "j": 10,
+   "file": "24_10.p5t",
+   "region": "guildford",
+   "hmin": 2.89,
+   "hmax": 20.2,
+   "bytes": 190822,
+   "traffic": "24_10.p5r"
+  },
   "-19_11": {
    "i": -19,
    "j": 11,
@@ -4080,6 +5120,136 @@
    "bytes": 289754,
    "traffic": "-18_11.p5r"
   },
+  "-17_11": {
+   "i": -17,
+   "j": 11,
+   "file": "-17_11.p5t",
+   "region": "osborne_park",
+   "hmin": 7.75,
+   "hmax": 21.27,
+   "bytes": 236626,
+   "traffic": "-17_11.p5r"
+  },
+  "-16_11": {
+   "i": -16,
+   "j": 11,
+   "file": "-16_11.p5t",
+   "region": "osborne_park",
+   "hmin": 9.68,
+   "hmax": 59.15,
+   "bytes": 243685,
+   "traffic": "-16_11.p5r"
+  },
+  "-15_11": {
+   "i": -15,
+   "j": 11,
+   "file": "-15_11.p5t",
+   "region": "osborne_park",
+   "hmin": 37.11,
+   "hmax": 58.79,
+   "bytes": 248385,
+   "traffic": "-15_11.p5r"
+  },
+  "-14_11": {
+   "i": -14,
+   "j": 11,
+   "file": "-14_11.p5t",
+   "region": "osborne_park",
+   "hmin": 24.83,
+   "hmax": 56.73,
+   "bytes": 259743,
+   "traffic": "-14_11.p5r"
+  },
+  "-9_11": {
+   "i": -9,
+   "j": 11,
+   "file": "-9_11.p5t",
+   "region": "osborne_park",
+   "hmin": -2.5,
+   "hmax": 30.4,
+   "bytes": 389539,
+   "traffic": "-9_11.p5r"
+  },
+  "-8_11": {
+   "i": -8,
+   "j": 11,
+   "file": "-8_11.p5t",
+   "region": "osborne_park",
+   "hmin": -2.5,
+   "hmax": 23.28,
+   "bytes": 274105,
+   "traffic": "-8_11.p5r"
+  },
+  "-7_11": {
+   "i": -7,
+   "j": 11,
+   "file": "-7_11.p5t",
+   "region": "osborne_park",
+   "hmin": 7.14,
+   "hmax": 28.31,
+   "bytes": 360732,
+   "traffic": "-7_11.p5r"
+  },
+  "-6_11": {
+   "i": -6,
+   "j": 11,
+   "file": "-6_11.p5t",
+   "region": "osborne_park",
+   "hmin": 15.02,
+   "hmax": 31.11,
+   "bytes": 246998,
+   "traffic": "-6_11.p5r"
+  },
+  "-5_11": {
+   "i": -5,
+   "j": 11,
+   "file": "-5_11.p5t",
+   "region": "osborne_park",
+   "hmin": 25.67,
+   "hmax": 52.93,
+   "bytes": 226539,
+   "traffic": "-5_11.p5r"
+  },
+  "20_11": {
+   "i": 20,
+   "j": 11,
+   "file": "20_11.p5t",
+   "region": "guildford",
+   "hmin": -2.5,
+   "hmax": 23.55,
+   "bytes": 120251,
+   "traffic": "20_11.p5r"
+  },
+  "21_11": {
+   "i": 21,
+   "j": 11,
+   "file": "21_11.p5t",
+   "region": "guildford",
+   "hmin": -2.5,
+   "hmax": 10.03,
+   "bytes": 112253,
+   "traffic": "21_11.p5r"
+  },
+  "22_11": {
+   "i": 22,
+   "j": 11,
+   "file": "22_11.p5t",
+   "region": "guildford",
+   "hmin": -4.0,
+   "hmax": 21.14,
+   "bytes": 167240,
+   "traffic": "22_11.p5r"
+  },
+  "23_11": {
+   "i": 23,
+   "j": 11,
+   "file": "23_11.p5t",
+   "region": "guildford",
+   "hmin": 0.69,
+   "hmax": 27.52,
+   "bytes": 194033,
+   "traffic": "23_11.p5r"
+  },
   "-19_12": {
    "i": -19,
    "j": 12,
@@ -4099,6 +5269,56 @@
    "hmax": 41.82,
    "bytes": 310501,
    "traffic": "-18_12.p5r"
+  },
+  "-9_12": {
+   "i": -9,
+   "j": 12,
+   "file": "-9_12.p5t",
+   "region": "osborne_park",
+   "hmin": 11.2,
+   "hmax": 33.49,
+   "bytes": 392772,
+   "traffic": "-9_12.p5r"
+  },
+  "-8_12": {
+   "i": -8,
+   "j": 12,
+   "file": "-8_12.p5t",
+   "region": "osborne_park",
+   "hmin": 8.19,
+   "hmax": 26.07,
+   "bytes": 292921,
+   "traffic": "-8_12.p5r"
+  },
+  "-7_12": {
+   "i": -7,
+   "j": 12,
+   "file": "-7_12.p5t",
+   "region": "osborne_park",
+   "hmin": 7.14,
+   "hmax": 34.38,
+   "bytes": 332969,
+   "traffic": "-7_12.p5r"
+  },
+  "-6_12": {
+   "i": -6,
+   "j": 12,
+   "file": "-6_12.p5t",
+   "region": "osborne_park",
+   "hmin": 10.95,
+   "hmax": 32.1,
+   "bytes": 271033,
+   "traffic": "-6_12.p5r"
+  },
+  "-5_12": {
+   "i": -5,
+   "j": 12,
+   "file": "-5_12.p5t",
+   "region": "osborne_park",
+   "hmin": 21.48,
+   "hmax": 40.96,
+   "bytes": 255440,
+   "traffic": "-5_12.p5r"
   },
   "-20_13": {
    "i": -20,
@@ -4202,7 +5422,7 @@
  "spawn": {
   "position": [
    -12.33,
-   22.94,
+   22.73,
    23.04
   ],
   "yaw": -3.7001,
@@ -4264,6 +5484,14 @@
    -1737.6,
    8998.4
   ],
+  "Ascot": [
+   6727.1,
+   -807.2
+  ],
+  "Ashfield": [
+   7929.8,
+   -3277.4
+  ],
   "Attadale": [
    -4872.0,
    8802.4
@@ -4272,13 +5500,25 @@
    -3228.3,
    -8323.5
   ],
+  "Bassendean": [
+   8981.9,
+   -4574.0
+  ],
   "Bateman": [
    -629.9,
    12149.5
   ],
+  "Bayswater": [
+   5835.6,
+   -3197.0
+  ],
   "Beaconsfield": [
    -8057.2,
    13688.1
+  ],
+  "Bedford": [
+   3557.6,
+   -3975.1
   ],
   "Bicton": [
    -6426.9,
@@ -4364,6 +5604,14 @@
    4624.6,
    4244.5
   ],
+  "Eden Hill": [
+   8509.0,
+   -6087.3
+  ],
+  "Embleton": [
+   5342.7,
+   -4677.4
+  ],
   "Floreat": [
    -5669.2,
    -748.6
@@ -4371,6 +5619,10 @@
   "Glendalough": [
    -3267.9,
    -2913.5
+  ],
+  "Guildford": [
+   11002.6,
+   -5257.7
   ],
   "Gwelup": [
    -5168.3,
@@ -4387,6 +5639,10 @@
   "Hilton": [
    -6437.4,
    13538.4
+  ],
+  "Inglewood": [
+   2798.7,
+   -3006.1
   ],
   "Innaloo": [
    -5498.4,
@@ -4443,6 +5699,10 @@
   "Menora": [
    656.6,
    -2820.8
+  ],
+  "Morley": [
+   4651.3,
+   -5822.3
   ],
   "Mosman Park": [
    -8517.8,
@@ -4512,6 +5772,10 @@
    -8204.1,
    5878.2
   ],
+  "Perth Airport": [
+   10037.3,
+   -1371.4
+  ],
   "Perth Cultural Centre": [
    683.7,
    368.7
@@ -4519,6 +5783,10 @@
   "Prawn Bay": [
    -9006.5,
    10148.8
+  ],
+  "Redcliffe": [
+   8331.8,
+   -719.8
   ],
   "Rivervale": [
    5749.8,
@@ -4543,6 +5811,10 @@
   "Shenton Park": [
    -3780.7,
    1502.9
+  ],
+  "South Guildford": [
+   11554.4,
+   -3914.6
   ],
   "South Perth": [
    947.4,
@@ -4618,7 +5890,7 @@
   "name": "15 Little Shenton Lane",
   "position": [
    -8.018,
-   22.127,
+   22.085,
    -1.231
   ],
   "yaw": 1.07931,
@@ -4629,7 +5901,7 @@
    "id": "little_shenton_lane",
    "position": [
     -1.37,
-    22.13,
+    22.09,
     -0.73
    ],
    "yaw": 1.0793,
@@ -4734,6 +6006,17 @@
    "yaw": 0.2878,
    "name": "Scarborough Beach",
    "suburb": "Scarborough"
+  },
+  {
+   "id": "guildford_antiques",
+   "position": [
+    11141.84,
+    11.65,
+    -5136.16
+   ],
+   "yaw": -0.2537,
+   "name": "James Street antiques",
+   "suburb": "Guildford"
   }
  ],
  "workshops": [
@@ -4741,7 +6024,7 @@
    "id": "home_carport",
    "position": [
     -25.57,
-    22.13,
+    22.09,
     -12.1
    ],
    "yaw": 1.0793,

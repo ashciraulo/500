@@ -14,7 +14,7 @@ from osmium.filter import KeyFilter
 from .common import CACHE_DIR, Projector
 
 KEYS = ("highway", "building", "building:part", "landuse", "leisure", "natural",
-        "waterway", "railway", "water", "amenity", "man_made", "place", "area:highway")
+        "waterway", "railway", "water", "amenity", "man_made", "place", "area:highway", "route")
 
 # Tag keys kept on features (everything else is dropped to keep the cache small).
 KEEP = {"highway", "building", "building:part", "landuse", "leisure", "natural", "waterway",
@@ -25,7 +25,10 @@ KEEP = {"highway", "building", "building:part", "landuse", "leisure", "natural",
         "area", "surface", "historic", "heritage", "parking", "golf", "sport", "covered",
         "location", "level", "junction", "lit", "leaf_type", "genus", "species", "denotation",
         "gauge", "usage", "construction", "disused", "tracks", "access", "type", "maxspeed",
-        "lanes:forward", "lanes:backward", "motor_vehicle"}
+        "lanes:forward", "lanes:backward", "motor_vehicle", "parking_space", "capacity",
+        "orientation"}
+# Prefixes kept as well (street parking: parking:left=lane, parking:both:orientation=...).
+KEEP_PREFIX = ("parking:",)
 
 
 @dataclass
@@ -52,13 +55,15 @@ class Features:
     named_nodes: list = field(default_factory=list)
     # Traffic control and transit nodes: (id, tags, e, n).
     control_nodes: list = field(default_factory=list)
+    # route=bus relations: (id, ref, name, colour, [way ids in member order]).
+    bus_routes: list = field(default_factory=list)
 
 
 CONTROL = ("traffic_signals", "give_way", "stop", "bus_stop")
 
 
 def _keep(tags) -> dict:
-    return {t.k: t.v for t in tags if t.k in KEEP}
+    return {t.k: t.v for t in tags if t.k in KEEP or t.k.startswith(KEEP_PREFIX)}
 
 
 def _linear_way(tags) -> bool:
@@ -77,7 +82,7 @@ def _area_way(tags) -> bool:
 
 def extract(pbf: Path, proj: Projector, bbox_lonlat: tuple, use_cache: bool = True) -> Features:
     """bbox_lonlat = (lon0, lat0, lon1, lat1)."""
-    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 5)).encode()).hexdigest()[:16]
+    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 7)).encode()).hexdigest()[:16]
     cache = CACHE_DIR / f"features_{key}.pkl"
     if use_cache and cache.exists():
         with open(cache, "rb") as f:
@@ -121,6 +126,13 @@ def extract(pbf: Path, proj: Projector, bbox_lonlat: tuple, use_cache: bool = Tr
             e, n = proj.fwd(ll[:, 0], ll[:, 1])
             feats.ways.append(Way(o.id, _keep(o.tags), np.array([n.ref for n in o.nodes], dtype=np.int64),
                                   np.column_stack([e, n])))
+        elif o.is_relation():
+            t = o.tags
+            if t.get("type") == "route" and t.get("route") == "bus":
+                ways = [m.ref for m in o.members if m.type == "w" and m.role in ("", "forward", "backward")]
+                if ways:
+                    feats.bus_routes.append((o.id, t.get("ref", ""), t.get("name", ""),
+                                             t.get("colour", ""), ways))
         elif o.is_area():
             if not _area_way(o.tags):
                 continue

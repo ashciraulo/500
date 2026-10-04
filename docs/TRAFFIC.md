@@ -130,6 +130,9 @@ World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 }
 ```
 
+The importer pushes the two sides of a divided road apart where OSM draws
+them closer than their lanes need, so oncoming cars don't overlap.
+
 `give_way` and `stop` tags on a node within 35 m of a junction apply to that
 junction's approach on that road, which is how OSM usually tags them.
 

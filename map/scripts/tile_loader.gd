@@ -6,7 +6,8 @@ extends RefCounted
 ## `make_collision()`), because the physics server isn't thread-safe by default.
 
 const FORMAT := 1
-const MAGIC := "P5TZ"
+const MAGIC := "P5TB"  # brotli
+const MAGIC_ZLIB := "P5TZ"  # older tiles
 const POS_SCALE := 1.0 / 32.0
 const NRM_SCALE := 1.0 / 127.0
 
@@ -46,10 +47,14 @@ class TileResult:
 
 static func read(path: String) -> Dictionary:
 	var bytes := FileAccess.get_file_as_bytes(path)
-	if bytes.size() < 8 or bytes.slice(0, 4).get_string_from_ascii() != MAGIC:
+	if bytes.size() < 8:
+		return {}
+	var magic := bytes.slice(0, 4).get_string_from_ascii()
+	if magic != MAGIC and magic != MAGIC_ZLIB:
 		return {}
 	var size := bytes.decode_u32(4)
-	var raw := bytes.slice(8).decompress(size, FileAccess.COMPRESSION_DEFLATE)
+	var mode := FileAccess.COMPRESSION_BROTLI if magic == MAGIC else FileAccess.COMPRESSION_DEFLATE
+	var raw := bytes.slice(8).decompress(size, mode)
 	if raw.size() != size:
 		return {}
 	var data: Variant = bytes_to_var(raw)

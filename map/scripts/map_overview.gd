@@ -5,10 +5,14 @@ extends MeshInstance3D
 ## tools/osm_import into map/tiles/overview.p5o.
 
 const SHADER := preload("res://map/shaders/overview.gdshader")
+const TOWER_SHADER := preload("res://map/shaders/overview_towers.gdshader")
 
 ## Sits a little under the real ground so it never pokes through tiles.
 @export var sink := 1.2
 @export var near_cut := 750.0
+
+## The skyline blocks (null when the backdrop has none).
+var towers: MeshInstance3D
 
 
 func load_from(path: String) -> bool:
@@ -62,4 +66,37 @@ func load_from(path: String) -> bool:
 	array_mesh.surface_set_material(0, material)
 	mesh = array_mesh
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if data.has("tower_pos") and (data.tower_pos as PackedVector3Array).size() > 0:
+		_build_towers(data)
 	return true
+
+
+## Skyline material, for MapStreamer's day/night changes.
+func tower_material() -> ShaderMaterial:
+	return towers.mesh.surface_get_material(0) as ShaderMaterial if towers else null
+
+
+func _build_towers(data: Dictionary) -> void:
+	var pos: PackedVector3Array = data.tower_pos
+	var col_bytes: PackedByteArray = data.tower_col
+	var colors := PackedColorArray()
+	colors.resize(pos.size())
+	for i in pos.size():
+		var o := i * 4
+		colors[i] = Color8(col_bytes[o], col_bytes[o + 1], col_bytes[o + 2], col_bytes[o + 3])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = pos
+	arrays[Mesh.ARRAY_TEX_UV] = data.tower_uv
+	arrays[Mesh.ARRAY_COLOR] = colors
+	var tower_mesh := ArrayMesh.new()
+	tower_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var material := ShaderMaterial.new()
+	material.shader = TOWER_SHADER
+	material.set_shader_parameter("near_cut", near_cut)
+	tower_mesh.surface_set_material(0, material)
+	towers = MeshInstance3D.new()
+	towers.name = "Towers"
+	towers.mesh = tower_mesh
+	towers.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(towers)

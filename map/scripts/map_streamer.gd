@@ -41,6 +41,7 @@ var _results: Dictionary = {}  # Vector2i -> TileResult (finished on a worker)
 var _mutex := Mutex.new()
 var _night := 0.0
 var _emissive: Array[ShaderMaterial] = []
+const GLOSSY_AT_NIGHT: Array[StringName] = [&"water", &"facade_glass", &"rail_steel"]
 var _light_pool: Array[OmniLight3D] = []
 var _light_timer := 0.0
 var _ready_emitted := false
@@ -196,6 +197,28 @@ func set_night_amount(amount: float) -> void:
 	if _overview and _overview.mesh:
 		var m := _overview.mesh.surface_get_material(0) as ShaderMaterial
 		m.set_shader_parameter("brightness", lerpf(0.95, 0.07, amount))
+		var tm := _overview.tower_material()
+		if tm:
+			tm.set_shader_parameter("brightness", lerpf(0.95, 0.09, amount))
+			tm.set_shader_parameter("night", amount)
+	# Glossy surfaces (the river, glass towers, rails) reflect a daylight
+	# sky at night (the sky's reflection map lags the night sky), so they go
+	# matte and darker as night falls.
+	for gloss_name: StringName in GLOSSY_AT_NIGHT:
+		var m := _materials.get(gloss_name) as ShaderMaterial
+		if m == null:
+			continue
+		# (A null meta value erases the key, so unset parameters store their default.)
+		if not m.has_meta("day_roughness"):
+			var r: Variant = m.get_shader_parameter("roughness")
+			var mt: Variant = m.get_shader_parameter("metallic")
+			m.set_meta("day_roughness", 0.4 if r == null else float(r))
+			m.set_meta("day_metallic", 0.0 if mt == null else float(mt))
+		m.set_shader_parameter("roughness", lerpf(float(m.get_meta("day_roughness")), 0.95, amount))
+		m.set_shader_parameter("metallic", lerpf(float(m.get_meta("day_metallic")), 0.0, amount))
+	var water := _materials.get(&"water") as ShaderMaterial
+	if water:
+		water.set_shader_parameter("albedo_color", Color.WHITE.lerp(Color(0.35, 0.4, 0.5), amount))
 
 
 ## Build the tiles around `pos` with colliders right now (blocking).

@@ -8,6 +8,7 @@ from __future__ import annotations
 import struct
 import zlib
 
+import brotli
 import numpy as np
 
 NIL, BOOL, INT, FLOAT, STRING = 0, 1, 2, 3, 4
@@ -16,7 +17,8 @@ PACKED_BYTE, PACKED_INT32, PACKED_INT64, PACKED_FLOAT32 = 29, 30, 31, 32
 PACKED_VECTOR2, PACKED_VECTOR3 = 35, 36
 FLAG_64 = 1 << 16
 
-MAGIC = b"P5TZ"  # tile container: magic, u32 uncompressed size, zlib stream
+MAGIC = b"P5TB"  # tile container: magic, u32 uncompressed size, brotli stream
+MAGIC_ZLIB = b"P5TZ"  # older tiles: same layout with a zlib stream (still read)
 
 
 def _pad4(b: bytes) -> bytes:
@@ -62,11 +64,25 @@ def encode(v) -> bytes:
     raise TypeError(f"cannot encode {type(v)}")
 
 
-def pack_tile(data: dict, level: int = 9) -> bytes:
+def pack_tile(data: dict) -> bytes:
     raw = encode(data)
-    return MAGIC + struct.pack("<I", len(raw)) + zlib.compress(raw, level)
+    # Brotli at full quality is about a quarter smaller than zlib -9 on tiles,
+    # and Godot decompresses it natively.
+    return MAGIC + struct.pack("<I", len(raw)) + brotli.compress(raw, quality=11, lgwin=24)
+
+
+def unpack_tile(blob: bytes) -> bytes:
+    """The raw Variant bytes of a container, either compression."""
+    size = struct.unpack("<I", blob[4:8])[0]
+    if blob[:4] == MAGIC_ZLIB:
+        raw = zlib.decompress(blob[8:])
+    else:
+        assert blob[:4] == MAGIC
+        raw = brotli.decompress(blob[8:])
+    assert len(raw) == size
+    return raw
 
 
 def unpack_header(blob: bytes) -> int:
-    assert blob[:4] == MAGIC
+    assert blob[:4] in (MAGIC, MAGIC_ZLIB)
     return struct.unpack("<I", blob[4:8])[0]

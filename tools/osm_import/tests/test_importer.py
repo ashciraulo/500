@@ -14,7 +14,7 @@ from osm_import.heights import compute_node_heights
 from osm_import.meshbuild import CellGrid, MeshBuilder, Surface, drape, ribbon, triangulate, walls
 from osm_import.terrain import HeightField
 from osm_import.tilewriter import encode_surface
-from osm_import.variant import MAGIC, encode, pack_tile
+from osm_import.variant import MAGIC, encode, pack_tile, unpack_tile
 
 
 def flat_field(h=10.0, size=1000.0, step=5.0):
@@ -30,8 +30,9 @@ def test_variant_packed_arrays_and_container():
     assert encode("ab") == struct.pack("<II", 4, 2) + b"ab\0\0"
     blob = pack_tile({"a": 1})
     assert blob[:4] == MAGIC
-    size = struct.unpack("<I", blob[4:8])[0]
-    assert len(zlib.decompress(blob[8:])) == size
+    assert unpack_tile(blob) == encode({"a": 1})
+    old = b"P5TZ" + blob[4:8] + zlib.compress(encode({"a": 1}))
+    assert unpack_tile(old) == encode({"a": 1})
 
 
 def test_triangulate_is_ccw_and_covers_area():
@@ -145,3 +146,71 @@ def test_traffic_lanes_and_access():
     assert drives({"highway": "residential"})
     assert not drives({"highway": "residential", "access": "private"})
     assert not drives({"highway": "service"})
+
+
+def test_carriageways_pushed_apart():
+    from osm_import.traffic import TrafficNetwork
+
+    def road(rid, a, b, z):
+        xs = np.linspace(0, 100, 11) if a < b else np.linspace(100, 0, 11)
+        pts = np.column_stack([xs, np.zeros(11), np.full(11, z)]).astype(np.float32)
+        return {"id": rid, "a": a, "b": b, "pts": pts, "oneway": True, "roundabout": False,
+                "lanes_fwd": 2, "name": "Barrack Street"}
+
+    net = TrafficNetwork.__new__(TrafficNetwork)
+    net.roads = [road("w1/0", 1, 2, 0.0), road("w2/0", 4, 3, 5.0)]  # 5 m apart, 4 lanes
+    net.pos = {1: (0, 0, 0), 2: (100, 0, 0), 3: (0, 0, 5), 4: (100, 0, 5)}
+    assert net.separate_carriageways() == 2
+    mid = [float(r["pts"][len(r["pts"]) // 2, 2]) for r in net.roads]
+    assert mid[1] - mid[0] >= 2 * 3.2 + 0.5  # lanes clear each other
+    # A different street alongside is left alone.
+    net.roads = [road("w1/0", 1, 2, 0.0), {**road("w2/0", 4, 3, 5.0), "name": "Ramp"}]
+    assert net.separate_carriageways() == 0
+
+
+def test_parking_bay_rows_split():
+    from types import SimpleNamespace
+    from shapely.geometry import box
+    from osm_import.parking import Parking
+
+    class HF:
+        e0 = n0 = -100.0
+        step = 10.0
+        H = np.zeros((21, 21))
+
+        def sample(self, e, n):
+            return 0.0
+
+    world = SimpleNamespace(hf=HF(), ways=[], parking=[
+        SimpleNamespace(tags={"amenity": "parking_space"}, geom=box(0, 0, 25, 5)),   # 10 bays
+        SimpleNamespace(tags={"amenity": "parking_space"}, geom=box(40, 0, 42.5, 5)),  # one bay
+        SimpleNamespace(tags={"amenity": "parking", "parking": "surface", "capacity": "40"},
+                        geom=box(-50, -50, -20, -20)),
+    ])
+    pk = Parking(world, [])
+    assert len(pk.spaces) == 11
+    assert pk.spaces[-1]["length"] == 5.0 and pk.spaces[-1]["width"] == 2.5
+    assert len(pk.lots) == 1 and pk.lots[0]["capacity"] == 40
+    tile = pk.tile_data((-100, -100, 100, 100))
+    lot_bays = [p for p in tile if p["kind"] == "lot"]
+    assert len(lot_bays) >= 11 + 24  # the 11 bays plus a 30 x 30 m car park: three rows of ten
+    assert set(tile[0]) == {"pos", "yaw", "kind"} and tile[0]["pos"].shape == (3,)
+
+
+def test_roads_level_with_home_at_its_edge():
+    from osm_import.build import HOME_RAMP, World, _split_at_edge
+    fp = box(-10, -10, 10, 10)
+    # A lane 2 m below the home's ground runs through the block.
+    w = Way(7, {"highway": "service"}, np.array([1, 2, 3], dtype=np.int64),
+            np.array([[-80.0, 0.0], [0.0, 0.0], [80.0, 0.0]]))
+    s = _split_at_edge(w, fp)
+    assert len(s.nodes) == 5 and np.allclose(s.coords[1], [-10, 0]) and np.allclose(s.coords[3], [10, 0])
+    assert len(set(int(n) for n in s.nodes)) == 5
+    world = World.__new__(World)
+    world.home = SimpleNamespace(footprint=fp, h=22.0)
+    node_h = {"road": {int(n): 20.0 for n in s.nodes}}
+    world._level_to_home([s], node_h)
+    h = node_h["road"]
+    assert np.isclose(h[int(s.nodes[1])], 22.0) and np.isclose(h[2], 22.0)
+    assert np.isclose(h[1], 20.0)  # past the ramp, its own height
+    assert HOME_RAMP < 70

@@ -41,6 +41,15 @@ func _process(_delta: float) -> bool:
 			{name = "fremantle_markets", wait = 300, cam = [Vector3(-9927, 0, 12300), Vector3(-9792, 0, 12461)], fog = 0.003, above = 3.0},
 			{name = "cottesloe_aerial", wait = 300, cam = [Vector3(-9288, 157, 5385), Vector3(-9688, 7, 5385)], fog = 0.0012},
 			{name = "scarborough_beach", wait = 300, cam = [Vector3(-9213, 0, -5773), Vector3(-9273, 0, -5975)], fog = 0.003, above = 3.0},
+			{name = "elizabeth_quay", wait = 300, cam = [Vector3(420, 0, 1560), Vector3(340, 25, 1360)], fog = 0.002, above = 18.0},
+			{name = "matagarup_bridge", wait = 300, cam = [Vector3(2380, 0, 960), Vector3(2580, 20, 760)], fog = 0.002, above = 8.0},
+			{name = "skyline_south_perth", wait = 300, cam = [Vector3(197, 0, 2442), Vector3(420, 70, 1250)], fog = 0.0012, above = 3.0},
+			{name = "skyline_kings_park", wait = 300, cam = [Vector3(-1500, 0, 1250), Vector3(600, 80, 1250)], fog = 0.0006, above = 30.0},
+			{name = "night_skyline_kings_park", wait = 300, hour = 21.5, cam = [Vector3(-1500, 0, 1250), Vector3(600, 80, 1250)], fog = 0.0006, above = 30.0},
+			{name = "night_skyline", wait = 300, hour = 21.5, cam = [Vector3(197, 0, 2442), Vector3(420, 70, 1250)], fog = 0.0012, above = 3.0},
+			{name = "beaufort_st_mt_lawley", wait = 300, cam = [Vector3(1473, 0, -1827), Vector3(1663, 0, -2159)], fog = 0.003, above = 3.0},
+			{name = "osborne_park", wait = 300, cam = [Vector3(-3251, 0, -5100), Vector3(-3451, 20, -5400)], fog = 0.0015, above = 60.0},
+			{name = "guildford_james_st", wait = 300, cam = [Vector3(10950, 0, -5320), Vector3(11142, 0, -5136)], fog = 0.003, above = 3.0},
 			{name = "night_james_st", wait = 300, hour = 22.0, cam = [Vector3(-125, 0, 2), Vector3(60, 0, 100)], fog = 0.003, above = 5.0},
 			{name = "night_aerial", wait = 240, hour = 22.0, cam = [Vector3(-100, 260, -450), Vector3(350, 20, 900)], fog = 0.0008},
 		]
@@ -54,8 +63,8 @@ func _process(_delta: float) -> bool:
 		quit(0)
 		return true
 	var shot: Dictionary = _shots[_shot]
-	if _frame == 1 and shot.has("hour"):
-		root.get_node("GameClock").set_time(float(shot.hour))
+	if _frame == 1:
+		root.get_node("GameClock").set_time(float(shot.get("hour", float(_arg("hour", "16.5")))))
 	if _frame == 1 and shot.has("cam"):
 		_place_camera(shot.cam[0], shot.cam[1], shot.get("fog", 0.003))
 	if shot.has("above") and _frame % 40 == 0:
