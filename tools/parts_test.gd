@@ -102,6 +102,7 @@ func _found_parts() -> void:
 
 
 func _classic() -> void:
+	_check(not _car.has_folding_roof() and not _car.toggle_roof(), "the Pop's roof doesn't fold")
 	var pop_size: Vector3 = _car.body_size
 	_car.load_vehicle_state({"car_id": "classic_nuova"})
 	_check(_car.car_id == "classic_nuova", "switched to the Nuova")
@@ -112,6 +113,15 @@ func _classic() -> void:
 	_check(_wheel_path().contains("abarth_classic"), "Abarth wheels show on the Nuova (%s)" % _wheel_path())
 	_car.install_part(catalogue.get_part(&"exhaust_abarth_classic"))
 	_check(_car.get_node("Body").get_node_or_null(^"Part_exhaust") != null, "the Abarth tailpipe shows on the Nuova")
+	if _car.has_folding_roof():  # Once the models carry Roof_Open / Roof_Closed.
+		var open_roof := _car.get_node("Body").find_child("Roof_Open", true, false) as Node3D
+		_check(not open_roof.visible, "the Nuova's canvas starts closed")
+		_check(_car.toggle_roof() and open_roof.visible, "and rolls back")
+		var state: Dictionary = _car.vehicle_state()
+		_check(state.get("roof_open", false), "an open roof is saved")
+		_car.toggle_roof()
+		_car.load_vehicle_state(state)
+		_check(_car.roof_open and open_roof.visible, "and comes back open")
 	_car.load_vehicle_state({"car_id": "pop_12"})
 
 

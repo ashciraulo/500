@@ -32,6 +32,9 @@ var _swings: Array[Node3D] = []
 var _last_velocity := Vector3.ZERO
 var _sway := Vector2.ZERO
 var _sway_speed := Vector2.ZERO
+var _doors := {}  # "L" / "R" -> [door, rest basis, open basis]
+var _door_amount := {}  # side -> 0 (shut) .. 1 (open)
+var _door_tweens := {}
 var roof_open := false
 
 
@@ -49,6 +52,11 @@ func _ready() -> void:
 	if _steering_wheel:
 		_steering_rest = _steering_wheel.basis
 	_brake_lights = get_parent().get_node_or_null("BrakeLights")
+	for side: String in ["L", "R"]:
+		var door := find_child("Door_" + side, true, false) as Node3D
+		var open := find_child("DoorOpen_" + side, true, false) as Node3D
+		if door and open:
+			_doors[side] = [door, door.basis, open.basis]
 	set_roof_open(roof_open)
 
 
@@ -78,6 +86,30 @@ func _process(_delta: float) -> void:
 	_glow("LampHead", Color(1.0, 0.95, 0.82), head_glow if car.headlights_on else 0.0)
 	var tail := (brake_glow if braking else 0.0) + (tail_glow if car.headlights_on else 0.0)
 	_glow("LampTail", Color(1.0, 0.1, 0.06), tail)
+
+
+## Swing a door ("L" or "R") open or shut, from its rest pose to its
+## DoorOpen_* pose. False when the car has no such door (the Jolly).
+func set_door_open(side: String, open: bool, seconds := 0.45) -> bool:
+	if not _doors.has(side):
+		return false
+	if _door_tweens.has(side) and (_door_tweens[side] as Tween).is_valid():
+		(_door_tweens[side] as Tween).kill()
+	var tween := create_tween()
+	tween.tween_method(_set_door.bind(side), float(_door_amount.get(side, 0.0)), 1.0 if open else 0.0, seconds) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT if open else Tween.EASE_IN)
+	_door_tweens[side] = tween
+	return true
+
+
+func is_door_open(side: String) -> bool:
+	return float(_door_amount.get(side, 0.0)) > 0.01
+
+
+func _set_door(amount: float, side: String) -> void:
+	_door_amount[side] = amount
+	var d: Array = _doors[side]
+	(d[0] as Node3D).basis = (d[1] as Basis).slerp(d[2] as Basis, amount)
 
 
 ## Respray. A fresh coat drops the sun-faded wear texture.

@@ -34,8 +34,23 @@ const MASK := 1 | 2
 const CAR_REACH := 2.2
 ## Seconds F has to be held in the car to get out.
 const HOLD_TO_GET_OUT := 0.45
+## Getting in: the door opens, you sit, it shuts, belt on, key in and turned,
+## then the car is yours (seconds from pressing F).
+const IN_SIT := 0.5
+const IN_DOOR_SHUT := 1.0
+const IN_BELT := 1.4
+const IN_KEY := 1.75
+const IN_DRIVE := 2.1
+## Getting out: belt off and the engine off at once, then the key out, the
+## door, you step out, and the door shuts behind you.
+const OUT_KEY := 0.3
+const OUT_DOOR := 0.55
+const OUT_STEP := 1.0
+const OUT_DOOR_SHUT := 1.5
 
 var in_car := true
+## Tells the audio hooks this plays the car's doors, belt and key itself.
+var plays_car_sounds := true
 
 var _car: CarController
 var _rig: Node3D
@@ -241,20 +256,43 @@ func teleport(feet: Vector3, target: Vector3) -> void:
 # ---------------------------------------------------------------------------
 
 func get_out() -> void:
-	if not _car or not in_car:
+	if not _car or not in_car or _busy:
 		return
 	var spot := _exit_spot()
 	if spot == Vector3.INF:
 		_note("No room to open the door.")
 		return
-	in_car = false
+	_busy = true
 	_car.player_controlled = false
 	_car.throttle_input = 0.0
 	_car.brake_input = 0.0
 	_car.steer_input = 0.0
 	_car.handbrake_input = 1.0
+	_set_car_sounds_controlled(false)  # The engine winds down.
+	var side := _driver_side()
+	_car_sound("seatbelt", [false])
+	_car_sound("key", ["off"])
+	var t := create_tween()
+	t.tween_interval(OUT_KEY)
+	t.tween_callback(_car_sound.bind("key", ["out"]))
+	t.tween_interval(OUT_DOOR - OUT_KEY)
+	t.tween_callback(func() -> void:
+		_swing_door(side, true)
+		_car_sound("door", [true, false, 1]))
+	t.tween_interval(OUT_STEP - OUT_DOOR)
+	t.tween_callback(func() -> void:
+		var feet := _exit_spot()  # Again: something may have moved in the way.
+		_step_out(spot if feet == Vector3.INF else feet))
+	t.tween_interval(OUT_DOOR_SHUT - OUT_STEP)
+	t.tween_callback(func() -> void:
+		_swing_door(side, false)
+		_car_sound("door", [false, false, 0]))
+
+
+func _step_out(spot: Vector3) -> void:
+	in_car = false
+	_busy = false
 	_car.is_player_inside = false
-	_set_car_sounds_controlled(false)
 	if _rig:
 		_rig.set_process(false)
 	global_position = spot
@@ -268,14 +306,34 @@ func get_out() -> void:
 
 
 func get_in() -> void:
-	if not _car or in_car:
+	if not _car or in_car or _busy:
 		return
+	_busy = true
+	var side := _driver_side()
+	_swing_door(side, true)
+	_car_sound("door", [true, false, 0])
+	var t := create_tween()
+	t.tween_interval(IN_SIT)
+	t.tween_callback(_sit)
+	t.tween_interval(IN_DOOR_SHUT - IN_SIT)
+	t.tween_callback(func() -> void:
+		_swing_door(side, false)
+		_car_sound("door", [false, false, 1]))
+	t.tween_interval(IN_BELT - IN_DOOR_SHUT)
+	t.tween_callback(_car_sound.bind("seatbelt", [true]))
+	t.tween_interval(IN_KEY - IN_BELT)
+	t.tween_callback(_car_sound.bind("key", ["in"]))
+	t.tween_interval(0.25)
+	t.tween_callback(_car_sound.bind("key", ["turn"]))
+	t.tween_interval(IN_DRIVE - IN_KEY - 0.25)
+	t.tween_callback(_drive)
+
+
+## Into the seat: the driving camera is back, the car not yet started.
+func _sit() -> void:
 	in_car = true
 	_hold_armed = false
 	_set_body_active(false)
-	_car.player_controlled = true
-	_car.handbrake_input = 0.0
-	_set_car_sounds_controlled(true)
 	if _rig:
 		_rig.set_process(true)
 		var cam := _rig.get_node_or_null(^"Camera3D") as Camera3D
@@ -283,12 +341,43 @@ func get_in() -> void:
 			cam.current = true
 		if "mode" in _rig:
 			_car.is_player_inside = _rig.mode == 1
+
+
+func _drive() -> void:
+	_busy = false
+	_car.player_controlled = true
+	_car.handbrake_input = 0.0
+	_set_car_sounds_controlled(true)  # The engine starts.
 	got_in.emit()
 
 
-func _exit_spot() -> Vector3:
+## "R" or "L": the driver's side, from the DriverSeat marker (+X is right).
+func _driver_side() -> String:
 	var seat := _car.get_node_or_null(^"DriverSeat") as Node3D
-	var side := 1.0 if seat == null or seat.position.x >= 0.0 else -1.0
+	return "R" if seat == null or seat.position.x >= 0.0 else "L"
+
+
+func _swing_door(side: String, open: bool) -> void:
+	var body := _car.get_node_or_null(^"Body")
+	if body and body.has_method("set_door_open"):
+		body.set_door_open(side, open)
+
+
+func _car_sound(method: String, args: Array) -> void:
+	var sounds := _car.find_child("CarSounds", true, false)
+	if sounds and sounds.has_method(method):
+		sounds.callv(method, args)
+
+
+func _exit_spot() -> Vector3:
+	# The model's own spot beside the open driver's door, when it has one.
+	var body := _car.get_node_or_null(^"Body")
+	var marker: Node3D = body.find_child("Exit_" + _driver_side(), true, false) as Node3D if body else null
+	if marker:
+		var ground := _ground_at(marker.global_position)
+		if ground != Vector3.INF and _fits(ground):
+			return ground
+	var side := 1.0 if _driver_side() == "R" else -1.0
 	var b := _car.global_basis
 	var base := _car.global_position
 	for offset in [Vector3(side * 1.25, 0, 0.1), Vector3(-side * 1.25, 0, 0.1), Vector3(0, 0, 2.7),

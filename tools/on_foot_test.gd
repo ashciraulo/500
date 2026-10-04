@@ -62,7 +62,12 @@ func _process(delta: float) -> bool:
 				_check(_player.in_car, "a tap of F doesn't get out")
 			if _t > 0.8 and _t - delta <= 0.8:
 				_action("interact", false)
-			if _t > 1.4:
+			if _t > 1.3 and _t - delta <= 1.3:
+				var body := _car.get_node("Body")
+				_check(not body.has_method("is_door_open") or body.is_door_open("R"), "the driver's door opens to get out")
+			if _t > 2.4:
+				var body := _car.get_node("Body")
+				_check(not body.has_method("is_door_open") or not body.is_door_open("R"), "and shuts behind you")
 				var workshop := _main.find_child("Workshop", true, false)
 				_check(workshop == null or not workshop.is_open(), "holding F doesn't open the workshop")
 				_check(not _player.in_car, "got out of the car")
@@ -146,7 +151,13 @@ func _process(delta: float) -> bool:
 				_check(_player._target() == ["car", null], "the car is in reach")
 				_shot("09_back_to_car")
 				_player.interact()
-			if _t > 1.2:
+			if _t > 0.9 and _t - delta <= 0.9:
+				var body := _car.get_node("Body")
+				_check(not body.has_method("is_door_open") or body.is_door_open("R"), "the door opens to get in")
+				_check(not _car.player_controlled, "the car waits for the key")
+			if _t > 3.0:
+				var body := _car.get_node("Body")
+				_check(not body.has_method("is_door_open") or not body.is_door_open("R"), "the door is shut once you're in")
 				_check(_player.in_car, "got back in")
 				_check(_car.player_controlled, "the car drives again")
 				_check(_rig_cam.current, "the driving camera is back")

@@ -125,9 +125,11 @@ func save_game() -> bool:
 
 func save_to(path: String) -> bool:
 	var data := {"version": VERSION, "saved_at": Time.get_datetime_string_from_system()}
-	# Keep sections whose owner isn't loaded right now (e.g. a garage scene).
+	# Keep sections whose owner isn't loaded right now (e.g. a garage scene),
+	# but not the loaded file's version or saved_at.
 	for section in _pending:
-		data[section] = _pending[section]
+		if not data.has(section):
+			data[section] = _pending[section]
 	for section in _sources:
 		var source: Object = _sources[section]
 		if is_instance_valid(source) and source.has_method("save_state"):

@@ -157,6 +157,12 @@ func _run_step() -> bool:
 			_check(is_equal_approx(clock.time_of_day, saved_time), "time of day is restored")
 			_check(Array(_car.get_part_ids()).has("exhaust_sport"), "installed parts are restored")
 			_check(_car.global_position.distance_to(saved_pos) < 1.0, "car position is restored")
+			# Saving again after a load stamps the new time, not the loaded one.
+			save._pending["saved_at"] = "2000-01-01T00:00:00"
+			save.save_to(test_path)
+			var resaved: Variant = JSON.parse_string(FileAccess.get_file_as_string(test_path))
+			_check(resaved is Dictionary and resaved.get("saved_at", "") != "2000-01-01T00:00:00",
+				"saving again updates saved_at")
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
 			var telemetry: Dictionary = _car.get_telemetry()
 			for key in ["rpm", "throttle", "gear", "speed_kmh", "surface", "weather_intensity"]:

@@ -199,7 +199,7 @@ func _process(delta: float) -> bool:
 				_player.teleport(_car.global_position + side, _car.global_position + Vector3.UP * 0.8)
 			elif _t > 0.8 and _t - delta <= 0.8:
 				_player.interact()
-			elif _t > 1.5:
+			elif _t > 3.2:
 				_check(_player.in_car, "got back in the car")
 				_next()
 		11:  # Save, and report.

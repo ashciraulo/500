@@ -97,6 +97,8 @@ const STEP_PROBES: Array[float] = [0.8, 0.55, 0.3]
 ## The highest step a tyre rides up, in tyre radii (a 13 cm kerb is 0.45; the
 ## map's kerbs reach 22 cm where streets slope, and 40 cm is still a wall).
 const STEP_CLIMB := 0.9
+## Fastest you can fold or raise the roof (km/h).
+const ROOF_MAX_KMH := 12.0
 @export var spring_strength := 26000.0
 @export var damper_strength := 2400.0
 @export var anti_roll_strength := 4500.0
@@ -161,6 +163,8 @@ var steer_angle := 0.0
 ## True while the camera is in the cabin (set by CarCameraRig). Audio uses it
 ## to switch to the muffled interior mix.
 var is_player_inside := false
+## The folding roof is back (500C, canvas-topped classics). Saved with the car.
+var roof_open := false
 ## Engine torque multiplier from installed parts.
 var torque_multiplier := 1.0
 ## How much rain hurts grip (1 = stock tyres).
@@ -492,6 +496,36 @@ func toggle_headlights() -> void:
 	_update_lights()
 
 
+## Fold the roof back or put it up, on cars with a folding one. Done by
+## hand, so not at speed. True when it moved.
+func toggle_roof() -> bool:
+	if not has_folding_roof():
+		return false
+	if speed_kmh() > ROOF_MAX_KMH:
+		var hud := get_tree().get_first_node_in_group(&"hud") if is_inside_tree() else null
+		if hud and hud.has_method("toast"):
+			hud.toast("Slow down to fold the roof")
+		return false
+	roof_open = not roof_open
+	_apply_roof()
+	return true
+
+
+func has_folding_roof() -> bool:
+	var body := get_node_or_null("Body")
+	return body != null and body.has_method("set_roof_open") and body.get_node_or_null(^"Roof_Open") != null
+
+
+func _apply_roof() -> void:
+	var body := get_node_or_null("Body")
+	if body == null or not body.has_method("set_roof_open"):
+		return
+	if body.is_node_ready():
+		body.set_roof_open(roof_open)
+	elif not body.ready.is_connected(_apply_roof):
+		body.ready.connect(_apply_roof, CONNECT_ONE_SHOT)
+
+
 ## Put the car back on its wheels a little above where it is now.
 func reset_upright() -> void:
 	var forward := -global_basis.z
@@ -625,6 +659,7 @@ func vehicle_state() -> Dictionary:
 		"dirt": dirt,
 		"paint": paint_color.to_html() if has_custom_paint() else "",
 		"cosmetics": cosmetics.duplicate(true),
+		"roof_open": roof_open,
 	}
 
 
@@ -647,6 +682,8 @@ func load_vehicle_state(data: Dictionary) -> void:
 		set_paint(Color.html(paint))
 	else:
 		_apply_paint()
+	roof_open = bool(data.get("roof_open", false))
+	_apply_roof()
 
 
 func save_state() -> Dictionary:
@@ -779,6 +816,7 @@ func _swap_model(model: String) -> void:
 	add_child(body)
 	move_child(body, index)
 	_fit_rig(body)
+	roof_open = false  # A different car comes with its roof up.
 
 
 ## Fit the wheels and collision to a model that marks its own hubs
@@ -986,7 +1024,7 @@ static func _lower_hull(size: Vector3) -> ConvexPolygonShape3D:
 	var front := size.z * 0.13  # Front overhang slope length.
 	var rear := size.z * 0.1
 	var sill := size.x * 0.06
-	var floor_up := size.y * 0.13  # The floor between the axles clears a 22 cm kerb.
+	var floor_up := size.y * 0.2  # The floor between the axles rides over a 22 cm kerb's lip.
 	var points := PackedVector3Array()
 	for x in [-1.0, 1.0]:
 		points.append(Vector3(x * w, h, -l))
@@ -1064,6 +1102,8 @@ func _read_player_input(delta: float) -> void:
 		toggle_transmission()
 	if Input.is_action_just_pressed("toggle_headlights"):
 		toggle_headlights()
+	if Input.is_action_just_pressed("toggle_roof"):
+		toggle_roof()
 	if Input.is_action_just_pressed("reset_car"):
 		reset_upright()
 
@@ -1157,7 +1197,8 @@ func _update_engine(delta: float) -> float:
 		# Below idle the clutch slips (auto-clutch, no stalling), letting
 		# the engine rev up for a launch.
 		var launch_rpm := idle_rpm + throttle * 1800.0
-		clutch = clampf(wheel_rpm / launch_rpm, 0.0, 1.0)
+		# An electric motor (idle 0) has no clutch: it's always connected.
+		clutch = clampf(wheel_rpm / launch_rpm, 0.0, 1.0) if launch_rpm > 1.0 else 1.0
 		var target := maxf(wheel_rpm, launch_rpm)
 		rpm = lerpf(rpm, target, 1.0 - exp(-20.0 * delta))
 		torque = _torque_at(rpm) * throttle

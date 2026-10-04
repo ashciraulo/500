@@ -6,6 +6,8 @@ extends SceneTree
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/kerb_test.gd -- --no-save
 ##
+## Add car=<id> (an id from data/cars/cars.json) to drive another car.
+##
 ## Exits with code 1 if any check fails.
 
 const KERB := 0.14
@@ -19,6 +21,7 @@ const CASES := [
 	{"name": "a 20 cm kerb, at 30 degrees at 5 km/h", "height": 0.2, "yaw": 0.52, "kmh": 5.0, "over": true},
 	{"name": "a 22 cm kerb, head on at 5 km/h", "height": 0.22, "yaw": 0.0, "kmh": 5.0, "over": true},
 	{"name": "a 22 cm kerb, at 30 degrees at 10 km/h", "height": 0.22, "yaw": 0.52, "kmh": 10.0, "over": true},
+	{"name": "a kerb in the New 500e, head on at 5 km/h", "height": KERB, "yaw": 0.0, "kmh": 5.0, "over": true, "car": "e_500e_2020"},
 	{"name": "a 40 cm wall, head on at 8 km/h", "height": WALL, "yaw": 0.0, "kmh": 8.0, "over": false},
 ]
 
@@ -27,6 +30,7 @@ var _car  # CarController (untyped: a tool script compiles before the autoloads)
 var _case := -1
 var _time := 0.0  # seconds into this case, so any --fixed-fps works
 var _failures: Array[String] = []
+var _slowest := INF  # km/h once up to speed, so a climb that crawls shows up
 
 
 func _process(delta: float) -> bool:
@@ -41,8 +45,11 @@ func _process(delta: float) -> bool:
 			return _finish()
 		_build(CASES[_case])
 		_time = 0.0
+		_slowest = INF
 		return false
 	_time += delta
+	if _time > 3.5 and _time < 12.0:
+		_slowest = minf(_slowest, _car.linear_velocity.length() * 3.6)
 	if _time > 1.0:
 		var target: float = CASES[_case].kmh / 3.6
 		var speed: float = _car.linear_velocity.length()
@@ -62,6 +69,12 @@ func _build(c: Dictionary) -> void:
 	_car.player_controlled = false
 	_car.position = Vector3(0, 0.6, 0)
 	_world.add_child(_car)
+	var car_id: String = c.get("car", "")
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("car="):
+			car_id = arg.trim_prefix("car=")
+	if car_id != "":
+		_car.load_vehicle_state({"car_id": car_id})
 
 
 func _judge() -> void:
@@ -73,6 +86,9 @@ func _judge() -> void:
 	var over: bool = past and up
 	print("    at %s, %.1f km/h" % [_car.global_position, _car.linear_velocity.length() * 3.6])
 	_check(over == c.over, ("rides up " if c.over else "stopped by ") + c.name)
+	if c.over and float(c.yaw) == 0.0:
+		# Slowing on the way up is fine; crawling up at walking pace isn't.
+		_check(_slowest > float(c.kmh) * 0.5, "and doesn't crawl (slowest %.1f km/h)" % _slowest)
 
 
 ## One-sided triangles like the map's tiles: a vertical wall facing the car

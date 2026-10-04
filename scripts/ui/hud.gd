@@ -6,7 +6,7 @@ extends CanvasLayer
 
 const HELP := """W/S or triggers: throttle / brake    A/D or stick: steer    Space / B: handbrake
 E/Q or bumpers: gear up / down    G / Select: manual <-> auto    C / Y: camera
-L: headlights    R / D-pad down: reset car    Mouse click: look around (interior)
+L: headlights    O: roof (convertibles)    R / D-pad down: reset car    Mouse click: look around (interior)
 F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
 F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)
 F / A: use a workshop, servo or spray shop when parked in its bay    P / L3: photo mode
