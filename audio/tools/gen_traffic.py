@@ -542,12 +542,144 @@ def render_people():
     S.save(f"{OUT}/traffic_ferry_wake_loop", ferry_wake_loop(), "lufs:-26", quality=2, rate=32000)
 
 
+
+# --------------------------------------------------------------------------
+# Kerbside: couriers, taxis, hazards and the parking inspector
+# --------------------------------------------------------------------------
+
+
+def hazard_tick_loop() -> np.ndarray:
+    """Another car's hazard lights from the footpath: the same relay as ours
+    but through the closed body, so dull and quiet (the game adds distance)."""
+    x = C.indicator_modern()
+    return C.check_loop("hazard", C.periodic(x, lambda y: lp(y, 2500, 2)) * 0.6)
+
+
+def van_slide(open_: bool) -> np.ndarray:
+    """Courier van side door. Open: handle clack, the latch lets go, rollers
+    rumble back along the track and it catches on the hold-open stop.
+    Close: a rolling run forward then a big hollow slam into the latches."""
+    r = S.rng(600 if open_ else 610)
+    seed = 600 if open_ else 610
+    handle = C.add(C.modal(0.1, [(1100, 0.02, 0.5), (2400, 0.012, 0.25)], seed + 1),
+                   bp(C.burst(0.03, 0.002, seed + 2), 1000, 7000) * 0.5)
+    run = 0.55 if open_ else 0.45
+    n = secs(run)
+    t = t_axis(n)
+    env = np.sin(np.linspace(0, np.pi, n)) ** 0.7
+    rumble = bp(noise(n, seed + 3), 120, 1200) * env * 0.35
+    # roller clicks over the track joints, speeding up then slowing
+    clicks = np.zeros(n)
+    k = 0.03
+    while k < run - 0.03:
+        S.place(clicks, C.tick(seed + 10 + int(k * 100), 2100, 700, 0.25), secs(k))
+        k += r.uniform(0.05, 0.08)
+    roll = rumble + clicks
+    if open_:
+        stop = C.add(C.modal(0.25, [(160, 0.05, 0.6), (420, 0.04, 0.35), (980, 0.02, 0.15)], seed + 4),
+                     lp(C.burst(0.1, 0.01, seed + 5), 600) * 0.8)
+        x = C.mix(1.3, [(0.02, handle, 1.0), (0.1, roll, 1.0), (0.1 + run, stop, 1.0)])
+    else:
+        slam = C.add(C.modal(0.9, [(68, 0.1, 1.0), (104, 0.07, 0.6), (190, 0.08, 0.5), (330, 0.07, 0.4),
+                                   (560, 0.05, 0.25), (910, 0.03, 0.12)], seed + 6, 0.002),
+                     lp(C.burst(0.3, 0.03, seed + 7), 250, 2) * 2.4,
+                     bp(C.burst(0.03, 0.002, seed + 8), 1800, 9000) * 0.5)
+        x = C.mix(1.6, [(0.02, handle, 1.0), (0.1, roll, 1.0), (0.1 + run, slam, 1.4)])
+    return fade(C.room(x, 0.35, 0.18, 3500, seed), 0, 0.06)
+
+
+def van_rear(open_: bool) -> np.ndarray:
+    """Van barn doors at the back. Open: lever handle, rod latches release top
+    and bottom, the two doors swing on stiff hinges. Close: one door thuds
+    onto the stop, the second slams over it and the rods engage."""
+    seed = 620 if open_ else 630
+    lever = C.add(C.modal(0.15, [(820, 0.03, 0.5), (1900, 0.02, 0.25)], seed + 1),
+                  bp(C.burst(0.04, 0.003, seed + 2), 900, 6000) * 0.5)
+    if open_:
+        rods = C.add(C.modal(0.2, [(1500, 0.04, 0.3), (2700, 0.03, 0.2)], seed + 3),
+                     C.modal(0.2, [(1350, 0.04, 0.25)], seed + 4))
+        n = secs(0.5)
+        hinge = bp(noise(n, seed + 5), 400, 2500) * np.sin(np.linspace(0, np.pi, n)) ** 2 * 0.12
+        x = C.mix(1.4, [(0.02, lever, 1.0), (0.08, rods, 1.0), (0.2, hinge, 1.0), (0.45, hinge * 0.8, 1.0)])
+    else:
+        def thud(sd, f0, g):
+            return C.add(C.modal(0.8, [(f0, 0.09, 1.0), (f0 * 1.6, 0.07, 0.55), (f0 * 3.1, 0.06, 0.35),
+                                       (f0 * 5.3, 0.04, 0.2)], sd, 0.002),
+                         lp(C.burst(0.25, 0.03, sd + 1), 260, 2) * 2.0) * g
+        latch = C.add(bp(C.burst(0.03, 0.002, seed + 9), 1800, 9000) * 0.5,
+                      C.modal(0.08, [(2600, 0.01, 0.25), (3900, 0.008, 0.15)], seed + 10))
+        x = C.mix(1.8, [(0.02, thud(seed + 3, 82, 0.6), 1.0), (0.62, thud(seed + 5, 74, 1.0), 1.0),
+                        (0.625, latch, 1.0), (0.66, lever, 0.6)])
+    return fade(C.room(x, 0.35, 0.18, 3500, seed), 0, 0.06)
+
+
+def trolley_roll_loop(seconds=4.0) -> np.ndarray:
+    """A courier's hand trolley rolling along the footpath: small hard wheels
+    rumble on the paving, knock over the joints between slabs every half a
+    metre or so, and the parcels shift on the frame."""
+    n = secs(seconds)
+    rumble = S.circ_bp(noise(n, 640), 90, 1500) * 0.3
+    t = t_axis(n)
+    rumble *= 0.8 + 0.2 * np.sin(2 * np.pi * 3.0 * t)  # wheel out of round, whole cycles
+    out = rumble.copy()
+    r = S.rng(641)
+    for k in range(8):  # slab joints at a walking pace, ~2/s
+        at = k * seconds / 8 + r.uniform(-0.02, 0.02)
+        knock = C.add(C.modal(0.15, [(140, 0.03, 0.8), (380, 0.02, 0.4), (1200, 0.01, 0.2)], 650 + k),
+                      lp(C.burst(0.05, 0.006, 660 + k), 900) * 0.8)
+        S.place(out, knock * r.uniform(0.6, 1.0), secs(at), wrap=True)
+        S.place(out, knock * 0.5, secs(at + 0.035), wrap=True)  # the second wheel
+    for k in range(3):  # cardboard boxes shifting
+        S.place(out, bp(C.burst(0.08, 0.015, 670 + k), 300, 2500) * 0.25, secs(r.uniform(0, seconds)), wrap=True)
+    return C.check_loop("trolley", out)
+
+
+def ticket_printer() -> np.ndarray:
+    """Parking inspector's handheld: two key beeps, the thermal printer
+    whirs the ticket out (stepper motor whine with a paper hiss), then the
+    ticket is torn off against the serrated edge."""
+    beep_n = secs(0.07)
+    bt = t_axis(beep_n)
+    beep = np.sign(np.sin(2 * np.pi * 2700 * bt)) * 0.15 * np.minimum(1, (0.07 - bt) / 0.01)
+    beep = lp(beep, 6000)
+    n = secs(1.6)
+    t = t_axis(n)
+    step = 520 * (1 + 0.02 * np.sin(2 * np.pi * 9 * t))
+    ph = 2 * np.pi * np.cumsum(step) / SR
+    motor = (np.sin(ph) + 0.4 * np.sin(2 * ph) + 0.25 * np.sign(np.sin(4 * ph))) * 0.12
+    paper = bp(noise(n, 680), 2000, 9000) * 0.05
+    env = np.minimum(1, t / 0.03) * np.minimum(1, (1.6 - t) / 0.03)
+    whir = lp(motor + paper, 7000) * env
+    m = secs(0.18)
+    tear = bp(noise(m, 681), 1500, 9000) * np.linspace(0.4, 1, m) * (S.rng(682).random(m) < 0.35) * 0.9
+    tear = tear * np.minimum(1, (0.18 - t_axis(m)) / 0.02)
+    x = C.mix(2.6, [(0.02, beep, 1.0), (0.17, beep, 1.0), (0.45, whir, 1.0), (2.2, tear, 1.0)])
+    return fade(C.room(x, 0.2, 0.1, 5000, 683), 0, 0.05)
+
+
+def render_kerb():
+    S.save(f"{OUT}/traffic_hazard_tick_loop", hazard_tick_loop(), "peak", quality=3)
+    S.save(f"{OUT}/traffic_van_slide_door_open", van_slide(True), "peak", quality=4)
+    S.save(f"{OUT}/traffic_van_slide_door_close", van_slide(False), "peak", quality=4)
+    S.save(f"{OUT}/traffic_van_rear_door_open", van_rear(True), "peak", quality=4)
+    S.save(f"{OUT}/traffic_van_rear_door_close", van_rear(False), "peak", quality=4)
+    S.save(f"{OUT}/traffic_trolley_roll_loop", trolley_roll_loop(), "peak", quality=3, rate=32000)
+    # Taxis: a mid-size sedan door, a little heavier than the 500's.
+    for v in range(3):
+        S.save(f"{OUT}/traffic_taxi_door_close_0{v + 1}", C.door_close_modern(v, 1.15, seed=2000), "peak", quality=4)
+    S.save(f"{OUT}/traffic_taxi_door_open", C.door_open_modern(0, 1.1, seed=2050), "peak", quality=4)
+    S.save(f"{OUT}/traffic_ticket_printer", ticket_printer(), "peak", quality=4)
+
+
 def main(argv=()):
     if "city" in argv:
         render_city()
         return
     if "people" in argv:
         render_people()
+        return
+    if "kerb" in argv:
+        render_kerb()
         return
     try:
         render_horns()
@@ -557,6 +689,7 @@ def main(argv=()):
     render_trains()
     render_city()
     render_people()
+    render_kerb()
     render_engines()
 
 

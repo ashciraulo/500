@@ -99,6 +99,10 @@ start swapping in your own recordings, regenerate only what you need.
   `Audio.set_mission_intensity(0..1)`, `Audio.sting("complete")`,
   `Audio.set_bus_volume("Music", 0.8)` for the settings menu. It also sets up
   the buses and muffles the world when the camera is inside the car.
+  Quit with `Audio.quit_game()`, not `get_tree().quit()`: it stops every
+  player, drops every stream and gives the mixer a moment to let go of the
+  playbacks first (an Ogg playback still in the mixer at exit can crash on
+  quit). SaveGame.quit_cleanly() calls it as its last step.
 - **`EngineAudio`**, **`TyreAudio`**, **`CarSounds`**: nodes under the car's
   `Audio` node. They read `get_telemetry()` and the car's signals
   (docs/HOOKS.md). The engine set follows the fitted parts: a sport or twin
@@ -106,7 +110,9 @@ start swapping in your own recordings, regenerate only what you need.
   classics' found Abarth megaphone gives `<family>megaphone`, and
   the 1.4 and T-Jet swaps change the family (`ENGINE_PARTS` and
   `EXHAUST_PARTS` in `engine_audio.gd`). The engine cuts out when the tank
-  runs dry and starts again after fuel goes in.
+  runs dry and starts again after fuel goes in. CarSounds has door,
+  seatbelt and key sounds per car family (docs/car.md); getting in and out
+  on foot plays them.
 - **`Audio.hooks`** (`game_hooks.gd`): the event sounds, driven by the other
   autoloads' signals so their code has no audio calls. Job accepted,
   pick-up, checkpoints, delivery and trial finishes, new best time, money,

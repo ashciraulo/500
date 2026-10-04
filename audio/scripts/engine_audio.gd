@@ -37,11 +37,11 @@ extends Node3D
 ## Car id (data/cars/cars.json) -> its engine set, for the car's
 ## car_changed signal. Cars not listed keep the set they have.
 const CAR_SETS := {
-	"pop_12": "fire12", "hybrid_10": "fire12", "lounge_14": "fire14",
+	"pop_12": "fire12", "hybrid_10": "fire12", "lounge_14": "fire14", "lounge_c_14": "fire14",
 	"twinair_09": "twinair", "abarth_500": "tjet", "abarth_595_turismo": "tjet",
 	"abarth_595_comp": "tjetsport", "abarth_695_tributo": "tjetsport",
 	"abarth_695_biposto": "tjetstraight", "e_500e_2013": "electric",
-	"e_500e_2020": "electric", "abarth_500e": "abarthe",
+	"e_500e_2020": "electric2020", "abarth_500e": "abarthe",
 	"classic_nuova": "classic", "classic_d": "classic", "classic_giardiniera": "classicflat",
 	"classic_500f": "classic", "classic_500l": "classic", "classic_500r": "classic",
 	"classic_jolly": "classic", "classic_sport": "classicsport",

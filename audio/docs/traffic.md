@@ -59,3 +59,18 @@ within 45 m: the busy loop for 8 or more, the small one for 3 to 7. On
 `train_departed`, `traffic_train_depart`; on the ferries' `ferry_departed`,
 the wake 6 s later. The traffic code plays the roadworks, wildlife and ferry
 engine sounds itself.
+
+## Kerbside
+
+| File | Loop? | What it is | How |
+|---|---|---|---|
+| traffic_hazard_tick_loop | yes (3 s) | A parked car's hazard relay heard from the footpath | The car's relay loop through the closed body (low-passed 2.5 kHz). Mono, unit_size ~2 |
+| traffic_van_slide_door_open / _close | no | Courier van sliding side door | Handle clack, roller rumble and track-joint clicks; open ends on the hold-open stop, close in a big hollow slam |
+| traffic_van_rear_door_open / _close | no | Van barn doors at the back | Lever, rod latches, stiff hinges; close = two thuds (first door, then the second over it) and the rods engaging |
+| traffic_trolley_roll_loop | yes (4 s) | Hand trolley over footpath slabs | Wheel rumble, two-wheel knocks on slab joints ~2/s, parcels shifting. Pitch with speed |
+| traffic_taxi_door_close_01..03 / traffic_taxi_door_open | no | Taxi (mid-size sedan) doors | The modern door build, heavier |
+| traffic_ticket_printer | no | Parking inspector's handheld | Two key beeps, thermal printer whir (stepper whine + paper hiss), the tear |
+
+Play the one-shots with `Audio.play_at(name, pos)` and the loops with
+`Audio.stream(name, true)` on an AudioStreamPlayer3D; guard with `Audio.has()`.
+

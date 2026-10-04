@@ -42,3 +42,30 @@ Loops are seamless with no fades: play them looped from sample 0.
 | car_passenger_door_seat_belt | no | Passenger gets in: door, seat creak, belt pulled and buckled (3.4 s) | P3 | Door open + vinyl stick-slip creak + foam, webbing zip with retractor ticks, two-part buckle click |
 | car_seatbelt_click | no | Seatbelt buckle only | P3 | Two-part latch click |
 | car_parking_sensor | yes | Parking sensor beeps, mid distance, 4/s (2 s) | P3 | Clean 2.4 kHz piezo beep (the real object is a pure tone), wrapped placement |
+| car_door_close_abarth_01..03 / car_door_open_abarth_01..02 | no | Abarth door: heavier, lower, stiffer seals | P2 | The modern door with its body modes ~20% lower, longer thud, thicker seal peel |
+| car_door_close_suicide_01..03 / car_door_open_suicide_01..02 | no | Rear-hinged doors of the Nuova, Sport, D and Giardiniera | P2 | Classic shell rung a touch lower, a lower, drier front latch; the open swings forward on a longer, lower hinge groan |
+| car_door_slam_<family>_01..02 | no | Door shut hard (modern, abarth, classic, suicide) | P2 | Same build swung harder: shorter air cushion, bigger thud, longer panel ring, glass buzz in its channel |
+| car_door_<open/close/slam>_<family>_in_01(..02) | no | The same doors heard from the driver's seat | P2 | Top end dulled by trim and glass, low thunk lifted (+5 dB at 140 Hz), small boxy cabin reflection; modern and Abarth shuts add the sealed cabin's 28 Hz air "whump" |
+| car_seatbelt_unbuckle | no | Belt off: button, tongue springs out, webbing reels in, tongue knocks the pillar | P2 | Plastic click, two-part spring tick, webbing zip with ratchet ticks slowing, small trim knock |
+| car_ignition_key_out | no | Key back to off and pulled, keyring swings | P2 | Detent tick, pin ticks along the blade, 9 small metal taps settling |
+| car_starter_lever_classic | no | Classic starter: pull the lever between the seats, let it snap back | P2 | Steel lever rasp in its gate, faint cable ring, spring return clack (the cranking is the engine set's) |
+| car_start_button | no | 500e push-button start | P2 | Soft rubber dome switch, two dull clicks |
+| car_ev_ready_chime / car_ev_power_off | no | 500e ready to drive / powered off | P2 | Original glassy three-note rise E5-B5-E6; power-off falls an octave in two notes |
+
+## In game (`CarSounds`)
+
+- `door(open, slam := false, heard_inside := -1)`: picks the family from the
+  car (`door_family`: modern, abarth, classic, suicide, or "none" for the
+  Jolly) and the inside version when heard from the seat (-1 = wherever the
+  camera is). Slams play 3 dB up.
+- `seatbelt(on)`, `key(action)` with "in", "turn" (classics: key then the
+  starter lever), "start" (the lever alone),
+  "ready" (electric chime), "off", "out"; push-start cars skip the key and
+  use the button. `notify()` plays the phone notification.
+- Getting in and out on foot (`OnFoot.got_in` / `got_out`) plays door open,
+  door shut and belt from `Audio.hooks`, unless OnFoot has
+  `plays_car_sounds = true`, meaning it calls CarSounds itself in time with
+  its door animation.
+- A parking ticket (`TrafficManager.kerbside.parking_ticket`) plays the phone
+  notification 1.5 s later.
+

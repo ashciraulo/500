@@ -9,6 +9,13 @@ extends Node3D
 
 ## "modern" (2013 Pop and the other new 500s), "classic" or "abarth".
 @export_enum("modern", "classic", "abarth") var style := "modern"
+## Door sounds: "modern", "abarth", "classic", "suicide" (the rear-hinged
+## early classics) or "none" for a car with no doors (the Jolly).
+@export_enum("modern", "abarth", "classic", "suicide", "none") var door_family := "modern"
+## Push-button start instead of a key (New 500e, Abarth 500e).
+@export var push_start := false
+## Electric: key "off" plays the power-down chime instead of nothing.
+@export var electric := false
 ## Player input (horn) only for the car the player drives.
 @export var player_controlled := true
 ## Distance from the driver's seat within which the camera counts as inside.
@@ -44,6 +51,12 @@ func _ready() -> void:
 	_buffet.stream = Audio.stream("weather/weather_wind_buffet", true)
 
 
+## Cars with rear-hinged "suicide" doors, and the doorless beach car.
+const SUICIDE_DOORS := ["classic_nuova", "classic_sport", "classic_d", "classic_giardiniera"]
+const NO_DOORS := ["classic_jolly"]
+const PUSH_START := ["e_500e_2020", "abarth_500e"]
+
+
 ## Horn, doors and indicator follow the car: classics meep, Abarths blare.
 func _on_car_changed(car_id: String) -> void:
 	if car_id.begins_with("classic_"):
@@ -52,6 +65,13 @@ func _on_car_changed(car_id: String) -> void:
 		style = "abarth"
 	else:
 		style = "modern"
+	door_family = style
+	if car_id in SUICIDE_DOORS:
+		door_family = "suicide"
+	elif car_id in NO_DOORS:
+		door_family = "none"
+	push_start = car_id in PUSH_START
+	electric = car_id.begins_with("e_") or car_id == "abarth_500e"
 
 
 func _player(bus: String, unit: float) -> AudioStreamPlayer3D:
@@ -156,6 +176,66 @@ func set_indicator(on: bool) -> void:
 		_indicator.stop()
 
 
-func door(open: bool) -> void:
-	var kind := "classic" if style == "classic" else "modern"
-	Audio.play_at("car/car_door_%s_%s" % ["open" if open else "close", kind], global_position)
+## A door opening or shutting (slam = shut hard). heard_inside: 1 = from the
+## driver's seat (duller, boomier, the cabin's air squeezed), 0 = from
+## outside, -1 = wherever the camera is now.
+func door(open: bool, slam := false, heard_inside := -1) -> void:
+	if door_family == "none":
+		return  # no doors to shut
+	var inside := Audio.is_player_inside() if heard_inside < 0 else heard_inside == 1
+	var action := "open" if open else ("slam" if slam else "close")
+	var sound := "car/car_door_%s_%s%s" % [action, door_family, "_in" if inside else ""]
+	if not Audio.has(sound):
+		sound = "car/car_door_%s_%s" % ["open" if open else "close", "classic" if style == "classic" else "modern"]
+	Audio.play_at(sound, _seat_pos(), (3.0 if slam else 0.0) - (2.0 if inside else 0.0),
+			"Cabin" if inside else "SFX")
+
+
+## Seatbelt: on = the tongue clicks into the buckle, off = the button,
+## the webbing reeling back in and the tongue knocking the pillar.
+func seatbelt(on: bool) -> void:
+	Audio.play_at("car/car_seatbelt_click" if on else "car/car_seatbelt_unbuckle", _seat_pos(), -4.0, "Cabin")
+
+
+## Ignition, in the order you'd do it:
+##   "in"    key into the barrel (nothing on push-start cars)
+##   "turn"  key to ON (push-start cars: the start button; classics: the key
+##           then the starter lever between the seats)
+##   "start" the classics' starter lever on its own
+##   "ready" an electric car's ready-to-drive chime
+##   "off"   key back (electric cars: the power-down chime)
+##   "out"   key pulled, with the keyring swinging
+## EngineAudio plays the engine's own start-up and shut-down.
+func key(action: String) -> void:
+	var sound := ""
+	match action:
+		"in":
+			sound = "" if push_start else "car/car_ignition_key_in"
+		"turn":
+			sound = "car/car_start_button" if push_start else "car/car_ignition_key_turn"
+			if style == "classic":
+				get_tree().create_timer(0.45).timeout.connect(func() -> void:
+					if is_inside_tree():
+						Audio.play_at("car/car_starter_lever_classic", _seat_pos(), -3.0, "Cabin"))
+		"start":
+			sound = "car/car_starter_lever_classic" if style == "classic" else ""
+		"ready":
+			sound = "car/car_ev_ready_chime" if electric else ""
+		"off":
+			if electric:
+				sound = "car/car_ev_power_off"
+			elif not push_start:
+				sound = "car/car_ignition_key_turn"
+		"out":
+			sound = "" if push_start else "car/car_ignition_key_out"
+	if sound != "":
+		Audio.play_at(sound, _seat_pos(), -6.0 if action in ["ready", "off"] and electric else -3.0, "Cabin")
+
+
+## Phone buzz and ping (fine notices, messages). 2D on the UI bus.
+func notify() -> void:
+	Audio.ui("ui_phone_notify", -3.0)
+
+
+func _seat_pos() -> Vector3:
+	return _seat.global_position if _seat and _seat.is_inside_tree() else global_position

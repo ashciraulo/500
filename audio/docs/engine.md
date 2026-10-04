@@ -44,11 +44,14 @@ engines' 7 kHz air roll-off.
 | `classic` | Classic twin, air-cooled: rattly, sewing-machine clatter, fan whirr, tinny exhaust, little bass | Nuova, Sport, D, F, L, R, Jolly | 800, 1500, 2500, 3500, 4500, 5000 | P2 |
 | `classicflat` | Classic flat twin, air-cooled: the same engine laid flat under the Giardiniera's load floor, with a longer exhaust and a side blower. Rounder and boomier, the clatter muffled by the floor | Giardiniera | 780, 1500, 2500, 3500, 4500, 4800 | P2 |
 | `classicabarth` | Classic Abarth: the twin bored out and tuned, through an open Abarth silencer. Less clatter, a hard, angry rasp | Abarth 595 SS (695 SS uses `classicabarthsport`) | 900, 1500, 2500, 3500, 4500, 5500, 6500 | P3 |
-| `electric` | Electric | 500e (both) | speeds 0, 20, 40, 60, 80, 100, 130 km/h | P2 |
+| `electric` | Electric | 500e (2013) | speeds 0, 20, 40, 60, 80, 100, 130 km/h | P2 |
+| `electric2020` | Electric, newer motor: spins faster through a taller reduction with a higher, cleaner inverter, so a brighter whine | New 500e (2020-) | speeds as `electric` | P2 |
 | `abarthe` | Abarth 500e sound generator | Abarth 500e | as T-Jet, played through a small external speaker | P3 |
 
 Extra files: `engine/electric/eng_electric_avas` (low-speed pedestrian warning
-tone, loop), `engine/fire12/eng_fire12_startstop` (500 Hybrid stop-start restart).
+tone, loop), `engine/electric2020/eng_electric2020_avas` (the New 500e's own
+warning tone: an original soft D-A-E pad that breathes, with a shimmer; it
+does not use the real car's tune), `engine/fire12/eng_fire12_startstop` (500 Hybrid stop-start restart).
 
 ## Extras (`engine/extras/`)
 

@@ -51,6 +51,7 @@ var _ui_pool: Array[AudioStreamPlayer] = []
 var _pool_3d: Array[AudioStreamPlayer3D] = []
 var _listener: Node3D
 var _listener_check := 0.0
+var _quitting := false
 
 
 func _ready() -> void:
@@ -406,6 +407,60 @@ func play_at(sound_name: String, pos: Vector3, volume_db := 0.0, bus := "SFX",
 	p.global_position = pos
 	p.play()
 	return p
+
+
+# ---------------------------------------------------------------------------
+# Quitting cleanly
+# ---------------------------------------------------------------------------
+
+## Quit the game with the audio shut down first. Use this instead of
+## get_tree().quit(): every player is stopped and its stream let go, then the
+## mixer gets a moment to drop the stopped playbacks before the engine tears
+## down. Quitting with Ogg playbacks still in the mixer can crash on exit.
+func quit_game(exit_code := 0) -> void:
+	if _quitting:
+		return
+	_quitting = true
+	release_all()
+	await get_tree().create_timer(0.25, true, false, true).timeout
+	release_all()
+	await get_tree().process_frame
+	get_tree().quit(exit_code)
+
+
+## For quitting only: pause the scene and the audio managers (so nothing
+## restarts a loop), stop every audio player in the tree, drop its stream and
+## empty the stream cache, so no Ogg playback or stream outlives its scene.
+## The game stays silent and still afterwards.
+func release_all() -> void:
+	var scene := get_tree().current_scene if is_inside_tree() else null
+	if scene:
+		scene.process_mode = Node.PROCESS_MODE_DISABLED
+	for n in [radio, ambience, hooks]:
+		if is_instance_valid(n):
+			n.process_mode = Node.PROCESS_MODE_DISABLED
+	for p in _players_under(get_tree().root if is_inside_tree() else self):
+		p.stop()
+		p.stream = null
+	_mission = null
+	_music_name = ""
+	_cache.clear()
+	_last_variant.clear()
+
+
+static func _players_under(root: Node) -> Array[Node]:
+	var out: Array[Node] = []
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is AudioStreamPlayer or n is AudioStreamPlayer2D or n is AudioStreamPlayer3D:
+			out.append(n)
+		stack.append_array(n.get_children(true))
+	return out
+
+
+func _exit_tree() -> void:
+	release_all()  # any other way out (tests, the engine closing the window)
 
 
 # ---------------------------------------------------------------------------

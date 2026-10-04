@@ -49,7 +49,11 @@ Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.
 Fully synthesised (no recordings): pedestrian-crossing signals (amb_ped_*),
 sirens, Transperth train pass-bys, level-crossing bells, silver gulls, wind in
 the gums, traffic pass-bys, air-con units, club bass, car stereo, engine idles,
-ship horns, port clanks, all of `audio/oddity/` except the voices (below).
+ship horns, port clanks, all of `audio/oddity/` except the voices (below),
+every car door, seatbelt, key and start-up sound, both 500e motor sets and
+their pedestrian tones (the New 500e's is original, not the real car's
+tune), the kerbside vans, taxis, trolley, hazards and ticket printer, and
+the phone notification.
 
 ## The cat and the midnight voices (`gen_home.py`, `gen_amb.py odd_`)
 

@@ -379,7 +379,10 @@ func _update_panels() -> void:
 
 ## Every button in the game clicks: focus moves tick, presses select.
 func _on_node_added(node: Node) -> void:
-	if node is BaseButton:
+	if node.has_signal("got_in") and node.has_signal("got_out") and not node.get("plays_car_sounds"):  # OnFoot
+		node.connect("got_in", _on_got_in)
+		node.connect("got_out", _on_got_out)
+	elif node is BaseButton:
 		var b := node as BaseButton
 		b.pressed.connect(func() -> void: Audio.ui("ui_menu_select", -6.0))
 		b.focus_entered.connect(func() -> void:
@@ -388,3 +391,47 @@ func _on_node_added(node: Node) -> void:
 	elif node is Slider:
 		var s := node as Slider
 		s.drag_ended.connect(func(_changed) -> void: Audio.ui("ui_menu_move", -8.0))
+
+
+# ---------------------------------------------------------------------------
+# Getting in and out of the car, and the phone
+# ---------------------------------------------------------------------------
+
+## Phone buzz and ping for fine notices and messages.
+func phone_notify() -> void:
+	Audio.ui("ui_phone_notify", -3.0)
+
+
+func _player_car_sounds() -> Node:
+	var car := get_tree().get_first_node_in_group(&"player_car")
+	if car == null:
+		return null
+	return car.find_child("CarSounds", true, false)
+
+
+func _after(seconds: float, cs: Node, fn: Callable) -> void:
+	get_tree().create_timer(seconds).timeout.connect(func() -> void:
+		if is_instance_valid(cs):
+			fn.call())
+
+
+## Until OnFoot plays its own get-in/out sequence through CarSounds (it sets
+## plays_car_sounds), a short one here.
+## In: the door opens (heard outside), shuts behind you (inside), belt on.
+func _on_got_in() -> void:
+	var cs := _player_car_sounds()
+	if cs == null:
+		return
+	cs.door(true, false, 0)
+	_after(0.9, cs, func() -> void: cs.door(false, false, 1))
+	_after(1.6, cs, func() -> void: cs.seatbelt(true))
+
+
+## Out: belt off, the door opens from inside and shuts behind you.
+func _on_got_out() -> void:
+	var cs := _player_car_sounds()
+	if cs == null:
+		return
+	cs.seatbelt(false)
+	_after(0.5, cs, func() -> void: cs.door(true, false, 1))
+	_after(1.5, cs, func() -> void: cs.door(false, false, 0))

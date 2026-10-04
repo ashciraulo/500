@@ -79,6 +79,11 @@ func setup(traffic_manager: Node) -> void:
 	var boats = manager.get("boats")
 	if boats is Object and boats.has_signal("ferry_departed"):
 		boats.ferry_departed.connect(_on_ferry_departed)
+	# A parking ticket arrives as a fine notice on the phone.
+	var kerbside = manager.get("kerbside")
+	if kerbside is Object and kerbside.has_signal("parking_ticket"):
+		kerbside.parking_ticket.connect(func(_fine = 0, _reason = "", _pos = Vector3.ZERO) -> void:
+			get_tree().create_timer(1.5).timeout.connect(func() -> void: Audio.hooks.phone_notify()))
 	for i in STEP_VOICES:
 		var p := _new_3d("Steps%d" % i, 3.0, STEP_RADIUS * 1.2, -8.0)
 		_steps.append({"player": p, "ped": null})

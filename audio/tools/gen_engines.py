@@ -66,7 +66,7 @@ VARIANTS = {"classic": ("stock", "sport", "straight", "megaphone"),
 # Lean encode for the sets added or re-rendered after the first batch (their content stops
 # at the engine's 7 kHz air roll-off, so 32 kHz loses nothing).
 LEAN = {"classicmegaphone", "classicflat", "classicflatmegaphone", "classicabarth",
-        "classicabarthsport", "classicabarthstraight", "classicabarthmegaphone"}
+        "classicabarthsport", "classicabarthstraight", "classicabarthmegaphone", "electric2020"}
 LEAN_ENC = dict(quality=4, rate=32000)
 # Families levelled against another set rather than to their own peak, so
 # the classics sit together: (reference set, dB above its 2500 rpm on-load
@@ -168,10 +168,13 @@ def render_family(fam: str, e: E.Engine):
 EV_SPEEDS = [0, 20, 40, 60, 80, 100, 130]
 
 
-def ev_loop(kmh: float, load: float, seed: int, seconds=3.0) -> np.ndarray:
+def ev_loop(kmh: float, load: float, seed: int, seconds=3.0, motor_k=9.6, mesh=31.0,
+            carriers=(2600, 5200), whine=1.0) -> np.ndarray:
     """Permanent-magnet motor whine (rising with speed), inverter switching
     tones, gear mesh, and a faint cooling hum. All tones are snapped to whole
-    cycles over the loop so it joins without a seam."""
+    cycles over the loop so it joins without a seam. motor_k, mesh and
+    carriers retune it for a different motor (the New 500e spins faster
+    through a taller reduction, with a newer, higher-switching inverter)."""
     n = S.secs(seconds)
     t = S.t_axis(n)
 
@@ -179,16 +182,16 @@ def ev_loop(kmh: float, load: float, seed: int, seconds=3.0) -> np.ndarray:
         f = round(f * seconds) / seconds  # whole cycles in the loop
         return amp * np.sin(2 * np.pi * f * t + 1.3 * f % 6.28)
 
-    motor_hz = kmh * 9.6  # electrical frequency of the motor
+    motor_hz = kmh * motor_k  # electrical frequency of the motor
     x = np.zeros(n)
     if kmh > 0:
         for k, a in ((1, 0.25), (2, 0.10), (6, 0.55), (12, 0.25), (18, 0.08)):
-            x += tone(motor_hz * k / 4, a * (0.35 + 0.65 * load))
+            x += tone(motor_hz * k / 4, a * whine * (0.35 + 0.65 * load))
         # Gear mesh whine of the single reduction gear.
-        x += tone(kmh * 31.0, 0.18 * (0.3 + 0.7 * load))
+        x += tone(kmh * mesh, 0.18 * (0.3 + 0.7 * load))
     # Inverter switching: carrier with sidebands at the motor frequency;
     # loudest when pulling away at low speed.
-    carrier = 2600 if kmh < 30 else 5200
+    carrier = carriers[0] if kmh < 30 else carriers[1]
     low = np.clip(1 - kmh / 50, 0.15, 1) * (0.2 + 0.8 * load)
     x += tone(carrier, 0.18 * low)
     if kmh > 0:
@@ -211,6 +214,30 @@ def ev_avas(seed=31) -> np.ndarray:
         x += a * np.sin(2 * np.pi * f * t)
     trem = 0.75 + 0.25 * np.sin(2 * np.pi * 1.0 * t)  # 1 Hz, whole cycles
     x = x * trem + S.circ_bp(S.noise(n, seed), 400, 3000) * 0.05
+    return x
+
+
+def ev_avas_2020(seed=33) -> np.ndarray:
+    """New 500e pedestrian warning: an original soft open-fifth pad (D, A, E)
+    that breathes on a slow swell, with a quiet glassy shimmer an octave up
+    drifting between the notes. Every tone is a whole number of cycles in
+    the 4 s loop, so it joins cleanly; the game pitches it up with speed."""
+    seconds = 4.0
+    n = S.secs(seconds)
+    t = S.t_axis(n)
+
+    def tone(f, amp, ph=0.0):
+        f = round(f * seconds) / seconds
+        return amp * np.sin(2 * np.pi * f * t + ph)
+
+    x = np.zeros(n)
+    for f, a in ((146.83, 0.45), (220.0, 0.4), (329.63, 0.3), (293.66, 0.12), (440.0, 0.1)):
+        x += tone(f, a) + tone(f * 1.003, a * 0.4, 1.1)  # slight chorus
+    swell = 0.7 + 0.3 * np.sin(2 * np.pi * 0.5 * t)  # two breaths per loop
+    # shimmer: two high partials crossfading on a 0.25 Hz cycle
+    w = 0.5 + 0.5 * np.sin(2 * np.pi * 0.25 * t)
+    shim = tone(880.0, 0.06) * w + tone(1318.5, 0.05) * (1 - w)
+    x = x * swell + shim + S.circ_bp(S.noise(n, seed), 500, 2500) * 0.03
     return x
 
 
@@ -416,6 +443,19 @@ def render_electric():
     save_set("electric", items)
 
 
+def render_electric2020():
+    """New 500e (2020-): faster motor, taller reduction and a higher, cleaner
+    inverter, so a brighter whine than the 2013 car, plus its own AVAS."""
+    items = {}
+    for v in EV_SPEEDS:
+        kw = dict(motor_k=12.4, mesh=38.0, carriers=(3400, 8000), whine=0.85)
+        items[f"eng_electric2020_onload_{v}"] = ev_loop(v, 1.0, seed=v + 11, **kw)
+        items[f"eng_electric2020_offload_{v}"] = ev_loop(v, 0.15, seed=v + 12, **kw)
+    items["eng_electric2020_startup"] = ev_startup(36)
+    items["eng_electric2020_avas"] = ev_avas_2020()
+    save_set("electric2020", items)
+
+
 def render_abarthe():
     """Abarth 500e: the T-Jet set played through an external speaker."""
     e = E.FAMILIES["tjet"]
@@ -476,6 +516,9 @@ def main(argv):
     if not wanted or "electric" in wanted:
         print("[electric]", file=sys.stderr)
         render_electric()
+    if not wanted or "electric2020" in wanted:
+        print("[electric2020]", file=sys.stderr)
+        render_electric2020()
     if not wanted or "abarthe" in wanted:
         print("[abarthe]", file=sys.stderr)
         render_abarthe()

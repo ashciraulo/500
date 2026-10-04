@@ -439,6 +439,16 @@ def save_confirmed():
     return finish(render(1.2, ev), 444, wet=0.18, size=1.0)
 
 
+def phone_notify():
+    """Phone notification (fine notices and messages): the phone buzzes
+    twice in a pocket (muffled, no table rattle) and a dry two-note FM
+    ping falls A5 -> F5, a little flat in mood without being alarming."""
+    ev = [(0.0, lp(pager_buzz(0.18, 470), 900), 0.35, 0.0), (0.26, lp(pager_buzz(0.18, 471), 900), 0.35, 0.0),
+          (0.52, fm_bell(hz(A5), 0.08, 0.7, ratio=3.0, index=1.6, decay=0.35, seed=472), 0.4, -0.1),
+          (0.66, fm_bell(hz(F5), 0.15, 0.7, ratio=3.0, index=1.6, decay=0.5, seed=473), 0.4, 0.1)]
+    return finish(render(1.4, ev), 474, wet=0.1, size=0.5, tail=0.1)
+
+
 def main():
     save(f"{OUT}/ui_menu_move", menu_move())
     save(f"{OUT}/ui_menu_select", menu_select())
@@ -461,4 +471,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "phone" in sys.argv[1:]:
+        save(f"{OUT}/ui_phone_notify", phone_notify())
+    else:
+        main()
+        save(f"{OUT}/ui_phone_notify", phone_notify())

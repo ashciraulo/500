@@ -49,6 +49,7 @@ func _ready() -> void:
 	await _test_traffic(audio)
 	await _test_footsteps(audio)
 	_test_programme(audio)
+	_test_release(audio)
 	print("%d failure(s)" % failures)
 	quit(1 if failures else 0)
 
@@ -73,7 +74,8 @@ func _test_index(audio: Node) -> void:
 
 func _test_engines(audio: Node) -> void:
 	print("engine sets")
-	for fam in ["fire12", "fire14", "twinair", "tjet", "classic", "classicflat", "classicabarth", "electric", "abarthe"]:
+	for fam in ["fire12", "fire14", "twinair", "tjet", "classic", "classicflat", "classicabarth", "electric",
+			"electric2020", "abarthe"]:
 		var names: PackedStringArray = audio.names_in("engine/" + fam)
 		var on := 0
 		var off := 0
@@ -336,10 +338,38 @@ func _test_car_scene(audio: Node) -> void:
 		check(engine.engine_set == "classicflat" and engine.classic_gearbox, "Giardiniera -> classicflat (got %s)" % engine.engine_set)
 		car.apply_car("classic_abarth_595")
 		check(engine.engine_set == "classicabarth" and engine.pops > 0.0, "Abarth 595 SS -> classicabarth with pops (got %s)" % engine.engine_set)
+		var cs: CarSounds = car.get_node("Audio/CarSounds")
+		car.apply_car("classic_d")
+		check(cs.door_family == "suicide", "500 D has rear-hinged door sounds (got %s)" % cs.door_family)
+		car.apply_car("classic_jolly")
+		check(cs.door_family == "none", "the Jolly has no doors to shut")
 		car.apply_car("e_500e_2020")
-		check(engine.engine_set == "electric", "New 500e -> electric (got %s)" % engine.engine_set)
+		check(engine.engine_set == "electric2020", "New 500e -> electric2020 (got %s)" % engine.engine_set)
+		check(audio.has("engine/electric2020/eng_electric2020_avas"), "New 500e has its own pedestrian tone")
+		check(cs.push_start and cs.electric and cs.door_family == "modern", "New 500e: push start, modern doors")
+		car.apply_car("abarth_500e")
+		check(engine.engine_set == "abarthe" and cs.door_family == "abarth", "Abarth 500e: fake engine note, Abarth doors")
 		car.apply_car("pop_12")
 		check(engine.engine_set == "fire12" and not engine.classic_gearbox, "Pop -> fire12 (got %s)" % engine.engine_set)
+	# Doors, belt and key: every family has open, close and slam, inside and out.
+	for fam in ["modern", "abarth", "classic", "suicide"]:
+		for action in ["open", "close", "slam"]:
+			for where in ["", "_in"]:
+				check(audio.has("car/car_door_%s_%s%s" % [action, fam, where]), "door %s %s%s" % [action, fam, where])
+	for n in ["car_seatbelt_unbuckle", "car_ignition_key_out", "car_starter_lever_classic", "car_start_button",
+			"car_ev_ready_chime", "car_ev_power_off"]:
+		check(audio.has("car/" + n), "car sound " + n)
+	check(audio.has("ui/ui_phone_notify"), "phone notification")
+	var sounds: CarSounds = car.get_node("Audio/CarSounds")
+	sounds.door(false, true, 1)
+	var slam_found := false
+	for p in audio._pool_3d:
+		if p.playing and p.stream and p.stream.resource_path.contains("car_door_slam_modern_in"):
+			slam_found = p.bus == "Cabin"
+	check(slam_found, "door slam heard from inside plays the inside slam on the Cabin bus")
+	sounds.seatbelt(false)
+	sounds.key("out")
+	sounds.notify()
 	# Running dry stops the engine; fuel brings it back.
 	car.fuel_litres = 0.0
 	await create_timer(0.3).timeout
@@ -419,7 +449,10 @@ func _test_traffic(audio: Node) -> void:
 	for n in ["traffic_crowd_small_loop", "traffic_crowd_busy_loop", "traffic_steps_shoes_loop",
 			"traffic_steps_heels_loop", "traffic_steps_thongs_loop", "traffic_train_arrive", "traffic_train_doors",
 			"traffic_train_depart", "traffic_ferry_engine_loop", "traffic_ferry_idle_loop", "traffic_ferry_horn",
-			"traffic_ferry_wake_loop", "traffic_roadworks_day_loop", "traffic_ibis_grunt", "traffic_roo_thump"]:
+			"traffic_ferry_wake_loop", "traffic_roadworks_day_loop", "traffic_ibis_grunt", "traffic_roo_thump",
+			"traffic_hazard_tick_loop", "traffic_van_slide_door_open", "traffic_van_slide_door_close",
+			"traffic_van_rear_door_open", "traffic_van_rear_door_close", "traffic_trolley_roll_loop",
+			"traffic_taxi_door_close", "traffic_taxi_door_open", "traffic_ticket_printer"]:
 		check(audio.has("traffic/" + n), "city sound " + n)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -587,3 +620,19 @@ func _test_programme(audio: Node) -> void:
 	check(st2.item != st.item or st2.index != st.index, "the station moved on while away")
 	check(radio._clock - st2.started < st2.length, "and is somewhere inside the current item")
 	check(audio.has("music/mus_radio_pips"), "time pips exist")
+
+
+## Quitting stops every player and lets go of every stream first (an Ogg
+## playback still in the mixer at exit can crash the game on quit).
+func _test_release(audio: Node) -> void:
+	print("release on quit")
+	audio.play_at("car/car_door_close_modern", Vector3.ZERO)
+	audio.play_music("mus_main_theme", 0.0)
+	audio.release_all()
+	var left := 0
+	for p in audio._players_under(root):
+		if p.playing or p.stream != null:
+			left += 1
+	check(left == 0, "release_all stops every player and drops its stream (%d left)" % left)
+	check(audio._cache.is_empty(), "release_all empties the stream cache")
+	check(audio.has_method("quit_game"), "Audio.quit_game() for the quit paths")

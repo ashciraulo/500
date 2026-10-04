@@ -116,93 +116,116 @@ def plastic_click(seed, amp=1.0, f=1400):
 # --------------------------------------------------------------------------
 
 
-def door_close_modern(v):
+def door_close_modern(v, heavy=1.0, slam=False, seed=1100):
     """Modern door close: air cushion -> two-stage latch click -> low body
-    thunk (~90-115 Hz) -> panel modes -> trim tick -> short reflection."""
-    r = rng(1100 + v)
-    force = [1.0, 0.8, 1.2, 0.9][v]
+    thunk (~90-115 Hz) -> panel modes -> trim tick -> short reflection.
+    heavy > 1 lowers and thickens the door (the Abarth's stiffer seals and
+    heavier trim); slam swings it harder, so a shorter air cushion, a bigger
+    thud and longer panel ring with the glass buzzing in its channel."""
+    r = rng(seed + v)
+    force = [1.0, 0.8, 1.2, 0.9][v % 4] * (1.7 if slam else 1.0)
     t0 = 0.05
     a = secs(0.05)
-    air = lp(noise(a, 1110 + v), 300, 2) * np.linspace(0, 1, a) ** 2 * 0.25
+    air = lp(noise(a, seed + 10 + v), 300, 2) * np.linspace(0, 1, a) ** 2 * (0.12 if slam else 0.25)
     gap = r.uniform(0.006, 0.012)
-    latch1 = add(bp(burst(0.03, 0.002, 1120 + v), 1800, 9000) * 0.9, modal(
-        0.06, [(r.uniform(2800, 3400), 0.007, 0.4), (r.uniform(4600, 5200), 0.004, 0.2)], 1130 + v))
-    latch2 = add(bp(burst(0.03, 0.0015, 1140 + v), 2000, 9000) * 0.3, modal(
-        0.05, [(r.uniform(3500, 3900), 0.005, 0.12)], 1150 + v))
-    f0 = r.uniform(88, 115)
-    thunk = modal(0.5, [(f0, 0.05, 0.7), (f0 * 1.52, 0.035, 0.4), (f0 * 2.13, 0.025, 0.35)], 1160 + v, 0.002)
-    thud = lp(burst(0.3, 0.02, 1170 + v), 220, 2) * 1.8
-    panel = modal(0.4, [(r.uniform(225, 260), 0.04, 0.45), (r.uniform(330, 380), 0.03, 0.38),
-                        (r.uniform(500, 560), 0.025, 0.3), (r.uniform(760, 820), 0.018, 0.22),
-                        (r.uniform(1100, 1250), 0.012, 0.14)], 1180 + v)
-    trim = hp(burst(0.06, 0.008, 1190 + v), 2500) * 0.06
-    x = mix(0.9, [(t0 - 0.05, air, force), (t0, latch1, 1.0), (t0 + gap, latch2, 1.0),
-                  (t0 + 0.002, add(thunk, thud), force), (t0 + 0.003, panel, 1.6 * force),
-                  (t0 + 0.018, trim, 1.0)])
-    return fade(room(x, 0.3, 0.14, 3500, 7 + v), fout=0.05)
+    latch1 = add(bp(burst(0.03, 0.002, seed + 20 + v), 1800, 9000) * 0.9, modal(
+        0.06, [(r.uniform(2800, 3400), 0.007, 0.4), (r.uniform(4600, 5200), 0.004, 0.2)], seed + 30 + v))
+    latch2 = add(bp(burst(0.03, 0.0015, seed + 40 + v), 2000, 9000) * 0.3, modal(
+        0.05, [(r.uniform(3500, 3900), 0.005, 0.12)], seed + 50 + v))
+    f0 = r.uniform(88, 115) / heavy
+    ring = 1.6 if slam else 1.0
+    thunk = modal(0.5, [(f0, 0.05 * heavy, 0.7), (f0 * 1.52, 0.035, 0.4), (f0 * 2.13, 0.025, 0.35)], seed + 60 + v, 0.002)
+    thud = lp(burst(0.3, 0.02 * heavy, seed + 70 + v), 220, 2) * 1.8 * heavy
+    panel = modal(0.6, [(r.uniform(225, 260) / heavy, 0.04 * ring, 0.45), (r.uniform(330, 380) / heavy, 0.03 * ring, 0.38),
+                        (r.uniform(500, 560), 0.025 * ring, 0.3), (r.uniform(760, 820), 0.018 * ring, 0.22),
+                        (r.uniform(1100, 1250), 0.012 * ring, 0.14)], seed + 80 + v)
+    trim = hp(burst(0.06, 0.008, seed + 90 + v), 2500) * 0.06
+    parts = [(t0 - 0.05, air, force), (t0, latch1, 1.0), (t0 + gap, latch2, 1.0),
+             (t0 + 0.002, add(thunk, thud), force), (t0 + 0.003, panel, 1.6 * force / heavy ** 0.5),
+             (t0 + 0.018, trim, 1.0)]
+    if slam:
+        parts.append((t0 + 0.012, glass_buzz(seed + 95 + v, 0.16), force))
+    x = mix(1.0 if slam else 0.9, parts)
+    return fade(room(x, 0.34 if slam else 0.3, 0.17 if slam else 0.14, 3500, 7 + v), fout=0.05)
 
 
-def door_open_modern(v):
+def glass_buzz(seed, dur, amp=0.25):
+    """Door glass chattering in its channel after a hard shut: a few quick
+    bright taps dying away."""
+    r = rng(seed)
+    out = np.zeros(secs(dur))
+    for k in range(int(r.integers(4, 7))):
+        place(out, hp(burst(0.02, 0.0015, seed * 7 + k), 2500) * amp * (0.75 ** k),
+              int(k * r.uniform(0.018, 0.03) * SR))
+    return out
+
+
+def door_open_modern(v, heavy=1.0, seed=1200):
     """Modern door open: handle lever click, latch releases with a metallic
     'chunk', the rubber seal unpeels, then the check-strap detent clicks."""
-    r = rng(1200 + v)
-    handle = plastic_click(1210 + v, 0.6, 1500)
-    release = modal(0.2, [(r.uniform(380, 430), 0.025, 0.5), (r.uniform(640, 700), 0.02, 0.35),
-                          (r.uniform(1050, 1200), 0.015, 0.2), (150, 0.03, 0.4)], 1220 + v)
-    release = add(release, bp(burst(0.05, 0.003, 1230 + v), 1500, 8000) * 0.4)
+    r = rng(seed + v)
+    handle = plastic_click(seed + 10 + v, 0.6, 1500 / heavy)
+    release = modal(0.2, [(r.uniform(380, 430) / heavy, 0.025, 0.5), (r.uniform(640, 700) / heavy, 0.02, 0.35),
+                          (r.uniform(1050, 1200), 0.015, 0.2), (150 / heavy, 0.03, 0.4)], seed + 20 + v)
+    release = add(release, bp(burst(0.05, 0.003, seed + 30 + v), 1500, 8000) * 0.4)
     n = secs(0.22)
     seal_env = np.sin(np.linspace(0, np.pi, n)) ** 2
-    crackle = (rng(1240 + v).random(n) < 0.004) * rng(1241 + v).standard_normal(n) * 3
-    seal = bp(noise(n, 1250 + v) + crackle, 250, 3000) * seal_env * 0.18
-    detent = tick(1260 + v, 2400, 600, 0.35)
+    crackle = (rng(seed + 40 + v).random(n) < 0.004) * rng(seed + 41 + v).standard_normal(n) * 3
+    seal = bp(noise(n, seed + 50 + v) + crackle, 250, 3000) * seal_env * 0.18 * heavy
+    detent = tick(seed + 60 + v, 2400, 600, 0.35)
     t_rel = r.uniform(0.07, 0.11)
     x = mix(0.9, [(0.02, handle, 1.0), (t_rel, release, 1.0), (t_rel + 0.01, seal, 1.0),
                   (t_rel + r.uniform(0.3, 0.38), detent, 1.0)])
     return fade(room(x, 0.25, 0.12, 4000, 11 + v), fout=0.05)
 
 
-def door_close_classic(v):
+def door_close_classic(v, slam=False, seed=1300, latch_f=1.0, body_f=1.0):
     """Classic 500 door close: thin steel, so the body ring sits higher and
-    lasts longer (tinny clang), with a chunky old latch and glass rattle."""
-    r = rng(1300 + v)
+    lasts longer (tinny clang), with a chunky old latch and glass rattle.
+    latch_f/body_f retune the latch and shell for the rear-hinged doors."""
+    r = rng(seed + v)
     t0 = 0.03
-    latch = modal(0.1, [(r.uniform(1800, 2100), 0.02, 0.4), (r.uniform(3000, 3300), 0.015, 0.3),
-                        (r.uniform(4400, 4800), 0.01, 0.2)], 1310 + v)
-    latch = add(latch, bp(burst(0.04, 0.002, 1320 + v), 1200, 9000) * 0.6)
-    f0 = r.uniform(150, 175)
-    body = modal(1.0, [(f0, 0.07, 0.8), (f0 * 1.9, 0.12, 0.45), (r.uniform(430, 470), 0.15, 0.4),
-                       (r.uniform(640, 690), 0.12, 0.35), (r.uniform(910, 960), 0.1, 0.25),
-                       (r.uniform(1330, 1400), 0.08, 0.18), (r.uniform(2150, 2300), 0.05, 0.1)],
-                 1330 + v, 0.001)
-    thud = lp(burst(0.2, 0.02, 1340 + v), 300, 2) * 1.6
+    force = 1.7 if slam else 1.0
+    latch = modal(0.1, [(r.uniform(1800, 2100) * latch_f, 0.02, 0.4), (r.uniform(3000, 3300) * latch_f, 0.015, 0.3),
+                        (r.uniform(4400, 4800) * latch_f, 0.01, 0.2)], seed + 10 + v)
+    latch = add(latch, bp(burst(0.04, 0.002, seed + 20 + v), 1200, 9000) * 0.6)
+    f0 = r.uniform(150, 175) * body_f
+    ring = 1.5 if slam else 1.0
+    body = modal(1.3, [(f0, 0.07, 0.8), (f0 * 1.9, 0.12 * ring, 0.45), (r.uniform(430, 470) * body_f, 0.15 * ring, 0.4),
+                       (r.uniform(640, 690) * body_f, 0.12 * ring, 0.35), (r.uniform(910, 960) * body_f, 0.1 * ring, 0.25),
+                       (r.uniform(1330, 1400), 0.08 * ring, 0.18), (r.uniform(2150, 2300), 0.05, 0.1)],
+                 seed + 30 + v, 0.001)
+    thud = lp(burst(0.2, 0.02, seed + 40 + v), 300, 2) * 1.6
     # loose window glass chattering in its channel
     n = secs(0.18)
     chat = np.zeros(n)
     for k in range(int(r.integers(4, 7))):
-        place(chat, hp(burst(0.02, 0.0015, 1350 + 10 * v + k), 2500) * 0.25 * (0.75 ** k),
+        place(chat, hp(burst(0.02, 0.0015, seed + 50 + 10 * v + k), 2500) * 0.25 * (0.75 ** k),
               int(k * r.uniform(0.018, 0.03) * SR))
-    x = mix(1.1, [(t0, latch, 1.0), (t0 + 0.004, add(body, thud), 1.0), (t0 + 0.015, chat, 1.0)])
-    return fade(room(x, 0.3, 0.15, 4500, 15 + v), fout=0.06)
+    x = mix(1.3 if slam else 1.1, [(t0, latch, 1.0), (t0 + 0.004, add(body, thud), force),
+                                   (t0 + 0.015, chat, force ** 1.3)])
+    return fade(room(x, 0.34 if slam else 0.3, 0.18 if slam else 0.15, 4500, 15 + v), fout=0.06)
 
 
-def door_open_classic(v):
+def door_open_classic(v, seed=1400, creak_f=1.0, swing=0.45):
     """Classic door open: push-button handle clack, latch spring twang and a
     dry hinge creak as the door swings."""
-    r = rng(1400 + v)
-    button = modal(0.08, [(r.uniform(2300, 2600), 0.012, 0.4), (r.uniform(1200, 1300), 0.02, 0.3)], 1410 + v)
-    button = add(button, bp(burst(0.03, 0.0015, 1420 + v), 1500, 9000) * 0.5)
+    r = rng(seed + v)
+    button = modal(0.08, [(r.uniform(2300, 2600), 0.012, 0.4), (r.uniform(1200, 1300), 0.02, 0.3)], seed + 10 + v)
+    button = add(button, bp(burst(0.03, 0.0015, seed + 20 + v), 1500, 9000) * 0.5)
     spring = modal(0.3, [(r.uniform(520, 560), 0.06, 0.3), (r.uniform(1490, 1560), 0.05, 0.25),
-                         (r.uniform(2700, 2900), 0.03, 0.15)], 1430 + v)
-    spring = add(spring, bp(burst(0.05, 0.003, 1440 + v), 800, 6000) * 0.4)
+                         (r.uniform(2700, 2900), 0.03, 0.15)], seed + 30 + v)
+    spring = add(spring, bp(burst(0.05, 0.003, seed + 40 + v), 800, 6000) * 0.4)
     # hinge creak: stick-slip pulse train with a wandering rate, through steel resonances
-    n = secs(0.45)
+    n = secs(swing)
     t = t_axis(n)
     rate = r.uniform(180, 240) * (1 + 0.25 * np.sin(2 * np.pi * 1.6 * t + r.uniform(0, 6)))
     ph = np.cumsum(rate / SR)
-    pulses = np.diff(np.floor(ph), prepend=0) * (0.6 + 0.4 * rng(1450 + v).random(n))
-    creak = resonator(pulses, 1100, 6) + resonator(pulses, 2300, 8) * 0.6 + resonator(pulses, 650, 5) * 0.5
+    pulses = np.diff(np.floor(ph), prepend=0) * (0.6 + 0.4 * rng(seed + 50 + v).random(n))
+    creak = (resonator(pulses, 1100 * creak_f, 6) + resonator(pulses, 2300 * creak_f, 8) * 0.6
+             + resonator(pulses, 650 * creak_f, 5) * 0.5)
     creak *= np.sin(np.linspace(0, np.pi, n)) ** 1.5 * 0.9
-    x = mix(1.0, [(0.02, button, 1.0), (0.09, spring, 1.0), (0.2, creak, 1.0)])
+    x = mix(0.55 + swing, [(0.02, button, 1.0), (0.09, spring, 1.0), (0.2, creak, 1.0)])
     return fade(room(x, 0.25, 0.12, 4500, 19 + v), fout=0.05)
 
 
@@ -910,6 +933,170 @@ def glass_smash(v):
 # --------------------------------------------------------------------------
 
 
+
+# --------------------------------------------------------------------------
+# Door families heard from inside, and the rear-hinged (suicide) classics
+# --------------------------------------------------------------------------
+
+
+def inside(x, seed, press=0.0, bright=3200):
+    """The same door heard from the driver's seat: the panel is right beside
+    you, so the latch's top end is dulled by trim and glass, the low body
+    thunk grows, and the cabin adds a tiny boxy reflection instead of the
+    street. press > 0 adds the eardrum 'whump' of the sealed cabin's air
+    being squeezed as a modern door shuts."""
+    y = lp(x, bright, 2) + 0.18 * hp(x, bright)
+    y = peak_eq(y, 140, 5, 1.2)
+    if press:
+        n = secs(0.25)
+        t = t_axis(n)
+        whump = np.sin(2 * np.pi * 28 * t) * np.exp(-t / 0.05) * (1 - np.exp(-t / 0.006))
+        y = add(y, place(np.zeros(len(y)), whump * press * np.abs(y).max(), secs(0.045)))
+    y = reverb(y, size_s=0.07, damp_hz=3000, wet=0.18, predelay_s=0.001, seed=seed).mean(axis=1)
+    return fade(y, fout=0.05)
+
+
+def door_close_suicide(v, slam=False):
+    """Nuova 500 rear-hinged door: the latch is at the front edge by the
+    windscreen pillar, a lower and drier rotary catch, and the door shell
+    rings a touch lower than the later front-hinged doors."""
+    return door_close_classic(v, slam, seed=1700, latch_f=0.78, body_f=0.93)
+
+
+def door_open_suicide(v):
+    """Rear-hinged door open: the door swings forward against the airflow,
+    so a longer, lower hinge groan from behind the B pillar."""
+    return door_open_classic(v, seed=1750, creak_f=0.72, swing=0.6)
+
+
+# --------------------------------------------------------------------------
+# Seatbelt, key and start-up controls
+# --------------------------------------------------------------------------
+
+
+def seatbelt_unbuckle():
+    """Red button pressed, tongue springs out of the buckle, the retractor
+    reels the webbing in (zip with fast ratchet ticks, slowing) and the
+    metal tongue knocks against the B-pillar trim at the end."""
+    press = plastic_click(1800, 0.7, 1200)
+    spring = add(tick(1801, 3600, 1200, 0.8), modal(0.12, [(2900, 0.03, 0.15), (4700, 0.02, 0.1)], 1802))
+    n = secs(0.55)
+    env = np.exp(-np.linspace(0, 3, n)) * np.clip(np.linspace(0, 12, n), 0, 1)
+    web = bp(noise(n, 1803), 1800, 9000) * env * 0.08
+    t = 0.0
+    k = 0
+    while t < 0.5:
+        place(web, tick(1810 + k, 4400, 1900, 0.06 * (1 - t)), secs(t))
+        t += 0.022 + 0.06 * t
+        k += 1
+    knock = add(modal(0.15, [(780, 0.02, 0.4), (1650, 0.015, 0.25), (3100, 0.01, 0.15)], 1840),
+                bp(burst(0.03, 0.002, 1841), 800, 6000) * 0.4)
+    x = mix(1.1, [(0.02, press, 1.0), (0.05, spring, 1.0), (0.08, web, 1.0), (0.62, knock, 0.7)])
+    return fade(room(x, 0.12, 0.08, 6000, 97), fout=0.04)
+
+
+def keyring_jingle(seed, dur=0.35, amp=0.12):
+    """A few keys and a fob swinging on the ring: random small glass-hard
+    metal taps, settling."""
+    r = rng(seed)
+    out = np.zeros(secs(dur))
+    for k in range(9):
+        at = (r.random() ** 1.6) * dur * 0.8
+        f = r.uniform(3800, 7200)
+        hit = add(modal(0.06, [(f, 0.012, 1.0), (f * 1.47, 0.008, 0.5)], seed + 10 + k),
+                  hp(burst(0.01, 0.0005, seed + 30 + k), 4000) * 0.5)
+        place(out, hit * amp * r.uniform(0.4, 1.0), secs(at))
+    return out
+
+
+def ignition_key_out():
+    """Key turned back to off (one detent) and pulled: the pins tick the
+    other way along the blade, then the keyring swings."""
+    n = secs(0.25)
+    slide = bp(noise(n, 2400), 2500, 10000) * np.linspace(1, 0.3, n) * 0.06
+    parts = [(0.0, tick(2401, 2900, 1000, 0.7), 1.0), (0.2, slide, 1.0)]
+    for k in range(5):
+        parts.append((0.21 + k * 0.04, tick(2410 + k, 5000, 2500, 0.22), 1.0))
+    parts.append((0.42, keyring_jingle(2420), 1.0))
+    return fade(room(mix(0.95, parts), 0.12, 0.08, 6000, 101), fout=0.04)
+
+
+def starter_lever_classic():
+    """Nuova 500 starter: you pull a little lever between the seats that
+    drags a cable to the starter motor. Steel lever rasps in its gate,
+    the cable sings faintly, and it snaps back on its spring when let go
+    (the cranking itself is the engine set's)."""
+    n = secs(0.18)
+    rasp = bp(noise(n, 2500), 1200, 6000) * np.sin(np.linspace(0, np.pi, n)) * 0.12
+    cable = modal(0.4, [(610, 0.15, 0.1), (1840, 0.08, 0.05)], 2501)
+    grab = add(modal(0.1, [(980, 0.02, 0.4), (2600, 0.012, 0.2)], 2502), lp(burst(0.05, 0.006, 2503), 900) * 0.6)
+    back = add(modal(0.2, [(720, 0.04, 0.5), (1450, 0.03, 0.3), (3300, 0.012, 0.15)], 2504),
+               bp(burst(0.03, 0.002, 2505), 1200, 8000) * 0.6)
+    x = mix(1.5, [(0.02, grab, 1.0), (0.05, rasp, 1.0), (0.08, cable, 1.0), (1.05, rasp[::-1] * 0.6, 1.0),
+                  (1.12, back, 1.0)])
+    return fade(room(x, 0.12, 0.08, 5000, 103), fout=0.05)
+
+
+def start_button():
+    """Push-button start (500e): a soft-touch rubber button over a tactile
+    dome switch, a dull click with almost no ring."""
+    x = mix(0.3, [(0.01, plastic_click(2600, 0.8, 900), 1.0), (0.11, plastic_click(2601, 0.4, 1100), 1.0)])
+    return fade(room(lp(x, 5000), 0.1, 0.06, 6000, 107), fout=0.03)
+
+
+def _chime_note(f, dur, seed, amp=1.0):
+    return amp * modal(dur, [(f, dur * 0.35, 1.0), (f * 2.0, dur * 0.18, 0.2), (f * 3.0, dur * 0.1, 0.08)],
+                       seed, 0.004)
+
+
+def ev_ready_chime():
+    """500e 'ready to drive': an original three-note rising chime (fifth then
+    octave) through the cluster speaker, soft and glassy."""
+    f = 659.25  # E5
+    x = mix(1.6, [(0.0, _chime_note(f, 1.0, 2700, 0.8), 1.0), (0.14, _chime_note(f * 1.5, 1.0, 2701, 0.8), 1.0),
+                  (0.28, _chime_note(f * 2.0, 1.2, 2702, 0.9), 1.0)])
+    return fade(room(peak_eq(hp(x, 300), 2500, 3, 1), 0.12, 0.1, 6000, 109), fout=0.15)
+
+
+def ev_power_off():
+    """500e power off: the same voice falling an octave in two notes."""
+    f = 1318.5
+    x = mix(1.3, [(0.0, _chime_note(f, 0.8, 2710, 0.8), 1.0), (0.16, _chime_note(f * 0.5, 1.0, 2711, 0.8), 1.0)])
+    return fade(room(peak_eq(hp(x, 300), 2500, 3, 1), 0.12, 0.1, 6000, 113), fout=0.15)
+
+
+def render_doors():
+    """Door families (modern, abarth, classic, suicide), inside versions,
+    slams and the seatbelt/key/start controls. Run on its own with
+    `gen_car.py doors` so the older car sounds aren't re-encoded."""
+    fam = {
+        "modern": (lambda v, slam=False: door_close_modern(v, slam=slam), door_open_modern, 0.6),
+        "abarth": (lambda v, slam=False: door_close_modern(v, 1.25, slam, seed=1900),
+                   lambda v: door_open_modern(v, 1.2, seed=1950), 0.75),
+        "classic": (door_close_classic, door_open_classic, 0.0),
+        "suicide": (door_close_suicide, door_open_suicide, 0.0),
+    }
+    for kind, (close, opn, press) in fam.items():
+        new = kind in ("abarth", "suicide")
+        if new:
+            for v in range(3):
+                save(f"{OUT}/car_door_close_{kind}_{v + 1:02d}", close(v))
+            for v in range(2):
+                save(f"{OUT}/car_door_open_{kind}_{v + 1:02d}", opn(v))
+        for v in range(2):
+            save(f"{OUT}/car_door_slam_{kind}_{v + 1:02d}", close(v + 2, slam=True))
+        for v in range(2):
+            save(f"{OUT}/car_door_close_{kind}_in_{v + 1:02d}", inside(close(v), 120 + v, press))
+        save(f"{OUT}/car_door_open_{kind}_in_01", inside(opn(0), 130))
+        save(f"{OUT}/car_door_slam_{kind}_in_01", inside(close(3, slam=True), 140, press * 1.4))
+    save(f"{OUT}/car_seatbelt_unbuckle", seatbelt_unbuckle())
+    save(f"{OUT}/car_ignition_key_out", ignition_key_out())
+    save(f"{OUT}/car_starter_lever_classic", starter_lever_classic())
+    save(f"{OUT}/car_start_button", start_button())
+    save(f"{OUT}/car_ev_ready_chime", ev_ready_chime())
+    save(f"{OUT}/car_ev_power_off", ev_power_off())
+
+
 def main():
     for v in range(4):
         save(f"{OUT}/car_door_close_modern_{v + 1:02d}", door_close_modern(v))
@@ -963,4 +1150,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "doors" in sys.argv[1:]:
+        render_doors()
+    else:
+        main()
+        render_doors()
