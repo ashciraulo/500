@@ -44,8 +44,14 @@ func _setup() -> void:
 	_traffic.random_seed = 500
 	_root3d.add_child(_traffic)
 	_traffic.focus_path = _traffic.get_path_to(_focus)
-	_traffic.add_network(load("res://traffic/scripts/traffic_test_networks.gd").sandbox())
+	_traffic.add_network(load("res://traffic/scripts/traffic_test_networks.gd").sandbox(), true)
 	_graph = _traffic.graph
+	# The crews stay away until the roadworks step, so earlier steps don't
+	# depend on which roads happen to have works today.
+	_traffic.roadworks.site_chance = 0.0
+	# A driveway on the avenue, inside the westbound queue for the Station
+	# Street lights: nobody may stop across it.
+	_graph.add_keep_clear(Vector3(-72, 0, 3.2), 5.0)
 
 
 func _run_step() -> bool:
@@ -69,6 +75,8 @@ func _run_step() -> bool:
 				_check(_mark.get("route_samples", 0) > 0 and on_route > 0.9, "buses keep to their routes (%.0f%% of samples)" % (on_route * 100.0))
 				_check(_traffic.step_ms < 12.0, "simulation is cheap enough (%.2f ms per frame)" % _traffic.step_ms)
 				_check_parking()
+				_check(_mark.get("in_box", 0) == 0, "nobody stops across a keep-clear driveway (%d samples)" % _mark.get("in_box", 0))
+				_check(_mark.get("before_box", 0) > 0, "queues wait before the driveway (%d samples)" % _mark.get("before_box", 0))
 				print("  [t] vehicles=%d peds=%d step=%.2fms created=%d spawned=%d" % [
 					_traffic.vehicles.size(), _traffic.pedestrians.size(), _traffic.step_ms,
 					_traffic.stats.created, _traffic.stats.spawned])
@@ -134,9 +142,33 @@ func _run_step() -> bool:
 				_check(tm.area_factor(cbd, 11.0) > 1.15 and tm.area_factor(cbd, 23.0) < 0.75, "the CBD is busy by day and quiet at night")
 				_check(tm.area_factor(northbridge, 22.0, true) > 1.8, "Northbridge fills with people at night")
 				_check(is_equal_approx(tm.area_factor(Vector3(-5000, 0, -5000), 11.0), 1.0), "the suburbs are ordinary")
-				var busy: float = _mark.kind_cars.get(&"primary", 0.0) / maxf(_mark.kind_km.get(&"primary", 0.0), 0.01)
-				var quiet: float = _mark.kind_cars.get(&"residential", 0.0) / maxf(_mark.kind_km.get(&"residential", 0.0), 0.01)
-				_check(busy > quiet * 1.3, "the avenue is busier than the back streets (%.1f vs %.1f cars per lane-km)" % [busy, quiet])
+				# Day 1 is a Monday, so day 5 is a Friday and day 6 a Saturday.
+				_check(tm.hour_density(6, 8.0) < tm.hour_density(1, 8.0) * 0.6, "no morning rush on a Saturday")
+				_check(tm.hour_density(6, 12.0) > tm.hour_density(1, 12.0), "Saturday middays are busy")
+				_check(tm.hour_density(7, 12.0) < tm.hour_density(6, 12.0), "Sundays are quieter than Saturdays")
+				_check(tm.hour_density(5, 23.0, true) > tm.hour_density(3, 23.0, true) * 1.8, "Friday night brings people out")
+				_check(tm.hour_density(6, 1.0) > tm.hour_density(2, 1.0) * 1.5, "the small hours of Saturday are busy (night out)")
+				_check(tm.hour_density(1, 1.0) < tm.hour_density(7, 1.0), "Sunday 1am still counts as Saturday night")
+				_check(tm.area_factor(northbridge, 23.0, true, 6) > tm.area_factor(northbridge, 23.0, true, 2) * 1.15, "Northbridge is busiest on a Saturday night")
+				_check(tm.area_factor(cbd, 11.0, false, 7) < tm.area_factor(cbd, 11.0, false, 2), "the CBD is quieter at the weekend")
+				_check(_traffic.parking.occupancy(&"lot", 11.0, 7) < _traffic.parking.occupancy(&"lot", 11.0, 2) * 0.6, "office car parks are half empty on Sunday")
+				# Where new cars start (how busy the roads then look depends on
+				# the queues at the lights, too much to test in a minute).
+				var picks := {}
+				var rng_state: int = _traffic._rng.state  # Leave the traffic's own dice alone.
+				for i in 4000:
+					var spot: Array = _traffic._pick_spawn_spot(_focus.position, _traffic.min_spawn_radius)
+					if not spot.is_empty():
+						picks[spot[0].road.kind] = picks.get(spot[0].road.kind, 0.0) + 1.0
+				_traffic._rng.state = rng_state
+				var km := {}
+				for lane in _graph.lanes:
+					var d: float = lane.point(lane.length * 0.5).distance_to(_focus.position)
+					if d > _traffic.min_spawn_radius and d < _traffic.spawn_radius:
+						km[lane.road.kind] = km.get(lane.road.kind, 0.0) + lane.length / 1000.0
+				var busy: float = picks.get(&"primary", 0.0) / maxf(km.get(&"primary", 0.0), 0.01)
+				var quiet: float = picks.get(&"residential", 0.0) / maxf(km.get(&"residential", 0.0), 0.01)
+				_check(busy > quiet * 2.0, "the avenue gets more new cars than the back streets (%.0f vs %.0f per lane-km)" % [busy, quiet])
 				root.get_node("Weather").set_state(0, true)
 				clock.set_time(8.0)
 				# The player gets out and stands in the avenue's westbound kerb lane.
@@ -157,14 +189,163 @@ func _run_step() -> bool:
 					var rel: Vector3 = walker.global_position - v.position
 					if absf(rel.dot(TrafficGraph.left_of(v.forward))) < v.width * 0.5 + 0.2:
 						_mark.walker_hits += 1
-				if v.reason == TrafficVehicle.Reason.PLAYER and v.speed < 0.3 and v.position.distance_to(walker.global_position) < 15.0:
+				# Stopping or pulling round into the free lane both count.
+				if v.reason == TrafficVehicle.Reason.PLAYER and v.position.distance_to(walker.global_position) < 40.0:
 					_mark.waited += 1
 			if _seconds() >= 25.0:
 				_check(_mark.walker_hits == 0, "nobody drives through the player on foot (%d frames)" % _mark.walker_hits)
-				_check(_mark.waited > 0, "cars stop for the player standing in the road")
+				_check(_mark.waited > 0, "cars slow for the player standing in the road")
+				_mark.walker.queue_free()
+				# An ambulance on a call comes up the avenue's westbound kerb lane.
+				var best = null
+				for lane in _graph.lanes:
+					if lane.connector or lane.road == null or lane.road.rank < 2 or lane.length < 60.0:
+						continue
+					var mid: Vector3 = lane.point(lane.length * 0.5)
+					if lane.tangent(lane.length * 0.5).x < -0.9 and absf(mid.z - 4.8) < 1.0 and lane.point(0.0).x > 100.0 and lane.point(lane.length).x < 100.0:
+						best = lane
+				_mark.amb = null
+				if best != null:
+					# A car dawdling ahead of it, so someone has to pull over.
+					for o in best.vehicles.duplicate():
+						_traffic._despawn_vehicle(o)
+					_mark.slow = _traffic.spawn_vehicle_at(&"sedan", best, minf(55.0, best.length - 5.0), 6.0)
+					_mark.amb = _traffic.spawn_vehicle_at(&"ambulance", best, 4.0, 12.0)
+					_mark.amb_lane = best
+					_mark.amb_start = _mark.amb.position
+				_mark.pulled = {}
+				_mark.amb_hits = 0
+				_next()
+		6:  # Traffic pulls over for an ambulance on a call.
+			var amb = _mark.amb
+			if amb == null:
+				_check(false, "an ambulance turns up on the avenue")
+				_next()
+				return false
+			if amb.active:
+				for v in _traffic.vehicles:
+					if v == amb:
+						continue
+					if v.reason == TrafficVehicle.Reason.EMERGENCY and v.lateral > 0.7:
+						_mark.pulled[v.id] = true
+					var rel: Vector3 = v.position - amb.position
+					if absf(rel.y) < 2.0 and absf(rel.dot(amb.forward)) < (v.length + amb.length) * 0.5 - 0.4 \
+							and absf(rel.dot(TrafficGraph.left_of(amb.forward))) < (v.width + amb.width) * 0.5 - 0.25:
+						_mark.amb_hits += 1
+				_mark.amb_end = amb.position
+				var slow = _mark.slow
+				if slow.active and _mark.pulled.has(slow.id) and (amb.position - slow.position).dot(slow.forward) > 3.0:
+					_mark.overtook = true
+			if _seconds() >= 35.0:
+				_check(amb.light_bar != null and amb.siren != null, "the ambulance has lights and a siren")
+				_check(_mark.pulled.size() > 0, "traffic pulls over for the ambulance (%d cars)" % _mark.pulled.size())
+				_check(_mark.amb_hits == 0, "the ambulance doesn't drive through anyone (%d frames)" % _mark.amb_hits)
+				var went: float = _mark.amb_start.distance_to(_mark.amb_end)
+				_check(went > 150.0, "the ambulance gets through (%.0f m)" % went)
+				_check(_mark.get("overtook", false), "the ambulance passes the car that pulled over")
+				_check(_traffic.emergencies.has(amb) == amb.active, "the emergency list follows the ambulance")
+				_check(_traffic.stats.get("bike", 0) > 0, "people ride bikes on the quieter roads (%d so far)" % _traffic.stats.get("bike", 0))
+				# A cyclist on the avenue with a car coming up behind.
+				var lane = _mark.get("amb_lane")
+				for v in _traffic.vehicles.duplicate():
+					_traffic._despawn_vehicle(v)
+				_mark.bike = null
+				if lane != null:
+					_mark.bike = _traffic.spawn_vehicle_at(&"bike", lane, 40.0, 5.0)
+					_mark.passer = _traffic.spawn_vehicle_at(&"sedan", lane, 4.0, 11.0)
+				_mark.bike_hits = 0
+				_mark.passed = false
+				_next()
+		7:  # Cars pass a cyclist.
+			var bike = _mark.bike
+			if bike == null:
+				_check(false, "a cyclist turns up on the avenue")
+				_next()
+				return false
+			var car = _mark.passer
+			if bike.active and car.active:
+				var rel: Vector3 = car.position - bike.position
+				if absf(rel.dot(bike.forward)) < (car.length + bike.length) * 0.5 - 0.3 \
+						and absf(rel.dot(TrafficGraph.left_of(bike.forward))) < (car.width + bike.width) * 0.5 - 0.15:
+					_mark.bike_hits += 1
+				if rel.dot(bike.forward) > car.length:
+					_mark.passed = true
+			# Out on the road (not turning through a junction), by the kerb.
+			if bike.active and bike.lifetime > 3.0 and not bike.route[0].connector:
+				_mark.bike_on_road = _mark.get("bike_on_road", 0) + 1
+				if bike.lateral > 0.8:
+					_mark.bike_kerb = _mark.get("bike_kerb", 0) + 1
+			if _seconds() >= 20.0:
+				var kerb: float = float(_mark.get("bike_kerb", 0)) / maxf(_mark.get("bike_on_road", 0), 1.0)
+				_check(kerb > 0.8 or _mark.get("bike_on_road", 0) == 0, "the cyclist rides by the kerb (%.0f%% of the time)" % (kerb * 100.0))
+				_check(_mark.passed, "a car passes the cyclist")
+				_check(_mark.bike_hits == 0, "nobody rides or drives through each other (%d frames)" % _mark.bike_hits)
+				# Roadworks close the westbound kerb lane of the avenue.
+				var road = null
+				for r in _graph.roads:
+					# The stretch between the Roundabout Road lights and the next corner.
+					var xs := [r.pts[0].x, r.pts[r.pts.size() - 1].x]
+					if r.name == "Sandbox Avenue" and xs.min() > 50.0 and xs.max() < 230.0:
+						road = r
+				_mark.works = null
+				if road != null:
+					var fwd: bool = road.pts[0].x > road.pts[road.pts.size() - 1].x  # a -> b runs west
+					_mark.works = _traffic.roadworks.add_site(road, fwd, 1, road.length * 0.4, road.length * 0.4 + 50.0)
+					# A couple of cars coming up the closed lane, and one alongside.
+					var cl: TrafficGraph.Lane = _traffic.roadworks._lane_of(_mark.works)
+					for s0 in [2.0, 14.0]:
+						_traffic.spawn_vehicle_at(&"sedan", cl, s0, 10.0)
+					var other: TrafficGraph.Lane = cl.right_lane if cl.right_lane else cl.left_lane
+					if other:
+						_traffic.spawn_vehicle_at(&"hatch", other, 8.0, 10.0)
+				_mark.in_works = 0
+				_mark.past_works = {}
+				_mark.works_hits = _traffic.stats.get("overlaps", 0)
+				_next()
+		8:  # Traffic merges out of the closed lane and gets past the works.
+			var site = _mark.works
+			if site == null:
+				_check(false, "roadworks set up on the avenue")
+				_next()
+				return false
+			var closed_lane: TrafficGraph.Lane = _traffic.roadworks._lane_of(site)
+			for v in _traffic.vehicles:
+				var l: TrafficGraph.Lane = v.route[0]
+				if l == closed_lane and v.s > closed_lane.closed[0] + 1.0 and v.s < closed_lane.closed[1] and not v.change_from:
+					_mark.in_works += 1
+				if l.road == site.road and l != closed_lane and l.from_node == closed_lane.from_node and v.s > closed_lane.closed[1]:
+					_mark.past_works[v.id] = true
+			if _seconds() >= 60.0:
+				_check(not closed_lane.closed.is_empty(), "the roadworks close a lane")
+				_check(_mark.in_works == 0, "nobody drives through the cones (%d frames)" % _mark.in_works)
+				_check(_mark.past_works.size() >= 2, "traffic gets past the roadworks (%d cars)" % _mark.past_works.size())
+				_check(site.nodes.size() > 10, "the works have cones, a barrier, a sign and a ute (%d pieces)" % site.nodes.size())
+				var rw = _traffic.roadworks
+				rw.site_chance = 0.06
+				var days_on := 0
+				var moved := false
+				for day in 60:
+					var a: Dictionary = rw.site_for(site.road, day)
+					var b: Dictionary = rw.site_for(site.road, day + 1)
+					if not a.is_empty():
+						days_on += 1
+					if a.is_empty() != b.is_empty():
+						moved = true
+				var eligible := 0
+				var with_works := 0
+				for r in _graph.roads:
+					if rw.eligible(r):
+						eligible += 1
+						for day in 30:
+							if not rw.site_for(r, day).is_empty():
+								with_works += 1
+								break
+				_check(moved and days_on < 30, "the crews move on every few days (%d of 60 days on the avenue)" % days_on)
+				rw.clear()
+				_check(closed_lane.closed.is_empty(), "the lane opens again when the works go")
 				_root3d.queue_free()
 				_next()
-		6:  # The main scene gets traffic on the Perth map's roads.
+		9:  # The main scene gets traffic on the Perth map's roads.
 			if _main == null:
 				_main = load("res://scenes/main.tscn").instantiate()
 				root.add_child(_main)
@@ -172,8 +353,45 @@ func _run_step() -> bool:
 				var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 				_check(traffic.graph.roads.size() > 80, "main scene loads the map's road network (%d roads)" % traffic.graph.roads.size())
 				_check(traffic.vehicles.size() > 3, "main scene has traffic near the start (%d cars)" % traffic.vehicles.size())
+				var boxed := 0
+				for entry in traffic.graph.samples_near(traffic.keep_clear_spots[0], 15.0):
+					if not traffic.graph.keep_clear_on(entry[0]).is_empty():
+						boxed += 1
+				_check(boxed >= 2, "James St keeps Little Shenton Lane clear (%d lane samples boxed)" % boxed)
+				_check(traffic.network_ms < 30.0, "map tiles join the road network without stalling a frame (worst %.1f ms)" % traffic.network_ms)
 				var car = _main.get_node("LoFi/SubViewport/World/Car")
 				_check(car.collision_mask & 4 != 0, "the player's car collides with traffic")
+				# Wildlife: birds right by the player take off, ones further
+				# away carry on pecking; a kangaroo close by bounds off.
+				var wild: TrafficWildlife = traffic.wildlife
+				wild.clear()
+				wild.enabled = false
+				var cp: Vector3 = car.global_position
+				_mark.near_birds = wild.spawn_group(TrafficWildlife.Kind.MAGPIE, cp + Vector3(2.0, 0, 0), 1, false) \
+						+ wild.spawn_group(TrafficWildlife.Kind.MAGPIE, cp + Vector3(0, 0, -2.0), 1, false)
+				_mark.far_birds = wild.spawn_group(TrafficWildlife.Kind.IBIS, cp + Vector3(0, 0, 45), 3, false)
+				_mark.roo = wild.spawn_group(TrafficWildlife.Kind.ROO, cp + Vector3(-9, 0, 0), 1, false)
+				_mark.roo_start = cp + Vector3(-9, 0, 0)
+				_next()
+		10:  # Wildlife reacts to the player.
+			if _seconds() >= 3.0:
+				var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
+				var wild: TrafficWildlife = traffic.wildlife
+				_check(_mark.near_birds == 2 and _mark.far_birds == 3 and _mark.roo == 1, "wildlife appears where it's put (%d magpies, %d ibis, %d roo)" % [_mark.near_birds, _mark.far_birds, _mark.roo])
+				var flying := 0
+				var pecking := 0
+				var hopped := 0.0
+				for a in wild.animals:
+					if a.kind == TrafficWildlife.Kind.MAGPIE and a.state == &"fly":
+						flying += 1
+					if a.kind == TrafficWildlife.Kind.IBIS and (a.state == &"idle" or a.state == &"walk"):
+						pecking += 1
+					if a.kind == TrafficWildlife.Kind.ROO:
+						hopped = Vector2(a.node.position.x - _mark.roo_start.x, a.node.position.z - _mark.roo_start.z).length()
+				_check(flying == 2, "magpies by the player fly off (%d of 2)" % flying)
+				_check(pecking == 3, "birds further away carry on (%d of 3)" % pecking)
+				_check(hopped > 10.0, "the kangaroo bounds away (%.0f m)" % hopped)
+				wild.enabled = true
 				_next()
 		_:
 			if _failures.is_empty():
@@ -204,7 +422,69 @@ func _check_parking() -> void:
 	_check(parking.occupancy(&"street", 3.0) > parking.occupancy(&"street", 11.0), "streets fill up overnight")
 
 
+## A map tile adding a road to a set of lights that's already running must not
+## restart its cycle or swap which way is green.
+func _check_signal_rebuild() -> void:
+	var g := TrafficGraph.new()
+	var Y := 0.02
+	var minor := { "kind": "residential" }
+	g.add_data({ "nodes": [{ "id": 1, "p": [0, Y, 0], "ctrl": "signals" }, { "id": 2, "p": [-120, Y, 0] }, { "id": 3, "p": [0, Y, 120] }],
+		"roads": [{ "id": "w", "a": 2, "b": 1, "kind": "residential", "pts": [Vector3(-120, Y, 0), Vector3(0, Y, 0)] },
+			{ "id": "s", "a": 3, "b": 1, "kind": "residential", "pts": [Vector3(0, Y, 120), Vector3(0, Y, 0)] }] })
+	var ctrl: TrafficGraph.SignalController = g.nodes[1].signal_controller
+	for i in 40:
+		ctrl.update(0.37)
+	var west: TrafficGraph.Lane = g.nodes[1].roads[0].lanes_into(g.nodes[1])[0]
+	var before := [ctrl.phase, ctrl.timer, west.signal_gate.state()]
+	# The next tile brings the main road in from the east.
+	g.add_data({ "nodes": [{ "id": 1, "p": [0, Y, 0], "ctrl": "signals" }, { "id": 4, "p": [150, Y, 0] }],
+		"roads": [{ "id": "e", "a": 1, "b": 4, "kind": "primary", "lanes_fwd": 2, "lanes_back": 2, "pts": [Vector3(0, Y, 0), Vector3(150, Y, 0)] }] })
+	ctrl = g.nodes[1].signal_controller
+	var road_w: TrafficGraph.Road = null
+	for r in g.nodes[1].roads:
+		if r.other(g.nodes[1]).id == 2:
+			road_w = r
+	west = road_w.lanes_into(g.nodes[1])[0]
+	var after := [ctrl.phase, ctrl.timer, west.signal_gate.state() if west.signal_gate else -1]
+	_check(before == after, "lights keep their cycle when a new tile adds a road (%s -> %s)" % [before, after])
+
+
+## The map's tiles go into the graph a few roads at a time: the result must
+## match adding the whole lot at once.
+func _check_pieces() -> void:
+	var data: Dictionary = load("res://traffic/scripts/traffic_test_networks.gd").sandbox()
+	var pieces: Array = _traffic._split_network(data)
+	var g := TrafficGraph.new()
+	for piece in pieces:
+		g.add_data(piece)
+	var sig := func(graph: TrafficGraph) -> Array:
+		var yields := 0
+		var stops := 0
+		for c in graph.connectors:
+			yields += c.yield_to.size()
+		for l in graph.lanes:
+			stops += l.stops.size()
+		var approaches := 0
+		# Lights where the biggest road gets the longer green.
+		var main_green := 0
+		for c in graph.signal_controllers:
+			approaches += c.approaches.size()
+			var best = null
+			for ap in c.approaches:
+				if best == null or ap.road.rank > best.road.rank:
+					best = ap
+			if best != null and c.green[best.group] >= c.green[1 - best.group]:
+				main_green += 1
+		return [graph.roads.size(), graph.lanes.size(), graph.connectors.size(), yields, stops,
+			graph.signal_controllers.size(), approaches, main_green, graph.bus_stops.size(), graph.parking.size(), graph.crossings.size()]
+	var whole: Array = sig.call(_graph)
+	var split: Array = sig.call(g)
+	_check(pieces.size() > 3 and whole == split, "road data added in %d pieces builds the same network (%s vs %s)" % [pieces.size(), split, whole])
+
+
 func _check_graph() -> void:
+	_check_signal_rebuild()
+	_check_pieces()
 	var g = _graph
 	_check(g.roads.size() > 25, "sandbox network loads (%d roads)" % g.roads.size())
 	_check(g.signal_controllers.size() == 2, "two signal junctions (%d)" % g.signal_controllers.size())
@@ -271,13 +551,6 @@ func _watch() -> void:
 		_mark.buses = 0
 		_mark.signal_lane = {}
 		_mark.overlap_pairs = {}
-		_mark.kind_cars = {}
-		_mark.kind_km = {}
-	if _frame % 30 == 0:
-		# Lane-km of each kind of road in range, counted on the same frames.
-		for lane in _graph.lanes:
-			if lane.point(lane.length * 0.5).distance_to(_focus.position) < _traffic.spawn_radius:
-				_mark.kind_km[lane.road.kind] = _mark.kind_km.get(lane.road.kind, 0.0) + lane.length / 1000.0
 	_mark.max_vehicles = maxi(_mark.max_vehicles, _traffic.vehicles.size())
 	_mark.max_peds = maxi(_mark.max_peds, _traffic.pedestrians.size())
 	var vs: Array = _traffic.vehicles
@@ -297,8 +570,12 @@ func _watch() -> void:
 		if _frame % 30 != 0:
 			continue
 		_mark.samples += 1
-		if not lane.connector:
-			_mark.kind_cars[lane.road.kind] = _mark.kind_cars.get(lane.road.kind, 0.0) + 1.0
+		if v.speed < 0.3 and absf(v.position.z - 3.2) < 3.5:
+			var dx: float = absf(v.position.x - -72.0)
+			if dx < 5.0 + v.length * 0.5 - 0.3:
+				_mark.in_box = _mark.get("in_box", 0) + 1
+			elif dx < 30.0 and v.position.x > -72.0:
+				_mark.before_box = _mark.get("before_box", 0) + 1
 		if v.speed > 1.0:
 			_mark.moving += 1
 		if not lane.connector and lane.road.lanes_back > 0 and v.change_from == null and absf(v.lateral) < 0.1:

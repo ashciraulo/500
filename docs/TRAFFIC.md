@@ -40,11 +40,55 @@ the old test grid get a network matching the grid's streets instead.
   primary road does per lane), and parts of town have their own rhythm
   (`AREAS`): the CBD is busy in working hours and quiet at night, and
   Northbridge fills with people in the evening.
+- **The week** (day 1 is a Monday, as in `Garage.weekday()`). Weekends have
+  no rush hours and a busy late morning to mid afternoon; Sundays are a bit
+  quieter than Saturdays, and the office crowd stays out of the CBD. Friday
+  and Saturday nights (6 pm to 4 am, so 1 am Saturday is still Friday night)
+  bring out more cars and a lot more people, Northbridge most of all; the
+  people cap rises by `night_out_people_cap` for them. Office car parks are
+  half empty at the weekend and fill up again on a night out.
+  `TrafficManager.hour_density(day, hour, people)`, `is_weekend(day)` and
+  `is_night_out(day, hour)` are static, for anything else that wants the same
+  rhythm.
 - **Parked cars** fill the parking spots the map hands over. Car parks fill
   up in working hours and empty out overnight; street spots are fullest
   overnight. Which spots are taken is redrawn every two game hours, and a
   spot only changes while the camera isn't on it. Parked cars are solid to
   the player, and spots within 3 m of a lane are ignored.
+- **Keep-clear boxes.** Queues stop short of a keep-clear box rather than
+  across it, and nobody parks in one. The end of Little Shenton Lane on
+  James St, where the player drives out, has one (`keep_clear_spots` on the
+  manager); the map can add more with `keep_clear` in the road data.
+- **Emergency vehicles.** Every few minutes (`emergency_interval`) a police
+  car, ambulance or DFES fire truck heads along a main road towards the
+  player from out of sight, lights flashing and siren on. Cars ahead of it
+  on its way pull over to the left and stop (never inside a junction), and
+  it passes them on the right; it slows right down at red lights and edges
+  through when the junction is clear. `spawn_emergency(near, type)` sends
+  one on demand; `emergencies` lists those on the road.
+- **Cyclists** ride on residential streets, tertiary and secondary roads,
+  service lanes and anything the map flags `bike_lane`, about four times as
+  often on a bike lane (`bike_share` sets the base share). They keep to the
+  kerb, potter along at 15 to 25 km/h, and cars swing out round them. Fewer
+  ride at night, more at weekends, nobody in the rain, and never on
+  freeways or highways. They come on top of the car count.
+- **Roadworks.** Now and then (`roadworks.site_chance`) a long multi-lane
+  road has one lane coned off for three days, then the crew moves on. Each
+  site has a cone taper, a barrier, a ROADWORK sign 60 m back, a works ute
+  with its beacon going and a couple of workers in hi-vis during the day.
+  Traffic in the closed lane merges out before the taper (waiting for a gap
+  if it has to, and the next lane lets it in), and everyone slows to
+  40 km/h past the works. Which roads have works on which day is a pure
+  function of the road and the day, so the works are still there when the
+  player comes back; sites only appear or go out of sight. The cones are
+  light rigid bodies the player can knock flying (with a bonk).
+  `roadworks.add_site(road, fwd, k, s0, s1)` closes a lane on demand.
+- **Wildlife.** Magpies on any grass in the daytime, ibis around the river
+  foreshore, Hyde Park, Russell Square and the lakes, and now and then a
+  kangaroo or two grazing in Kings Park at dusk and dawn. They appear out of
+  view on grass, peck about and wander, and clear off when the player comes
+  close: birds fly, kangaroos bound away. A magpie warbles now and then.
+  `wildlife.spawn_group(kind, near, count)` puts some down on demand.
 - **Driving** uses the intelligent driver model: each car keeps a safe gap to
   whatever is ahead (the car in front, a stop line, a person, the player).
   Cars slow for bends, change lanes to pass slow traffic, and drive a little
@@ -86,11 +130,16 @@ the old test grid get a network matching the grid's streets instead.
 The map gives traffic its roads by calling `add_network(data)` on the
 `TrafficManager` (it's in the `traffic` group, so
 `get_tree().call_group(&"traffic", &"add_network", data)` works), once per
-tile as tiles load. Alternatively a node in the `traffic_sources` group with
+tile as tiles load. The data goes into the road graph a few roads per
+physics frame (about `network_budget_ms` each frame), so a new tile never
+stalls the game; `add_network(data, true)` or `flush_network()` adds it at
+once, and `network_pending()` says whether any is still queued.
+Alternatively a node in the `traffic_sources` group with
 a `get_traffic_data()` method is read at startup. Roads join across calls on
 shared node ids, so use OSM node ids. A tile's roads may arrive before or
 after its neighbours': junctions rebuild when new roads reach them (cars
-already on them keep going), signal sets join up across tiles, and stations
+already on them keep going), signal sets join up across tiles without
+restarting their cycle, and stations
 and bus stops attach to rail and roads that arrive later.
 
 World coordinates in metres, matching the game: -Z north, +X east, +Y up.
@@ -114,6 +163,7 @@ World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 			"width": 13.6,                      # optional; defaults to lanes x 3.2 m + 0.8 m
 			"sidewalks": true,                  # optional; defaults by kind
 			"name": "Beaufort Street",          # optional
+			"bike_lane": true,                  # optional; cycleway=lane/track on the road
 			"id": "osm-way-1234/2",             # optional; stops a road being added twice
 		},
 	],
@@ -127,6 +177,9 @@ World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 	# Optional bus routes (OSM route=bus): the ids of the roads they run along.
 	# Pieces with the same ref in different tiles join up.
 	"bus_routes": [{ "ref": "950", "name": "950 Morley - UWA", "colour": "#0066b3", "roads": ["osm-way-1234/2", ...] }],
+	# Optional keep-clear boxes: where a lane or driveway the player uses
+	# meets a road traffic drives. Queues wait before them; no parking in them.
+	"keep_clear": [{ "p": [x, y, z], "radius": 6.0 }],
 }
 ```
 
@@ -145,7 +198,7 @@ map doesn't need to.
 
 | Signal | When |
 | --- | --- |
-| `vehicle_spawned(vehicle: Node3D, type: StringName)` | A car/bus appeared (or was reused from the pool). `type`: hatch, sedan, suv, ute, van, bus. |
+| `vehicle_spawned(vehicle: Node3D, type: StringName)` | A car/bus appeared (or was reused from the pool). `type`: hatch, sedan, suv, ute, van, bus, bike, or police, ambulance, fire (on a call). |
 | `vehicle_despawned(vehicle: Node3D)` | It was hidden and pooled. |
 | `horn(vehicle: Node3D, duration: float, is_bus: bool)` | A vehicle sounded its horn. |
 | `pedestrian_startled(position: Vector3)` | Someone jumped out of the player's way. |
@@ -157,7 +210,10 @@ map doesn't need to.
 Each vehicle body has a child `Audio` (Node3D at the engine) with a `Horn`
 AudioStreamPlayer3D on the Vehicles bus playing a placeholder two-tone horn.
 Sound code can swap `Horn.stream`, or add engine players under `Audio` on
-`vehicle_spawned`. A vehicle's speed: `manager.vehicles` holds
+`vehicle_spawned`. Police cars, ambulances and fire trucks also have a
+`Siren` player under `Audio` (a placeholder looping wail, playing while
+they're on the road) and a `LightBar` with `Red` and `Blue` lamps the
+manager flashes. A vehicle's speed: `manager.vehicles` holds
 `TrafficVehicle` objects with `body`, `speed` (m/s), `accel` and `type`.
 
 Physics: vehicles and train carriages are `AnimatableBody3D`s on layer 3

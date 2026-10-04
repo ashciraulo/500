@@ -11,11 +11,21 @@ extends RefCounted
 ## Horn AudioStreamPlayer3D. Sound code can add players under Audio when the
 ## manager emits `vehicle_spawned`.
 
-enum Reason { NONE, LEADER, STOP_LINE, YIELD, PLAYER, PEDESTRIAN, OBSTACLE }
+enum Reason { NONE, LEADER, STOP_LINE, YIELD, PLAYER, PEDESTRIAN, OBSTACLE, EMERGENCY }
 
 var id := 0
 var type: StringName
 var is_bus := false
+## Someone on a bicycle: rides near the kerb, cars pass them.
+var is_bike := false
+## In a lane coned off for roadworks ahead: looking to merge out.
+var works_merge := false
+## Seconds left passing a cyclist (swung out to the right).
+var pass_bike := 0.0
+## Police, ambulance or fire truck on a call (lights and siren).
+var emergency := false
+var siren: AudioStreamPlayer3D
+var light_bar: Node3D
 var length := 4.5
 var width := 1.8
 var paint := Color.WHITE
@@ -58,6 +68,11 @@ var lifetime := 0.0
 ## Sideways offset from the lane centre (to dodge the player), metres; + = left.
 var lateral := 0.0
 var lateral_target := 0.0
+## Seconds left pulled over for an emergency vehicle coming up behind.
+var pull_over := 0.0
+## Where the vehicle sits across its lane when nothing else says otherwise:
+## left when pulled over, right when an emergency vehicle is passing.
+var lateral_base := 0.0
 ## Lane change: the lane we're moving out of and progress 0..1.
 var change_from: TrafficGraph.Lane
 var change_t := 1.0

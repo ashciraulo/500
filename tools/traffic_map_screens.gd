@@ -24,7 +24,7 @@ func _init() -> void:
 	if not args.is_empty():
 		_out = args[0]
 	DirAccess.make_dir_recursive_absolute(_out)
-	# [name, hour, weather, seconds to simulate, junction near, camera height, distance back]
+	# [name, hour, weather, seconds to simulate, junction near, camera height, distance back, (day: 1 is a Monday)]
 	# The camera stands back along the junction's busiest approach road,
 	# where the street keeps buildings out of the way. Freeway shots (height
 	# over 12 m) follow the busiest stretch of traffic near the spot instead.
@@ -37,6 +37,12 @@ func _init() -> void:
 		["perth_station", 9.0, 0, 8.0, Vector3(390, 25, 560), 0.0, 0.0],
 		["northbridge_rain", 18.4, 1, 22.0, Vector3(60, 18, 205), 9.0, 30.0],
 		["william_night", 22.0, 0, 22.0, Vector3(391, 25, 587), 6.0, 30.0],
+		["northbridge_tuesday_night", 23.0, 0, 30.0, Vector3(380, 20, 60), 4.0, 25.0, 2],
+		["northbridge_saturday_night", 23.0, 0, 30.0, Vector3(380, 20, 60), 4.0, 25.0, 6],
+		["shenton_lane_mouth", 17.6, 0, 40.0, Vector3(-57.5, 21, 38.8), 7.0, 32.0],
+		["wildlife_russell_square", 9.5, 0, 16.0, Vector3(160, 20, 66), 1.2, 7.0],
+		["wildlife_hyde_park", 16.5, 0, 16.0, Vector3(812, 20, -827), 1.2, 7.0],
+		["wildlife_kings_park_dusk", 18.3, 0, 16.0, Vector3(-1500, 50, 1400), 1.4, 11.0],
 	]
 	if args.size() > 1:
 		# Optional second argument: render only the shots whose names contain it.
@@ -59,6 +65,12 @@ func _process(_delta: float) -> bool:
 		world.add_child(_cam)
 		_main.get_node("HUD").visible = false
 		_car.visible = false
+		# The on-foot player's "Get out" prompt isn't part of the picture.
+		for child in world.get_children():
+			if child is CharacterBody3D and "in_car" in child:
+				for layer in child.get_children():
+					if layer is CanvasLayer:
+						layer.visible = false
 		return false
 	if _shot < 0:
 		_next_shot()
@@ -73,7 +85,15 @@ func _process(_delta: float) -> bool:
 		else:
 			_cam.look_at_from_position(pick[0], pick[1])
 	if _frames == int(shot[3] * 60.0) - 20 and shot[0] != "perth_station":
-		var view := _junction_view(shot[4], shot[5], shot[6]) if shot[5] <= 12.0 else _traffic_view(shot[4], shot[5], shot[6])
+		var view: Array
+		if shot[0] == "shenton_lane_mouth":
+			view = _across_view(shot[4], shot[5], shot[6])
+		elif shot[0].begins_with("wildlife"):
+			view = _wildlife_view(shot[0], shot[4], shot[5], shot[6])
+		elif shot[5] <= 12.0:
+			view = _junction_view(shot[4], shot[5], shot[6])
+		else:
+			view = _traffic_view(shot[4], shot[5], shot[6])
 		_cam.look_at_from_position(view[0], view[1])
 	var ready := _frames >= int(shot[3] * 60.0)
 	if ready and shot[0] == "perth_station" and _train != null:
@@ -94,6 +114,7 @@ func _next_shot() -> void:
 	_train = null
 	var shot: Array = _shots[_shot]
 	var clock := root.get_node("GameClock")
+	clock.day = shot[7] if shot.size() > 7 else 2
 	clock.set_time(shot[1])
 	clock.set_locked(true)
 	var weather := root.get_node("Weather")
@@ -136,6 +157,69 @@ func _junction_view(near: Vector3, height: float, back: float) -> Array:
 	out.y = 0.0
 	var side: Vector3 = Vector3(out.z, 0, -out.x).normalized() * road.half_width * 0.3
 	return [p + side + Vector3(0, height, 0), best.pos + Vector3(0, 1.0, 0)]
+
+
+## Along the road past `near`, looking back at it (for the keep-clear box
+## at the end of Little Shenton Lane).
+func _across_view(near: Vector3, height: float, back: float) -> Array:
+	var best = null
+	var best_d := INF
+	for entry in _traffic.graph.samples_near(near, 20.0):
+		var lane = entry[0]
+		if lane.connector:
+			continue
+		var s := TrafficGraph.closest_s(lane.pts, lane.cum, near)
+		var d: float = lane.point(s).distance_to(near)
+		if d < best_d:
+			best_d = d
+			best = [lane, s]
+	if best == null:
+		return [near + Vector3(30, 30, 30), near]
+	# Up the road from the lane mouth, a little off to its side, so the
+	# queue and the gap left for the lane are both in view.
+	var lane = best[0]
+	var p: Vector3 = lane.point(best[1])
+	var dir: Vector3 = (lane.point(minf(best[1] + 5.0, lane.length)) - lane.point(maxf(best[1] - 5.0, 0.0))).normalized()
+	var side: Vector3 = (near - p)
+	side.y = 0.0
+	side = side.normalized() if side.length() > 0.3 else Vector3(dir.z, 0, -dir.x)
+	print("across view on ", lane.road.name, " (", lane.vehicles.size(), " cars on the lane)")
+	return [p + dir * back - side * 6.0 + Vector3(0, height, 0), p + side * 2.0]
+
+
+## Find grass near `near` (clear of the car hovering above it, which would
+## scare them off), put some animals on it, and look at them from `back`.
+func _wildlife_view(shot_name: String, near: Vector3, height: float, back: float) -> Array:
+	var wild: TrafficWildlife = _traffic.wildlife
+	var roo := "kings_park" in shot_name
+	var want: Array = [&"grass", &"dirt"] if roo else [&"grass"]
+	for r in range(25, 200, 10):
+		for i in 24:
+			var ang := TAU * i / 24.0
+			var g: Dictionary = wild._ground(near + Vector3(cos(ang), 0, sin(ang)) * r)
+			if g.is_empty() or not want.has(g.surface):
+				continue
+			# A proper patch of it, with room for the camera on it too.
+			var open := true
+			for k in 6:
+				var q: Dictionary = wild._ground(g.pos + Vector3(cos(TAU * k / 6.0), 0, sin(TAU * k / 6.0)) * back)
+				open = open and not q.is_empty() and want.has(q.surface) and absf(q.pos.y - g.pos.y) < 2.5
+			if not open:
+				continue
+			var p: Vector3 = g.pos
+			if roo:
+				wild.spawn_group(TrafficWildlife.Kind.ROO, p, 2)
+				wild.spawn_group(TrafficWildlife.Kind.MAGPIE, p + Vector3(4, 0, -2), 1)
+			else:
+				wild.spawn_group(TrafficWildlife.Kind.IBIS, p, 4, false)
+				wild.spawn_group(TrafficWildlife.Kind.MAGPIE, p + Vector3(3, 0, 2), 2, false)
+			var out := Vector3(cos(ang), 0, sin(ang))
+			var cam_g: Dictionary = wild._ground(p + out * back)
+			var cam_y: float = cam_g.pos.y if not cam_g.is_empty() else p.y
+			print("wildlife on ", g.surface, " at ", p, " (", wild.animals.size(), " animals)")
+			return [Vector3(p.x, cam_y, p.z) + out * back + Vector3(0, height, 0), p + Vector3(0, 0.5, 0)]
+	print("no grass found near ", near)
+	return [near + Vector3(30, 30, 30), near]
 
 
 ## Behind and above the car near `near` with the most company, looking

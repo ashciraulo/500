@@ -40,6 +40,17 @@ const HEADLIGHT_BEAMS := 6
 @export_group("Density")
 @export var max_vehicles := 60
 @export var max_pedestrians := 70
+## Share of new traffic on quieter roads that's someone on a bike (more on
+## roads with bike lanes and at weekends, few at night, none in the rain).
+@export var bike_share := 0.06
+## Seconds between police cars, ambulances and fire trucks on a call
+## (random within the range). 0 turns them off.
+@export var emergency_interval := Vector2(240.0, 600.0)
+## Milliseconds per frame spent adding map tiles' roads (at least one piece
+## goes in each frame).
+@export var network_budget_ms := 3.0
+## max_pedestrians is multiplied by this on Friday and Saturday nights.
+@export var night_out_people_cap := 1.5
 @export var max_buses := 4
 @export var max_trains := 2
 ## Cars per kilometre of lane at rush hour.
@@ -50,6 +61,9 @@ const HEADLIGHT_BEAMS := 6
 @export var density_scale := 1.0
 @export var pedestrian_scale := 1.0
 @export var trains_enabled := true
+## Places traffic never stops across or parks in: where Little Shenton Lane
+## (the way out of the player's carport) meets James Street.
+@export var keep_clear_spots: Array[Vector3] = [Vector3(-57.5, 21.0, 38.8)]
 @export_group("Ranges")
 @export var min_spawn_radius := 110.0
 @export var spawn_radius := 260.0
@@ -79,6 +93,15 @@ var _spawn_timer := 0.0
 var _train_timer := 20.0
 var _warm := 2.0
 var _time := 0.0
+## Road data waiting to be added (see add_network).
+var _pending_networks: Array = []
+const NETWORK_CHUNK := 6
+## Longest frame spent adding road data so far, for tests.
+var network_ms := 0.0
+## Emergency vehicles on the road now (lights and siren on).
+var emergencies: Array = []
+var _emergency_timer := 120.0
+var _siren: AudioStreamWAV
 var _focus: Node3D
 var _player: RigidBody3D
 var _player_proxy := PlayerProxy.new()
@@ -90,6 +113,9 @@ var _horn_car: AudioStreamWAV
 var _horn_bus: AudioStreamWAV
 var _signal_props: Array = []
 var _crossing_props: Array = []
+## Controller (or crossing) -> its entry in the lists above.
+var _signal_prop_of := {}
+var _crossing_prop_of := {}
 var _bus_stop_props := {}
 var _lane_km_cache := 0.0
 var _foot_km_cache := 0.0
@@ -99,6 +125,8 @@ var _beams: Array = []
 var _beam_owners: Array = []
 var _beam_timer := 0.0
 var parking: TrafficParking
+var roadworks: TrafficRoadworks
+var wildlife: TrafficWildlife
 
 
 class PlayerProxy:
@@ -120,12 +148,23 @@ func _ready() -> void:
 	_props_root = Node3D.new()
 	_props_root.name = "Props"
 	add_child(_props_root)
+	for p in keep_clear_spots:
+		graph.add_keep_clear(p, 7.0)
 	parking = TrafficParking.new()
 	parking.name = "Parked"
 	parking.setup(self, graph)
 	add_child(parking)
+	roadworks = TrafficRoadworks.new()
+	roadworks.name = "Roadworks"
+	roadworks.setup(self, graph)
+	add_child(roadworks)
+	wildlife = TrafficWildlife.new()
+	wildlife.name = "Wildlife"
+	wildlife.setup(self)
+	add_child(wildlife)
 	_horn_car = _make_horn(415.0, 523.0, 1.4)
 	_horn_bus = _make_horn(247.0, 311.0, 1.6)
+	_siren = _make_siren()
 	_load_sources.call_deferred()
 
 
@@ -133,16 +172,115 @@ func _load_sources() -> void:
 	var loaded := false
 	for source in get_tree().get_nodes_in_group(&"traffic_sources"):
 		if source.has_method("get_traffic_data"):
-			add_network(source.get_traffic_data())
+			add_network(source.get_traffic_data(), true)
 			loaded = true
 	if not loaded and use_test_grid_fallback and graph.roads.is_empty():
 		var parent := get_parent()
 		if parent and parent.get_node_or_null("TestGrid") != null:
-			add_network(TrafficTestNetworks.test_grid())
+			add_network(TrafficTestNetworks.test_grid(), true)
 
 
 ## Add road data (one map tile, or a whole network). See docs/TRAFFIC.md.
-func add_network(data: Dictionary) -> void:
+## It goes in a few roads at a time over the next frames, so a new map tile
+## never stalls a frame; `now` (or flush_network()) adds it straight away.
+func add_network(data: Dictionary, now := false) -> void:
+	if now:
+		flush_network()
+		_add_network_now(data)
+		return
+	_pending_networks.append_array(_split_network(data))
+
+
+## Add every queued piece of road data now.
+func flush_network() -> void:
+	while not _pending_networks.is_empty():
+		_add_network_now(_pending_networks.pop_front())
+
+
+## Whether road data is still waiting to go in.
+func network_pending() -> bool:
+	return not _pending_networks.is_empty()
+
+
+## One tile's data in pieces of about NETWORK_CHUNK roads: the nodes come
+## with the first piece, the rest of the data (parking, bus stops and so on)
+## after the roads, in pieces of its own.
+func _split_network(data: Dictionary) -> Array:
+	var roads: Array = data.get("roads", [])
+	var extras := 0
+	for key in data:
+		if key != "roads" and key != "nodes" and data[key] is Array:
+			extras += data[key].size()
+	if roads.size() <= NETWORK_CHUNK and extras < 60:
+		return [data]
+	# Roads at a set of traffic lights stay together in one piece, so lights
+	# spread over a split junction are found as one set.
+	var signals := {}
+	for n in data.get("nodes", []):
+		if str(n.get("ctrl", "")) == "signals":
+			signals[int(n.id)] = int(n.id)
+	var find := func(x: int) -> int:
+		while signals[x] != x:
+			x = signals[x]
+		return x
+	for r in roads:
+		var a := int(r.a)
+		var b := int(r.b)
+		if signals.has(a) and signals.has(b):
+			signals[find.call(a)] = find.call(b)
+	var groups := {}
+	var plain: Array = []
+	for r in roads:
+		var a := int(r.a)
+		var b := int(r.b)
+		var key: int = find.call(a) if signals.has(a) else (find.call(b) if signals.has(b) else 0)
+		if signals.has(a) or signals.has(b):
+			if not groups.has(key):
+				groups[key] = []
+			groups[key].append(r)
+		else:
+			plain.append(r)
+	var pieces: Array = []
+	var current: Array = []
+	for key in groups:
+		if not current.is_empty() and current.size() + groups[key].size() > NETWORK_CHUNK:
+			pieces.append({ "roads": current })
+			current = []
+		current.append_array(groups[key])
+	for r in plain:
+		if current.size() >= NETWORK_CHUNK:
+			pieces.append({ "roads": current })
+			current = []
+		current.append(r)
+	if not current.is_empty():
+		pieces.append({ "roads": current })
+	if pieces.is_empty():
+		pieces.append({ "roads": [] })
+	pieces[0].nodes = data.get("nodes", [])
+	for key in data:
+		if key == "roads" or key == "nodes":
+			continue
+		var list = data[key]
+		if not list is Array:
+			pieces[pieces.size() - 1][key] = list
+			continue
+		for i in range(0, list.size(), 120):
+			pieces.append({ key: list.slice(i, i + 120) })
+	return pieces
+
+
+func _process_networks() -> void:
+	if _pending_networks.is_empty():
+		return
+	var t0 := Time.get_ticks_usec()
+	while not _pending_networks.is_empty():
+		_add_network_now(_pending_networks.pop_front())
+		if (Time.get_ticks_usec() - t0) / 1000.0 > network_budget_ms:
+			break
+	network_ms = maxf(network_ms, (Time.get_ticks_usec() - t0) / 1000.0)
+
+
+func _add_network_now(data: Dictionary) -> void:
 	graph.add_data(data)
 	# Junctions where the new roads join were rebuilt: replan from the first
 	# move that no longer exists.
@@ -169,12 +307,15 @@ func clear_all() -> void:
 	for t in trains.duplicate():
 		_despawn_train(t)
 	parking.clear()
+	roadworks.clear()
+	wildlife.clear()
 	_warm = 2.0
 
 
 func _physics_process(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_time += delta
+	_process_networks()
 	_update_focus()
 	for controller in graph.signal_controllers:
 		controller.update(delta)
@@ -197,6 +338,8 @@ func _physics_process(delta: float) -> void:
 	_warm = maxf(_warm - delta, 0.0)
 	_update_props()
 	parking.update(delta, focus_position())
+	roadworks.update(delta, focus_position())
+	wildlife.update(delta, focus_position())
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	step_ms = lerpf(step_ms, ms, 0.05)
 
@@ -266,6 +409,70 @@ const CAR_CURVE := [0.14, 0.08, 0.05, 0.05, 0.08, 0.25, 0.6, 1.0, 1.0, 0.75, 0.6
 ## People by hour (lunchtime peak, Northbridge evenings).
 const PED_CURVE := [0.3, 0.2, 0.08, 0.04, 0.04, 0.08, 0.25, 0.6, 0.8, 0.65, 0.7, 0.9,
 	1.0, 0.95, 0.75, 0.7, 0.8, 0.85, 0.7, 0.6, 0.6, 0.55, 0.5, 0.4]
+## Weekends: a slow start, no rush hours, busy late morning to mid afternoon
+## (shopping, sport, the beach).
+const CAR_CURVE_WEEKEND := [0.2, 0.12, 0.08, 0.05, 0.04, 0.06, 0.14, 0.3, 0.5, 0.7, 0.85, 0.9,
+	0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.3]
+const PED_CURVE_WEEKEND := [0.45, 0.3, 0.12, 0.04, 0.03, 0.04, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0,
+	1.0, 1.0, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.7, 0.65, 0.6, 0.5]
+## Friday and Saturday nights out, from 6 pm to 4 am: [cars, people]
+## multipliers on top of the hour's curve.
+const NIGHT_OUT := {
+	18: [1.05, 1.15], 19: [1.15, 1.3], 20: [1.25, 1.5], 21: [1.35, 1.7], 22: [1.5, 1.9],
+	23: [1.6, 2.1], 0: [1.8, 2.4], 1: [1.8, 2.6], 2: [1.6, 2.4], 3: [1.3, 1.6],
+}
+## Sundays are a little quieter than Saturdays.
+const SUNDAY_SCALE := 0.85
+
+enum Day { WEEKDAY, FRIDAY, SATURDAY, SUNDAY }
+
+
+## What kind of day `day` is (day 1 is a Monday, as in Garage.weekday()).
+static func day_kind(day: int) -> Day:
+	match posmod(day - 1, 7):
+		4: return Day.FRIDAY
+		5: return Day.SATURDAY
+		6: return Day.SUNDAY
+	return Day.WEEKDAY
+
+
+static func is_weekend(day: int) -> bool:
+	var kind := day_kind(day)
+	return kind == Day.SATURDAY or kind == Day.SUNDAY
+
+
+## Whether `hour` on `day` is part of a Friday or Saturday night out (the
+## small hours belong to the night before).
+static func is_night_out(day: int, hour: float) -> bool:
+	var h := fposmod(hour, 24.0)
+	if h >= 18.0:
+		var kind := day_kind(day)
+		return kind == Day.FRIDAY or kind == Day.SATURDAY
+	if h < 4.0:
+		var kind := day_kind(day - 1)
+		return kind == Day.FRIDAY or kind == Day.SATURDAY
+	return false
+
+
+## How busy roads (or footpaths, with `people`) are at `hour` on `day`, 0..~2.
+static func hour_density(day: int, hour: float, people := false) -> float:
+	var weekend := is_weekend(day)
+	var curve: Array
+	if people:
+		curve = PED_CURVE_WEEKEND if weekend else PED_CURVE
+	else:
+		curve = CAR_CURVE_WEEKEND if weekend else CAR_CURVE
+	var f := _curve(curve, hour)
+	if day_kind(day) == Day.SUNDAY and fposmod(hour, 24.0) >= 4.0:
+		f *= SUNDAY_SCALE
+	if is_night_out(day, hour):
+		var h := int(fposmod(hour, 24.0))
+		var nxt := (h + 1) % 24
+		var k := 1 if people else 0
+		var a: float = NIGHT_OUT[h][k]
+		var b: float = NIGHT_OUT[nxt][k] if NIGHT_OUT.has(nxt) else 1.0
+		f *= lerpf(a, b, fposmod(hour, 1.0))
+	return f
 
 
 ## Share of the traffic each kind of road carries, per lane-km: the
@@ -292,9 +499,13 @@ const AREA_HOURS := [1.0, 0.8, 0.3, 0.0, 0.0, 0.0, 0.0, -0.5, -1.0, -1.0, -1.0, 
 
 
 ## How busy the area around `p` is right now compared with an ordinary street.
-## people: true for footpaths, false for roads.
-static func area_factor(p: Vector3, hour: float, people := false) -> float:
+## people: true for footpaths, false for roads. On weekends the office
+## crowd stays home, and Friday and Saturday nights pull harder.
+static func area_factor(p: Vector3, hour: float, people := false, day := 1) -> float:
 	var x := _curve(AREA_HOURS, hour)
+	if x < 0.0 and is_weekend(day):
+		x *= 0.5 if people else 0.2
+	var night_out := x > 0.0 and is_night_out(day, hour)
 	var k := 1 if people else 0
 	var f := 1.0
 	for area in AREAS:
@@ -304,6 +515,8 @@ static func area_factor(p: Vector3, hour: float, people := false) -> float:
 		if w <= 0.0:
 			continue
 		var m: float = lerpf(1.0, area.day[k], -x) if x < 0.0 else lerpf(1.0, area.night[k], x)
+		if night_out and area.night[k] > 1.0:
+			m = lerpf(1.0, area.night[k], x * 1.4)
 		f *= lerpf(1.0, m, w)
 	return f
 
@@ -319,24 +532,28 @@ func car_density() -> float:
 	match Weather.state:
 		Weather.State.LIGHT_RAIN: weather = 1.05
 		Weather.State.STORM: weather = 0.75
-	return _curve(CAR_CURVE, GameClock.time_of_day) * weather * density_scale
+	return hour_density(GameClock.day, GameClock.time_of_day) * weather * density_scale
 
 
 func people_density() -> float:
 	var weather := lerpf(1.0, 0.35, clampf(Weather.rain * 1.4, 0.0, 1.0))
 	if Weather.state == Weather.State.STORM:
 		weather *= 0.4
-	return _curve(PED_CURVE, GameClock.time_of_day) * weather * pedestrian_scale
+	return hour_density(GameClock.day, GameClock.time_of_day, true) * weather * pedestrian_scale
 
 
 func target_vehicles() -> int:
-	var area := area_factor(focus_position(), GameClock.time_of_day)
+	var area := area_factor(focus_position(), GameClock.time_of_day, false, GameClock.day)
 	return mini(roundi(_lane_km_cache * cars_per_lane_km * car_density() * area), max_vehicles)
 
 
 func target_pedestrians() -> int:
-	var area := area_factor(focus_position(), GameClock.time_of_day, true)
-	return mini(roundi(_foot_km_cache * people_per_km * people_density() * area), max_pedestrians)
+	var area := area_factor(focus_position(), GameClock.time_of_day, true, GameClock.day)
+	# A Friday or Saturday night crowd is allowed past the usual cap.
+	var cap := max_pedestrians
+	if is_night_out(GameClock.day, GameClock.time_of_day):
+		cap = roundi(max_pedestrians * night_out_people_cap)
+	return mini(roundi(_foot_km_cache * people_per_km * people_density() * area), cap)
 
 
 # --- Spatial hash (vehicles, people, the player) ------------------------------
@@ -383,6 +600,9 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 	var b_comf := 2.4
 	var headway := (1.5 if v.is_bus else 1.3) * (1.0 + 0.4 * wet)
 	var v0: float = lane.speed * v.eagerness * (1.0 - 0.15 * wet)
+	if v.is_bike:
+		a_max = 0.9
+		v0 = minf(v0, 6.5 * v.eagerness)
 
 	# Slow down in time for bends and slower roads ahead.
 	var ahead: float = lane.length - v.s
@@ -411,6 +631,13 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 			if o == v:
 				continue
 			if i == 0 and (o.s < v.s or (o.s == v.s and o.id < v.id)):
+				continue
+			if v.emergency and o.pull_over > 0.0 and o.lateral > 0.7:
+				continue  # Pulled over for us: we go round.
+			if o.is_bike and not v.is_bike and not l.connector and o.lateral > 0.8:
+				# A cyclist by the kerb: swing out a little and pass.
+				if base + o.s < 30.0:
+					v.pass_bike = 0.8
 				continue
 			var d: float = base + o.s
 			if d < best:
@@ -482,6 +709,10 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 				if state == TrafficGraph.Gate.STOP:
 					# Already on the line at speed: too late to stop, carry on.
 					halt = not (d < 0.6 and v.speed > 3.0)
+					# On a call: slow right down at the red, then edge across
+					# (the junction checks still wait for a gap).
+					if v.emergency and not gate is TrafficGraph.LevelCrossing:
+						halt = not (d < 12.0 and v.speed < 6.0)
 				elif state == TrafficGraph.Gate.AMBER:
 					halt = v.speed * v.speed / (2.0 * maxf(d, 0.1)) < 3.5
 				elif gate is TrafficGraph.LevelCrossing and d > 0.5:
@@ -570,6 +801,95 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 		lead_speed = v.obstacle_speed
 		reason = v.obstacle_reason
 		who = v.obstacle_who
+
+	# 5. Keep-clear boxes (the end of Little Shenton Lane): when traffic
+	# ahead is stopped, wait before the box rather than across it. Behind a
+	# cyclist, who might stop at any moment, too.
+	var crawling: bool = lead_speed < 7.0 and who is TrafficVehicle and who.is_bike
+	if gap < INF and (lead_speed < 3.0 or crawling) and not graph.keep_clear.is_empty():
+		var kb := -v.s - v.length * 0.5
+		for l in v.route:
+			if kb > minf(gap, 90.0):
+				break
+			for r in graph.keep_clear_on(l):
+				var z0: float = kb + r[0]
+				var z1: float = kb + r[1]
+				# Stopping `gap` ahead (less the usual 2 m) would leave us in the box.
+				if z0 > 0.5 and gap - 2.2 > z0 and gap - 2.2 - v.length < z1:
+					gap = z0 - 0.5
+					lead_speed = 0.0
+					reason = TrafficVehicle.Reason.STOP_LINE
+					who = null
+			kb += l.length
+
+	# 6. Emergency vehicles: get out of the way, or (driving one) go round
+	# the cars that have.
+	v.lateral_base = 0.0
+	if v.is_bike:
+		v.lateral_base = 1.15 if not lane.connector else 0.5
+	elif v.pass_bike > 0.0:
+		v.pass_bike -= dt
+		if not lane.connector:
+			v.lateral_base = -0.45
+	if v.emergency:
+		v.pull_over = maxf(v.pull_over - dt, 0.0)
+		if v.pull_over > 0.0 and not lane.connector:
+			v.lateral_base = -(v.width * 0.5 + 0.2)
+	else:
+		if not emergencies.is_empty():
+			_give_way_to_emergency(v)
+		if v.pull_over > 0.0:
+			v.pull_over -= dt
+			# Never stop inside a junction: clear it first.
+			if not lane.connector:
+				v.lateral_base = maxf(v.lateral_base, 1.1)
+				var g := 4.0 + v.speed * v.speed / 5.0
+				if g < gap:
+					gap = g
+					lead_speed = 0.0
+					reason = TrafficVehicle.Reason.EMERGENCY
+					who = null
+
+	# 7. Roadworks: get out of a coned-off lane before the cones, let people
+	# merging out of one in, and slow down past the works.
+	v.works_merge = false
+	var wb := -v.s - v.length * 0.5
+	for i in v.route.size():
+		var l: TrafficGraph.Lane = v.route[i]
+		if wb > 120.0:
+			break
+		if not l.connector:
+			var works: Array = l.closed
+			if works.is_empty() and l.left_lane and not l.left_lane.closed.is_empty():
+				works = l.left_lane.closed
+			if works.is_empty() and l.right_lane and not l.right_lane.closed.is_empty():
+				works = l.right_lane.closed
+			if not works.is_empty() and wb + works[1] > -v.length and wb + works[0] < 60.0:
+				v0 = minf(v0, 11.0)  # 40 km/h past the works.
+			if not l.closed.is_empty() and wb + l.closed[0] > -0.5 and wb + l.closed[0] < 150.0:
+				if i == 0:
+					v.works_merge = true
+				var g: float = wb + l.closed[0] - 1.0
+				if g < gap:
+					gap = g
+					lead_speed = 0.0
+					reason = TrafficVehicle.Reason.OBSTACLE
+					who = null
+			if i == 0 and not v.works_merge:
+				# Someone stopped in the closed lane alongside, waiting to get in.
+				for side in [l.left_lane, l.right_lane]:
+					if side == null or side.closed.is_empty():
+						continue
+					for o in side.vehicles:
+						if o.works_merge and o.speed < 1.0:
+							var d: float = o.s * l.length / maxf(side.length, 0.1) - v.s
+							var g: float = d - (o.length + v.length) * 0.5 - 5.0
+							if d > 0.0 and d < 30.0 and g < gap and g > -2.0:
+								gap = maxf(g, 0.2)
+								lead_speed = 0.0
+								reason = TrafficVehicle.Reason.YIELD
+								who = o
+		wb += l.length
 
 	# Intelligent driver model.
 	var ratio := v.speed / maxf(v0, 0.5)
@@ -710,9 +1030,17 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 	var samples: Array = []
 	var d := 0.5
 	var start: float = v.s + v.length * 0.5
+	var side := TrafficGraph.left_of(v.forward) * v.lateral
+	# Changing lanes: still partly in the old one, so check along both.
+	var drift := Vector3.ZERO
+	if v.change_from:
+		drift = v.position - _route_point(v, v.s)
+		drift.y = 0.0
 	while d <= look:
 		var p := _route_point(v, start + d)
-		samples.append([d, p])
+		samples.append([d, p + side])
+		if drift.length_squared() > 0.25:
+			samples.append([d, p + drift])
 		d += 2.0
 	for o in candidates:
 		if o == v:
@@ -722,6 +1050,10 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 		if along < 0.0 or rel.length_squared() > (look + 12.0) * (look + 12.0):
 			continue
 		var is_vehicle: bool = o is TrafficVehicle
+		# People on the footpath, or waiting at the kerb to cross, aren't in
+		# the road, however tightly a turn cuts the corner.
+		if o is TrafficPedestrian and (o.edge == null or not o.edge.crossing or o.waiting):
+			continue
 		if is_vehicle:
 			# Two cars blocking each other: the lower id goes first.
 			if o.blocked_by == v and v.id < o.id:
@@ -763,7 +1095,7 @@ func _advance(v: TrafficVehicle) -> void:
 		var nxt: TrafficGraph.Lane = v.route[1]
 		if old.signal_gate and nxt.connector:
 			var gate := old.signal_gate
-			if gate.state() == TrafficGraph.Gate.STOP and gate.controller.timer > 1.0 and gate.controller.phase % 3 != 1:
+			if not v.emergency and gate.state() == TrafficGraph.Gate.STOP and gate.controller.timer > 1.0 and gate.controller.phase % 3 != 1:
 				stats.red_runs += 1
 				red_run_log.append("#%d at %s, node %d, %.1f s into phase %d, committed %s" % [v.id,
 					v.position.snapped(Vector3.ONE * 0.1), nxt.node.id, gate.controller.timer, gate.controller.phase, v.commits.has(nxt)])
@@ -818,6 +1150,8 @@ func _choose_next(v: TrafficVehicle, lane: TrafficGraph.Lane) -> TrafficGraph.La
 		var out: TrafficGraph.Lane = c.next[0]
 		var rank: int = out.road.rank if out.road else 2
 		w *= 1.0 + rank * 0.15
+		if v.is_bike and out.road and (out.road.kind.begins_with("motorway") or out.road.kind.begins_with("trunk")):
+			w *= 0.001  # No bikes on the freeway.
 		if v.is_bus:
 			if v.bus_route != "" and out.road:
 				# Keep to the route wherever it goes on.
@@ -853,21 +1187,24 @@ func _maybe_change_lane(v: TrafficVehicle, dt: float, v0: float, gap: float, lea
 	v.change_cooldown -= dt
 	if v.change_cooldown > 0.0:
 		return
-	v.change_cooldown = 1.0 + _rng.randf()
+	v.change_cooldown = 0.3 if v.works_merge else 1.0 + _rng.randf()
 	var lane: TrafficGraph.Lane = v.route[0]
 	if lane.connector or (lane.left_lane == null and lane.right_lane == null):
 		return
-	if v.to_lane_end() < 40.0 or v.is_bus and v.reason != TrafficVehicle.Reason.PLAYER:
-		return
-	var slow_leader := gap < 30.0 and lead_speed < v0 * 0.6 and v.reason in [
-		TrafficVehicle.Reason.LEADER, TrafficVehicle.Reason.PLAYER, TrafficVehicle.Reason.OBSTACLE]
-	if not slow_leader:
-		return
+	if not v.works_merge:
+		if v.is_bike or v.to_lane_end() < 40.0 or v.is_bus and v.reason != TrafficVehicle.Reason.PLAYER:
+			return
+		var slow_leader := gap < 30.0 and lead_speed < v0 * 0.6 and v.reason in [
+			TrafficVehicle.Reason.LEADER, TrafficVehicle.Reason.PLAYER, TrafficVehicle.Reason.OBSTACLE]
+		if not slow_leader:
+			return
 	for cand in [lane.right_lane, lane.left_lane]:
 		if cand == null:
 			continue
 		var s_new: float = v.s * cand.length / maxf(lane.length, 0.1)
-		if not _lane_has_room(cand, s_new, v):
+		if not cand.closed.is_empty() and s_new < cand.closed[1] + 5.0:
+			continue  # Into the roadworks: no.
+		if not _lane_has_room(cand, s_new, v, v.works_merge and v.speed < 1.0):
 			continue
 		v.change_from = lane
 		v.change_t = 0.0
@@ -879,12 +1216,15 @@ func _maybe_change_lane(v: TrafficVehicle, dt: float, v0: float, gap: float, lea
 		return
 
 
-func _lane_has_room(lane: TrafficGraph.Lane, s: float, v: TrafficVehicle) -> bool:
+## `squeeze`: stopped and waiting to merge (out of roadworks): a smaller gap will do.
+func _lane_has_room(lane: TrafficGraph.Lane, s: float, v: TrafficVehicle, squeeze := false) -> bool:
+	var behind := 4.0 if squeeze else 10.0
+	var ahead := 6.0 if squeeze else 14.0
 	for o in lane.vehicles:
 		var d: float = o.s - s
-		if d > -(10.0 + o.length * 0.5) and d < 14.0 + o.length * 0.5:
+		if d > -(behind + o.length * 0.5) and d < ahead + o.length * 0.5:
 			return false
-		if d < 0.0 and d > -30.0 and o.speed > v.speed + 3.0:
+		if d < 0.0 and d > -30.0 and o.speed > v.speed + (6.0 if squeeze else 3.0):
 			return false
 	return true
 
@@ -905,9 +1245,9 @@ func _react_to_player(v: TrafficVehicle, dt: float) -> void:
 		v.horn_time -= dt
 		if v.horn_time <= 0.0 and v.horn:
 			v.horn.stop()
-	v.lateral_target = 0.0
+	v.lateral_target = v.lateral_base
 	if not _player_proxy.present:
-		v.lateral = move_toward(v.lateral, 0.0, dt)
+		v.lateral = move_toward(v.lateral, v.lateral_target, dt * 1.4)
 		return
 	var rel := _player_proxy.position - v.position
 	var dist := rel.length()
@@ -928,6 +1268,8 @@ func _react_to_player(v: TrafficVehicle, dt: float) -> void:
 
 
 func _sound_horn(v: TrafficVehicle, duration: float) -> void:
+	if v.is_bike:
+		return
 	v.horn_cooldown = _rng.randf_range(5.0, 9.0)
 	v.horn_time = duration
 	if v.horn:
@@ -981,6 +1323,16 @@ func _place(v: TrafficVehicle, dt: float, lights_on: bool) -> void:
 	v.forward = flat
 	var basis := Basis.looking_at(dir, Vector3.UP)
 	v.body.global_transform = Transform3D(basis, p)
+	if v.light_bar:
+		# Red and blue taking turns, with a double flash each.
+		var phase := int(_time * 8.0 + v.id) % 8
+		var red_on := phase == 0 or phase == 2
+		var blue_on := phase == 4 or phase == 6
+		var key := int(red_on) | int(blue_on) << 1
+		if v.light_bar.get_meta("key", -1) != key:
+			v.light_bar.set_meta("key", key)
+			v.light_bar.get_node("Red").material_override = TrafficModels.bar_material(0, red_on)
+			v.light_bar.get_node("Blue").material_override = TrafficModels.bar_material(1, blue_on)
 
 	# Indicators for the next turn.
 	if not v.change_from:
@@ -1094,7 +1446,12 @@ func _manage_population() -> void:
 		if d > despawn_radius or (v.stopped_time > 45.0 and d > 60.0 and not _visible(v.position)):
 			_despawn_vehicle(v)
 	var want := target_vehicles()
-	var tries := mini(want - vehicles.size(), 6 if _warm > 0.0 else 3)
+	# Cyclists come on top of the cars.
+	var cars := 0
+	for v in vehicles:
+		if not v.is_bike:
+			cars += 1
+	var tries := mini(want - cars, 6 if _warm > 0.0 else 3)
 	for i in tries:
 		_try_spawn_vehicle(focus)
 
@@ -1106,10 +1463,17 @@ func _manage_population() -> void:
 	for i in tries:
 		_try_spawn_ped(focus)
 
+	if emergency_interval.y > 0.0:
+		_emergency_timer -= SPAWN_INTERVAL
+		if _emergency_timer <= 0.0:
+			_emergency_timer = _rng.randf_range(emergency_interval.x, emergency_interval.y)
+			if emergencies.is_empty():
+				spawn_emergency(focus)
+
 	if trains_enabled and not graph.rail_edges.is_empty():
 		_train_timer -= SPAWN_INTERVAL
 		if _train_timer <= 0.0:
-			_train_timer = _rng.randf_range(45.0, 110.0) / maxf(_curve(CAR_CURVE, GameClock.time_of_day), 0.3)
+			_train_timer = _rng.randf_range(45.0, 110.0) / maxf(hour_density(GameClock.day, GameClock.time_of_day), 0.3)
 			var hour := GameClock.time_of_day
 			if trains.size() < max_trains and not (hour > 0.5 and hour < 5.0):
 				_try_spawn_train(focus)
@@ -1142,15 +1506,19 @@ func _pick_sample(cells: Dictionary, focus: Vector3, inner: float, outer: float)
 	return list[_rng.randi() % list.size()]
 
 
+## Where a new car might start: [lane, s], or [] for nowhere this time.
+## Busy roads get more of the new cars than back streets.
+func _pick_spawn_spot(focus: Vector3, inner: float) -> Array:
+	for attempt in 4:
+		var entry := _pick_sample(graph.lane_cells(), focus, inner, spawn_radius)
+		if entry.is_empty() or _rng.randf() < _share(entry[0]):
+			return entry
+	return []
+
+
 func _try_spawn_vehicle(focus: Vector3) -> void:
 	var inner := 25.0 if _warm > 0.0 else min_spawn_radius
-	# Busy roads get more of the new cars than back streets.
-	var entry: Array = []
-	for attempt in 4:
-		entry = _pick_sample(graph.lane_cells(), focus, inner, spawn_radius)
-		if entry.is_empty() or _rng.randf() < _share(entry[0]):
-			break
-		entry = []
+	var entry := _pick_spawn_spot(focus, inner)
 	if entry.is_empty():
 		return
 	var lane: TrafficGraph.Lane = entry[0]
@@ -1159,6 +1527,8 @@ func _try_spawn_vehicle(focus: Vector3) -> void:
 		return  # Too close to the next junction.
 	if graph.reach(lane) < TrafficGraph.REACH:
 		return  # Heading into a dead end.
+	if not lane.closed.is_empty() and s < lane.closed[1] + 5.0:
+		return  # Roadworks ahead in this lane.
 	var p := lane.point(s)
 	var d := p.distance_to(focus)
 	if d < inner or d > spawn_radius:
@@ -1169,6 +1539,8 @@ func _try_spawn_vehicle(focus: Vector3) -> void:
 	# With real routes loaded, buses only start out on them.
 	var bus_road: bool = not graph.routes_on(lane.road).is_empty() if not graph.bus_routes.is_empty() else lane.road.rank >= 3
 	var type: StringName = &"bus" if bus_road and buses < max_buses and _rng.randf() < 0.1 else _pick_type()
+	if type != &"bus" and _rng.randf() < _bike_chance(lane):
+		type = &"bike"
 	var length: float = TrafficModels.TYPES[type].length
 	for o in lane.vehicles:
 		if absf(o.s - s) < (o.length + length) * 0.5 + 8.0:
@@ -1189,8 +1561,90 @@ func _try_spawn_vehicle(focus: Vector3) -> void:
 	_spawn_vehicle(type, lane, s, speed)
 
 
-## Distance along the road from `s` on `lane` to the nearest vehicle ahead on
-## any way out, up to `limit`.
+## Road kinds cyclists ride on (bigger roads only with a bike lane).
+const BIKE_KINDS := [&"residential", &"unclassified", &"living_street", &"tertiary", &"secondary"]
+
+
+## How likely a new vehicle on `lane` is a bike.
+func _bike_chance(lane: TrafficGraph.Lane) -> float:
+	if lane.road == null or Weather.rain > 0.3:
+		return 0.0
+	var road := lane.road
+	if not road.bike_lane and not BIKE_KINDS.has(road.kind):
+		return 0.0
+	if road.kind.begins_with("motorway") or road.kind.begins_with("trunk"):
+		return 0.0
+	var f := bike_share * (4.0 if road.bike_lane else 1.0)
+	f *= lerpf(0.25, 1.0, clampf(GameClock.daylight() * 2.0, 0.0, 1.0))
+	if is_weekend(GameClock.day):
+		f *= 1.6
+	return f
+
+
+## Emergency vehicles on calls: [type, share].
+const EMERGENCY := [[&"ambulance", 0.45], [&"police", 0.4], [&"fire", 0.15]]
+
+
+## Send a police car, ambulance or fire truck along a main road towards
+## `focus`, starting out of sight. Returns it, or null if no road would do.
+func spawn_emergency(focus: Vector3, type: StringName = &"") -> TrafficVehicle:
+	if type == &"":
+		var r := _rng.randf()
+		for e in EMERGENCY:
+			r -= e[1]
+			if r <= 0.0:
+				type = e[0]
+				break
+		if type == &"":
+			type = &"police"
+	for attempt in 24:
+		var entry := _pick_sample(graph.lane_cells(), focus, 140.0, spawn_radius)
+		if entry.is_empty():
+			continue
+		var lane: TrafficGraph.Lane = entry[0]
+		var s: float = entry[1]
+		if lane.connector or lane.road == null or lane.road.rank < 2 or s > lane.length - 20.0:
+			continue
+		var p := lane.point(s)
+		var to_focus := focus - p
+		to_focus.y = 0.0
+		if lane.tangent(s).dot(to_focus.normalized()) < 0.4 or _visible(p):
+			continue
+		if graph.reach(lane) < TrafficGraph.REACH:
+			continue
+		var crowded := false
+		for o in lane.vehicles:
+			if absf(o.s - s) < 18.0:
+				crowded = true
+		if crowded or _gap_ahead(lane, s, 40.0) < 30.0:
+			continue
+		return _spawn_vehicle(type, lane, s, minf(lane.speed, 13.0))
+	return null
+
+
+## Cars ahead of an emergency vehicle on its way pull over to the left and
+## stop; the emergency vehicle passes them on the right.
+func _give_way_to_emergency(v: TrafficVehicle) -> void:
+	var here: TrafficGraph.Lane = v.route[0]
+	for e in emergencies:
+		if e == v:
+			continue
+		if e.position.distance_squared_to(v.position) > 90.0 * 90.0:
+			continue
+		var base: float = -e.s
+		for i in mini(e.route.size(), 8):
+			var l: TrafficGraph.Lane = e.route[i]
+			if base > 80.0:
+				break
+			if l == here:
+				var d: float = base + v.s
+				if d > 0.0 and d < 80.0:
+					v.pull_over = 2.0
+					if d < 45.0:
+						e.pull_over = 1.0  # Passing: swing out to the right.
+				break
+			base += l.length
+
 func _gap_ahead(lane: TrafficGraph.Lane, s: float, limit: float) -> float:
 	var best := limit
 	var open := [[lane, -s]]
@@ -1237,7 +1691,13 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	v.prev_lane = null
 	v.s = s
 	v.eagerness = _rng.randf_range(0.88, 1.1) if type != &"bus" else 0.9
+	if v.emergency:
+		v.eagerness = 1.35
+	if v.is_bike:
+		v.eagerness = _rng.randf_range(0.7, 1.05)
 	v.speed = lane.speed * 0.75 * v.eagerness if speed < 0.0 else speed
+	if v.is_bike:
+		v.speed = minf(v.speed, 5.5)
 	v.accel = 0.0
 	v.lifetime = 0.0
 	v.stopped_time = 0.0
@@ -1253,6 +1713,9 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 			v.bus_route = refs[_rng.randi() % refs.size()]
 	v.dwell = 0.0
 	v.lateral = 0.0
+	v.lateral_base = 0.0
+	v.pull_over = 0.0
+	v.pass_bike = 0.0
 	v.change_from = null
 	v.change_t = 1.0
 	v.change_cooldown = 2.0
@@ -1275,12 +1738,24 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	v.body.collision_layer = TRAFFIC_LAYER
 	stats.spawned += 1
 	stats[type] = stats.get(type, 0) + 1
+	if v.emergency:
+		emergencies.append(v)
+		v.siren.play(_rng.randf() * 4.0)
 	vehicle_spawned.emit(v.body, type)
 	return v
 
 
 func _paint(v: TrafficVehicle) -> void:
-	if v.is_bus:
+	if v.emergency:
+		var colours: Array = TrafficModels.EMERGENCY_PAINT[v.type]
+		v.paint = colours[0]
+		v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(colours[0]))
+		v.mesh.set_surface_override_material(TrafficModels.Surf.LIVERY, TrafficModels.material(colours[1]))
+	elif v.is_bike:
+		v.paint = TrafficModels.pick_paint(_rng)
+		v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(v.paint))
+		v.mesh.set_surface_override_material(TrafficModels.Surf.LIVERY, TrafficModels.material(TrafficModels.JERSEYS[_rng.randi() % TrafficModels.JERSEYS.size()]))
+	elif v.is_bus:
 		var cat := _rng.randf() < 0.3
 		var livery: Color = TrafficModels.CAT_COLOURS[_rng.randi() % 4] if cat else TrafficModels.TRANSPERTH_GREEN
 		if v.bus_route != "":
@@ -1320,6 +1795,8 @@ func _create_vehicle(type: StringName) -> TrafficVehicle:
 	_next_id += 1
 	v.type = type
 	v.is_bus = type == &"bus"
+	v.emergency = TrafficModels.EMERGENCY_PAINT.has(type)
+	v.is_bike = type == &"bike"
 	v.length = info.length
 	v.width = info.width
 	var body := AnimatableBody3D.new()
@@ -1358,6 +1835,18 @@ func _create_vehicle(type: StringName) -> TrafficVehicle:
 	horn_player.volume_db = -4.0
 	audio.add_child(horn_player)
 	v.horn = horn_player
+	if v.emergency:
+		var siren := AudioStreamPlayer3D.new()
+		siren.name = "Siren"
+		siren.stream = _siren
+		siren.bus = &"Vehicles"
+		siren.unit_size = 22.0
+		siren.max_distance = 400.0
+		siren.volume_db = -6.0
+		audio.add_child(siren)
+		v.siren = siren
+		v.light_bar = TrafficModels.light_bar(type)
+		body.add_child(v.light_bar)
 	v.body = body
 	add_child(body)
 	stats.created += 1
@@ -1377,6 +1866,9 @@ func _despawn_vehicle(v: TrafficVehicle) -> void:
 	v.body.global_position = Vector3(0, -500, 0)
 	if v.horn:
 		v.horn.stop()
+	if v.siren:
+		v.siren.stop()
+	emergencies.erase(v)
 	vehicles.erase(v)
 	if not _pool.has(v.type):
 		_pool[v.type] = []
@@ -1715,8 +2207,14 @@ func _update_crossings(dt: float) -> void:
 
 func _build_props() -> void:
 	for controller in graph.signal_controllers:
-		if _signal_props.any(func(sp): return sp.controller == controller):
-			continue
+		# A tile can add approaches to lights we already have: redo their posts.
+		var old: Dictionary = _signal_prop_of.get(controller, {})
+		if not old.is_empty():
+			if old.approaches == controller.approaches.size():
+				continue
+			for head in old.heads:
+				head.node.queue_free()
+			_signal_props.erase(old)
 		var heads: Array = []
 		for ap in controller.approaches:
 			var lane: TrafficGraph.Lane = ap.lane
@@ -1729,10 +2227,12 @@ func _build_props() -> void:
 			light.basis = Basis(Vector3.UP.cross(dir), Vector3.UP, dir)
 			_props_root.add_child(light)
 			heads.append({ "node": light, "group": ap.group, "state": -1 })
-		_signal_props.append({ "controller": controller, "heads": heads })
+		var entry := { "controller": controller, "heads": heads, "approaches": controller.approaches.size() }
+		_signal_props.append(entry)
+		_signal_prop_of[controller] = entry
 
 	for xing in graph.crossings:
-		if _crossing_props.any(func(cp): return cp.crossing == xing):
+		if _crossing_prop_of.has(xing):
 			continue
 		var gates: Array = []
 		for road in xing.roads:
@@ -1751,7 +2251,9 @@ func _build_props() -> void:
 				gate.basis = Basis(right, Vector3.UP, right.cross(Vector3.UP))
 				_props_root.add_child(gate)
 				gates.append(gate)
-		_crossing_props.append({ "crossing": xing, "gates": gates })
+		var entry := { "crossing": xing, "gates": gates, "shown": -1 }
+		_crossing_props.append(entry)
+		_crossing_prop_of[xing] = entry
 
 	for stop in graph.bus_stops:
 		if _bus_stop_props.has(stop):
@@ -1781,6 +2283,11 @@ func _update_props() -> void:
 	var flash := int(_time * 2.0) % 2
 	for cp in _crossing_props:
 		var xing: TrafficGraph.LevelCrossing = cp.crossing
+		# Open and still: nothing to animate.
+		var idle := not xing.closed and xing.boom <= 0.0
+		if idle and cp.shown == 0:
+			continue
+		cp.shown = 0 if idle else 1
 		for gate in cp.gates:
 			gate.get_node("Arm").rotation.z = lerpf(PI * 0.5, 0.0, smoothstep(0.0, 1.0, xing.boom))
 			var on := xing.closed or xing.boom > 0.01
@@ -1789,6 +2296,31 @@ func _update_props() -> void:
 
 
 # --- Placeholder horn ---------------------------------------------------------
+
+## A looping two-tone wail for emergency vehicles (placeholder; sound code
+## can swap the stream on Audio/Siren).
+static func _make_siren() -> AudioStreamWAV:
+	var rate := 22050
+	var seconds := 4.8
+	var n := int(seconds * rate)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / rate
+		var f := 650.0 + 650.0 * (0.5 - 0.5 * cos(TAU * t / seconds))
+		ph += TAU * f / rate
+		var x := sin(ph) + 0.3 * sin(2.0 * ph) + 0.15 * sin(3.0 * ph)
+		data.encode_s16(i * 2, int(clampf(x * 0.45, -1.0, 1.0) * 32767.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = data
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_end = n
+	return wav
+
 
 ## A two-tone car horn, synthesised once. Sound can replace it per vehicle.
 static func _make_horn(f1: float, f2: float, seconds: float) -> AudioStreamWAV:

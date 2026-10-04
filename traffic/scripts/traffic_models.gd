@@ -24,6 +24,23 @@ const TYPES := {
 	&"ute": { "weight": 14.0, "length": 5.3, "width": 1.9, "height": 1.82 },
 	&"van": { "weight": 7.0, "length": 4.9, "width": 1.9, "height": 2.0 },
 	&"bus": { "weight": 0.0, "length": 12.5, "width": 2.5, "height": 3.15 },
+	# Emergency services (never picked at random; see TrafficManager.EMERGENCY).
+	&"police": { "weight": 0.0, "length": 4.9, "width": 1.85, "height": 1.55 },
+	&"ambulance": { "weight": 0.0, "length": 6.2, "width": 2.05, "height": 2.7 },
+	&"fire": { "weight": 0.0, "length": 8.4, "width": 2.5, "height": 3.2 },
+	# Someone on a bike, riding near the kerb (see TrafficManager.bike_share).
+	&"bike": { "weight": 0.0, "length": 1.8, "width": 0.65, "height": 1.75 },
+}
+
+## Jerseys for cyclists (the LIVERY surface).
+const JERSEYS := [Color(0.9, 0.2, 0.15), Color(0.1, 0.3, 0.75), Color(0.95, 0.8, 0.1), Color(0.15, 0.15, 0.17),
+	Color(0.95, 0.95, 0.93), Color(0.2, 0.6, 0.3), Color(0.95, 0.45, 0.1), Color(0.55, 0.25, 0.6)]
+
+## Emergency liveries: [body paint, livery band].
+const EMERGENCY_PAINT := {
+	&"police": [Color(0.94, 0.94, 0.93), Color(0.08, 0.16, 0.55)],
+	&"ambulance": [Color(0.95, 0.95, 0.93), Color(0.95, 0.8, 0.05)],
+	&"fire": [Color(0.75, 0.06, 0.04), Color(0.92, 0.92, 0.88)],
 }
 
 ## Perth's car park: lots of white and silver, a few bold ones.
@@ -95,7 +112,121 @@ static func _build_vehicle(type: StringName) -> ArrayMesh:
 			_van(b, L, W)
 		&"bus":
 			_bus(b, L, W)
+		&"police":
+			_car(b, L, W, 0.6, 0.58, 2.4, 0.15, 0.85, 0.55)
+			# Chequered band along the doors, done as one blue stripe.
+			b.box(Surf.LIVERY, Vector3(0, 0.3 + 0.38, 0.0), Vector3(W + 0.03, 0.2, L * 0.82))
+			_light_bar_base(b, W, 0.3 + 0.6 + 0.58 + 0.06, 0.2)
+		&"ambulance":
+			_ambulance(b, L, W)
+		&"fire":
+			_fire_truck(b, L, W)
+		&"bike":
+			_bike(b, L)
 	return b.commit()
+
+
+## A bicycle and its rider: frame and helmet in the paint, jersey in the
+## livery, dark lycra and gloves, small front and rear lamps.
+static func _bike(b: Builder, L: float) -> void:
+	var r := 0.34
+	var wb := L * 0.5 - r
+	b.wheel(Surf.TYRES, Vector3(0, r, -wb), r, 0.05)
+	b.wheel(Surf.TYRES, Vector3(0, r, wb), r, 0.05)
+	# Frame: top tube, down tube, seat post, bars.
+	b.box(Surf.PAINT, Vector3(0, 0.78, 0.0), Vector3(0.05, 0.05, wb * 1.3))
+	b.box(Surf.PAINT, Vector3(0, 0.56, -0.12), Vector3(0.05, 0.42, 0.05))
+	b.box(Surf.PAINT, Vector3(0, 0.62, -wb + 0.05), Vector3(0.05, 0.5, 0.05))
+	b.box(Surf.GLASS, Vector3(0, 0.98, -wb + 0.1), Vector3(0.44, 0.04, 0.05))
+	# Rider: legs down to the pedals, torso leaning over the bars, head.
+	for side in [-1.0, 1.0]:
+		b.box(Surf.GLASS, Vector3(side * 0.11, 0.62, 0.15), Vector3(0.12, 0.62, 0.14))
+		b.box(Surf.GLASS, Vector3(side * 0.17, 1.12, -0.32), Vector3(0.08, 0.42, 0.08))
+	b.box(Surf.LIVERY, Vector3(0, 1.24, -0.12), Vector3(0.38, 0.32, 0.62), Vector2(0.85, 0.9))
+	b.box(Surf.GLASS, Vector3(0, 1.48, -0.46), Vector3(0.18, 0.2, 0.2))
+	b.box(Surf.PAINT, Vector3(0, 1.6, -0.44), Vector3(0.24, 0.1, 0.3))
+	b.box(Surf.HEAD, Vector3(0, 0.92, -wb - 0.02), Vector3(0.08, 0.06, 0.04))
+	b.box(Surf.TAIL, Vector3(0, 0.8, wb * 0.6), Vector3(0.07, 0.06, 0.04))
+
+
+## The dark base under a light bar (the lamps themselves are separate
+## meshes so they can flash: see light_bar()).
+static func _light_bar_base(b: Builder, W: float, y: float, z: float) -> void:
+	b.box(Surf.GLASS, Vector3(0, y + 0.04, z), Vector3(W * 0.7, 0.08, 0.3))
+
+
+## St John-style ambulance: a big white box behind a van cab, yellow band.
+static func _ambulance(b: Builder, L: float, W: float) -> void:
+	var y0 := 0.4
+	var cab := 1.9
+	b.box(Surf.PAINT, Vector3(0, y0 + 0.55, -L * 0.5 + cab * 0.5), Vector3(W * 0.95, 1.1, cab), Vector2(0.95, 0.8))
+	b.box(Surf.GLASS, Vector3(0, y0 + 1.35, -L * 0.5 + cab * 0.5 + 0.2), Vector3(W * 0.9, 0.55, cab - 0.6), Vector2(0.9, 0.7))
+	var box_len := L - cab
+	var bz := L * 0.5 - box_len * 0.5
+	b.box(Surf.PAINT, Vector3(0, y0 + 1.15, bz), Vector3(W, 2.1, box_len))
+	b.box(Surf.LIVERY, Vector3(0, y0 + 0.75, 0.0), Vector3(W + 0.03, 0.3, L - 0.3))
+	b.box(Surf.GLASS, Vector3(0, y0 + 0.1, -L * 0.5 - 0.02), Vector3(W * 0.98, 0.22, 0.12))
+	b.box(Surf.GLASS, Vector3(0, y0 + 0.1, L * 0.5 + 0.02), Vector3(W * 0.98, 0.22, 0.12))
+	_wheels(b, L, W, 0.36, L * 0.5 - 1.0, -L * 0.5 + 1.1)
+	_lamps(b, L, W, y0 + 0.55, false)
+	_light_bar_base(b, W, y0 + 1.9, -L * 0.5 + cab * 0.5 + 0.1)
+
+
+## DFES fire truck: red, white band, a ladder on the roof.
+static func _fire_truck(b: Builder, L: float, W: float) -> void:
+	var y0 := 0.5
+	var cab := 2.3
+	b.box(Surf.PAINT, Vector3(0, y0 + 1.0, -L * 0.5 + cab * 0.5), Vector3(W, 2.0, cab))
+	b.box(Surf.GLASS, Vector3(0, y0 + 1.45, -L * 0.5 - 0.01), Vector3(W * 0.9, 0.7, 0.04))
+	b.box(Surf.GLASS, Vector3(0, y0 + 1.45, -L * 0.5 + cab * 0.5), Vector3(W + 0.02, 0.6, cab * 0.7))
+	var body_len := L - cab - 0.1
+	var bz := L * 0.5 - body_len * 0.5
+	b.box(Surf.PAINT, Vector3(0, y0 + 1.1, bz), Vector3(W, 2.2, body_len))
+	b.box(Surf.LIVERY, Vector3(0, y0 + 0.55, 0.0), Vector3(W + 0.03, 0.22, L - 0.2))
+	# Roller doors (dark panels) and the roof ladder.
+	for i in 3:
+		var z := bz - body_len * 0.5 + body_len * (i + 0.5) / 3.0
+		b.box(Surf.GLASS, Vector3(0, y0 + 1.25, z), Vector3(W + 0.04, 1.3, body_len / 3.0 - 0.3))
+	for side in [-1.0, 1.0]:
+		b.box(Surf.TYRES, Vector3(side * 0.35, y0 + 2.35, bz), Vector3(0.08, 0.1, body_len - 0.3))
+	for i in 8:
+		b.box(Surf.TYRES, Vector3(0, y0 + 2.35, bz - body_len * 0.45 + i * body_len * 0.9 / 7.0), Vector3(0.7, 0.06, 0.06))
+	b.box(Surf.GLASS, Vector3(0, y0 + 0.15, -L * 0.5 - 0.03), Vector3(W * 0.98, 0.3, 0.14))
+	_wheels(b, L, W, 0.5, L * 0.5 - 1.5, -L * 0.5 + 1.4)
+	_lamps(b, L, W, y0 + 0.6, true)
+	_light_bar_base(b, W, y0 + 2.0, -L * 0.5 + cab * 0.5)
+
+
+## Where each emergency type's light bar sits: [height, z].
+const LIGHT_BAR := {
+	&"police": [1.58, 0.2],
+	&"ambulance": [2.38, -2.0],
+	&"fire": [2.58, -3.05],
+}
+
+
+## A red/blue light bar for an emergency vehicle: two lamps named Red and
+## Blue, which TrafficManager flashes.
+static func light_bar(type: StringName) -> Node3D:
+	var root := Node3D.new()
+	root.name = "LightBar"
+	var spot: Array = LIGHT_BAR[type]
+	var w: float = TYPES[type].width
+	root.position = Vector3(0, spot[0], spot[1])
+	var names := ["Red", "Blue"]
+	for i in 2:
+		var lamp := _add_part(root, "lb_lamp", Vector3(w * 0.32, 0.14, 0.26), Vector3((i * 2 - 1) * w * 0.17, 0, 0), Vector3.ZERO, null)
+		lamp.name = names[i]
+		lamp.visibility_range_end = 420.0
+	return root
+
+
+const BAR_COLOURS := [Color(1.0, 0.08, 0.05), Color(0.1, 0.25, 1.0)]
+
+
+static func bar_material(index: int, lit: bool) -> Material:
+	var c: Color = BAR_COLOURS[index]
+	return material(c, 4.0) if lit else material(c.darkened(0.7))
 
 
 ## A car: lower body, glass cabin with a painted roof, wheels and lamps.
@@ -380,6 +511,109 @@ static func bus_stop_sign() -> Node3D:
 	_add_part(root, "bs_bench", Vector3(2.0, 0.08, 0.45), Vector3(0, 0.45, 1.5), Vector3.ZERO, material(Color(0.4, 0.3, 0.2)))
 	for child in root.find_children("*", "MeshInstance3D", true, false):
 		child.visibility_range_end = 250.0
+	return root
+
+
+# --- Roadworks -----------------------------------------------------------------
+
+const WORKS_ORANGE := Color(1.0, 0.45, 0.05)
+
+
+## A traffic cone the player can knock flying: a light rigid body, asleep
+## until something hits it.
+static func cone_body() -> RigidBody3D:
+	var body := RigidBody3D.new()
+	body.mass = 3.0
+	body.sleeping = true
+	body.can_sleep = true
+	body.collision_mask = 1 | 2 | 4
+	body.set_meta("surface", &"plastic")
+	body.set_meta("furniture", &"traffic_cone")
+	var shape := CollisionShape3D.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = 0.18
+	cyl.height = 0.7
+	shape.shape = cyl
+	shape.position = Vector3(0, 0.35, 0)
+	body.add_child(shape)
+	if not _meshes.has("cone"):
+		var b := Builder.new(2)
+		b.box(0, Vector3(0, 0.03, 0), Vector3(0.42, 0.06, 0.42))
+		b.box(0, Vector3(0, 0.33, 0), Vector3(0.3, 0.56, 0.3), Vector2(0.25, 0.25))
+		b.box(1, Vector3(0, 0.42, 0), Vector3(0.21, 0.1, 0.21), Vector2(0.85, 0.85))
+		_meshes["cone"] = b.commit()
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = _meshes["cone"]
+	mesh.set_surface_override_material(0, material(WORKS_ORANGE))
+	mesh.set_surface_override_material(1, material(Color(0.95, 0.95, 0.92), 0.6))
+	mesh.visibility_range_end = 220.0
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	body.add_child(mesh)
+	return body
+
+
+## Striped barrier boards across a closed lane, on two legs.
+static func works_barrier() -> Node3D:
+	var root := Node3D.new()
+	var white := material(Color(0.95, 0.95, 0.92))
+	var orange := material(WORKS_ORANGE)
+	for i in 6:
+		_add_part(root, "wb_board", Vector3(0.5, 0.25, 0.04), Vector3(-1.25 + i * 0.5, 0.95, 0), Vector3.ZERO, orange if i % 2 == 0 else white)
+	for x in [-1.3, 1.3]:
+		_add_part(root, "wb_leg", Vector3(0.06, 1.0, 0.5), Vector3(x, 0.5, 0), Vector3.ZERO, material(Color(0.2, 0.2, 0.2)))
+	_add_part(root, "wb_lamp", Vector3(0.14, 0.14, 0.06), Vector3(1.3, 1.2, 0), Vector3.ZERO, material(WORKS_ORANGE, 3.0))
+	for child in root.find_children("*", "MeshInstance3D", true, false):
+		child.visibility_range_end = 260.0
+	return root
+
+
+## A "ROADWORK AHEAD" style sign: an orange diamond on a post (no text at
+## this resolution, but you know what it means).
+static func works_sign() -> Node3D:
+	var root := Node3D.new()
+	_add_part(root, "ws_post", Vector3(0.07, 1.6, 0.07), Vector3(0, 0.8, 0), Vector3.ZERO, material(Color(0.6, 0.6, 0.62)))
+	_add_part(root, "ws_face", Vector3(0.75, 0.75, 0.03), Vector3(0, 1.75, 0), Vector3(0, 0, PI * 0.25), material(WORKS_ORANGE))
+	_add_part(root, "ws_mark", Vector3(0.36, 0.08, 0.035), Vector3(0, 1.75, -0.005), Vector3.ZERO, material(Color(0.08, 0.08, 0.08)))
+	_add_part(root, "ws_mark2", Vector3(0.08, 0.3, 0.035), Vector3(0, 1.82, -0.005), Vector3.ZERO, material(Color(0.08, 0.08, 0.08)))
+	for child in root.find_children("*", "MeshInstance3D", true, false):
+		child.visibility_range_end = 260.0
+	return root
+
+
+## The crew's ute: white with an orange band and an amber beacon (named
+## Beacon) on the cab roof.
+static func works_ute() -> Node3D:
+	var root := Node3D.new()
+	var info: Dictionary = TYPES[&"ute"]
+	var body := StaticBody3D.new()
+	body.collision_layer = 4
+	body.collision_mask = 0
+	body.set_meta("surface", &"concrete")
+	body.set_meta("traffic", &"ute")
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(info.width, info.height * 0.85, info.length)
+	shape.shape = box
+	shape.position = Vector3(0, info.height * 0.5 + 0.1, 0)
+	body.add_child(shape)
+	root.add_child(body)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = vehicle_mesh(&"ute")
+	mesh.set_surface_override_material(Surf.PAINT, material(Color(0.94, 0.94, 0.92)))
+	mesh.set_surface_override_material(Surf.GLASS, material(Color(0.07, 0.08, 0.1)))
+	mesh.set_surface_override_material(Surf.TYRES, material(Color(0.05, 0.05, 0.05)))
+	mesh.set_surface_override_material(Surf.LIVERY, material(WORKS_ORANGE))
+	mesh.set_surface_override_material(Surf.HEAD, material(Color(0.8, 0.8, 0.75)))
+	mesh.set_surface_override_material(Surf.TAIL, material(Color(0.45, 0.05, 0.04)))
+	var amber := material(Color(0.5, 0.3, 0.05))
+	mesh.set_surface_override_material(Surf.IND_L, amber)
+	mesh.set_surface_override_material(Surf.IND_R, amber)
+	mesh.visibility_range_end = 300.0
+	root.add_child(mesh)
+	var beacon := _add_part(root, "beacon", Vector3(0.22, 0.16, 0.22), Vector3(0, 1.98, -0.7), Vector3.ZERO, amber)
+	beacon.name = "Beacon"
+	# A stripe down the tray side so it reads as a works vehicle.
+	_add_part(root, "ute_band", Vector3(info.width + 0.04, 0.12, 2.0), Vector3(0, 0.95, 1.4), Vector3.ZERO, material(WORKS_ORANGE))
 	return root
 
 

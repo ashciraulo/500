@@ -80,6 +80,8 @@ class Road:
 	var lanes_back := 1
 	var speed := 13.9
 	var roundabout := false
+	## A painted bike lane (OSM cycleway=lane/track): cyclists favour it.
+	var bike_lane := false
 	var walk := true
 	var half_width := 3.6
 	var footpath_offset := 5.0
@@ -141,6 +143,11 @@ class Lane:
 	## Cached TrafficGraph.reach() and the graph version it was worked out for.
 	var reach := 0.0
 	var reach_version := -1
+	## [s0, s1] coned off for roadworks (empty when open; see TrafficRoadworks).
+	var closed: Array = []
+	## [s0, s1] stretches of this lane inside keep-clear boxes (see keep_clear_on).
+	var keep_clear: Array = []
+	var keep_clear_version := -1
 	## Vehicles currently registered on this lane (managed by the traffic sim).
 	var vehicles: Array = []
 	## Parallel lanes in the same direction (for lane changes).
@@ -206,6 +213,12 @@ class SignalController:
 	var phase := 0
 	var timer := 0.0
 	var changed_this_frame := false
+	## Set once the lights first run. A map tile adding a road to the set
+	## later must not restart the cycle or swap which way is green: cars
+	## already committed on green would suddenly face a red.
+	var running := false
+	## Rank of the biggest road through the lights so far.
+	var axis_rank := -1
 	## Gates and lanes per group, for pedestrians and visuals.
 	var approaches: Array = []
 
@@ -307,7 +320,18 @@ class RailEdge:
 var nodes := {}
 var roads: Array = []
 var lanes: Array = []
-var connectors: Array = []
+## Every junction connector (gathered from the nodes when asked; tests and
+## debugging only, so adding a map tile doesn't walk the whole list).
+var connectors: Array:
+	get:
+		if _connectors_dirty:
+			_connectors_dirty = false
+			_connectors = []
+			for id in nodes:
+				_connectors.append_array(nodes[id].connectors)
+		return _connectors
+var _connectors: Array = []
+var _connectors_dirty := false
 var signal_controllers: Array = []
 var ped_nodes: Array = []
 var ped_edges: Array = []
@@ -318,6 +342,8 @@ var bus_stops: Array = []
 var stations: Array = []
 ## Parking spots from the map: { pos, yaw, kind, seed }. See TrafficParking.
 var parking: Array = []
+## Boxes traffic mustn't stop in, like a driveway it would block: { pos, radius }.
+var keep_clear: Array = []
 ## Bus routes from the map: ref -> { ref, name, colour, roads: { road id: true } }.
 var bus_routes := {}
 
@@ -339,6 +365,8 @@ var _next_synthetic_id := -1
 # --- Building -----------------------------------------------------------------
 
 ## Merge map data into the graph. Returns the number of roads added.
+
+
 func add_data(data: Dictionary) -> int:
 	for n in data.get("nodes", []):
 		var id := int(n.id)
@@ -364,40 +392,41 @@ func add_data(data: Dictionary) -> int:
 		_add_parking(p)
 	for r in data.get("bus_routes", []):
 		_add_bus_route(r)
-	if added.is_empty() and data.get("rail", []).is_empty() and data.get("footways", []).is_empty():
-		return 0
-
-	version += 1
-	_mark_minor_approaches(dirty.keys())
-	for node in dirty.keys():
-		_compute_radius(node)
-	# Roads touching a dirty node get their lanes (re)built.
-	var rebuild := {}
-	for node in dirty.keys():
-		for road in node.roads:
-			rebuild[road] = true
-	for road in rebuild.keys():
-		_build_lanes(road)
-	# Lanes were rebuilt at both ends of those roads, so the junctions at
-	# both ends need their connectors redone too.
-	var junctions := dirty.duplicate()
-	for road in rebuild.keys():
-		junctions[road.a] = true
-		junctions[road.b] = true
-	connectors = connectors.filter(func(c): return not junctions.has(c.node))
-	for node in junctions.keys():
-		_build_connectors(node)
-	for node in junctions.keys():
-		_find_conflicts(node)
-	_build_signals(junctions.keys())
-	for road in added:
-		_index_road(road)
-		_build_footpaths(road)
-	for node in dirty.keys():
-		_link_footpaths(node)
+	for k in data.get("keep_clear", []):
+		add_keep_clear(_vec(k.p), float(k.get("radius", 6.0)))
+	if not added.is_empty():
+		version += 1
+		_mark_minor_approaches(dirty.keys())
+		for node in dirty.keys():
+			_compute_radius(node)
+		# Roads touching a dirty node get their lanes (re)built.
+		var rebuild := {}
+		for node in dirty.keys():
+			for road in node.roads:
+				rebuild[road] = true
+		for road in rebuild.keys():
+			_build_lanes(road)
+		# Lanes were rebuilt at both ends of those roads, so the junctions at
+		# both ends need their connectors redone too.
+		var junctions := dirty.duplicate()
+		for road in rebuild.keys():
+			junctions[road.a] = true
+			junctions[road.b] = true
+		_connectors_dirty = true
+		for node in junctions.keys():
+			_build_connectors(node)
+		for node in junctions.keys():
+			_find_conflicts(node)
+		_build_signals(junctions.keys())
+		for road in added:
+			_index_road(road)
+			_build_footpaths(road)
+		for node in dirty.keys():
+			_link_footpaths(node)
 
 	for f in data.get("footways", []):
 		_add_footway(_points(f.pts))
+	var rail_before := rail_edges.size()
 	for r in data.get("rail", []):
 		_add_rail(_points(r.pts))
 	for st in data.get("stations", []):
@@ -409,8 +438,16 @@ func add_data(data: Dictionary) -> int:
 			_add_bus_stop(p)
 	for bs in data.get("bus_stops", []):
 		_add_bus_stop(_vec(bs.p))
-	if not data.get("rail", []).is_empty() or not added.is_empty():
-		_find_level_crossings()
+	# Only new track, and track near new roads, can have new crossings.
+	if not rail_edges.is_empty() and (rail_edges.size() > rail_before or not added.is_empty()):
+		var check := {}
+		for i in range(rail_before, rail_edges.size()):
+			check[rail_edges[i]] = true
+		for road in added:
+			for p in road.pts:
+				for entry in _cells_near(_rail_cells, p, CELL * 0.5):
+					check[entry[0]] = true
+		_find_level_crossings(check.keys())
 	return added.size()
 
 
@@ -459,6 +496,7 @@ func _make_road(r: Dictionary) -> Road:
 	var info: Dictionary = KINDS.get(road.kind, KINDS[&"residential"])
 	road.rank = info.rank
 	road.roundabout = bool(r.get("roundabout", false))
+	road.bike_lane = bool(r.get("bike_lane", false))
 	var oneway := bool(r.get("oneway", false)) or road.roundabout
 	road.lanes_fwd = maxi(1, int(r.get("lanes_fwd", 1)))
 	road.lanes_back = 0 if oneway else maxi(1, int(r.get("lanes_back", 1)))
@@ -667,7 +705,6 @@ func _make_connector(lin: Lane, lout: Lane, node: GNode, turn: int, reuse: Lane 
 		var radius := maxf(c.length / theta, 2.0)
 		limit = minf(limit, sqrt(2.8 * radius))
 	c.speed = maxf(limit, 3.0)
-	connectors.append(c)
 	node.connectors.append(c)
 	return c
 
@@ -805,13 +842,19 @@ func _build_signals(touched: Array) -> void:
 	for controller in signal_controllers:
 		if not controller.nodes.any(func(n): return touched.has(n)):
 			continue
-		# Main axis follows the highest ranked road.
-		var best_rank := -1
+		# Main axis follows the highest ranked road, and gets the longer
+		# green. Once running, a bigger road arriving with a later tile
+		# moves the longer green to its group without swapping which way is
+		# green now.
 		for n in controller.nodes:
 			for road in n.roads:
-				if road.rank > best_rank and not road.lanes_into(n).is_empty():
-					best_rank = road.rank
+				if road.rank <= controller.axis_rank or road.lanes_into(n).is_empty():
+					continue
+				controller.axis_rank = road.rank
+				if not controller.running:
 					controller.axis = road.direction_from(n)
+				var main: int = controller.group_for(road.direction_from(n))
+				controller.green = PackedFloat32Array([22.0, 16.0] if main == 0 else [16.0, 22.0])
 		for ap in controller.approaches:
 			var lane: Lane = ap.lane
 			lane.stops = lane.stops.filter(func(st): return not (st.gate is SignalGate and st.gate.controller == controller))
@@ -819,7 +862,9 @@ func _build_signals(touched: Array) -> void:
 				lane.signal_gate = null
 		controller.approaches.clear()
 		# Offset each set of lights by where it is, so runs are repeatable.
-		controller.timer = fposmod(controller.center.x * 0.37 + controller.center.z * 0.61, 20.0)
+		if not controller.running:
+			controller.timer = fposmod(controller.center.x * 0.37 + controller.center.z * 0.61, 20.0)
+			controller.running = true
 		for n in controller.nodes:
 			for road in n.roads:
 				var o: GNode = road.other(n)
@@ -1053,6 +1098,27 @@ func _add_bus_route(r: Dictionary) -> void:
 		bus_routes[ref].roads[str(id)] = true
 
 
+## Don't let traffic stop across `pos` (a lane mouth or driveway).
+func add_keep_clear(pos: Vector3, radius := 6.0) -> void:
+	keep_clear.append({ "pos": pos, "radius": radius })
+	version += 1
+
+
+## The [s0, s1] stretches of `lane` that run through a keep-clear box.
+func keep_clear_on(lane: Lane) -> Array:
+	if lane.keep_clear_version == version:
+		return lane.keep_clear
+	lane.keep_clear_version = version
+	lane.keep_clear = []
+	for box in keep_clear:
+		var s := closest_s(lane.pts, lane.cum, box.pos)
+		var p := lane.point(s)
+		if p.distance_to(box.pos) > box.radius or absf(p.y - box.pos.y) > 3.0:
+			continue
+		lane.keep_clear.append([maxf(s - box.radius, 0.0), minf(s + box.radius, lane.length)])
+	return lane.keep_clear
+
+
 ## Refs of the bus routes that run along `road`.
 func routes_on(road: Road) -> Array:
 	var refs: Array = []
@@ -1067,8 +1133,8 @@ func parking_near(p: Vector3, radius: float) -> Array:
 	return _cells_near(_parking_cells, p, radius)
 
 
-func _find_level_crossings() -> void:
-	for edge in rail_edges:
+func _find_level_crossings(edges: Array) -> void:
+	for edge in edges:
 		for i in edge.pts.size() - 1:
 			var r0: Vector3 = edge.pts[i]
 			var r1: Vector3 = edge.pts[i + 1]

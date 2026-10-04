@@ -39,11 +39,20 @@ func setup(manager: Node, traffic_graph: TrafficGraph) -> void:
 	graph = traffic_graph
 
 
-func occupancy(kind: StringName, hour: float) -> float:
+func occupancy(kind: StringName, hour: float, day := 1) -> float:
 	var curve := LOT_CURVE if kind == &"lot" else STREET_CURVE
 	var h := fposmod(hour, 24.0)
 	var i := int(h)
-	return lerpf(curve[i], curve[(i + 1) % 24], h - i) * fill_scale
+	var f := lerpf(curve[i], curve[(i + 1) % 24], h - i)
+	if kind == &"lot":
+		# The office car parks are half empty at the weekend; on a Friday or
+		# Saturday night they fill up with people out on the town.
+		var kind_of_day := TrafficManager.day_kind(day)
+		if TrafficManager.is_weekend(day) and h >= 6.0 and h < 18.0:
+			f *= 0.6 if kind_of_day == TrafficManager.Day.SATURDAY else 0.45
+		if TrafficManager.is_night_out(day, hour):
+			f = maxf(f, 0.6)
+	return f * fill_scale
 
 
 ## Whether `spot` has a car in it now, and which: [taken, type, paint seed].
@@ -52,7 +61,7 @@ func wanted(spot: Dictionary) -> Array:
 	var epoch: int = GameClock.day * 12 + int(GameClock.time_of_day / 2.0)
 	var roll := float(hash([spot.seed, epoch]) & 0xffff) / 65536.0
 	var pick: int = hash([spot.seed, epoch, 7])
-	return [roll < occupancy(spot.kind, GameClock.time_of_day), TYPES[pick % TYPES.size()], pick]
+	return [roll < occupancy(spot.kind, GameClock.time_of_day, GameClock.day), TYPES[pick % TYPES.size()], pick]
 
 
 func update(delta: float, focus: Vector3) -> void:
@@ -97,6 +106,10 @@ func _clear_of_lanes(spot: Dictionary) -> bool:
 		return spot.get("clear", true)
 	_clear_version[spot.seed] = graph.version
 	spot.clear = true
+	for box in graph.keep_clear:
+		if box.pos.distance_to(spot.pos) < box.radius + 5.0:
+			spot.clear = false
+			return false
 	for entry in graph.samples_near(spot.pos, 20.0):
 		var lane: TrafficGraph.Lane = entry[0]
 		var s := TrafficGraph.closest_s(lane.pts, lane.cum, spot.pos)

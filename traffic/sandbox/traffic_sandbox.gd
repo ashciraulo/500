@@ -31,5 +31,5 @@ func _ready() -> void:
 	sandbox.name = "SandboxWorld"
 	world_root.add_child(sandbox)
 	add_child(main)
-	traffic.add_network(TrafficTestNetworks.sandbox())
+	traffic.add_network(TrafficTestNetworks.sandbox(), true)
 	sandbox.build(traffic.graph)

@@ -37,6 +37,10 @@ func _init() -> void:
 		{ "name": "car_park_day", "time": 11.0, "weather": 0, "sim": 3.0, "cam": [Vector3(-24, 9, -22), Vector3(-56, 0, -44)] },
 		{ "name": "car_park_night", "time": 2.0, "weather": 0, "sim": 3.0, "cam": [Vector3(-24, 9, -22), Vector3(-56, 0, -44)] },
 		{ "name": "street_parking", "time": 21.0, "weather": 0, "sim": 3.0, "cam": [Vector3(-93, 2.0, -160), Vector3(-90, 0.8, -110)] },
+		{ "name": "ambulance", "time": 10.5, "weather": 0, "sim": 6.5, "setup": "_setup_ambulance", "cam": [Vector3(52, 4.0, 13), Vector3(130, 1.0, 3)] },
+		{ "name": "cyclist", "time": 9.5, "weather": 0, "sim": 2.5, "setup": "_setup_cyclist", "cam": [Vector3(122, 2.2, 10.5), Vector3(170, 0.8, 4)] },
+		{ "name": "roadworks", "time": 10.0, "weather": 0, "sim": 25.0, "setup": "_setup_roadworks", "cam": [Vector3(70, 7.0, 16), Vector3(150, 0.5, 3)] },
+		{ "name": "roadworks_night", "time": 21.5, "weather": 0, "sim": 25.0, "setup": "_setup_roadworks", "cam": [Vector3(70, 7.0, 16), Vector3(150, 0.5, 3)] },
 	]
 	if args.size() > 1:
 		# Optional second argument: render only the shots whose names contain it.
@@ -50,8 +54,14 @@ func _process(_delta: float) -> bool:
 		return false
 	if _traffic == null:
 		_traffic = _sandbox.traffic
+		# Roadworks only where a shot puts them.
+		_traffic.roadworks.site_chance = 0.0
 		_world = _sandbox.world_root
 		_sandbox.main.get_node("HUD").visible = false
+		# The on-foot player's "Get out" prompt isn't part of the picture.
+		for layer in _sandbox.main.find_children("*", "CanvasLayer", true, false):
+			if layer.get_parent() is CharacterBody3D:
+				layer.visible = false
 		_cam = Camera3D.new()
 		_cam.far = 1500.0
 		_world.add_child(_cam)
@@ -94,6 +104,9 @@ func _next_shot() -> void:
 	else:
 		_cam.current = false
 		_world.get_node("CameraRig/Camera3D").current = true
+	_traffic.roadworks.clear()
+	if shot.has("setup"):
+		call(shot.setup)
 	if shot.get("train", false):
 		var west = null
 		for e in _traffic.graph.rail_edges:
@@ -101,6 +114,64 @@ func _next_shot() -> void:
 				west = e
 		# Northbound on the west track, rear 420 m south of the avenue.
 		_train = _traffic.spawn_train_at(west, 1320.0, false, 3)
+
+
+## The avenue's westbound kerb lane between the Roundabout Road lights and the
+## next corner (x 60 to 220).
+func _avenue_lane() -> TrafficGraph.Lane:
+	for lane in _traffic.graph.lanes:
+		if lane.connector or lane.road == null or lane.road.name != "Sandbox Avenue":
+			continue
+		var a: Vector3 = lane.point(0.0)
+		var b: Vector3 = lane.point(lane.length)
+		if a.x > b.x and a.x > 150.0 and b.x < 90.0 and lane.k == lane.count - 1:
+			return lane
+	return null
+
+
+func _clear_lane(lane: TrafficGraph.Lane) -> void:
+	for v in lane.vehicles.duplicate():
+		_traffic._despawn_vehicle(v)
+
+
+func _setup_ambulance() -> void:
+	var lane := _avenue_lane()
+	if lane == null:
+		return
+	_clear_lane(lane)
+	_traffic.spawn_vehicle_at(&"sedan", lane, 70.0, 7.0)
+	_traffic.spawn_vehicle_at(&"hatch", lane, 85.0, 7.0)
+	_traffic.spawn_vehicle_at(&"ambulance", lane, 2.0, 13.0)
+	_aim(lane, 100.0, -4.6, 2.3, 72.0)
+
+
+func _setup_cyclist() -> void:
+	var lane := _avenue_lane()
+	if lane == null:
+		return
+	_clear_lane(lane)
+	_traffic.spawn_vehicle_at(&"bike", lane, 30.0, 5.5)
+	_traffic.spawn_vehicle_at(&"suv", lane, 4.0, 12.0)
+	_aim(lane, 8.0, -1.8, 2.6, 50.0)
+
+
+func _setup_roadworks() -> void:
+	var lane := _avenue_lane()
+	if lane == null:
+		return
+	var road: TrafficGraph.Road = lane.road
+	var site: Dictionary = _traffic.roadworks.add_site(road, lane.from_node == road.a, lane.k, road.length * 0.42, road.length * 0.42 + 50.0)
+	_aim(lane, lane.closed[0] - 30.0, 7.0, 5.0, lane.closed[0] + 15.0)
+
+
+## Camera beside `lane` at `s` (`side` metres to its left, `height` up),
+## looking at the lane at `look_s`.
+func _aim(lane: TrafficGraph.Lane, s: float, side: float, height: float, look_s: float) -> void:
+	var p := lane.point(s) + TrafficGraph.left_of(lane.tangent(s)) * side + Vector3(0, height, 0)
+	_cam.look_at_from_position(p, lane.point(look_s) + Vector3(0, 0.8, 0))
+	_cam.current = true
+	# Keep traffic alive around the camera rather than the parked player.
+	_traffic.focus_path = _traffic.get_path_to(_cam)
 
 
 func _capture(shot_name: String) -> void:

@@ -12,8 +12,10 @@ extends Node
 ## Engine voices per kind, and the engine set each uses.
 const VOICES := {&"car": 4, &"diesel": 2, &"bus": 2}
 const SETS := {&"car": "sedan", &"diesel": "diesel", &"bus": "busdiesel"}
-## Vehicle type (TrafficManager) -> engine kind. Unknown types sound like cars.
-const KIND := {&"ute": &"diesel", &"van": &"diesel", &"bus": &"bus"}
+## Vehicle type (TrafficManager) -> engine kind ("" for none: bicycles).
+## Unknown types sound like cars.
+const KIND := {&"ute": &"diesel", &"van": &"diesel", &"bus": &"bus", &"ambulance": &"diesel",
+	&"fire": &"bus", &"bike": &""}
 ## Only vehicles this close get an engine voice (m).
 const HEAR_RADIUS := 90.0
 ## Rough gearing for AI engines: km/h at which each gear tops out.
@@ -105,7 +107,9 @@ func _assign_voices() -> void:
 			continue
 		var d: float = here.distance_to(v.position)
 		if d < hear_radius:
-			near[_kind(v.type)].append([d, v])
+			var kind := _kind(v.type)
+			if near.has(kind):
+				near[kind].append([d, v])
 	for kind in _voices:
 		var list: Array = near[kind]
 		list.sort_custom(func(a, b) -> bool: return a[0] < b[0])

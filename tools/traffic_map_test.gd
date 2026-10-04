@@ -49,7 +49,8 @@ func _process(_delta: float) -> bool:
 		return false
 	_frame += 1
 	if _spot < 0:
-		if _frame > 5:
+		# Roads go in a few at a time as the tiles stream in.
+		if _frame > 5 * FPS:
 			_check_network()
 			_go(0)
 		return false
