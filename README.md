@@ -3,8 +3,8 @@
 A slow, lo-fi driving game about a little Fiat 500 in Perth, Western Australia.
 Built with **Godot 4** (GDScript) and a PS1-style look.
 
-This is the first playable prototype: a placeholder box-car version of a 2013
-Fiat 500 Pop with a 5-speed manual, a test grid to drive around, a day/night
+This is the first playable prototype: a 2013 Fiat 500 Pop (modelled on Ash's
+own car) with a 5-speed manual, a test grid to drive around, a day/night
 cycle with Perth's sun, three kinds of weather, and the lo-fi render pipeline.
 
 ## Run it

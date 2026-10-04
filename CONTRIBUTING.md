@@ -36,10 +36,10 @@ area, keep it small and say so in your PR.
 
 ## Swapping in real assets
 
-- **Car model**: replace the `Body` node in `scenes/vehicles/fiat_500_pop.tscn`
-  with the imported model (delete `scripts/vehicle/placeholder_body.gd`).
-  Put each wheel mesh under `Wheels/<Wheel>/Visual/Spin` (the wheel's axle
-  along X), and move `DriverSeat`, `Headlights` and `BrakeLights` to match.
+- **Car model**: the `Body` node in `scenes/vehicles/fiat_500_pop.tscn` is the
+  imported `art/models/cars/pop/pop.glb` with `scripts/vehicle/car_body.gd`
+  (PS1 materials, steering wheel, lamps, respray). Wheel glbs sit under
+  `Wheels/<Wheel>/Visual/Spin` (axle along X). See `art/models/README.md`.
   Wheel anchors sit 0.05 m above the wheel centre at rest height; if you move
   them, keep the suspension numbers on the car in step.
 - **Map**: replace the `TestGrid` node in `scenes/main.tscn` with the map
