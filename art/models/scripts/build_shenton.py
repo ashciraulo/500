@@ -42,6 +42,7 @@ from mathutils import Vector  # noqa: E402
 from lib import arch as A  # noqa: E402
 from lib import common as C  # noqa: E402
 from lib import furniture as F  # noqa: E402
+from lib import studio as S  # noqa: E402
 from lib import textures as TX  # noqa: E402
 
 OUT = "art/models/home/shenton/"
@@ -293,7 +294,7 @@ def house(M):
     A.stairs_straight(0.0, 1.0, 8.8, 5.0, FZ0, FZ1, 16, stair_mat, "House-col", solid_until=lambda y: y > 6.6)
     # handrail and balustrade along the open side
     A.block((0.97, 6.6, FZ0), (1.03, 8.8, FZ0 + 0.9), M["trim"], "House-col")            # stringer wall
-    for i in range(9):
+    for i in range(8):                        # the last one stops short of bedroom 2
         y = 5.1 + i * 0.4
         A.block((0.98, y, FZ1), (1.02, y + 0.03, FZ1 + 0.95), M["trim"], "House")
     A.block((0.97, 5.0, FZ1 + 0.95), (1.05, 8.0, FZ1 + 1.0), F.M("wood_mid"), "House-col")
@@ -477,8 +478,6 @@ def interior(M):
     out.append(it("Books_Bedside", [F.bx((-0.1, -0.08, 0), (0.1, 0.08, 0.05), F.M("book1")),
                                     F.bx((-0.09, -0.07, 0.05), (0.08, 0.07, 0.09), F.M("book3"))], (W - 0.25, 3.1, z1 + 0.55)))
     out.append(it("Robes-col", F.robe_doors(3.1, CZ1 - FZ1 - 0.04, 0.62), (0.31, 0.72, z1), 90))
-    out.append(it("Armchair3-col", F.armchair("rust"), (2.95, 0.75, z1), 180))
-    out.append(it("FloorLamp2", F.floor_lamp(), (3.7, 0.5, z1)))
     out.append(it("Plant_Fiddle2", F.plant("fiddle", 11), (2.25, 0.4, z1)))
     out.append(it("Curtains_Bed1", F.curtains(2.0, 2.4), (3.6, 0.08, z1)))
     out.append(it("Rug_Bed1", F.rug(2.0, 1.6, "rug_cream", "rug_red"), (3.2, 2.05, z1)))
@@ -494,16 +493,30 @@ def interior(M):
     out.append(it("TowelRail", F.towel_rail(), (2.2, 5.6, z1 + 1.4), 90))
     out.append(it("Plant_Bath", F.plant("pothos", 14), (5.15, 5.4, z1 + 0.84)))
     out.append(it("Toilet_Up-col", F.toilet(), (5.1, 7.3, z1), -90))
-    # bedroom 2: a study now; someone's been mapping something
+    # bedroom 2: a home studio, and someone's been mapping something
     out.append(it("Desk-col", F.desk(1.2, 0.6), (2.5, 11.6, z1), 180))
     out.append(it("Desk_Chair", F.chair("black"), (2.5, 11.05, z1), 180))
-    out.append(it("Laptop", F.laptop(), (2.4, 11.6, z1 + 0.75), 180))
+    out.append(it("Synth_Mono", S.mono_synth(), (2.27, 11.65, z1 + 0.75)))
+    keys = S.keyboard_stand()
+    for p in S.poly_synth():
+        p.location.z += 0.75
+        keys.append(p)
+    out.append(it("KeyboardStand-col", keys, (0.48, 10.2, z1), 90))
+    out.append(it("DrumKit-col", S.drum_kit(), (4.4, 11.15, z1)))
+    for kind, y in (("tele", 8.45), ("jazzmaster", 9.2), ("jbass", 9.95)):
+        out.append(it("Guitar_" + kind, S.guitar(kind), (W, y, z1 + 2.1 - S.guitar_height(kind)), -90))
+    out.append(it("Amp_Guitar-col", S.guitar_combo(), (W - 0.15, 8.5, z1), -90))
+    out.append(it("Amp_Bass-col", S.bass_rig(), (W - 0.22, 9.35, z1), -90))
+    out.append(it("Pedalboard", S.pedalboard(), (4.75, 8.9, z1), -90))
+    for kind, x in (("dinosaur", 2.55), ("lanegan", 3.25), ("qotsa", 3.95)):
+        out.append(it("Poster_" + kind, S.poster(kind), (x, 8.05, z1 + 1.2), 180))
+    out.append(it("LPs", S.lp_row(3), (4.7, D, z1 + 1.55)))
+    out.append(it("Laptop", F.laptop(), (2.88, 11.6, z1 + 0.75), 180))
     out.append(it("Corkboard", F.corkboard(1.4, 0.9), (0.02, 10.2, z1 + 1.0), 90))
-    out.append(it("DayBed-col", F.bed(1.0, 2.0, "throw"), (W - 0.6, 10.1, z1), 180))
     out.append(it("Boxes_Bed2", F.boxes(11, 3), (0.45, 8.5, z1)))
     out.append(it("Plant_Bed2", F.plant("monstera", 15, 0.7), (0.62, 11.38, z1)))
     out.append(it("Curtains_Bed2", F.curtains(2.0, 2.2), (2.5, D - 0.08, z1), 180))
-    out.append(it("DeskLamp", F.table_lamp(), (3.0, 11.65, z1 + 0.75)))
+    out.append(it("DeskLamp", F.table_lamp(), (W - 0.22, 9.55, z1 + 0.8)))     # on the bass amp
     return out
 
 

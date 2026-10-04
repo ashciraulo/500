@@ -32,7 +32,7 @@ SLIDE = 1.05
 _WALLS = []
 FLOORS = {"ground": (B.FZ0, B.CZ0), "upper": (B.FZ1, B.CZ1)}
 # things that lie flat or hang high and never block anyone
-FLAT = ("Rug", "Gallery", "Pendant", "TV_Screen", "Corkboard", "AC_", "Intercom", "Plant_Hanging", "TowelRail",
+FLAT = ("Rug", "Gallery", "Pendant", "TV_Screen", "Guitar_", "Poster_", "LPs", "Synth_Mono", "Pedalboard", "Corkboard", "AC_", "Intercom", "Plant_Hanging", "TowelRail",
         "candle", "Photo_", "Books_", "BedLamp", "Laptop", "DeskLamp", "TableLamp", "CoffeeMachine", "Kettle",
         "Herbs", "Succulent", "Plant_Bath", "Bar_Top", "porch_light", "Balcony_")
 
@@ -285,6 +285,19 @@ def reach(doors, walls, solid, cell=0.05, radius=0.25):
                     inside = False   # a cupboard: you reach in, you don't walk in
                 if inside and c not in seen:
                     out.append("can't walk to the %s side of %s" % ("+" if side > 0 else "-", d.name))
+        # both long sides of a bed, so you can get in from either side
+        for name, fp, z0, _ in solid:
+            if not name.startswith("Bed-col") or floor_z(z0) != fz:
+                continue
+            xs, ys = [p[0] for p in fp], [p[1] for p in fp]
+            cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+            if max(xs) - min(xs) > max(ys) - min(ys):
+                pts = [(cx, min(ys) - 0.4), (cx, max(ys) + 0.4)]
+            else:
+                pts = [(min(xs) - 0.4, cy), (max(xs) + 0.4, cy)]
+            for x, y in pts:
+                if (int((x + 0.2) / cell), int((y + 0.2) / cell)) not in seen:
+                    out.append("can't get to the side of %s at (%.1f, %.1f)" % (name, x, y))
     return out
 
 

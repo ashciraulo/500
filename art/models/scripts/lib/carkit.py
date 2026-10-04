@@ -110,10 +110,14 @@ def shell_object(name, verts, faces, tags, uvs=None):
 
 
 def cut_arches(body, axles, radius, x_inner, hub_z):
-    """Boolean the wheel arches out of the shell (both sides, each axle)."""
-    for y in axles:
+    """Boolean the wheel arches out of the shell (both sides, each axle).
+
+    x_inner is the inner wall of the wheel tubs: one value, or one per axle
+    (the front tubs need to be deeper so the steered wheels clear them)."""
+    xs = x_inner if isinstance(x_inner, (tuple, list)) else [x_inner] * len(axles)
+    for y, x_in in zip(axles, xs):
         cutter = C.cylinder("arch", radius, 2.4, segs=14, axis="X", loc=(0, y, hub_z))
-        inner = C.box("arch_keep", (2 * x_inner, 1.0, 1.0), (0, y, hub_z))
+        inner = C.box("arch_keep", (2 * x_in, 1.0, 1.0), (0, y, hub_z))
         # cutter minus the middle keeps the cabin floor intact
         C.boolean(cutter, inner, "DIFFERENCE")
         cutter.data.materials.clear()
@@ -175,6 +179,80 @@ def smooth(obj, angle=35):
     for p in me.polygons:
         p.use_smooth = True
     me.set_sharp_from_angle(angle=math.radians(angle))
+
+
+def vertex_normals(obj):
+    """{rounded position: normal} of a surface, to solidify the pieces split
+    off it along the same directions (so neighbouring pieces' rims run
+    side by side instead of crossing)."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.normal_update()
+    out = {_key(v.co): v.normal.copy() for v in bm.verts}
+    bm.free()
+    return out
+
+
+def _key(co):
+    return (round(co.x, 4), round(co.y, 4), round(co.z, 4))
+
+
+def solidify_along(obj, thickness, inner_mat, normals, gap=0.0, level=0.0):
+    """Like solidify(), but offsets each vertex along normals[position]
+    (from vertex_normals() of the surface it was cut from); vertices not
+    found fall back to their own normal. Call before moving any vertex.
+    gap > 0 first pulls the open border in along the surface by that much
+    (a door's shut gap). level > 0 offsets surfaces facing up by less than
+    that (normal z in 0..level) straight inward instead, so a door's inner
+    skin never dips below its outer edge where it swings past the body."""
+    me = obj.data
+    me.materials.append(inner_mat)
+    mi = len(me.materials) - 1
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.normal_update()
+    uv = bm.loops.layers.uv.active
+    outer = list(bm.faces)
+    nrm = {v: normals.get(_key(v.co), v.normal).copy() for v in bm.verts}
+    for v, n in nrm.items():
+        if 0.0 < n.z < level and n.xy.length > 1e-6:
+            n.z = 0.0
+            n.normalize()
+    if gap:
+        moves = {}
+        for v in bm.verts:
+            bed = [e for e in v.link_edges if e.is_boundary]
+            if len(bed) != 2:
+                continue
+            a, b = (e.other_vert(v).co for e in bed)
+            d = nrm[v].cross((b - a).normalized()).normalized()
+            inside = sum((f.calc_center_median() for f in v.link_faces), Vector()) / len(v.link_faces) - v.co
+            moves[v] = (d if d.dot(inside) > 0 else -d) * gap
+        for v, m in moves.items():
+            v.co += m
+    inner = {}
+    for v in list(bm.verts):
+        inner[v] = bm.verts.new(v.co - nrm[v] * thickness)
+    for f in outer:
+        nf = bm.faces.new([inner[lp.vert] for lp in reversed(f.loops)])
+        nf.material_index = mi
+        nf.smooth = f.smooth
+        if uv:
+            for lp, src in zip(nf.loops, reversed(f.loops)):
+                lp[uv].uv = src[uv].uv
+    for e in list(bm.edges):
+        if len(e.link_faces) != 1 or e.verts[0] not in inner:
+            continue
+        f = e.link_faces[0]
+        for lp in f.loops:
+            if lp.edge == e:
+                a, b = lp.vert, lp.link_loop_next.vert
+                break
+        rf = bm.faces.new([b, a, inner[a], inner[b]])
+        rf.material_index = mi
+    bm.to_mesh(me)
+    bm.free()
+    me.update()
 
 
 def solidify(obj, thickness, inner_mat, rim=True):
@@ -449,6 +527,22 @@ def offset_poly(poly, d):
     return out
 
 
+def surface_ray(target, origin, direction):
+    """ray_cast that does not slip through the seam between two faces when
+    the ray lands exactly on a shared edge: retries with tiny offsets."""
+    o, d = Vector(origin), Vector(direction).normalized()
+    res = target.ray_cast(o, d)
+    if res[0]:
+        return res
+    side = d.orthogonal().normalized()
+    up = d.cross(side)
+    for j in (side, -side, up, -up):
+        res = target.ray_cast(o + j * 2e-4, d)
+        if res[0]:
+            return res
+    return res
+
+
 def project_poly(name, target, poly, frame, material, offset=0.004, cuts=4, border=None, border_mat=None):
     """Mesh covering `poly` (2D) projected onto `target`'s surface.
 
@@ -469,7 +563,7 @@ def project_poly(name, target, poly, frame, material, offset=0.004, cuts=4, bord
         bm.free()
         for v in me.vertices:
             o, d = frame(v.co.x, v.co.y)
-            ok, loc, nor, _ = target.ray_cast(Vector(o), Vector(d).normalized())
+            ok, loc, nor, _ = surface_ray(target, o, d)
             if ok:
                 v.co = loc + nor * offset
             else:
@@ -514,7 +608,7 @@ def project_line(name, target, pts, frame, width, material, offset=0.003, closed
         for s in (-1, 1):
             u, v = Vector(p) + nrm * s
             o, d = frame(u, v)
-            ok, loc, nor, _ = target.ray_cast(Vector(o), Vector(d).normalized())
+            ok, loc, nor, _ = surface_ray(target, o, d)
             verts.append(tuple(loc + nor * offset) if ok else tuple(Vector(o) + Vector(d) * 4.6))
     for i in range(len(seq) - 1):
         faces.append((2 * i, 2 * i + 1, 2 * i + 3, 2 * i + 2))

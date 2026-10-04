@@ -172,6 +172,16 @@ def carpet(name, color="#1e1e1f", seed=3, size=16):
     return C.make_image(name, size, size, lambda x, y: mul(color, 0.8 + rnd.random() * 0.4))
 
 
+def honeycomb(name="honeycomb", size=16):
+    """Black hex mesh with dark-grey webs, for grilles (tiles)."""
+    def px(x, y):
+        row = y // 4
+        xx = (x + (2 if row % 2 else 0)) % 4
+        web = y % 4 == 0 or xx == 0
+        return (0.16, 0.16, 0.17) if web else (0.02, 0.02, 0.025)
+    return C.make_image(name, size, size, px)
+
+
 def gauges(name="gauges"):
     """Pop instrument cluster: white speedo ring with a rev ring inside."""
     s = 32
