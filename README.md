@@ -60,5 +60,5 @@ turns). CI runs it on every push; locally:
 
 ```sh
 godot --headless --path . --import
-godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd
+godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd -- --no-save
 ```

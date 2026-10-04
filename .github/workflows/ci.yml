@@ -34,7 +34,7 @@ jobs:
       - name: Smoke test
         run: |
           set -o pipefail
-          ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd 2>&1 \
+          ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd -- --no-save 2>&1 \
             | tee smoke.log | grep -E "ok |FAIL|\[t\]|SMOKE|  - |SCRIPT ERROR"
           if grep -q "SCRIPT ERROR" smoke.log; then
             echo "::error::GDScript errors while running the game"

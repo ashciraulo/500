@@ -145,6 +145,8 @@ var torque_multiplier := 1.0
 var wet_penalty_multiplier := 1.0
 ## Installed parts by slot. Empty slots run the stock part.
 var parts := {}
+## Distance driven, km.
+var odometer_km := 0.0
 
 ## Stock values captured on _ready, so parts always stack from stock.
 var _stock := {}
@@ -170,6 +172,7 @@ func _ready() -> void:
 		_stock[key] = get(key).duplicate() if get(key) is PackedFloat32Array else get(key)
 	if player_controlled:
 		add_to_group(&"player_car")
+		SaveGame.register("car", self)
 	_spawn_transform = global_transform
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	center_of_mass = Vector3.ZERO
@@ -311,6 +314,8 @@ func _physics_process(delta: float) -> void:
 		surface = new_surface
 		surface_changed.emit(surface)
 	_last_velocity = linear_velocity
+	if grounded_wheels > 0:
+		odometer_km += absf(forward_speed) * delta / 1000.0
 
 
 func _process(delta: float) -> void:
@@ -353,6 +358,7 @@ func get_telemetry() -> Dictionary:
 		"weather_intensity": Weather.intensity(),
 		"wetness": Weather.wetness,
 		"is_player_inside": is_player_inside,
+		"odometer_km": odometer_km,
 	}
 
 
@@ -440,6 +446,29 @@ func install_part_ids(ids: PackedStringArray) -> void:
 		var part := PartsCatalogue.get_part(id)
 		if part:
 			install_part(part)
+
+
+func save_state() -> Dictionary:
+	return {
+		"position": SaveGame.vec3_to_array(global_position),
+		"yaw": global_rotation.y,
+		"parts": Array(get_part_ids()),
+		"odometer_km": odometer_km,
+		"automatic": transmission == Transmission.AUTOMATIC,
+	}
+
+
+func load_state(data: Dictionary) -> void:
+	if data.has("position"):
+		# Lift slightly so the wheels settle onto the ground rather than in it.
+		var pos := SaveGame.array_to_vec3(data.position) + Vector3.UP * 0.3
+		global_transform = Transform3D(Basis(Vector3.UP, float(data.get("yaw", 0.0))), pos)
+		linear_velocity = Vector3.ZERO
+		angular_velocity = Vector3.ZERO
+	for slot in parts.keys():
+		remove_part(slot)
+	install_part_ids(PackedStringArray(data.get("parts", [])))
+	odometer_km = float(data.get("odometer_km", 0.0))
 
 
 ## Headline numbers for menus and the garage.

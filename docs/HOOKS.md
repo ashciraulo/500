@@ -99,3 +99,32 @@ On the car: `install_part(part)`, `remove_part(slot)`, `parts` (slot -> part),
 headline numbers (power_kw, torque_nm, mass_kg, grip, ...). Parts always stack
 from the stock values. Signal `parts_changed(slot, part)` fires on every change;
 the car body uses `part.visual` to swap wheels and exhausts.
+
+## Saving (autoload `SaveGame`)
+
+Register anything that should persist, with a section name and two methods:
+
+```gdscript
+func _ready() -> void:
+	SaveGame.register("my_system", self)
+
+func save_state() -> Dictionary: return {"thing": thing}
+func load_state(data: Dictionary) -> void: thing = data.get("thing", thing)
+```
+
+Saved data must be JSON-friendly (numbers, strings, bools, arrays,
+dictionaries); use `SaveGame.vec3_to_array()` / `array_to_vec3()` for vectors.
+Registering after the save was read applies your section immediately.
+`save_game()`, `load_from(path)`, `has_save()`, `delete_save()`; signals
+`saved(path)`, `loaded(path)`. Autosaves every 3 minutes of play and on quit.
+Run the game with `-- --no-save` to skip saving and loading entirely.
+
+Already saved: `clock` (time, day), `weather` (state, wetness), `car`
+(position, heading, parts, odometer), `wallet`, `discoveries`.
+
+## Money (autoload `Wallet`) and discoveries (autoload `Discoveries`)
+
+- `Wallet.balance` (AUD, starts at 400), `earn(amount)`, `spend(amount) -> bool`,
+  `can_afford(amount)`, `total_earned`, signal `changed(balance, delta)`.
+- `Discoveries.discover(id) -> bool` (true the first time), `has(id)`, `all()`,
+  signal `discovered(id)`. Ids are free-form, e.g. `"place/kings_park"`.

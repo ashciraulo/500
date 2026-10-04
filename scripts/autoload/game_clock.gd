@@ -25,6 +25,19 @@ var day := 1
 var locked := false
 
 
+func _ready() -> void:
+	SaveGame.register("clock", self)
+
+
+func save_state() -> Dictionary:
+	return {"time_of_day": time_of_day, "day": day}
+
+
+func load_state(data: Dictionary) -> void:
+	time_of_day = float(data.get("time_of_day", time_of_day))
+	day = int(data.get("day", day))
+
+
 func _process(delta: float) -> void:
 	if not locked:
 		advance(delta * 24.0 / seconds_per_day)

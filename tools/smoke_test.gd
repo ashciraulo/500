@@ -2,7 +2,7 @@ extends SceneTree
 ## Headless smoke test: loads the main scene and drives the car through a few
 ## scripted checks. Run it with a fixed frame rate so physics is deterministic:
 ##
-##   godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd
+##   godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd -- --no-save
 ##
 ## Exits with code 1 if any check fails. CI runs this on every push.
 
@@ -128,6 +128,27 @@ func _run_step() -> bool:
 			_car.install_part(catalogue.get_part(&"tyres_stock"))
 			var back: Dictionary = _car.get_stats()
 			_check(is_equal_approx(back.power_kw, stock.power_kw) and is_equal_approx(back.grip, stock.grip), "going back to stock restores the stock stats")
+			# Save round trip, to a scratch file so a real save is never touched.
+			var save := root.get_node("SaveGame")
+			var wallet := root.get_node("Wallet")
+			var clock := root.get_node("GameClock")
+			var test_path := "user://smoke_test_save.json"
+			wallet.earn(123)
+			_car.install_part(catalogue.get_part(&"exhaust_sport"))
+			var saved_money: int = wallet.balance
+			var saved_pos: Vector3 = _car.global_position
+			var saved_time: float = clock.time_of_day
+			_check(save.save_to(test_path), "game saves")
+			wallet.spend(100)
+			clock.set_time(saved_time + 5.0)
+			_car.remove_part(&"exhaust")
+			_car.global_position += Vector3(50, 0, 50)
+			_check(save.load_from(test_path), "game loads")
+			_check(wallet.balance == saved_money, "money is restored (%d)" % wallet.balance)
+			_check(is_equal_approx(clock.time_of_day, saved_time), "time of day is restored")
+			_check(Array(_car.get_part_ids()).has("exhaust_sport"), "installed parts are restored")
+			_check(_car.global_position.distance_to(saved_pos) < 1.0, "car position is restored")
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
 			var telemetry: Dictionary = _car.get_telemetry()
 			for key in ["rpm", "throttle", "gear", "speed_kmh", "surface", "weather_intensity"]:
 				_check(telemetry.has(key), "telemetry has '%s'" % key)

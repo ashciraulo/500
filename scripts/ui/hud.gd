@@ -73,7 +73,8 @@ func _process(_delta: float) -> void:
 	_rev_bar.size.x = 200.0 * rev
 	_rev_bar.color = Color(0.95, 0.3, 0.2) if _car.rpm > _car.redline_rpm else Color(0.95, 0.85, 0.5)
 	var lock := " [locked]"
-	_status.text = "%s  |  %s%s  |  %s%s" % [
+	_status.text = "$%d  |  Day %d  |  %s  |  %s%s  |  %s%s" % [
+		Wallet.balance, GameClock.day,
 		"AUTO" if _car.transmission == CarController.Transmission.AUTOMATIC else "MANUAL",
 		GameClock.time_string(), lock if GameClock.locked else "",
 		Weather.state_name(), lock if Weather.locked else "",

@@ -21,6 +21,7 @@ var _dither: CheckBox
 var _wobble: HSlider
 var _mouse: HSlider
 var _resume: Button
+var _save_button: Button
 var _syncing := false
 
 
@@ -51,6 +52,7 @@ func open() -> void:
 	_dim.visible = true
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_save_button.text = "Save game"
 	_resume.grab_focus()
 
 
@@ -166,9 +168,14 @@ func _build() -> void:
 		if car:
 			car.reset_upright()
 		close()
+	var save_button := _button(right, "Save game", func() -> void: pass)
+	save_button.pressed.connect(func() -> void:
+		save_button.text = "Saved" if SaveGame.save_game() else "Saving is off (--no-save)")
+	_save_button = save_button
 	_button(right, "Put the car back on its wheels", car_reset)
-	_button(right, "Quit to desktop", func() -> void:
+	_button(right, "Save and quit to desktop", func() -> void:
 		Settings.save_settings()
+		SaveGame.save_game()
 		get_tree().quit())
 
 

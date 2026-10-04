@@ -52,6 +52,17 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.randomize()
 	_hours_until_change = _rng.randf_range(min_spell_hours, max_spell_hours)
+	SaveGame.register("weather", self)
+
+
+func save_state() -> Dictionary:
+	return {"state": state, "wetness": wetness, "hours_until_change": _hours_until_change}
+
+
+func load_state(data: Dictionary) -> void:
+	set_state(int(data.get("state", state)) as State, true)
+	wetness = float(data.get("wetness", wetness))
+	_hours_until_change = float(data.get("hours_until_change", _hours_until_change))
 
 
 func _process(delta: float) -> void:
