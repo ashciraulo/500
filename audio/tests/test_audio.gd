@@ -45,6 +45,7 @@ func _ready() -> void:
 	await _test_my_music(audio)
 	await _test_ambience(audio)
 	await _test_car_scene(audio)
+	await _test_hooks(audio)
 	print("%d failure(s)" % failures)
 	quit(1 if failures else 0)
 
@@ -237,6 +238,57 @@ func _test_car_scene(audio: Node) -> void:
 	await process_frame
 	await process_frame
 	check(audio.is_player_inside(), "interior view switches the mix to inside the car")
+	# Fitting parts swaps the engine sound.
+	car.install_part(PartsCatalogue.get_part(&"exhaust_sport"))
+	check(engine.engine_set == "fire12sport", "sport exhaust -> fire12sport (got %s)" % engine.engine_set)
+	car.install_part(PartsCatalogue.get_part(&"engine_tjet"))
+	check(engine.engine_set == "tjetsport", "T-Jet swap keeps the exhaust -> tjetsport (got %s)" % engine.engine_set)
+	check(engine.turbo > 0.0, "T-Jet set has the turbo on")
+	car.install_part(PartsCatalogue.get_part(&"engine_stock"))
+	car.install_part(PartsCatalogue.get_part(&"exhaust_stock"))
+	check(engine.engine_set == "fire12", "back to stock -> fire12 (got %s)" % engine.engine_set)
+	check(engine.turbo == 0.0, "stock set has no turbo")
+	# Running dry stops the engine; fuel brings it back.
+	car.fuel_litres = 0.0
+	await create_timer(0.3).timeout
+	check(not engine.running, "engine stops when the tank runs dry")
+	car.refuel(10.0)
+	await create_timer(0.3).timeout
+	check(engine.running, "engine restarts after refuelling")
 	car.queue_free()
 	cam.queue_free()
 	audio.set_player_inside(false)
+
+
+func _test_hooks(audio: Node) -> void:
+	print("hooks")
+	check(audio.hooks != null, "Audio.hooks present")
+	var settings: Node = root.get_node("Settings")
+	settings.volume_music = 0.5
+	settings.apply()
+	var music := AudioServer.get_bus_index("Music")
+	check(absf(AudioServer.get_bus_volume_db(music) - (-3.0 + linear_to_db(0.5))) < 0.1,
+			"music slider sets the Music bus")
+	settings.volume_music = 1.0
+	settings.apply()
+	audio.radio.set_station("cinquecento")
+	await create_timer(0.2).timeout
+	var before: float = audio.radio._player.volume_db
+	audio.radio.duck(true, 0.2)
+	await create_timer(0.4).timeout
+	check(audio.radio._player.volume_db < before - 12.0, "radio ducks under job music")
+	audio.radio.duck(false, 0.2)
+	await create_timer(0.4).timeout
+	check(absf(audio.radio._player.volume_db - before) < 0.5, "radio comes back after")
+	audio.radio.turn_off()
+	# Every sound the hooks name exists.
+	var src := FileAccess.get_file_as_string("res://audio/scripts/game_hooks.gd")
+	var re := RegEx.create_from_string("\"((?:ui|car|garage|music)/[a-z0-9_]+|ui_[a-z0-9_]+)\"")
+	var missing := []
+	for m in re.search_all(src):
+		var n := m.get_string(1)
+		if not n.contains("/"):
+			n = "ui/" + n
+		if not audio.has(n) and not audio._variants.has(n):
+			missing.append(n)
+	check(missing.is_empty(), "hook sounds exist %s" % [missing])

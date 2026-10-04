@@ -52,6 +52,8 @@ var _pos := -1
 var _player: AudioStreamPlayer
 var _static: AudioStreamPlayer
 var _outside_trim := 0.0
+var _duck_db := 0.0
+var _duck_tween: Tween
 var _clock := 0.0                # broadcast clock for the built-in stations
 var _broadcast := {}             # station id -> {"tracks": [...], "lengths": [...]}
 var _current_title := ""
@@ -155,7 +157,7 @@ func _tune(index: int, with_static := true) -> void:
 		var s := Audio.stream("car/car_radio_tuning_sweep")
 		if s:
 			_static.stream = s
-			_static.volume_db = volume_db - 6.0 + _outside_trim
+			_static.volume_db = volume_db - 6.0 + _outside_trim + _duck_db
 			_static.play()
 	var id := current_station_id()
 	var display: String = "" if id == MIDNIGHT_ID else stations[index].name
@@ -180,16 +182,29 @@ func _start_station() -> void:
 		_play_my_music(maxi(_pos, 0))
 	elif id == MIDNIGHT_ID:
 		_player.stream = Audio.variant("oddity/odd_midnight_station")
-		_player.volume_db = volume_db + _outside_trim
+		_player.volume_db = volume_db + _outside_trim + _duck_db
 		_player.play()
 		now_playing.emit(id, "", "")
 	else:
 		_play_broadcast(id)
 
 
+## Dip the radio under job music (on) or bring it back (off).
+func duck(on: bool, fade_s := 2.0) -> void:
+	if _duck_tween:
+		_duck_tween.kill()
+	_duck_tween = create_tween()
+	_duck_tween.tween_method(_set_duck, _duck_db, -18.0 if on else 0.0, fade_s)
+
+
+func _set_duck(db: float) -> void:
+	_duck_db = db
+	_apply_volume()
+
+
 func _apply_volume() -> void:
 	if _player:
-		_player.volume_db = volume_db + _outside_trim
+		_player.volume_db = volume_db + _outside_trim + _duck_db
 
 
 # ---------------------------------------------------------------------------
@@ -241,7 +256,7 @@ func _play_broadcast(id: String) -> void:
 	for i in b.tracks.size():
 		if t < b.lengths[i]:
 			_player.stream = Audio.stream(b.tracks[i])
-			_player.volume_db = volume_db + _outside_trim
+			_player.volume_db = volume_db + _outside_trim + _duck_db
 			_player.play(t)
 			_announce(id, b.tracks[i])
 			return
@@ -386,7 +401,7 @@ func _play_my_music(index: int, tries := 0) -> void:
 		_play_my_music((_pos + 1) % _order.size(), tries + 1)
 		return
 	_player.stream = s
-	_player.volume_db = volume_db + _outside_trim
+	_player.volume_db = volume_db + _outside_trim + _duck_db
 	_player.play()
 	var tags := read_tags(path)
 	_current_title = tags.title

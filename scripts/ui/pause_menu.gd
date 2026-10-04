@@ -20,6 +20,7 @@ var _pixels: HSlider
 var _dither: CheckBox
 var _wobble: HSlider
 var _mouse: HSlider
+var _volumes := {}
 var _resume: Button
 var _save_button: Button
 var _syncing := false
@@ -162,6 +163,18 @@ func _build() -> void:
 		Settings.vertex_snap_scale = 1.1 - v
 		Settings.apply())
 
+	_section(right, "Sound")
+	for pair in [["volume_master", "Volume"], ["volume_effects", "Car and world"],
+			["volume_music", "Music"], ["volume_radio", "Radio"]]:
+		var key: String = pair[0]
+		_volumes[key] = _slider(right, pair[1], 0.0, 1.0, 0.05, func(v: float) -> void:
+			Settings.set(key, v)
+			Settings.apply())
+	_button(right, "Open My Music folder", func() -> void:
+		var audio := get_node_or_null("/root/Audio")
+		if audio:
+			audio.radio.open_music_folder())
+
 	_section(right, "")
 	var car_reset := func() -> void:
 		var car := get_tree().get_first_node_in_group(&"player_car") as CarController
@@ -190,6 +203,8 @@ func _sync_from_settings() -> void:
 	_pixels.value = Settings.lofi_target_height
 	_dither.button_pressed = Settings.dither_enabled
 	_wobble.value = 1.1 - Settings.vertex_snap_scale
+	for key in _volumes:
+		_volumes[key].value = Settings.get(key)
 	_syncing = false
 
 

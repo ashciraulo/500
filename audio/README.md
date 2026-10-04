@@ -94,7 +94,24 @@ start swapping in your own recordings, regenerate only what you need.
   the buses and muffles the world when the camera is inside the car.
 - **`EngineAudio`**, **`TyreAudio`**, **`CarSounds`**: nodes under the car's
   `Audio` node. They read `get_telemetry()` and the car's signals
-  (docs/HOOKS.md). Set `EngineAudio.engine_set` to change engine or exhaust.
+  (docs/HOOKS.md). The engine set follows the fitted parts: a sport or twin
+  exhaust gives `<family>sport`, the Abarth quad gives `<family>straight`, and
+  the 1.4 and T-Jet swaps change the family (`ENGINE_PARTS` and
+  `EXHAUST_PARTS` in `engine_audio.gd`). The engine cuts out when the tank
+  runs dry and starts again after fuel goes in.
+- **`Audio.hooks`** (`game_hooks.gd`): the event sounds, driven by the other
+  autoloads' signals so their code has no audio calls. Job accepted,
+  pick-up, checkpoints, delivery and trial finishes, new best time, money,
+  challenges and tier unlocks, discoveries, saving; cargo sliding or
+  clinking in the back when you hit something mid-delivery; the low-fuel
+  chime; fuel going in and the car wash; the impact wrench when a part is
+  fitted; workshop room tone; menu clicks on every button. Deliveries keep
+  the radio until the last 30% of the par time, then the mission tension
+  loop fades in and builds; time trials play the time-trial loop with
+  countdown ticks before each medal time. The radio dips under both.
+- **Volume settings**: `Settings.volume_master`, `volume_effects`,
+  `volume_music` and `volume_radio` (0..1, sliders in the pause menu's
+  Sound section, next to an "Open My Music folder" button).
 - **`Audio.radio`** (`radio.gd`): Radio Cinquecento, Notte FM, My Music and
   (after midnight only) an unlisted station. Keys: `.` / `,` change station,
   `/` on/off, `M` next track, `N` next playlist.
@@ -110,8 +127,7 @@ The game makes a `Music` folder next to the save files:
 - macOS: `~/Library/Application Support/Godot/app_userdata/500/Music`
 - Linux: `~/.local/share/godot/app_userdata/500/Music`
 
-(`Audio.radio.open_music_folder()` opens it; the settings menu should get an
-"Open folder" button that calls this.) Drop MP3, OGG or WAV files in. Each
+(the pause menu's "Open My Music folder" button opens it.) Drop MP3, OGG or WAV files in. Each
 subfolder becomes a playlist; "All music" plays everything. Tune the radio to
 My Music: tracks play through the car-stereo filter, shuffle by default, and
 carry on faintly when you step out. Track names come from the files' tags, or
@@ -127,3 +143,7 @@ Music folder (with real MP3/OGG/WAV fixtures). CI runs it. To hear it all in
 the actual game:
 
     godot --path . --fixed-fps 60 --write-movie build/demo.avi --script res://audio/tests/demo_drive.gd
+    godot --path . --fixed-fps 60 --write-movie build/hooks.avi --script res://audio/tests/demo_hooks.gd
+
+(the second is the game-event sounds: fuel, a new exhaust, a delivery, a time
+trial, the car wash).

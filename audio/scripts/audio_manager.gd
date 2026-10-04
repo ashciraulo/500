@@ -32,6 +32,7 @@ const BUSES := [
 ]
 
 var radio: Node
+var hooks: Node
 var ambience: Node
 
 var _index := {}            # "car/car_horn_modern_tap" -> "res://audio/car/car_horn_modern_tap.ogg"
@@ -86,6 +87,13 @@ func _ready() -> void:
 	var display := preload("res://audio/scripts/radio_display.gd").new()
 	display.name = "RadioDisplay"
 	add_child(display)
+	hooks = preload("res://audio/scripts/game_hooks.gd").new()
+	hooks.name = "Hooks"
+	add_child(hooks)
+	var settings := get_node_or_null("/root/Settings")
+	if settings and "volume_master" in settings:
+		settings.changed.connect(apply_volume_settings)
+		apply_volume_settings()
 
 
 ## Radio keys work anywhere (see project.godot input map: radio_*).
@@ -191,6 +199,25 @@ func _build_buses() -> void:
 	else:
 		_radio_lp = AudioServer.get_bus_effect(r, 1) as AudioEffectLowPassFilter
 	_apply_inside()
+
+
+## Volume sliders from the Settings autoload, 0..1 on top of the mix's own
+## bus levels (so 1 = as mixed, not 0 dB).
+const SETTINGS_BUSES := {
+	"volume_master": ["Master", 0.0], "volume_music": ["Music", -3.0],
+	"volume_radio": ["Radio", -6.0], "volume_effects": ["World", 0.0],
+}
+
+
+func apply_volume_settings() -> void:
+	var settings := get_node_or_null("/root/Settings")
+	if settings == null:
+		return
+	for key in SETTINGS_BUSES:
+		var idx := AudioServer.get_bus_index(SETTINGS_BUSES[key][0])
+		if idx >= 0:
+			var v := clampf(float(settings.get(key)), 0.0, 1.0)
+			AudioServer.set_bus_volume_db(idx, SETTINGS_BUSES[key][1] + linear_to_db(maxf(v, 0.0001)))
 
 
 ## Settings menu hook: linear volume 0..1 for a bus ("Master", "Music", "Radio", ...).

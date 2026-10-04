@@ -30,6 +30,21 @@ extends Node3D
 @export var turbo := -1.0
 ## Play the start-up sound when the scene starts (otherwise already running).
 @export var start_on_ready := true
+## Swap engine_set when the car's engine or exhaust part changes (the car's
+## parts_changed signal; see ENGINE_PARTS and EXHAUST_PARTS).
+@export var follow_parts := true
+
+## Engine part id -> engine family. Parts not listed keep the current family
+## (an ECU remap or a stock engine sounds like what's fitted).
+const ENGINE_PARTS := {
+	"engine_stock": "", "engine_1_4_swap": "fire14", "engine_tjet": "tjet",
+}
+## Exhaust part id -> exhaust variant suffix ("" = stock). With no exhaust
+## part fitted, the suffix engine_set started with stays.
+const EXHAUST_PARTS := {
+	"exhaust_stock": "", "exhaust_sport": "sport", "exhaust_twin": "sport",
+	"exhaust_abarth_quad": "straight",
+}
 
 var rpm := 0.0
 var throttle := 0.0
@@ -55,12 +70,24 @@ var _last_throttle := 0.0
 var _last_gear := 1
 var _pop_timer := 0.0
 var _fade_tween: Tween
+var _was_running := true
+var _base_family := "fire12"
+var _base_suffix := ""
+var _auto_pops := true
+var _auto_turbo := true
 
 
 func _ready() -> void:
 	_vehicle = find_vehicle(self, vehicle_path)
+	_base_family = family_of(engine_set)
+	_base_suffix = engine_set.trim_prefix(_base_family)
+	_auto_pops = pops < 0.0
+	_auto_turbo = turbo < 0.0
 	if _vehicle and _vehicle.has_signal("gear_changed"):
 		_vehicle.connect("gear_changed", _on_gear_changed)
+	if follow_parts and _vehicle and _vehicle.has_signal("parts_changed"):
+		_vehicle.connect("parts_changed", func(_slot, _part) -> void: _apply_parts())
+		engine_set = set_for_parts()
 	build()
 	if _vehicle:
 		if start_on_ready:
@@ -117,16 +144,46 @@ func build() -> void:
 		_avas.stream = Audio.stream(avas, true)
 	var lim := "engine/%s/eng_%s_limiter" % [engine_set, engine_set]
 	_limiter.stream = Audio.stream(lim) if Audio.has(lim) else null
-	var family := engine_set.trim_suffix("sport").trim_suffix("straight")
-	if pops < 0.0:
+	var family := family_of(engine_set)
+	if _auto_pops:
 		pops = 1.0 if (engine_set.ends_with("sport") or engine_set.ends_with("straight")
 				or family in ["tjet", "classicabarth"]) else 0.0
 		if engine_set.ends_with("straight"):
 			pops = 2.0
-	if turbo < 0.0:
+	if _auto_turbo:
 		turbo = 1.0 if family in ["tjet", "twinair"] else 0.0
 	if engine_set.begins_with("classic"):
 		classic_gearbox = true
+
+
+static func family_of(set_name: String) -> String:
+	return set_name.trim_suffix("sport").trim_suffix("straight")
+
+
+## The engine set the vehicle's fitted parts call for, e.g. "fire12sport".
+func set_for_parts() -> String:
+	var family := _base_family
+	var suffix := _base_suffix
+	if _vehicle and "parts" in _vehicle:
+		var parts: Dictionary = _vehicle.parts
+		if parts.has(&"engine"):
+			var f: String = ENGINE_PARTS.get(String(parts[&"engine"].id), "")
+			if f != "":
+				family = f
+		if parts.has(&"exhaust"):
+			suffix = EXHAUST_PARTS.get(String(parts[&"exhaust"].id), "")
+	var want := family + suffix
+	return want if Audio.names_in("engine/" + want).size() > 0 else family
+
+
+func _apply_parts() -> void:
+	var want := set_for_parts()
+	if want == engine_set:
+		return
+	engine_set = want
+	build()
+	if running:
+		_set_loops_playing(true)
 
 
 func _make_player(s: AudioStream) -> AudioStreamPlayer3D:
@@ -224,6 +281,8 @@ func _read_vehicle() -> void:
 		throttle = clampf(maxf(float(t.get("throttle", 0.0)), float(t.get("engine_load", 0.0))), 0.0, 1.0)
 		speed_kmh = absf(float(t.get("speed_kmh", 0.0)))
 		gear = int(t.get("gear", gear))
+		if t.has("engine_running"):
+			_follow_running(bool(t.engine_running))
 		return
 	if "rpm" in _vehicle:
 		rpm = float(_vehicle.rpm)
@@ -236,11 +295,20 @@ func _read_vehicle() -> void:
 		if not _vehicle.has_signal("gear_changed") and gear != _last_gear:
 			_on_gear_changed(gear)
 	if "engine_running" in _vehicle:
-		var want := bool(_vehicle.engine_running)
-		if want and not running:
-			start_engine()
-		elif not want and running:
-			stop_engine()
+		_follow_running(bool(_vehicle.engine_running))
+
+
+## The car says whether the engine runs (it cuts out when the tank is dry).
+## Only acts on a change, so start_engine()/stop_engine() still work for cars
+## that always report running.
+func _follow_running(want: bool) -> void:
+	if want == _was_running:
+		return
+	_was_running = want
+	if want and not running:
+		start_engine()
+	elif not want and running:
+		stop_engine()
 
 
 func _process(delta: float) -> void:

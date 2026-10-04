@@ -1,0 +1,317 @@
+extends Node
+## The game's event sounds: jobs and time trials, money, progression, the
+## garage, fuel, the car wash, cargo rattling in the back, and menu clicks.
+## It listens to the other autoloads' signals (Jobs, Progression, Discoveries,
+## SaveGame) and the player's car, so none of that code needs audio calls.
+## Created by the Audio autoload as Audio.hooks.
+##
+## Music during jobs: deliveries keep the radio on until time runs short (the
+## last 30% of the par time), when the mission tension loop fades in and
+## builds; time trials play the time-trial loop from the start line. The radio
+## dips under both and comes back after.
+
+## Share of a delivery's par time after which the tension music starts.
+const TENSION_FROM := 0.7
+## Seconds of ticks before each trial medal time runs out.
+const TICK_SECONDS := 5
+## Ignore events this long after a load, when saved state replays its signals.
+const QUIET_AFTER_LOAD_S := 1.5
+
+var _car: Node
+var _jobs: Node
+var _quiet_until := 0.0
+var _music := ""             # "", "tension" or "trial"
+var _last_tick := -1
+var _last_fuel := -1.0
+var _last_dirt := -1.0
+var _was_paused := false
+var _phone: Node
+var _workshop: Node
+var _phone_open := false
+var _workshop_open := false
+var _room_tone: AudioStreamPlayer
+var _look_timer := 0.0
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_quiet_until = _now() + QUIET_AFTER_LOAD_S
+	var root := get_tree().root
+	var jobs := root.get_node_or_null("Jobs")
+	_jobs = jobs
+	if jobs and jobs.has_signal("job_started"):
+		jobs.job_started.connect(_on_job_started)
+		jobs.job_stage_changed.connect(_on_job_stage)
+		jobs.job_completed.connect(_on_job_completed)
+		jobs.job_abandoned.connect(_on_job_abandoned)
+		jobs.offers_changed.connect(func() -> void: _ui("ui_job_offered", -8.0))
+	var progression := root.get_node_or_null("Progression")
+	if progression and progression.has_signal("tier_completed"):
+		progression.challenge_completed.connect(func(_t, _c) -> void: _ui("ui_badge_pickup"))
+		progression.tier_completed.connect(func(_t, _c) -> void:
+			if _loud():
+				Audio.sting("tier_unlock")
+				_ui("ui_tier_unlocked", -4.0))
+	var discoveries := root.get_node_or_null("Discoveries")
+	if discoveries and discoveries.has_signal("discovered"):
+		discoveries.discovered.connect(func(_id) -> void: _ui("ui_badge_pickup", -3.0))
+	var save := root.get_node_or_null("SaveGame")
+	if save and save.has_signal("saved"):
+		save.saved.connect(func(_p) -> void: Audio.ui("ui_save_confirmed"))
+		save.loaded.connect(func(_p) -> void: _quiet_until = _now() + QUIET_AFTER_LOAD_S)
+	get_tree().node_added.connect(_on_node_added)
+	_room_tone = AudioStreamPlayer.new()
+	_room_tone.bus = "Ambience"
+	_room_tone.volume_db = -10.0
+	add_child(_room_tone)
+
+
+func _now() -> float:
+	return Time.get_ticks_msec() / 1000.0
+
+
+## False while saved state is still loading, so loading doesn't jingle.
+func _loud() -> bool:
+	return _now() >= _quiet_until
+
+
+func _ui(sound_name: String, volume_db := 0.0) -> void:
+	if _loud():
+		Audio.ui(sound_name, volume_db)
+
+
+func _process(delta: float) -> void:
+	_look_timer -= delta
+	if _look_timer <= 0.0:
+		_look_timer = 1.0
+		_find_nodes()
+	_update_pause()
+	_update_panels()
+	if get_tree().paused:
+		return
+	_update_job_music()
+	_update_car()
+
+
+# ---------------------------------------------------------------------------
+# Jobs and time trials
+# ---------------------------------------------------------------------------
+
+func _on_job_started(_job: Dictionary) -> void:
+	_ui("ui_job_accepted")
+	_last_tick = -1
+
+
+func _on_job_stage(job: Dictionary) -> void:
+	match job.get("stage", ""):
+		"to_dropoff":
+			# Loaded up: the cargo goes in the back.
+			_ui("ui_checkpoint")
+			if _car:
+				Audio.play_at("car/car_boot_close", _car.global_position, -4.0)
+		"racing":
+			if int(job.get("checkpoint", 0)) <= 1:
+				_ui("ui_countdown_tick_final")
+				_set_job_music("trial")
+			else:
+				_ui("ui_checkpoint")
+
+
+func _on_job_completed(job: Dictionary, pay: int, _summary: String) -> void:
+	_set_job_music("")
+	if job.get("type", "") == "trial":
+		var record: Dictionary = _jobs.trial_records.get(job.get("trial_id", ""), {})
+		if is_equal_approx(float(record.get("best", -1.0)), float(job.get("elapsed", -2.0))):
+			_ui("ui_new_best_time")
+		if pay > 0:
+			Audio.sting("complete")
+		else:
+			_ui("ui_checkpoint")
+	else:
+		Audio.sting("complete")
+		if _car:
+			Audio.play_at("car/car_boot_open", _car.global_position, -4.0)
+	if pay > 0:
+		get_tree().create_timer(0.8).timeout.connect(func() -> void: Audio.ui("ui_money_earned"))
+
+
+func _on_job_abandoned(_job: Dictionary) -> void:
+	_set_job_music("")
+	Audio.sting("failed")
+
+
+func _update_job_music() -> void:
+	if _jobs == null or not "active" in _jobs:
+		return
+	var job: Dictionary = _jobs.active
+	if job.is_empty():
+		if _music != "":
+			_set_job_music("")
+		return
+	var elapsed := float(job.get("elapsed", 0.0))
+	if job.get("type", "") == "trial":
+		if job.get("stage", "") == "racing":
+			_medal_ticks(job, elapsed)
+		return
+	if job.get("stage", "") != "to_dropoff":
+		return
+	var par := float(job.get("par_seconds", 0.0))
+	if par <= 0.0:
+		return
+	var r := elapsed / par
+	if r >= TENSION_FROM and r < 1.0:
+		_set_job_music("tension")
+		Audio.set_mission_intensity(clampf((r - TENSION_FROM) / (1.0 - TENSION_FROM), 0.0, 1.0))
+	elif r >= 1.0 and _music == "tension":
+		# The quick bonus is gone; let it go back to being a drive.
+		_set_job_music("")
+
+
+## Clock ticks over the last seconds before the next medal time slips away.
+func _medal_ticks(job: Dictionary, elapsed: float) -> void:
+	var times: Dictionary = job.get("medal_times", {})
+	for medal in ["gold", "silver", "bronze"]:
+		var left := float(times.get(medal, 0.0)) - elapsed
+		if left > 0.0:
+			var s := ceili(left)
+			if s <= TICK_SECONDS and s != _last_tick:
+				_last_tick = s
+				_ui("ui_countdown_tick_final" if s == 1 else "ui_countdown_tick", -6.0)
+			return
+
+
+func _set_job_music(which: String) -> void:
+	if which == _music:
+		return
+	_music = which
+	match which:
+		"tension":
+			Audio.start_mission_music(3.0)
+		"trial":
+			Audio.play_music("mus_timetrial_loop", 0.5)
+		_:
+			Audio.stop_music(2.0)
+	Audio.radio.duck(which != "")
+
+
+# ---------------------------------------------------------------------------
+# The player's car: cargo, fuel, wash, workshop
+# ---------------------------------------------------------------------------
+
+func _find_nodes() -> void:
+	if not is_instance_valid(_car):
+		_car = get_tree().get_first_node_in_group(&"player_car")
+		if _car:
+			_last_fuel = -1.0
+			if _car.has_signal("impact"):
+				_car.impact.connect(_on_impact)
+			if _car.has_signal("parts_changed"):
+				_car.parts_changed.connect(_on_part_fitted)
+			if _car.has_signal("fuel_low"):
+				_car.fuel_low.connect(func() -> void:
+					Audio.play_at("car/car_dash_chime", _car.global_position, -6.0, "Cabin"))
+	var scene_root := get_tree().root
+	if not is_instance_valid(_phone):
+		_phone = scene_root.find_child("Phone", true, false)
+	if not is_instance_valid(_workshop):
+		_workshop = scene_root.find_child("Workshop", true, false)
+
+
+## Cargo shifts in the back when you hit something mid-delivery.
+func _on_impact(strength: float) -> void:
+	if _jobs == null or not "active" in _jobs:
+		return
+	var job: Dictionary = _jobs.active
+	if job.is_empty() or job.get("stage", "") != "to_dropoff" or strength < 2.0:
+		return
+	var pos: Vector3 = _car.global_position
+	if job.get("fragile", false):
+		Audio.play_at("car/car_cargo_glass_smash" if strength > 6.0 else "car/car_cargo_glass_clink",
+				pos, -2.0, "Cabin")
+	else:
+		Audio.play_at("car/car_cargo_boxes_slide", pos, -4.0, "Cabin")
+
+
+func _on_part_fitted(_slot: StringName, _part) -> void:
+	if not _loud() or _car == null:
+		return
+	var pos: Vector3 = _car.global_position
+	Audio.play_at("garage/garage_impact_wrench", pos, -4.0)
+	get_tree().create_timer(0.9).timeout.connect(func() -> void:
+		Audio.play_at("garage/garage_part_fitted", pos, -2.0))
+
+
+## Fuel going in and the car coming out clean are watched rather than
+## signalled, so the servo, roadside assist and anything later all sound.
+func _update_car() -> void:
+	if _car == null:
+		return
+	var fuel := float(_car.get("fuel_litres"))
+	if _last_fuel >= 0.0 and fuel - _last_fuel > 0.3 and _loud():
+		_fuel_sounds(fuel - _last_fuel)
+	_last_fuel = fuel
+	var dirt := float(_car.get("dirt"))
+	if _last_dirt > 0.05 and dirt <= 0.01 and _loud():
+		_wash_sounds()
+	_last_dirt = dirt
+
+
+func _fuel_sounds(litres: float) -> void:
+	var pos: Vector3 = _car.global_position
+	Audio.play_at("garage/garage_fuel_nozzle_in", pos)
+	var flow := Audio.play_at("garage/garage_fuel_flow", pos, -2.0)
+	var dur := clampf(litres / 12.0, 1.2, 3.5)
+	get_tree().create_timer(dur).timeout.connect(func() -> void:
+		if flow and flow.playing:
+			flow.stop()
+		Audio.play_at("garage/garage_fuel_nozzle_out", pos)
+		Audio.play_at("garage/garage_servo_chime", pos, -6.0))
+
+
+func _wash_sounds() -> void:
+	var pos: Vector3 = _car.global_position
+	var brushes := Audio.play_at("garage/garage_wash_brushes", pos, -2.0)
+	get_tree().create_timer(3.0).timeout.connect(func() -> void:
+		if brushes and brushes.playing:
+			brushes.stop()
+		Audio.play_at("garage/garage_wash_drips", pos, -4.0))
+
+
+# ---------------------------------------------------------------------------
+# Menus
+# ---------------------------------------------------------------------------
+
+func _update_pause() -> void:
+	var paused := get_tree().paused
+	if paused != _was_paused:
+		_was_paused = paused
+		Audio.ui("ui_menu_select" if paused else "ui_menu_back", -4.0)
+
+
+func _update_panels() -> void:
+	var phone_open: bool = is_instance_valid(_phone) and _phone.has_method("is_open") and _phone.is_open()
+	if phone_open != _phone_open:
+		_phone_open = phone_open
+		Audio.ui("ui_map_open" if phone_open else "ui_map_close", -4.0)
+	var shop_open: bool = is_instance_valid(_workshop) and _workshop.has_method("is_open") and _workshop.is_open()
+	if shop_open != _workshop_open:
+		_workshop_open = shop_open
+		if shop_open:
+			_room_tone.stream = Audio.stream("garage/garage_room_tone", true)
+			_room_tone.play()
+			Audio.play_2d("garage/garage_ratchet", "UI", -10.0)
+		else:
+			_room_tone.stop()
+
+
+## Every button in the game clicks: focus moves tick, presses select.
+func _on_node_added(node: Node) -> void:
+	if node is BaseButton:
+		var b := node as BaseButton
+		b.pressed.connect(func() -> void: Audio.ui("ui_menu_select", -6.0))
+		b.focus_entered.connect(func() -> void:
+			if b.is_visible_in_tree():
+				Audio.ui("ui_menu_move", -10.0))
+	elif node is Slider:
+		var s := node as Slider
+		s.drag_ended.connect(func(_changed) -> void: Audio.ui("ui_menu_move", -8.0))

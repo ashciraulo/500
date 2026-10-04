@@ -22,6 +22,11 @@ var lofi_target_height := 240
 var dither_enabled := true
 var vertex_snap_scale := 0.5
 var show_help := true
+## Volume sliders, 0..1 (1 = as mixed). The Audio autoload applies them.
+var volume_master := 1.0
+var volume_music := 1.0
+var volume_radio := 1.0
+var volume_effects := 1.0
 
 
 func _ready() -> void:
@@ -80,4 +85,5 @@ func _keys() -> PackedStringArray:
 		"automatic_gearbox", "mouse_sensitivity", "day_length_minutes", "weather_choice",
 		"clock_frozen", "lofi_enabled", "lofi_target_height", "dither_enabled",
 		"vertex_snap_scale", "show_help",
+		"volume_master", "volume_music", "volume_radio", "volume_effects",
 	])
