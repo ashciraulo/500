@@ -30,7 +30,17 @@ const TYPES := {
 	&"fire": { "weight": 0.0, "length": 8.4, "width": 2.5, "height": 3.2 },
 	# Someone on a bike, riding near the kerb (see TrafficManager.bike_share).
 	&"bike": { "weight": 0.0, "length": 1.8, "width": 0.65, "height": 1.75 },
+	# A sedan with a roof sign; also queued on the ranks at stations.
+	&"taxi": { "weight": 1.5, "length": 4.8, "width": 1.82, "height": 1.62 },
 }
+
+## Taxi colours: [body, band along the doors].
+const TAXI_PAINT := [
+	[Color(0.93, 0.93, 0.91), Color(0.92, 0.72, 0.08)],
+	[Color(0.95, 0.75, 0.08), Color(0.1, 0.1, 0.1)],
+	[Color(0.1, 0.1, 0.11), Color(0.93, 0.93, 0.91)],
+	[Color(0.93, 0.93, 0.91), Color(0.1, 0.1, 0.11)],
+]
 
 ## Jerseys for cyclists (the LIVERY surface).
 const JERSEYS := [Color(0.9, 0.2, 0.15), Color(0.1, 0.3, 0.75), Color(0.95, 0.8, 0.1), Color(0.15, 0.15, 0.17),
@@ -117,6 +127,11 @@ static func _build_vehicle(type: StringName) -> ArrayMesh:
 			# Chequered band along the doors, done as one blue stripe.
 			b.box(Surf.LIVERY, Vector3(0, 0.3 + 0.38, 0.0), Vector3(W + 0.03, 0.2, L * 0.82))
 			_light_bar_base(b, W, 0.3 + 0.6 + 0.58 + 0.06, 0.2)
+		&"taxi":
+			_car(b, L, W, 0.6, 0.58, 2.4, 0.15, 0.85, 0.55)
+			b.box(Surf.LIVERY, Vector3(0, 0.3 + 0.38, 0.0), Vector3(W + 0.03, 0.14, L * 0.82))
+			# Roof sign: in the headlight surface, so it's lit after dark.
+			b.box(Surf.HEAD, Vector3(0, 0.3 + 0.6 + 0.58 + 0.12, 0.25), Vector3(0.62, 0.22, 0.2))
 		&"ambulance":
 			_ambulance(b, L, W)
 		&"fire":

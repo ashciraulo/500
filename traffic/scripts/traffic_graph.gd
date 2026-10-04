@@ -359,7 +359,59 @@ var _rail_cells := {}
 var _ped_node_cells := {}
 var _rail_node_cells := {}
 var _next_lane_id := 1
+## Connectors and gates replaced by a rebuild (see dispose).
+var _dropped: Array = []
 var _next_synthetic_id := -1
+
+
+# --- Teardown -----------------------------------------------------------------
+
+## Break every reference cycle among the graph's objects (lanes and their
+## roads, nodes and connectors, gates and controllers, and whatever in
+## `extra` points into them, such as vehicles), so they're all freed when
+## the graph goes. RefCounted cycles otherwise outlive the game and trip
+## Godot up at exit. The graph is empty and unusable afterwards.
+func dispose(extra: Array = []) -> void:
+	var seen := {}
+	var queue: Array = []
+	var roots: Array = [nodes, roads, lanes, connectors, signal_controllers, ped_nodes, ped_edges, rail_nodes,
+		rail_edges, crossings, bus_stops, stations, parking, keep_clear, bus_routes, _dropped, extra]
+	for r in roots:
+		_collect(r, seen, queue)
+	while not queue.is_empty():
+		var obj: Object = queue.pop_back()
+		for prop in obj.get_property_list():
+			if not (prop.usage & PROPERTY_USAGE_SCRIPT_VARIABLE):
+				continue
+			_collect(obj.get(prop.name), seen, queue)
+	for obj in seen:
+		for prop in obj.get_property_list():
+			if not (prop.usage & PROPERTY_USAGE_SCRIPT_VARIABLE):
+				continue
+			var value = obj.get(prop.name)
+			if value is Array or value is Dictionary:
+				value.clear()
+			elif value is RefCounted and not value is Resource:
+				obj.set(prop.name, null)
+	for r in roots:
+		r.clear()
+	for d in [_road_keys, _parking_keys, _parking_cells, _lane_cells, _ped_cells, _rail_cells, _ped_node_cells, _rail_node_cells]:
+		d.clear()
+	_connectors.clear()
+	_pending_bus_stops.clear()
+
+
+static func _collect(value, seen: Dictionary, queue: Array) -> void:
+	if value is Array:
+		for v in value:
+			_collect(v, seen, queue)
+	elif value is Dictionary:
+		for k in value:
+			_collect(k, seen, queue)
+			_collect(value[k], seen, queue)
+	elif value is RefCounted and not value is Resource and not seen.has(value):
+		seen[value] = true
+		queue.append(value)
 
 
 # --- Building -----------------------------------------------------------------
@@ -590,6 +642,9 @@ func _build_lanes(road: Road) -> void:
 		var cut := cut_polyline(full, trim_a if fwd else trim_b, trim_b if fwd else trim_a)
 		lane.set_points(cut)
 		lane.next.clear()
+		for st in lane.stops:
+			if st.gate is SignalGate:
+				_dropped.append(st.gate)
 		lane.stops = lane.stops.filter(func(st): return not (st.gate is SignalGate))
 		lane.signal_gate = null
 		road.lanes.append(lane)
@@ -636,8 +691,12 @@ func _build_connectors(node: GNode) -> void:
 						turn = Turn.RIGHT
 				for lout in _target_lanes(lin, outs, turn, deg):
 					var c := _make_connector(lin, lout, node, turn, old.get([lin, lout]))
+					old.erase([lin, lout])
 					_assign_priority(c, node, rin, rout, majors)
 					lin.next.append(c)
+	# Moves that no longer exist: kept aside (a car may still be on one) and
+	# untangled with the rest in dispose().
+	_dropped.append_array(old.values())
 
 
 func _target_lanes(lin: Lane, outs: Array, turn: int, deg: int) -> Array:

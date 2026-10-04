@@ -234,6 +234,9 @@ func _animate(a: Dictionary, delta: float) -> void:
 				if a.kind == Kind.MAGPIE and _call_timer <= 0.0 and _rng.randf() < 0.3:
 					_call_timer = _rng.randf_range(6.0, 14.0)
 					_sound("amb/amb_bird_magpie", node.global_position, -4.0)
+				elif a.kind == Kind.IBIS and _call_timer <= 0.0 and _rng.randf() < 0.15:
+					_call_timer = _rng.randf_range(8.0, 18.0)
+					_sound("traffic/traffic_ibis_grunt", node.global_position, -6.0)
 		&"fly":
 			a.vel.y = minf(a.vel.y + 2.5 * delta, 4.0)
 			node.position += a.vel * delta
@@ -248,6 +251,7 @@ func _animate(a: Dictionary, delta: float) -> void:
 			node.position.x += a.vel.x * delta
 			node.position.z += a.vel.z * delta
 			if fmod(a.hop_t, 0.5) < delta:
+				_sound("traffic/traffic_roo_thump", node.global_position, -4.0)
 				var g := _ground(node.position)
 				if not g.is_empty():
 					a.ground = g.pos.y
@@ -274,13 +278,14 @@ func _flee(a: Dictionary, away: Vector3) -> void:
 		node.get_node("Head").rotation.x = 0.0
 		node.get_node("WingL").visible = true
 		node.get_node("WingR").visible = true
+		_sound("traffic/traffic_wings_takeoff_01" if a.kind == Kind.MAGPIE else "traffic/traffic_wings_takeoff_02", node.global_position, -6.0)
 		if a.kind == Kind.MAGPIE and _rng.randf() < 0.35:
 			_sound("amb/amb_bird_magpie", node.global_position, -2.0)
 
 
 func _sound(sound_name: String, p: Vector3, db: float) -> void:
 	var audio := get_node_or_null("/root/Audio")
-	if audio and audio.has_method("play_at"):
+	if audio and audio.has_method("play_at") and (not audio.has_method("has") or audio.has(sound_name)):
 		audio.play_at(sound_name, p, db, "SFX")
 
 

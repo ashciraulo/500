@@ -89,6 +89,25 @@ the old test grid get a network matching the grid's streets instead.
   view on grass, peck about and wander, and clear off when the player comes
   close: birds fly, kangaroos bound away. A magpie warbles now and then.
   `wildlife.spawn_group(kind, near, count)` puts some down on demand.
+- **The river** (`boats`, TrafficBoats). The Elizabeth Quay to Mends Street
+  ferry runs to a timetable on the game clock (`TrafficBoats.ferry_state(hour)`,
+  first sailing 6:48, last 21:18), sounds its horn leaving the jetty and has
+  lit windows after dark. Yachts and tinnies sail Perth Water, with rowing
+  eights early in the morning; plenty on a fine weekend afternoon, hardly any
+  at night or in the rain. Boats only go where the overview map is water
+  (`boats.water_at(p)`), so they never run aground. Only on the Perth map.
+- **Kerbside** (`kerbside`, TrafficKerbside). Couriers double-park in the
+  kerb lane of multi-lane city streets (weekdays 7 to 5:30, Saturday
+  mornings) with their hazards on while they run a parcel in; traffic merges
+  round them like roadworks, and they drive off when done. Taxis queue on a
+  rank by each station; when a train comes in, the front one or two take a
+  fare and pull out, and the queue shuffles up. Parking inspectors walk the
+  city's kerbs (Monday to Saturday, 8 to 6), stopping at parked cars. If the
+  player leaves their car in a traffic lane for a minute ($120) or in a
+  street bay for five ($70), one walks over and books it: the fine comes out
+  of the Wallet, `parking_fines` goes up in Progression, the HUD shows it and
+  a ticket sits under the wiper until the player gets back in. Never within
+  90 m of home or 35 m of a job site.
 - **Driving** uses the intelligent driver model: each car keeps a safe gap to
   whatever is ahead (the car in front, a stop line, a person, the player).
   Cars slow for bends, change lanes to pass slow traffic, and drive a little
@@ -198,14 +217,20 @@ map doesn't need to.
 
 | Signal | When |
 | --- | --- |
-| `vehicle_spawned(vehicle: Node3D, type: StringName)` | A car/bus appeared (or was reused from the pool). `type`: hatch, sedan, suv, ute, van, bus, bike, or police, ambulance, fire (on a call). |
+| `vehicle_spawned(vehicle: Node3D, type: StringName)` | A car/bus appeared (or was reused from the pool). `type`: hatch, sedan, suv, ute, van, taxi, bus, bike, or police, ambulance, fire (on a call). |
 | `vehicle_despawned(vehicle: Node3D)` | It was hidden and pooled. |
 | `horn(vehicle: Node3D, duration: float, is_bus: bool)` | A vehicle sounded its horn. |
 | `pedestrian_startled(position: Vector3)` | Someone jumped out of the player's way. |
 | `crossing_changed(position: Vector3, closed: bool)` | Boom gates going down (bells start) or up. |
 | `train_spawned(train: Node3D)` / `train_despawned(train: Node3D)` | Each carriage is a child of `train`. |
 | `signals_changed(position: Vector3)` | A set of lights changed phase. |
+| `train_arrived(position: Vector3)` / `train_departed(position: Vector3)` | A train stopped at, or is leaving, a station (its front). |
 | `network_changed` | Road data was added. |
+
+`boats` signals `ferry_departed(position)` (the ferry also has a `Horn`
+AudioStreamPlayer3D). `kerbside` signals `parking_ticket(fine: int, reason:
+String, position: Vector3)` and `taxi_departed(station: String, position:
+Vector3)`.
 
 Each vehicle body has a child `Audio` (Node3D at the engine) with a `Horn`
 AudioStreamPlayer3D on the Vehicles bus playing a placeholder two-tone horn.

@@ -91,7 +91,7 @@ func update(delta: float, focus: Vector3) -> void:
 		_in_range[spot] = true
 		if body != null:
 			_hide(spot)
-		if want[0] and _clear_of_lanes(spot):
+		if want[0] and _clear_of_lanes(spot) and not spot.get("reserved", false):
 			_show(spot, want[1], want[2])
 
 

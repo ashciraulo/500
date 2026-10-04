@@ -23,6 +23,10 @@ signal pedestrian_startled(position: Vector3)
 signal crossing_changed(position: Vector3, closed: bool)
 signal train_spawned(train: Node3D)
 signal train_despawned(train: Node3D)
+## A train has stopped at a station (position: its front).
+signal train_arrived(position: Vector3)
+## It's leaving the station again.
+signal train_departed(position: Vector3)
 signal signals_changed(position: Vector3)
 signal network_changed
 
@@ -127,6 +131,8 @@ var _beam_timer := 0.0
 var parking: TrafficParking
 var roadworks: TrafficRoadworks
 var wildlife: TrafficWildlife
+var boats: TrafficBoats
+var kerbside: TrafficKerbside
 
 
 class PlayerProxy:
@@ -137,6 +143,14 @@ class PlayerProxy:
 	var length := 3.6
 	var width := 1.7
 	var present := false
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and graph:
+		# Lanes, nodes, gates and vehicles point at each other: untangle
+		# them so they're all freed (cycles left at exit crash the game on
+		# quit).
+		graph.dispose([vehicles, pedestrians, trains, emergencies, _pool, _ped_pool])
 
 
 func _ready() -> void:
@@ -162,6 +176,14 @@ func _ready() -> void:
 	wildlife.name = "Wildlife"
 	wildlife.setup(self)
 	add_child(wildlife)
+	boats = TrafficBoats.new()
+	boats.name = "Boats"
+	add_child(boats)
+	boats.setup(self)
+	kerbside = TrafficKerbside.new()
+	kerbside.name = "Kerbside"
+	add_child(kerbside)
+	kerbside.setup(self, graph)
 	_horn_car = _make_horn(415.0, 523.0, 1.4)
 	_horn_bus = _make_horn(247.0, 311.0, 1.6)
 	_siren = _make_siren()
@@ -309,6 +331,8 @@ func clear_all() -> void:
 	parking.clear()
 	roadworks.clear()
 	wildlife.clear()
+	boats.clear()
+	kerbside.clear()
 	_warm = 2.0
 
 
@@ -340,6 +364,8 @@ func _physics_process(delta: float) -> void:
 	parking.update(delta, focus_position())
 	roadworks.update(delta, focus_position())
 	wildlife.update(delta, focus_position())
+	boats.update(delta, focus_position())
+	kerbside.update(delta, focus_position())
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	step_ms = lerpf(step_ms, ms, 0.05)
 
@@ -643,13 +669,16 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 			if d < best:
 				best = d
 				best_o = o
-		if l.connector and i > 0:
+		if l.connector and l.in_lane:
 			# Someone just ahead taking another way out of the same lane is
-			# still in front of us until the paths part.
+			# still in front of us until the paths part (also once we're on
+			# our own move: the first few metres of each are side by side).
 			for sib in l.in_lane.next:
 				if sib == l:
 					continue
 				for o in sib.vehicles:
+					if i == 0 and (o.s < v.s or (o.s == v.s and o.id < v.id)):
+						continue
 					if o.s < 8.0 and base + o.s < best:
 						best = base + o.s
 						best_o = o
@@ -1028,8 +1057,10 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 	if candidates.size() <= 1:
 		return
 	var samples: Array = []
-	var d := 0.5
 	var start: float = v.s + v.length * 0.5
+	# Our own nose too: someone merging or cutting in alongside it is
+	# already in the way (gap 0), not something to drive on through.
+	var d := -v.length * 0.3
 	var side := TrafficGraph.left_of(v.forward) * v.lateral
 	# Changing lanes: still partly in the old one, so check along both.
 	var drift := Vector3.ZERO
@@ -1065,7 +1096,7 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 		for smp in samples:
 			var lp: Vector3 = smp[1] - o.position
 			if absf(lp.y) < 3.0 and absf(lp.dot(of)) < hl and absf(lp.dot(ol)) < hw:
-				var gap: float = smp[0] - 1.0
+				var gap: float = maxf(smp[0] - 1.0, 0.0)
 				if gap < v.obstacle_gap:
 					v.obstacle_gap = gap
 					v.obstacle_who = o
@@ -1097,8 +1128,8 @@ func _advance(v: TrafficVehicle) -> void:
 			var gate := old.signal_gate
 			if not v.emergency and gate.state() == TrafficGraph.Gate.STOP and gate.controller.timer > 1.0 and gate.controller.phase % 3 != 1:
 				stats.red_runs += 1
-				red_run_log.append("#%d at %s, node %d, %.1f s into phase %d, committed %s" % [v.id,
-					v.position.snapped(Vector3.ONE * 0.1), nxt.node.id, gate.controller.timer, gate.controller.phase, v.commits.has(nxt)])
+				red_run_log.append("#%d at %s, node %d, %.1f s into phase %d, committed %s, %.1f m/s, %.1f s old" % [v.id,
+					v.position.snapped(Vector3.ONE * 0.1), nxt.node.id, gate.controller.timer, gate.controller.phase, v.commits.has(nxt), v.speed, v.lifetime])
 		v.s -= old.length
 		_finish_lane_change(v)
 		_leave_lane(v, old)
@@ -1696,6 +1727,13 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	if v.is_bike:
 		v.eagerness = _rng.randf_range(0.7, 1.05)
 	v.speed = lane.speed * 0.75 * v.eagerness if speed < 0.0 else speed
+	if speed < 0.0:
+		# Never appear going too fast to stop for a red light just ahead.
+		for st in lane.stops:
+			var ahead: float = st.s - s - TrafficModels.TYPES[type].length * 0.5
+			if ahead > -0.3 and ahead < 80.0 and not st.gate.buses_only() and st.gate.state() != TrafficGraph.Gate.GO:
+				v.speed = minf(v.speed, sqrt(2.0 * 2.5 * maxf(ahead - 2.0, 0.0)))
+				break
 	if v.is_bike:
 		v.speed = minf(v.speed, 5.5)
 	v.accel = 0.0
@@ -1767,9 +1805,18 @@ func _paint(v: TrafficVehicle) -> void:
 				livery = Color.from_string(str(route.colour), _cat_colour(route.name))
 		v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(Color(0.93, 0.93, 0.92) if cat else TrafficModels.BUS_SILVER))
 		v.mesh.set_surface_override_material(TrafficModels.Surf.LIVERY, TrafficModels.material(livery))
+	elif v.type == &"taxi":
+		paint_taxi(v, TrafficModels.TAXI_PAINT[_rng.randi() % TrafficModels.TAXI_PAINT.size()])
 	else:
 		v.paint = TrafficModels.pick_paint(_rng)
 		v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(v.paint))
+
+
+## Paint a taxi in `colours`: [body, band].
+func paint_taxi(v: TrafficVehicle, colours: Array) -> void:
+	v.paint = colours[0]
+	v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(colours[0]))
+	v.mesh.set_surface_override_material(TrafficModels.Surf.LIVERY, TrafficModels.material(colours[1]))
 
 
 ## Perth's CAT colours by name, for routes the map gives without a colour.
@@ -2154,9 +2201,11 @@ func _update_trains(dt: float) -> void:
 			target = 0.0
 			if train.dwell <= 0.0:
 				train.mark_served_near(train.front)
+				train_departed.emit(train.cars[0].global_position)
 		elif room < 1.0 and train.speed < 0.5:
 			train.dwell = TrafficTrain.DWELL
 			train.speed = 0.0
+			train_arrived.emit(train.cars[0].global_position)
 		if train.speed < target:
 			train.speed = minf(train.speed + TrafficTrain.ACCEL * dt, target)
 		else:

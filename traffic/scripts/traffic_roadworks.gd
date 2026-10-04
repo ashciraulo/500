@@ -210,9 +210,21 @@ func _build(site: Dictionary) -> void:
 	ute.basis = Basis.looking_at(lane.tangent(us), Vector3.UP)
 	_add(site, ute)
 	site.beacons.append(ute.get_node("Beacon"))
+	var hour := GameClock.time_of_day
+	# The crew's noise by day, a generator's hum at night.
+	var audio := get_node_or_null("/root/Audio")
+	var loop_name := "traffic/traffic_roadworks_day_loop" if hour > 6.5 and hour < 17.5 else "traffic/traffic_roadworks_night_loop"
+	if audio and audio.has_method("has") and audio.has(loop_name):
+		var noise := AudioStreamPlayer3D.new()
+		noise.name = "WorksNoise"
+		noise.stream = audio.stream(loop_name, true)
+		noise.bus = &"SFX" if AudioServer.get_bus_index(&"SFX") >= 0 else &"Master"
+		noise.unit_size = 10.0
+		noise.max_distance = 120.0
+		noise.autoplay = true
+		ute.add_child(noise)
 	# A couple of workers in hi-vis during the day (they're lit by the ute's
 	# beacon otherwise, which is spooky enough).
-	var hour := GameClock.time_of_day
 	if hour > 6.5 and hour < 17.5:
 		for i in 2:
 			var ws: float = s0 + (s1 - s0) * (0.55 + i * 0.2)

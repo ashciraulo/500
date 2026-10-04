@@ -28,7 +28,8 @@ func build(graph: TrafficGraph) -> void:
 	plane.subdivide_depth = 60
 	grass.mesh = plane
 	grass.material_override = PS1Material.make(Color(0.27, 0.33, 0.2))
-	grass.position.y = -0.02
+	# Well below the roads, or they flicker with it at a distance.
+	grass.position.y = -0.25
 	add_child(grass)
 
 	var asphalt := Builder.new()

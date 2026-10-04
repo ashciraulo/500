@@ -52,7 +52,7 @@ func _process(_delta: float) -> bool:
 		# Roads go in a few at a time as the tiles stream in.
 		if _frame > 5 * FPS:
 			_check_network()
-			_go(0)
+			_go(_first_spot())
 		return false
 	var spot: Array = SPOTS[_spot]
 	if _frame < 3 * FPS:
@@ -60,11 +60,22 @@ func _process(_delta: float) -> bool:
 	_watch()
 	if float(_frame) / FPS >= spot[2] + 3.0:
 		_report(spot[0])
-		if _spot + 1 >= SPOTS.size():
+		if _spot + 1 >= SPOTS.size() or not OS.get_cmdline_user_args().is_empty():
 			_finish()
 			return true
 		_go(_spot + 1)
 	return false
+
+
+## Optional user argument: only watch the spots whose names contain it.
+func _first_spot() -> int:
+	var args := OS.get_cmdline_user_args()
+	if args.is_empty():
+		return 0
+	for i in SPOTS.size():
+		if args[0] in SPOTS[i][0]:
+			return i
+	return 0
 
 
 func _go(i: int) -> void:
@@ -124,6 +135,10 @@ func _watch() -> void:
 					_mark.overlaps += 1
 					print("  overlap: #%d and #%d at %s (%s / %s)" % [v.id, o.id, v.position.snapped(Vector3.ONE * 0.1),
 						_lane_name(v.route[0]), _lane_name(o.route[0])])
+					if OS.get_environment("TRAFFIC_SOAK_DEBUG") != "":
+						for x in [v, o]:
+							print("    #%d lane %d s %.1f/%.1f speed %.1f life %.1f change_from %s reason %d fwd %s" % [x.id, x.route[0].id, x.s, x.route[0].length, x.speed, x.lifetime,
+								x.change_from.id if x.change_from else -1, x.reason, x.forward.snapped(Vector3.ONE * 0.01)])
 
 
 func _report(spot_name: String) -> void:

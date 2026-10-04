@@ -49,6 +49,8 @@ func _setup() -> void:
 	# The crews stay away until the roadworks step, so earlier steps don't
 	# depend on which roads happen to have works today.
 	_traffic.roadworks.site_chance = 0.0
+	# Couriers, taxi ranks and inspectors only when the kerbside step asks.
+	_traffic.kerbside.enabled = false
 	# A driveway on the avenue, inside the westbound queue for the Station
 	# Street lights: nobody may stop across it.
 	_graph.add_keep_clear(Vector3(-72, 0, 3.2), 5.0)
@@ -343,9 +345,74 @@ func _run_step() -> bool:
 				_check(moved and days_on < 30, "the crews move on every few days (%d of 60 days on the avenue)" % days_on)
 				rw.clear()
 				_check(closed_lane.closed.is_empty(), "the lane opens again when the works go")
+				# Kerbside: a courier double-parks in that lane with cars
+				# coming up behind; a taxi rank at the station; an inspector
+				# sent to a car left in a traffic lane.
+				var kb: TrafficKerbside = _traffic.kerbside
+				kb.always_on = true
+				_mark.van = {}
+				for k in 9:
+					if _mark.van.is_empty():
+						_mark.van = kb.add_van(closed_lane, closed_lane.length * (0.45 + k * 0.05), 10.0)
+				for s0 in [2.0, 14.0]:
+					_traffic.spawn_vehicle_at(&"sedan", closed_lane, s0, 10.0)
+				_mark.van_lane = closed_lane
+				_mark.in_van = 0
+				_mark.past_van = {}
+				var st: Dictionary = _graph.stations[0]
+				var spot: Array = kb._rank_spot(st.pos)
+				_mark.rank = kb.add_rank(st.name, spot[0], spot[1]) if not spot.is_empty() else {}
+				_mark.taxis_before = kb.stats.taxis_away
+				if not _mark.rank.is_empty():
+					kb.on_train_arrived(_mark.rank.pos)
+				_mark.tickets = []
+				kb.parking_ticket.connect(func(fine: int, reason: String, _p: Vector3) -> void: _mark.tickets.append([fine, reason]))
+				var car_lane: TrafficGraph.Lane = closed_lane.right_lane if closed_lane.right_lane else closed_lane.left_lane
+				_mark.parked = Node3D.new()
+				_root3d.add_child(_mark.parked)
+				_mark.parked.global_position = car_lane.point(car_lane.length * 0.8)
+				_mark.offence = kb.offence_at(_mark.parked.global_position)
+				_mark.kerb_offence = kb.offence_at(_mark.parked.global_position + TrafficGraph.left_of(car_lane.tangent(car_lane.length * 0.8)) * 9.0)
+				kb._offence = "lane"
+				kb.send_inspector(_mark.parked)
+				_mark.balance = root.get_node("Wallet").balance
+				_next()
+		9:  # Traffic gets round the courier; taxis leave; the inspector books the car.
+			var kb: TrafficKerbside = _traffic.kerbside
+			var lane: TrafficGraph.Lane = _mark.van_lane
+			var van: Dictionary = _mark.van
+			if not van.is_empty():
+				for v in _traffic.vehicles:
+					var l: TrafficGraph.Lane = v.route[0]
+					if l == lane and absf(v.s - van.s) < 3.0 and not v.change_from:
+						_mark.in_van += 1
+					if l.road == lane.road and l != lane and l.from_node == lane.from_node and v.s > van.s + 5.0:
+						_mark.past_van[v.id] = true
+			if _seconds() >= 100.0 or (_seconds() >= 50.0 and not _mark.tickets.is_empty()):
+				_check(not van.is_empty() and not lane.closed.is_empty(), "a courier double-parks and closes the kerb lane")
+				_check(_mark.in_van == 0, "nobody drives through the van (%d frames)" % _mark.in_van)
+				_check(_mark.past_van.size() >= 2, "traffic gets round the double-parked van (%d cars)" % _mark.past_van.size())
+				var away: TrafficVehicle = kb.van_drive_off(van) if not van.is_empty() else null
+				_check(away != null and lane.closed.is_empty(), "the van drives off and the lane opens")
+				_check(not _mark.rank.is_empty() and kb.stats.taxis_away > _mark.taxis_before, "a taxi leaves the station rank when a train comes in (%d)" % (kb.stats.taxis_away - _mark.taxis_before))
+				var taxis := 0
+				for v in _traffic.vehicles:
+					if v.type == &"taxi":
+						taxis += 1
+				_check(taxis >= 1, "the taxi pulls out into the traffic")
+				_check(_mark.offence == "lane" and _mark.kerb_offence == "", "a car in a traffic lane is booked, one off the road isn't")
+				var paid: int = _mark.balance - root.get_node("Wallet").balance
+				var ins_d := -1.0
+				for ins in kb.inspectors:
+					ins_d = ins.node.position.distance_to(_mark.parked.global_position)
+				_check(_mark.tickets.size() == 1 and paid == TrafficKerbside.LANE_FINE and kb.ticket_note != null,
+						"the inspector walks over and books it ($%d paid, %d tickets, inspector %.0f m off)" % [paid, _mark.tickets.size(), ins_d])
+				root.get_node("Wallet").earn(paid)
+				kb.clear()
+				kb.always_on = false
 				_root3d.queue_free()
 				_next()
-		9:  # The main scene gets traffic on the Perth map's roads.
+		11:  # The main scene gets traffic on the Perth map's roads.
 			if _main == null:
 				_main = load("res://scenes/main.tscn").instantiate()
 				root.add_child(_main)
@@ -373,7 +440,7 @@ func _run_step() -> bool:
 				_mark.roo = wild.spawn_group(TrafficWildlife.Kind.ROO, cp + Vector3(-9, 0, 0), 1, false)
 				_mark.roo_start = cp + Vector3(-9, 0, 0)
 				_next()
-		10:  # Wildlife reacts to the player.
+		12:  # Wildlife reacts to the player.
 			if _seconds() >= 3.0:
 				var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 				var wild: TrafficWildlife = traffic.wildlife
@@ -392,6 +459,51 @@ func _run_step() -> bool:
 				_check(pecking == 3, "birds further away carry on (%d of 3)" % pecking)
 				_check(hopped > 10.0, "the kangaroo bounds away (%.0f m)" % hopped)
 				wild.enabled = true
+				_next()
+		13:  # Boats on the Swan, and the ferry to Mends St.
+			var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
+			var boats: TrafficBoats = traffic.boats
+			if not boats.ready_for_boats() and _seconds() < 30.0:
+				return false
+			_check(boats.ready_for_boats(), "the river map loads for the boats")
+			_check(boats.water_at(Vector3(1000, 0, 1750)) and not boats.water_at(Vector3.ZERO), "Perth Water is water and Little Shenton Lane isn't")
+			var dry := 0
+			var docked_at_3am: bool = TrafficBoats.ferry_state(3.0)[2]
+			var crossing := false
+			for k in 2400:
+				var st: Array = TrafficBoats.ferry_state(k / 100.0)
+				if not boats.water_at(st[0]):
+					dry += 1
+				if not st[2]:
+					crossing = true
+			_check(dry == 0 and crossing and docked_at_3am, "the ferry stays on the river, crosses by day and ties up at night (%d dry spots)" % dry)
+			boats.clear()
+			boats.enabled = false
+			_mark.boats = []
+			for i in 3:
+				var b: Dictionary = boats.spawn_boat(i, Vector3(1000 + i * 60, 0, 1750))
+				if not b.is_empty():
+					_mark.boats.append(b)
+			_mark.dry_boat = boats.spawn_boat(TrafficBoats.Kind.YACHT, Vector3.ZERO).is_empty()
+			_mark.boat_start = Vector3(1000, 0, 1750)
+			_mark.boat_dry_frames = 0
+			_next()
+		14:  # Boats sail about and keep off the land.
+			var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
+			var boats: TrafficBoats = traffic.boats
+			for b in _mark.boats:
+				b.node.position.y = 0.0
+				boats._sail(b, 1.0 / 60.0)
+				if not boats.water_at(b.node.position):
+					_mark.boat_dry_frames += 1
+			if _seconds() >= 20.0:
+				var moved := 0.0
+				for b in _mark.boats:
+					moved = maxf(moved, Vector2(b.node.position.x - _mark.boat_start.x, b.node.position.z - _mark.boat_start.z).length())
+				_check(_mark.boats.size() == 3 and _mark.dry_boat, "boats go on the water and not on the land (%d of 3)" % _mark.boats.size())
+				_check(moved > 30.0 and _mark.boat_dry_frames == 0, "boats sail about without running aground (%.0f m, %d dry frames)" % [moved, _mark.boat_dry_frames])
+				boats.clear()
+				boats.enabled = true
 				_next()
 		_:
 			if _failures.is_empty():
