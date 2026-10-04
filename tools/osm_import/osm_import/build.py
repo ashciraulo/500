@@ -168,7 +168,7 @@ class World:
         self.bus_routes = getattr(feats, "bus_routes", [])
         self.poi_nodes = getattr(feats, "poi_nodes", [])
         self.poi_areas = [a for a in feats.areas if a.tags.get("natural") == "beach"
-                          or a.tags.get("amenity") in ("fuel", "fast_food") or a.tags.get("tourism") == "zoo"]
+                          or a.tags.get("amenity") in ("fuel", "fast_food", "school") or a.tags.get("tourism") == "zoo"]
         self._sculpt_terrain()
         print(f"  world prepared in {time.time() - t0:.1f}s: {len(self.ways)} ways, "
               f"{len(self.buildings)} buildings, {len(self.water)} water bodies")
@@ -1150,10 +1150,17 @@ def _write_places(cfg, proj, world: World, index: dict, inside_hf, region_of: di
         old_order = {b["id"]: k for k, b in enumerate(index.get("badges", []))}
         kept = [b for b in index.get("badges", []) if b.get("region") not in quotas]
         index["badges"] = sorted(kept + fresh, key=lambda b: old_order.get(b["id"], len(old_order)))
-    # Points of interest: rebuilt where this build has terrain, kept elsewhere.
-    fresh = pois.build(world, cfg, proj, size, set(index["tiles"]), inside_hf)
+    # Points of interest: rebuilt on this build's own tiles, kept elsewhere. Each
+    # stage owns the stops on its tiles, so a neighbouring stage whose terrain
+    # overlaps them (with less of the road network) can't drop or change them.
+    own = {k.name for k in region_of}
+
+    def owned(p):
+        return f"{math.floor(p['p'][0] / size)}_{math.floor(-p['p'][2] / size)}" in own
+
+    fresh = [p for p in pois.build(world, cfg, proj, size, set(index["tiles"]), inside_hf) if owned(p)]
     ids = {p["id"] for p in fresh}
-    kept = [p for p in index.get("pois", []) if p["id"] not in ids and not inside_hf(p["p"][0], -p["p"][2])]
+    kept = [p for p in index.get("pois", []) if p["id"] not in ids and not owned(p)]
     index["pois"] = sorted(kept + fresh, key=lambda p: p["id"])
 
 

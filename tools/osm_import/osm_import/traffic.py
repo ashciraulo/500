@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 import numpy as np
+from shapely.geometry import LineString
 
 from . import styles
 from .parking import Parking
@@ -52,6 +53,12 @@ def lane_split(tags, oneway: bool) -> tuple[int, int]:
 def drives(tags) -> bool:
     return tags.get("highway") in TRAFFIC_KINDS and tags.get("access") not in NO_CARS \
         and tags.get("motor_vehicle") not in NO_CARS
+
+
+def _bike_lane(tags) -> bool:
+    """A painted bike lane on the carriageway (cycleway=lane, either side)."""
+    return any(tags.get(k) in ("lane", "shared_lane") for k in
+               ("cycleway", "cycleway:both", "cycleway:left", "cycleway:right"))
 
 
 def _speed(tags):
@@ -143,6 +150,8 @@ class TrafficNetwork:
                     r["speed_kmh"] = speed
                 if "name" in w.tags:
                     r["name"] = w.tags["name"]
+                if _bike_lane(w.tags):
+                    r["bike_lane"] = True
                 self.roads.append(r)
         self._spread_signals(ways)
         self.separate_carriageways()
@@ -161,7 +170,17 @@ class TrafficNetwork:
         self.rails = [w for w in world.ways if w.group == "rail" and w.tags.get("railway") == "rail"]
         self.stations = []
         self.bus_stops = []
+        self.keep_clear = self._home_exits()
         nj, ni = hf.H.shape
+        self.schools = []
+        schools = [(t, e, n) for _, t, e, n in world.poi_nodes if t.get("amenity") == "school"]
+        for a in world.poi_areas:
+            if a.tags.get("amenity") == "school":
+                c = a.geom.representative_point()
+                schools.append((a.tags, c.x, c.y))
+        for t, e, n in schools:
+            if hf.e0 <= e <= hf.e0 + hf.step * (ni - 1) and hf.n0 <= n <= hf.n0 + hf.step * (nj - 1):
+                self.schools.append((e, n, float(hf.sample(e, n)), t.get("name", "")))
         for nid, t, e, n in world.control_nodes:
             if not (hf.e0 <= e <= hf.e0 + hf.step * (ni - 1) and hf.n0 <= n <= hf.n0 + hf.step * (nj - 1)):
                 continue
@@ -170,6 +189,24 @@ class TrafficNetwork:
                 self.stations.append((e, n, y, t.get("name", "")))
             elif t.get("highway") == "bus_stop":
                 self.bus_stops.append((e, n, y))
+
+    def _home_exits(self) -> list:
+        """Where the lanes beside the townhouse (front lane and carport lane) meet
+        traffic roads: kept clear so the player can always pull out."""
+        home = getattr(self.w, "home", None)
+        if home is None:
+            return []
+        ends = {r["a"] for r in self.roads} | {r["b"] for r in self.roads}
+        out = []
+        for w in self.w.ways:
+            if w.group != "road" or w.tags.get("highway") != "service" \
+                    or LineString(w.xy).distance(home.footprint) > 5.0:
+                continue
+            for nid in w.nodes:
+                nid = int(nid)
+                if nid in ends and self.pos[nid] not in out:
+                    out.append(self.pos[nid])
+        return out
 
     def _spread_signals(self, ways):
         """Dual carriageways cross as two or four junction nodes a few metres
@@ -321,6 +358,10 @@ class TrafficNetwork:
             "bus_stops": [{"p": np.array([e, y, -n], dtype=np.float32)}
                           for e, n, y in self.bus_stops if inside(e, n)],
             "parking": self.parking.tile_data(bounds),
+            "schools": [{"p": np.array([e, y, -n], dtype=np.float32), "name": name}
+                        for e, n, y, name in self.schools if inside(e, n)],
+            "keep_clear": [{"p": np.array(p, dtype=np.float32), "radius": 6.0}
+                           for p in self.keep_clear if inside(p[0], -p[2])],
             "bus_routes": self._bus_routes_in(inside),
         }
 

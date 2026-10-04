@@ -29,7 +29,7 @@ KEEP = {"highway", "building", "building:part", "landuse", "leisure", "natural",
         "lanes:forward", "lanes:backward", "motor_vehicle", "parking_space", "capacity",
         "orientation", "tourism", "drive_through", "brand"}
 # Prefixes kept as well (street parking: parking:left=lane, parking:both:orientation=...).
-KEEP_PREFIX = ("parking:",)
+KEEP_PREFIX = ("parking:", "cycleway")
 
 
 @dataclass
@@ -63,7 +63,7 @@ class Features:
 
 
 CONTROL = ("traffic_signals", "give_way", "stop", "bus_stop")
-POI_AMENITY = ("fuel", "fast_food")
+POI_AMENITY = ("fuel", "fast_food", "school")
 
 
 def _keep(tags) -> dict:
@@ -88,7 +88,7 @@ def _area_way(tags) -> bool:
 
 def extract(pbf: Path, proj: Projector, bbox_lonlat: tuple, use_cache: bool = True) -> Features:
     """bbox_lonlat = (lon0, lat0, lon1, lat1)."""
-    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 8)).encode()).hexdigest()[:16]
+    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 9)).encode()).hexdigest()[:16]
     cache = CACHE_DIR / f"features_{key}.pkl"
     if use_cache and cache.exists():
         with open(cache, "rb") as f:

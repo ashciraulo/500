@@ -245,3 +245,11 @@ def test_poi_slugs():
     from osm_import.pois import NOT_A_VIEW, slug
     assert slug("Fraser Avenue lookout") == "fraser_avenue_lookout"
     assert NOT_A_VIEW.search("Tiger enclosure") and not NOT_A_VIEW.search("Two Rivers Lookout")
+
+
+def test_bike_lane_tags():
+    from osm_import.traffic import _bike_lane
+    assert _bike_lane({"cycleway:left": "lane"})
+    assert _bike_lane({"cycleway": "shared_lane"})
+    assert not _bike_lane({"cycleway": "track"})
+    assert not _bike_lane({})
