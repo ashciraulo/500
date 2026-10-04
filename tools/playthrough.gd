@@ -19,6 +19,7 @@ const TOUR_SPEED := 45.0
 const TOUR := ["northbridge_piazza", "kings_park_lookout", "subiaco_markets", "fremantle_markets",
 	"cottesloe_surf_club", "scarborough_beach", "oxford_st", "beaufort_st", "albany_hwy", "little_shenton_lane"]
 
+var _quitting := false
 var _main: Node
 var _car: RigidBody3D  # CarController (untyped here so it compiles before the autoloads)
 var _player: Node
@@ -56,6 +57,8 @@ func _initialize() -> void:
 
 
 func _process(delta: float) -> bool:
+	if _quitting:
+		return false
 	if _main == null:
 		_main = load("res://scenes/main.tscn").instantiate()
 		root.add_child(_main)
@@ -290,5 +293,7 @@ func _finish() -> bool:
 	print("PLAYTHROUGH ", "PASSED" if _failures.is_empty() else "FAILED (%d)" % _failures.size())
 	for f in _failures:
 		print("  - " + f)
-	quit(1 if _failures.size() else 0)
-	return true
+	# Takes the game down before quitting (a plain quit() crashed on exit on Windows).
+	_quitting = true
+	root.get_node("SaveGame").quit_cleanly(1 if _failures.size() else 0)
+	return false

@@ -10,6 +10,7 @@ extends SceneTree
 ## With a display and shots=<dir> it saves a picture of each find, the
 ## cupboard and the shed. Exits with code 1 if any check fails.
 
+var _quitting := false
 var _main: Node
 var _car: RigidBody3D
 var _player: Node
@@ -23,6 +24,8 @@ var _shots := ""
 
 
 func _process(_delta: float) -> bool:
+	if _quitting:
+		return false
 	if _main == null:
 		for arg in OS.get_cmdline_user_args():
 			if arg.begins_with("shots="):
@@ -164,5 +167,7 @@ func _finish() -> bool:
 	print("MYSTERY ", "PASSED" if _failures.is_empty() else "FAILED (%d)" % _failures.size())
 	for f in _failures:
 		print("  - " + f)
-	quit(1 if _failures.size() else 0)
-	return true
+	# Takes the game down before quitting (a plain quit() crashed on exit on Windows).
+	_quitting = true
+	root.get_node("SaveGame").quit_cleanly(1 if _failures.size() else 0)
+	return false

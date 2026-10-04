@@ -94,8 +94,9 @@ const RPM_PER_RAD_S := 60.0 / TAU
 @export var suspension_length := 0.30
 ## How far ahead of a wheel (in tyre radii) to look for a kerb, furthest first.
 const STEP_PROBES: Array[float] = [0.8, 0.55, 0.3]
-## The highest step a tyre rides up, in tyre radii (a 13 cm kerb is 0.45).
-const STEP_CLIMB := 0.62
+## The highest step a tyre rides up, in tyre radii (a 13 cm kerb is 0.45; the
+## map's kerbs reach 22 cm where streets slope, and 40 cm is still a wall).
+const STEP_CLIMB := 0.9
 @export var spring_strength := 26000.0
 @export var damper_strength := 2400.0
 @export var anti_roll_strength := 4500.0
@@ -268,6 +269,11 @@ func _ready() -> void:
 	var lower := get_node_or_null("LowerBodyCollision") as CollisionShape3D
 	if lower and lower.shape is BoxShape3D:
 		lower.shape = _lower_hull((lower.shape as BoxShape3D).size)
+	if physics_material_override == null:
+		# A slippery underside: a body that touches a kerb lip slides over it
+		# on the wheels' push instead of sticking there.
+		physics_material_override = PhysicsMaterial.new()
+		physics_material_override.friction = 0.15
 	_update_lights()
 	_wheelbase = absf(_wheels[0].anchor.position.z - _wheels[2].anchor.position.z)
 
@@ -980,6 +986,7 @@ static func _lower_hull(size: Vector3) -> ConvexPolygonShape3D:
 	var front := size.z * 0.13  # Front overhang slope length.
 	var rear := size.z * 0.1
 	var sill := size.x * 0.06
+	var floor_up := size.y * 0.13  # The floor between the axles clears a 22 cm kerb.
 	var points := PackedVector3Array()
 	for x in [-1.0, 1.0]:
 		points.append(Vector3(x * w, h, -l))
@@ -988,8 +995,8 @@ static func _lower_hull(size: Vector3) -> ConvexPolygonShape3D:
 		points.append(Vector3(x * w, -h + rise, l))
 		points.append(Vector3(x * w, -h + rise, -l + front))
 		points.append(Vector3(x * w, -h + rise, l - rear))
-		points.append(Vector3(x * (w - sill), -h, -l + front))
-		points.append(Vector3(x * (w - sill), -h, l - rear))
+		points.append(Vector3(x * (w - sill), -h + floor_up, -l + front))
+		points.append(Vector3(x * (w - sill), -h + floor_up, l - rear))
 	var hull := ConvexPolygonShape3D.new()
 	hull.points = points
 	return hull

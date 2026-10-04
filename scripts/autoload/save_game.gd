@@ -29,6 +29,7 @@ var _sources := {}
 ## Sections read from disk, waiting for (or already given to) their owners.
 var _pending := {}
 var _autosave_timer := 0.0
+var _quitting := false
 
 
 func _ready() -> void:
@@ -50,9 +51,52 @@ func _process(delta: float) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if enabled:
-			save_game()
-		get_tree().quit()
+		quit_cleanly()
+
+
+## Save, then take the game down while the engine is still running: stop
+## every sound, free the scene (the map waits for its loaders, traffic breaks
+## its reference cycles) and quit a few frames later. Quitting with all of it
+## still up left sounds and meshes to be freed after the audio and render
+## servers had gone, which crashed on exit on Windows.
+func quit_cleanly(exit_code := 0) -> void:
+	if _quitting:
+		return
+	_quitting = true
+	if enabled:
+		save_game()
+	var tree := get_tree()
+	# Nothing processes from here on, so nothing starts a sound again (some
+	# autoloads process always, so turning the root off isn't enough).
+	for node in tree.root.find_children("*", "", true, false):
+		node.set_process(false)
+		node.set_physics_process(false)
+	_stop_sounds()
+	# Everything under the root that isn't an autoload: the game scene (or a
+	# test's copy of it).
+	for child in tree.root.get_children():
+		if not ProjectSettings.has_setting("autoload/" + child.name):
+			child.queue_free()
+	for i in 4:
+		await tree.process_frame
+	# The audio side knows its own players, streams and caches best.
+	var audio := tree.root.get_node_or_null(^"Audio")
+	if audio and audio.has_method("quit_game"):
+		audio.quit_game(exit_code)
+		return
+	# The audio thread lets go of stopped sounds on its next mix, which takes
+	# real time, not frames.
+	OS.delay_msec(250)
+	await tree.process_frame
+	tree.quit(exit_code)
+
+
+func _stop_sounds() -> void:
+	var root := get_tree().root
+	for player in root.find_children("*", "AudioStreamPlayer", true, false) \
+			+ root.find_children("*", "AudioStreamPlayer2D", true, false) \
+			+ root.find_children("*", "AudioStreamPlayer3D", true, false):
+		player.stop()
 
 
 func save_path() -> String:

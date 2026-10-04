@@ -16,19 +16,11 @@ var _failures: Array[String] = []
 var _step := 0
 var _frame := 0
 var _start := Vector3.ZERO
-var _exit_code := -1
-var _exit_frames := 0
+var _quitting := false
 
 
 func _process(_delta: float) -> bool:
-	if _exit_code >= 0:
-		# Quit a few frames after freeing the game, so the map's tile loads
-		# and everything else wind down while the engine is still running
-		# (quitting with it all still up crashed on exit on Windows).
-		_exit_frames += 1
-		if _exit_frames >= 3:
-			quit(_exit_code)
-			return true
+	if _quitting:
 		return false
 	if _main == null:
 		_main = load("res://scenes/main.tscn").instantiate()
@@ -87,6 +79,7 @@ func _finish() -> bool:
 		print("SPAWN TEST FAILED (%d)" % _failures.size())
 		for f in _failures:
 			print("  - " + f)
-	_exit_code = 0 if _failures.is_empty() else 1
-	_main.queue_free()
+	# Takes the game down before quitting (a plain quit() crashed on exit on Windows).
+	_quitting = true
+	root.get_node("SaveGame").quit_cleanly(0 if _failures.is_empty() else 1)
 	return false

@@ -188,8 +188,7 @@ func _build() -> void:
 	_button(right, "Put the car back on its wheels", car_reset)
 	_button(right, "Save and quit to desktop", func() -> void:
 		Settings.save_settings()
-		SaveGame.save_game()
-		get_tree().quit())
+		SaveGame.quit_cleanly())
 
 
 func _sync_from_settings() -> void:

@@ -9,6 +9,7 @@ extends SceneTree
 ##
 ## Exits with code 1 if any check fails.
 
+var _quitting := false
 var _main: Node
 var _car: Node
 var _failures: Array[String] = []
@@ -16,6 +17,8 @@ var _frames := 0
 
 
 func _process(_delta: float) -> bool:
+	if _quitting:
+		return false
 	if _main == null:
 		_main = load("res://scenes/main.tscn").instantiate()
 		root.add_child(_main)
@@ -154,5 +157,7 @@ func _finish() -> bool:
 	print("PARTS ", "PASSED" if _failures.is_empty() else "FAILED (%d)" % _failures.size())
 	for f in _failures:
 		print("  - " + f)
-	quit(1 if _failures.size() else 0)
-	return true
+	# Takes the game down before quitting (a plain quit() crashed on exit on Windows).
+	_quitting = true
+	root.get_node("SaveGame").quit_cleanly(1 if _failures.size() else 0)
+	return false

@@ -15,6 +15,7 @@ extends SceneTree
 const FZ0 := 0.15
 const FZ1 := 3.16
 
+var _quitting := false
 var _main: Node
 var _car: RigidBody3D
 var _player: Node
@@ -28,6 +29,8 @@ var _rig_cam: Camera3D
 
 
 func _process(delta: float) -> bool:
+	if _quitting:
+		return false
 	if _main == null:
 		for arg in OS.get_cmdline_user_args():
 			if arg.begins_with("shots="):
@@ -155,8 +158,10 @@ func _finish() -> bool:
 	for f in _failures:
 		printerr("FAIL: ", f)
 	print("ON FOOT TEST ", "PASSED" if _failures.is_empty() else "FAILED")
-	quit(1 if _failures.size() else 0)
-	return true
+	# Takes the game down before quitting (a plain quit() crashed on exit on Windows).
+	_quitting = true
+	root.get_node("SaveGame").quit_cleanly(1 if _failures.size() else 0)
+	return false
 
 
 func _next() -> void:
