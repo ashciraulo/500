@@ -105,6 +105,11 @@ func _exit_tree() -> void:
 	for done: Array in _collision_results.values():
 		(done[1] as Node).free()
 	_collision_results.clear()
+	# Tiles finished on a worker since the last frame never joined the tree.
+	for result: MapTileLoader.TileResult in _results.values():
+		if result.root and not result.root.is_inside_tree():
+			result.root.free()
+	_results.clear()
 
 
 ## Keeps the car on solid ground when it's moved somewhere the map hasn't
