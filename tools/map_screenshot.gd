@@ -1,0 +1,96 @@
+extends SceneTree
+## Renders screenshots of the Perth map through the game's own camera and
+## lo-fi filter. Needs a display (or xvfb), not --headless:
+##
+##   godot --path . --script res://tools/map_screenshot.gd -- out_dir=/tmp/shots
+##
+## Shots: the car in the carport at home, the townhouse block from above, an
+## aerial view over Northbridge towards the CBD, Kings Park, a street and the
+## Narrows.
+
+var _main: Node
+var _frame := 0
+var _shot := 0
+var _out := "user://screenshots"
+var _shots := []
+
+
+func _process(_delta: float) -> bool:
+	if _main == null:
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("out_dir="):
+				_out = arg.trim_prefix("out_dir=")
+		DirAccess.make_dir_recursive_absolute(_out)
+		_main = load("res://scenes/main.tscn").instantiate()
+		root.add_child(_main)
+		root.get_node("GameClock").set_time(float(_arg("hour", "16.5")))
+		root.get_node("GameClock").set_locked(true)
+		root.get_node("Weather").set_locked(true)
+		_shots = [
+			{name = "home_chase", wait = 240},
+			{name = "traffic_james_st", wait = 900, cam = [Vector3(-125, 0, 2), Vector3(60, 0, 100)], fog = 0.003, above = 5.0},
+			{name = "home_block", wait = 240, cam = [Vector3(2, 70, 30), Vector3(-6, 22, -4)], fog = 0.002},
+			{name = "aerial_cbd", wait = 240, cam = [Vector3(-100, 260, -450), Vector3(350, 20, 900)], fog = 0.0008},
+			{name = "kings_park", wait = 240, cam = [Vector3(-700, 170, 1100), Vector3(-1600, 10, 2300)], fog = 0.0010},
+			{name = "street_level", wait = 240, cam = [Vector3(596, 0, 973), Vector3(512, 0, 1178)], fog = 0.0030, above = 2.5},
+			{name = "narrows", wait = 240, cam = [Vector3(-1250, 0, 2050), Vector3(-1650, 0, 2500)], fog = 0.0025, above = 9.0},
+			{name = "night_james_st", wait = 300, hour = 22.0, cam = [Vector3(-125, 0, 2), Vector3(60, 0, 100)], fog = 0.003, above = 5.0},
+			{name = "night_aerial", wait = 240, hour = 22.0, cam = [Vector3(-100, 260, -450), Vector3(350, 20, 900)], fog = 0.0008},
+		]
+		return false
+	_frame += 1
+	if _shot >= _shots.size():
+		quit(0)
+		return true
+	var shot: Dictionary = _shots[_shot]
+	if _frame == 1 and shot.has("hour"):
+		root.get_node("GameClock").set_time(float(shot.hour))
+	if _frame == 1 and shot.has("cam"):
+		_place_camera(shot.cam[0], shot.cam[1], shot.get("fog", 0.003))
+	if shot.has("above") and _frame % 40 == 0:
+		_drop_camera_to_ground(shot.cam[0], shot.cam[1], shot.above)
+	if _frame >= shot.wait:
+		var img := root.get_texture().get_image()
+		var path: String = _out.path_join(shot.name + ".png")
+		img.save_png(path)
+		print("saved ", path, " tiles loaded: ", _main.get_node("LoFi/SubViewport/World/PerthMap").loaded_tile_count())
+		_shot += 1
+		_frame = 0
+	return false
+
+
+func _arg(key: String, default: String) -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with(key + "="):
+			return arg.trim_prefix(key + "=")
+	return default
+
+
+func _drop_camera_to_ground(from: Vector3, to: Vector3, above: float) -> void:
+	var world := _main.get_node("LoFi/SubViewport/World") as Node3D
+	var space := world.get_world_3d().direct_space_state
+	var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(from.x, 120, from.z), Vector3(from.x, -50, from.z)))
+	if hit.is_empty():
+		return
+	var cam := world.get_node("CameraRig/Camera3D") as Camera3D
+	cam.global_position = Vector3(from.x, hit.position.y + above, from.z)
+	cam.look_at(Vector3(to.x, hit.position.y + above * 0.6, to.z))
+
+
+func _place_camera(from: Vector3, to: Vector3, fog: float) -> void:
+	var world := _main.get_node("LoFi/SubViewport/World")
+	(world.get_node("Car") as RigidBody3D).freeze = true
+	_main.get_node("HUD").visible = false
+	var rig := world.get_node("CameraRig")
+	rig.set_process(false)
+	rig.set_physics_process(false)
+	var cam := rig.get_node("Camera3D") as Camera3D
+	cam.global_position = from
+	cam.look_at(to)
+	cam.fov = 60
+	cam.far = 6000.0
+	var env_ctl := world.get_node("EnvironmentController")
+	env_ctl.fog_density_clear = fog
+	# Stream around the camera instead of the car.
+	var map := world.get_node("PerthMap")
+	map.set("_target", cam)

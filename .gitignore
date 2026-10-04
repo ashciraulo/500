@@ -20,3 +20,6 @@ __pycache__/
 
 # Preview renders (build_pop.py --render)
 docs/renders/
+
+# OSM importer downloads
+tools/osm_import/cache/

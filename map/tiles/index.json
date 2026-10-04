@@ -1,0 +1,1439 @@
+{
+ "tiles": {
+  "-7_-8": {
+   "i": -7,
+   "j": -8,
+   "file": "-7_-8.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 30.09,
+   "bytes": 356808,
+   "traffic": "-7_-8.p5r"
+  },
+  "-6_-8": {
+   "i": -6,
+   "j": -8,
+   "file": "-6_-8.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21125,
+   "traffic": "-6_-8.p5r"
+  },
+  "-5_-8": {
+   "i": -5,
+   "j": -8,
+   "file": "-5_-8.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21137,
+   "traffic": "-5_-8.p5r"
+  },
+  "-4_-8": {
+   "i": -4,
+   "j": -8,
+   "file": "-4_-8.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21118,
+   "traffic": "-4_-8.p5r"
+  },
+  "-3_-8": {
+   "i": -3,
+   "j": -8,
+   "file": "-3_-8.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21137,
+   "traffic": "-3_-8.p5r"
+  },
+  "-2_-8": {
+   "i": -2,
+   "j": -8,
+   "file": "-2_-8.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 8.0,
+   "bytes": 74344,
+   "traffic": "-2_-8.p5r"
+  },
+  "-1_-8": {
+   "i": -1,
+   "j": -8,
+   "file": "-1_-8.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 21.98,
+   "bytes": 334352,
+   "traffic": "-1_-8.p5r"
+  },
+  "0_-8": {
+   "i": 0,
+   "j": -8,
+   "file": "0_-8.p5t",
+   "region": "first_slice",
+   "hmin": 7.14,
+   "hmax": 43.51,
+   "bytes": 569248,
+   "traffic": "0_-8.p5r"
+  },
+  "1_-8": {
+   "i": 1,
+   "j": -8,
+   "file": "1_-8.p5t",
+   "region": "first_slice",
+   "hmin": 7.92,
+   "hmax": 40.26,
+   "bytes": 578072,
+   "traffic": "1_-8.p5r"
+  },
+  "2_-8": {
+   "i": 2,
+   "j": -8,
+   "file": "2_-8.p5t",
+   "region": "first_slice",
+   "hmin": 6.04,
+   "hmax": 31.87,
+   "bytes": 473392,
+   "traffic": "2_-8.p5r"
+  },
+  "3_-8": {
+   "i": 3,
+   "j": -8,
+   "file": "3_-8.p5t",
+   "region": "first_slice",
+   "hmin": 7.72,
+   "hmax": 36.09,
+   "bytes": 590030,
+   "traffic": "3_-8.p5r"
+  },
+  "4_-8": {
+   "i": 4,
+   "j": -8,
+   "file": "4_-8.p5t",
+   "region": "first_slice",
+   "hmin": 9.72,
+   "hmax": 58.02,
+   "bytes": 605017,
+   "traffic": "4_-8.p5r"
+  },
+  "-7_-7": {
+   "i": -7,
+   "j": -7,
+   "file": "-7_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 46.29,
+   "bytes": 485441,
+   "traffic": "-7_-7.p5r"
+  },
+  "-6_-7": {
+   "i": -6,
+   "j": -7,
+   "file": "-6_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.9,
+   "hmax": 36.73,
+   "bytes": 164342,
+   "traffic": "-6_-7.p5r"
+  },
+  "-5_-7": {
+   "i": -5,
+   "j": -7,
+   "file": "-5_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21128,
+   "traffic": "-5_-7.p5r"
+  },
+  "-4_-7": {
+   "i": -4,
+   "j": -7,
+   "file": "-4_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21135,
+   "traffic": "-4_-7.p5r"
+  },
+  "-3_-7": {
+   "i": -3,
+   "j": -7,
+   "file": "-3_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21126,
+   "traffic": "-3_-7.p5r"
+  },
+  "-2_-7": {
+   "i": -2,
+   "j": -7,
+   "file": "-2_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 15.83,
+   "bytes": 166809,
+   "traffic": "-2_-7.p5r"
+  },
+  "-1_-7": {
+   "i": -1,
+   "j": -7,
+   "file": "-1_-7.p5t",
+   "region": "first_slice",
+   "hmin": 2.8,
+   "hmax": 25.01,
+   "bytes": 523520,
+   "traffic": "-1_-7.p5r"
+  },
+  "0_-7": {
+   "i": 0,
+   "j": -7,
+   "file": "0_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 37.6,
+   "bytes": 491165,
+   "traffic": "0_-7.p5r"
+  },
+  "1_-7": {
+   "i": 1,
+   "j": -7,
+   "file": "1_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 33.57,
+   "bytes": 305832,
+   "traffic": "1_-7.p5r"
+  },
+  "2_-7": {
+   "i": 2,
+   "j": -7,
+   "file": "2_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 18.68,
+   "bytes": 352126,
+   "traffic": "2_-7.p5r"
+  },
+  "3_-7": {
+   "i": 3,
+   "j": -7,
+   "file": "3_-7.p5t",
+   "region": "first_slice",
+   "hmin": -2.34,
+   "hmax": 23.49,
+   "bytes": 499688,
+   "traffic": "3_-7.p5r"
+  },
+  "4_-7": {
+   "i": 4,
+   "j": -7,
+   "file": "4_-7.p5t",
+   "region": "first_slice",
+   "hmin": 3.46,
+   "hmax": 30.44,
+   "bytes": 513343,
+   "traffic": "4_-7.p5r"
+  },
+  "-7_-6": {
+   "i": -7,
+   "j": -6,
+   "file": "-7_-6.p5t",
+   "region": "first_slice",
+   "hmin": 11.55,
+   "hmax": 39.19,
+   "bytes": 314964,
+   "traffic": "-7_-6.p5r"
+  },
+  "-6_-6": {
+   "i": -6,
+   "j": -6,
+   "file": "-6_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 47.85,
+   "bytes": 372597,
+   "traffic": "-6_-6.p5r"
+  },
+  "-5_-6": {
+   "i": -5,
+   "j": -6,
+   "file": "-5_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 55.89,
+   "bytes": 282860,
+   "traffic": "-5_-6.p5r"
+  },
+  "-4_-6": {
+   "i": -4,
+   "j": -6,
+   "file": "-4_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 57.17,
+   "bytes": 196654,
+   "traffic": "-4_-6.p5r"
+  },
+  "-3_-6": {
+   "i": -3,
+   "j": -6,
+   "file": "-3_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 10.56,
+   "bytes": 22398,
+   "traffic": "-3_-6.p5r"
+  },
+  "-2_-6": {
+   "i": -2,
+   "j": -6,
+   "file": "-2_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 23.68,
+   "bytes": 258927,
+   "traffic": "-2_-6.p5r"
+  },
+  "-1_-6": {
+   "i": -1,
+   "j": -6,
+   "file": "-1_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 124.61,
+   "bytes": 462844,
+   "traffic": "-1_-6.p5r"
+  },
+  "0_-6": {
+   "i": 0,
+   "j": -6,
+   "file": "0_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 31.89,
+   "bytes": 132712,
+   "traffic": "0_-6.p5r"
+  },
+  "1_-6": {
+   "i": 1,
+   "j": -6,
+   "file": "1_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21135,
+   "traffic": "1_-6.p5r"
+  },
+  "2_-6": {
+   "i": 2,
+   "j": -6,
+   "file": "2_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 2.65,
+   "bytes": 28359,
+   "traffic": "2_-6.p5r"
+  },
+  "3_-6": {
+   "i": 3,
+   "j": -6,
+   "file": "3_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 19.24,
+   "bytes": 151530,
+   "traffic": "3_-6.p5r"
+  },
+  "4_-6": {
+   "i": 4,
+   "j": -6,
+   "file": "4_-6.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 12.81,
+   "bytes": 160509,
+   "traffic": "4_-6.p5r"
+  },
+  "-7_-5": {
+   "i": -7,
+   "j": -5,
+   "file": "-7_-5.p5t",
+   "region": "first_slice",
+   "hmin": 14.03,
+   "hmax": 42.22,
+   "bytes": 417543,
+   "traffic": "-7_-5.p5r"
+  },
+  "-6_-5": {
+   "i": -6,
+   "j": -5,
+   "file": "-6_-5.p5t",
+   "region": "first_slice",
+   "hmin": 16.26,
+   "hmax": 32.6,
+   "bytes": 267704,
+   "traffic": "-6_-5.p5r"
+  },
+  "-5_-5": {
+   "i": -5,
+   "j": -5,
+   "file": "-5_-5.p5t",
+   "region": "first_slice",
+   "hmin": 22.84,
+   "hmax": 56.62,
+   "bytes": 248784,
+   "traffic": "-5_-5.p5r"
+  },
+  "-4_-5": {
+   "i": -4,
+   "j": -5,
+   "file": "-4_-5.p5t",
+   "region": "first_slice",
+   "hmin": 10.56,
+   "hmax": 84.1,
+   "bytes": 318830,
+   "traffic": "-4_-5.p5r"
+  },
+  "-3_-5": {
+   "i": -3,
+   "j": -5,
+   "file": "-3_-5.p5t",
+   "region": "first_slice",
+   "hmin": -4.19,
+   "hmax": 58.28,
+   "bytes": 222998,
+   "traffic": "-3_-5.p5r"
+  },
+  "-2_-5": {
+   "i": -2,
+   "j": -5,
+   "file": "-2_-5.p5t",
+   "region": "first_slice",
+   "hmin": -4.21,
+   "hmax": 30.95,
+   "bytes": 438209,
+   "traffic": "-2_-5.p5r"
+  },
+  "-1_-5": {
+   "i": -1,
+   "j": -5,
+   "file": "-1_-5.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 43.3,
+   "bytes": 179247,
+   "traffic": "-1_-5.p5r"
+  },
+  "0_-5": {
+   "i": 0,
+   "j": -5,
+   "file": "0_-5.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21124,
+   "traffic": "0_-5.p5r"
+  },
+  "1_-5": {
+   "i": 1,
+   "j": -5,
+   "file": "1_-5.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21125,
+   "traffic": "1_-5.p5r"
+  },
+  "2_-5": {
+   "i": 2,
+   "j": -5,
+   "file": "2_-5.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 0.0,
+   "bytes": 21130,
+   "traffic": "2_-5.p5r"
+  },
+  "3_-5": {
+   "i": 3,
+   "j": -5,
+   "file": "3_-5.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 2.06,
+   "bytes": 41089,
+   "traffic": "3_-5.p5r"
+  },
+  "4_-5": {
+   "i": 4,
+   "j": -5,
+   "file": "4_-5.p5t",
+   "region": "first_slice",
+   "hmin": -4.43,
+   "hmax": 13.77,
+   "bytes": 255672,
+   "traffic": "4_-5.p5r"
+  },
+  "-7_-4": {
+   "i": -7,
+   "j": -4,
+   "file": "-7_-4.p5t",
+   "region": "first_slice",
+   "hmin": 13.17,
+   "hmax": 39.35,
+   "bytes": 426194,
+   "traffic": "-7_-4.p5r"
+  },
+  "-6_-4": {
+   "i": -6,
+   "j": -4,
+   "file": "-6_-4.p5t",
+   "region": "first_slice",
+   "hmin": 18.78,
+   "hmax": 46.8,
+   "bytes": 301269,
+   "traffic": "-6_-4.p5r"
+  },
+  "-5_-4": {
+   "i": -5,
+   "j": -4,
+   "file": "-5_-4.p5t",
+   "region": "first_slice",
+   "hmin": 28.99,
+   "hmax": 58.07,
+   "bytes": 230565,
+   "traffic": "-5_-4.p5r"
+  },
+  "-4_-4": {
+   "i": -4,
+   "j": -4,
+   "file": "-4_-4.p5t",
+   "region": "first_slice",
+   "hmin": 50.33,
+   "hmax": 71.83,
+   "bytes": 276623,
+   "traffic": "-4_-4.p5r"
+  },
+  "-3_-4": {
+   "i": -3,
+   "j": -4,
+   "file": "-3_-4.p5t",
+   "region": "first_slice",
+   "hmin": -3.75,
+   "hmax": 81.88,
+   "bytes": 524033,
+   "traffic": "-3_-4.p5r"
+  },
+  "-2_-4": {
+   "i": -2,
+   "j": -4,
+   "file": "-2_-4.p5t",
+   "region": "first_slice",
+   "hmin": -4.0,
+   "hmax": 82.42,
+   "bytes": 545360,
+   "traffic": "-2_-4.p5r"
+  },
+  "-1_-4": {
+   "i": -1,
+   "j": -4,
+   "file": "-1_-4.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 7.36,
+   "bytes": 110979,
+   "traffic": "-1_-4.p5r"
+  },
+  "0_-4": {
+   "i": 0,
+   "j": -4,
+   "file": "0_-4.p5t",
+   "region": "first_slice",
+   "hmin": -2.9,
+   "hmax": 36.82,
+   "bytes": 63202,
+   "traffic": "0_-4.p5r"
+  },
+  "1_-4": {
+   "i": 1,
+   "j": -4,
+   "file": "1_-4.p5t",
+   "region": "first_slice",
+   "hmin": -2.9,
+   "hmax": 27.51,
+   "bytes": 169735,
+   "traffic": "1_-4.p5r"
+  },
+  "2_-4": {
+   "i": 2,
+   "j": -4,
+   "file": "2_-4.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 89.49,
+   "bytes": 261380,
+   "traffic": "2_-4.p5r"
+  },
+  "3_-4": {
+   "i": 3,
+   "j": -4,
+   "file": "3_-4.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 105.97,
+   "bytes": 419695,
+   "traffic": "3_-4.p5r"
+  },
+  "4_-4": {
+   "i": 4,
+   "j": -4,
+   "file": "4_-4.p5t",
+   "region": "first_slice",
+   "hmin": -1.46,
+   "hmax": 97.93,
+   "bytes": 654350,
+   "traffic": "4_-4.p5r"
+  },
+  "-7_-3": {
+   "i": -7,
+   "j": -3,
+   "file": "-7_-3.p5t",
+   "region": "first_slice",
+   "hmin": 17.63,
+   "hmax": 42.62,
+   "bytes": 568942,
+   "traffic": "-7_-3.p5r"
+  },
+  "-6_-3": {
+   "i": -6,
+   "j": -3,
+   "file": "-6_-3.p5t",
+   "region": "first_slice",
+   "hmin": 25.53,
+   "hmax": 60.64,
+   "bytes": 494165,
+   "traffic": "-6_-3.p5r"
+  },
+  "-5_-3": {
+   "i": -5,
+   "j": -3,
+   "file": "-5_-3.p5t",
+   "region": "first_slice",
+   "hmin": 44.26,
+   "hmax": 77.06,
+   "bytes": 274579,
+   "traffic": "-5_-3.p5r"
+  },
+  "-4_-3": {
+   "i": -4,
+   "j": -3,
+   "file": "-4_-3.p5t",
+   "region": "first_slice",
+   "hmin": 50.12,
+   "hmax": 77.06,
+   "bytes": 263518,
+   "traffic": "-4_-3.p5r"
+  },
+  "-3_-3": {
+   "i": -3,
+   "j": -3,
+   "file": "-3_-3.p5t",
+   "region": "first_slice",
+   "hmin": 52.54,
+   "hmax": 91.51,
+   "bytes": 335644,
+   "traffic": "-3_-3.p5r"
+  },
+  "-2_-3": {
+   "i": -2,
+   "j": -3,
+   "file": "-2_-3.p5t",
+   "region": "first_slice",
+   "hmin": -1.47,
+   "hmax": 120.73,
+   "bytes": 484038,
+   "traffic": "-2_-3.p5r"
+  },
+  "-1_-3": {
+   "i": -1,
+   "j": -3,
+   "file": "-1_-3.p5t",
+   "region": "first_slice",
+   "hmin": -11.18,
+   "hmax": 67.09,
+   "bytes": 701019,
+   "traffic": "-1_-3.p5r"
+  },
+  "0_-3": {
+   "i": 0,
+   "j": -3,
+   "file": "0_-3.p5t",
+   "region": "first_slice",
+   "hmin": -4.0,
+   "hmax": 259.18,
+   "bytes": 682296,
+   "traffic": "0_-3.p5r"
+  },
+  "1_-3": {
+   "i": 1,
+   "j": -3,
+   "file": "1_-3.p5t",
+   "region": "first_slice",
+   "hmin": -2.5,
+   "hmax": 204.93,
+   "bytes": 662662,
+   "traffic": "1_-3.p5r"
+  },
+  "2_-3": {
+   "i": 2,
+   "j": -3,
+   "file": "2_-3.p5t",
+   "region": "first_slice",
+   "hmin": 4.93,
+   "hmax": 127.93,
+   "bytes": 622531,
+   "traffic": "2_-3.p5r"
+  },
+  "3_-3": {
+   "i": 3,
+   "j": -3,
+   "file": "3_-3.p5t",
+   "region": "first_slice",
+   "hmin": 11.33,
+   "hmax": 84.48,
+   "bytes": 613500,
+   "traffic": "3_-3.p5r"
+  },
+  "4_-3": {
+   "i": 4,
+   "j": -3,
+   "file": "4_-3.p5t",
+   "region": "first_slice",
+   "hmin": 3.55,
+   "hmax": 66.23,
+   "bytes": 651296,
+   "traffic": "4_-3.p5r"
+  },
+  "-7_-2": {
+   "i": -7,
+   "j": -2,
+   "file": "-7_-2.p5t",
+   "region": "first_slice",
+   "hmin": 25.08,
+   "hmax": 67.96,
+   "bytes": 607335,
+   "traffic": "-7_-2.p5r"
+  },
+  "-6_-2": {
+   "i": -6,
+   "j": -2,
+   "file": "-6_-2.p5t",
+   "region": "first_slice",
+   "hmin": 35.25,
+   "hmax": 59.52,
+   "bytes": 646677,
+   "traffic": "-6_-2.p5r"
+  },
+  "-5_-2": {
+   "i": -5,
+   "j": -2,
+   "file": "-5_-2.p5t",
+   "region": "first_slice",
+   "hmin": 34.13,
+   "hmax": 71.44,
+   "bytes": 558730,
+   "traffic": "-5_-2.p5r"
+  },
+  "-4_-2": {
+   "i": -4,
+   "j": -2,
+   "file": "-4_-2.p5t",
+   "region": "first_slice",
+   "hmin": 42.48,
+   "hmax": 95.74,
+   "bytes": 344043,
+   "traffic": "-4_-2.p5r"
+  },
+  "-3_-2": {
+   "i": -3,
+   "j": -2,
+   "file": "-3_-2.p5t",
+   "region": "first_slice",
+   "hmin": 52.37,
+   "hmax": 93.06,
+   "bytes": 526578,
+   "traffic": "-3_-2.p5r"
+  },
+  "-2_-2": {
+   "i": -2,
+   "j": -2,
+   "file": "-2_-2.p5t",
+   "region": "first_slice",
+   "hmin": 15.21,
+   "hmax": 139.27,
+   "bytes": 634809,
+   "traffic": "-2_-2.p5r"
+  },
+  "-1_-2": {
+   "i": -1,
+   "j": -2,
+   "file": "-1_-2.p5t",
+   "region": "first_slice",
+   "hmin": 8.68,
+   "hmax": 220.72,
+   "bytes": 595988,
+   "traffic": "-1_-2.p5r"
+  },
+  "0_-2": {
+   "i": 0,
+   "j": -2,
+   "file": "0_-2.p5t",
+   "region": "first_slice",
+   "hmin": 7.61,
+   "hmax": 292.89,
+   "bytes": 630151,
+   "traffic": "0_-2.p5r"
+  },
+  "1_-2": {
+   "i": 1,
+   "j": -2,
+   "file": "1_-2.p5t",
+   "region": "first_slice",
+   "hmin": 7.41,
+   "hmax": 115.84,
+   "bytes": 709725,
+   "traffic": "1_-2.p5r"
+  },
+  "2_-2": {
+   "i": 2,
+   "j": -2,
+   "file": "2_-2.p5t",
+   "region": "first_slice",
+   "hmin": 9.08,
+   "hmax": 72.86,
+   "bytes": 611169,
+   "traffic": "2_-2.p5r"
+  },
+  "3_-2": {
+   "i": 3,
+   "j": -2,
+   "file": "3_-2.p5t",
+   "region": "first_slice",
+   "hmin": 10.43,
+   "hmax": 79.51,
+   "bytes": 702491,
+   "traffic": "3_-2.p5r"
+  },
+  "4_-2": {
+   "i": 4,
+   "j": -2,
+   "file": "4_-2.p5t",
+   "region": "first_slice",
+   "hmin": -4.0,
+   "hmax": 49.68,
+   "bytes": 701547,
+   "traffic": "4_-2.p5r"
+  },
+  "-7_-1": {
+   "i": -7,
+   "j": -1,
+   "file": "-7_-1.p5t",
+   "region": "first_slice",
+   "hmin": 13.06,
+   "hmax": 62.73,
+   "bytes": 686562,
+   "traffic": "-7_-1.p5r"
+  },
+  "-6_-1": {
+   "i": -6,
+   "j": -1,
+   "file": "-6_-1.p5t",
+   "region": "first_slice",
+   "hmin": 22.37,
+   "hmax": 61.07,
+   "bytes": 693253,
+   "traffic": "-6_-1.p5r"
+  },
+  "-5_-1": {
+   "i": -5,
+   "j": -1,
+   "file": "-5_-1.p5t",
+   "region": "first_slice",
+   "hmin": 24.82,
+   "hmax": 58.12,
+   "bytes": 626336,
+   "traffic": "-5_-1.p5r"
+  },
+  "-4_-1": {
+   "i": -4,
+   "j": -1,
+   "file": "-4_-1.p5t",
+   "region": "first_slice",
+   "hmin": 34.78,
+   "hmax": 87.8,
+   "bytes": 652763,
+   "traffic": "-4_-1.p5r"
+  },
+  "-3_-1": {
+   "i": -3,
+   "j": -1,
+   "file": "-3_-1.p5t",
+   "region": "first_slice",
+   "hmin": 31.0,
+   "hmax": 94.07,
+   "bytes": 645059,
+   "traffic": "-3_-1.p5r"
+  },
+  "-2_-1": {
+   "i": -2,
+   "j": -1,
+   "file": "-2_-1.p5t",
+   "region": "first_slice",
+   "hmin": 14.36,
+   "hmax": 74.89,
+   "bytes": 589972,
+   "traffic": "-2_-1.p5r"
+  },
+  "-1_-1": {
+   "i": -1,
+   "j": -1,
+   "file": "-1_-1.p5t",
+   "region": "first_slice",
+   "hmin": 7.49,
+   "hmax": 71.93,
+   "bytes": 726188,
+   "traffic": "-1_-1.p5r"
+  },
+  "0_-1": {
+   "i": 0,
+   "j": -1,
+   "file": "0_-1.p5t",
+   "region": "first_slice",
+   "hmin": 4.69,
+   "hmax": 109.06,
+   "bytes": 700507,
+   "traffic": "0_-1.p5r"
+  },
+  "1_-1": {
+   "i": 1,
+   "j": -1,
+   "file": "1_-1.p5t",
+   "region": "first_slice",
+   "hmin": 6.56,
+   "hmax": 93.21,
+   "bytes": 698798,
+   "traffic": "1_-1.p5r"
+  },
+  "2_-1": {
+   "i": 2,
+   "j": -1,
+   "file": "2_-1.p5t",
+   "region": "first_slice",
+   "hmin": 4.19,
+   "hmax": 75.15,
+   "bytes": 688683,
+   "traffic": "2_-1.p5r"
+  },
+  "3_-1": {
+   "i": 3,
+   "j": -1,
+   "file": "3_-1.p5t",
+   "region": "first_slice",
+   "hmin": 6.74,
+   "hmax": 32.32,
+   "bytes": 599308,
+   "traffic": "3_-1.p5r"
+  },
+  "4_-1": {
+   "i": 4,
+   "j": -1,
+   "file": "4_-1.p5t",
+   "region": "first_slice",
+   "hmin": 6.78,
+   "hmax": 38.54,
+   "bytes": 584711,
+   "traffic": "4_-1.p5r"
+  },
+  "-7_0": {
+   "i": -7,
+   "j": 0,
+   "file": "-7_0.p5t",
+   "region": "first_slice",
+   "hmin": 13.2,
+   "hmax": 50.99,
+   "bytes": 734798,
+   "traffic": "-7_0.p5r"
+  },
+  "-6_0": {
+   "i": -6,
+   "j": 0,
+   "file": "-6_0.p5t",
+   "region": "first_slice",
+   "hmin": 16.0,
+   "hmax": 103.22,
+   "bytes": 764563,
+   "traffic": "-6_0.p5r"
+  },
+  "-5_0": {
+   "i": -5,
+   "j": 0,
+   "file": "-5_0.p5t",
+   "region": "first_slice",
+   "hmin": 21.64,
+   "hmax": 51.2,
+   "bytes": 586083,
+   "traffic": "-5_0.p5r"
+  },
+  "-4_0": {
+   "i": -4,
+   "j": 0,
+   "file": "-4_0.p5t",
+   "region": "first_slice",
+   "hmin": 31.33,
+   "hmax": 63.18,
+   "bytes": 560298,
+   "traffic": "-4_0.p5r"
+  },
+  "-3_0": {
+   "i": -3,
+   "j": 0,
+   "file": "-3_0.p5t",
+   "region": "first_slice",
+   "hmin": 17.67,
+   "hmax": 69.62,
+   "bytes": 669707,
+   "traffic": "-3_0.p5r"
+  },
+  "-2_0": {
+   "i": -2,
+   "j": 0,
+   "file": "-2_0.p5t",
+   "region": "first_slice",
+   "hmin": 13.58,
+   "hmax": 53.14,
+   "bytes": 710907,
+   "traffic": "-2_0.p5r"
+  },
+  "-1_0": {
+   "i": -1,
+   "j": 0,
+   "file": "-1_0.p5t",
+   "region": "first_slice",
+   "hmin": 9.63,
+   "hmax": 39.29,
+   "bytes": 626660,
+   "traffic": "-1_0.p5r"
+  },
+  "0_0": {
+   "i": 0,
+   "j": 0,
+   "file": "0_0.p5t",
+   "region": "first_slice",
+   "hmin": 9.15,
+   "hmax": 42.04,
+   "bytes": 678117,
+   "traffic": "0_0.p5r"
+  },
+  "1_0": {
+   "i": 1,
+   "j": 0,
+   "file": "1_0.p5t",
+   "region": "first_slice",
+   "hmin": 9.13,
+   "hmax": 36.27,
+   "bytes": 641836,
+   "traffic": "1_0.p5r"
+  },
+  "2_0": {
+   "i": 2,
+   "j": 0,
+   "file": "2_0.p5t",
+   "region": "first_slice",
+   "hmin": 12.53,
+   "hmax": 45.51,
+   "bytes": 592183,
+   "traffic": "2_0.p5r"
+  },
+  "3_0": {
+   "i": 3,
+   "j": 0,
+   "file": "3_0.p5t",
+   "region": "first_slice",
+   "hmin": 12.09,
+   "hmax": 61.19,
+   "bytes": 483730,
+   "traffic": "3_0.p5r"
+  },
+  "4_0": {
+   "i": 4,
+   "j": 0,
+   "file": "4_0.p5t",
+   "region": "first_slice",
+   "hmin": 7.52,
+   "hmax": 42.05,
+   "bytes": 518510,
+   "traffic": "4_0.p5r"
+  },
+  "-7_1": {
+   "i": -7,
+   "j": 1,
+   "file": "-7_1.p5t",
+   "region": "first_slice",
+   "hmin": 13.59,
+   "hmax": 50.61,
+   "bytes": 488294,
+   "traffic": "-7_1.p5r"
+  },
+  "-6_1": {
+   "i": -6,
+   "j": 1,
+   "file": "-6_1.p5t",
+   "region": "first_slice",
+   "hmin": 21.95,
+   "hmax": 65.8,
+   "bytes": 521524,
+   "traffic": "-6_1.p5r"
+  },
+  "-5_1": {
+   "i": -5,
+   "j": 1,
+   "file": "-5_1.p5t",
+   "region": "first_slice",
+   "hmin": 23.22,
+   "hmax": 58.99,
+   "bytes": 480561,
+   "traffic": "-5_1.p5r"
+  },
+  "-4_1": {
+   "i": -4,
+   "j": 1,
+   "file": "-4_1.p5t",
+   "region": "first_slice",
+   "hmin": 18.91,
+   "hmax": 60.97,
+   "bytes": 535043,
+   "traffic": "-4_1.p5r"
+  },
+  "-3_1": {
+   "i": -3,
+   "j": 1,
+   "file": "-3_1.p5t",
+   "region": "first_slice",
+   "hmin": 14.54,
+   "hmax": 53.75,
+   "bytes": 728738,
+   "traffic": "-3_1.p5r"
+  },
+  "-2_1": {
+   "i": -2,
+   "j": 1,
+   "file": "-2_1.p5t",
+   "region": "first_slice",
+   "hmin": 15.75,
+   "hmax": 58.96,
+   "bytes": 593376,
+   "traffic": "-2_1.p5r"
+  },
+  "-1_1": {
+   "i": -1,
+   "j": 1,
+   "file": "-1_1.p5t",
+   "region": "first_slice",
+   "hmin": 17.79,
+   "hmax": 49.65,
+   "bytes": 559496,
+   "traffic": "-1_1.p5r"
+  },
+  "0_1": {
+   "i": 0,
+   "j": 1,
+   "file": "0_1.p5t",
+   "region": "first_slice",
+   "hmin": 17.0,
+   "hmax": 37.37,
+   "bytes": 572865,
+   "traffic": "0_1.p5r"
+  },
+  "1_1": {
+   "i": 1,
+   "j": 1,
+   "file": "1_1.p5t",
+   "region": "first_slice",
+   "hmin": 16.59,
+   "hmax": 35.76,
+   "bytes": 647449,
+   "traffic": "1_1.p5r"
+  },
+  "2_1": {
+   "i": 2,
+   "j": 1,
+   "file": "2_1.p5t",
+   "region": "first_slice",
+   "hmin": 17.44,
+   "hmax": 54.26,
+   "bytes": 624868,
+   "traffic": "2_1.p5r"
+  },
+  "3_1": {
+   "i": 3,
+   "j": 1,
+   "file": "3_1.p5t",
+   "region": "first_slice",
+   "hmin": 12.89,
+   "hmax": 54.43,
+   "bytes": 582040,
+   "traffic": "3_1.p5r"
+  },
+  "4_1": {
+   "i": 4,
+   "j": 1,
+   "file": "4_1.p5t",
+   "region": "first_slice",
+   "hmin": 10.83,
+   "hmax": 34.17,
+   "bytes": 605772,
+   "traffic": "4_1.p5r"
+  }
+ },
+ "format": 1,
+ "tile_size": 500,
+ "origin": {
+  "lat": -31.9459746,
+  "lon": 115.8539188,
+  "name": "Little Shenton Lane townhouses, Northbridge"
+ },
+ "projection": "Transverse Mercator centred on origin; Godot X = east, Z = -north, 1 unit = 1 m",
+ "spawn": {
+  "position": [
+   -12.33,
+   22.94,
+   23.04
+  ],
+  "yaw": -3.7001,
+  "name": "Little Shenton Lane townhouses, Northbridge"
+ },
+ "materials": [
+  "asphalt",
+  "ballast",
+  "bush",
+  "concrete",
+  "dirt",
+  "facade_apartment",
+  "facade_brick",
+  "facade_carpark",
+  "facade_glass",
+  "facade_heritage",
+  "facade_office",
+  "facade_render",
+  "facade_shed",
+  "facade_shopfront",
+  "facade_upper",
+  "facade_warehouse",
+  "grass",
+  "ground_urban",
+  "kerb",
+  "light_head",
+  "light_pole",
+  "line_white",
+  "path",
+  "paving",
+  "rail_steel",
+  "riverbed",
+  "roof_flat",
+  "roof_flat_dark",
+  "roof_metal",
+  "roof_tiles",
+  "roof_tiles_dark",
+  "sand",
+  "sidewalk",
+  "tree_bark",
+  "tree_gum",
+  "tree_leaves",
+  "tunnel_wall",
+  "turf",
+  "water",
+  "wetland"
+ ],
+ "attribution": "Map data \u00a9 OpenStreetMap contributors (ODbL). Elevation: Mapzen Terrain Tiles (SRTM, Geoscience Australia and others).",
+ "landmarks": {
+  "Crawley": [
+   -3432.9,
+   3178.1
+  ],
+  "East Perth": [
+   2266.2,
+   928.0
+  ],
+  "Highgate": [
+   1481.2,
+   -700.9
+  ],
+  "Kensington": [
+   2535.1,
+   4392.7
+  ],
+  "Kings Park": [
+   -2393.4,
+   1801.7
+  ],
+  "Northbridge": [
+   343.0,
+   208.1
+  ],
+  "Perth Cultural Centre": [
+   683.7,
+   368.7
+  ],
+  "Shenton Park": [
+   -3780.7,
+   1502.9
+  ],
+  "South Perth": [
+   947.4,
+   3880.1
+  ],
+  "Subiaco": [
+   -2825.8,
+   39.8
+  ],
+  "Wembley": [
+   -3698.3,
+   -1366.1
+  ],
+  "West Leederville": [
+   -2062.8,
+   -818.3
+  ],
+  "West Perth": [
+   -1167.4,
+   297.7
+  ]
+ },
+ "home": {
+  "scene": "res://scenes/home/shenton.tscn",
+  "name": "15 Little Shenton Lane",
+  "position": [
+   -8.018,
+   22.127,
+   -1.231
+  ],
+  "yaw": 1.07931,
+  "spawn_marker": "Spawn_Car"
+ },
+ "job_sites": [
+  {
+   "id": "little_shenton_lane",
+   "position": [
+    -1.37,
+    22.13,
+    -0.73
+   ],
+   "yaw": 1.0793,
+   "name": "Little Shenton Lane",
+   "suburb": "Northbridge"
+  },
+  {
+   "id": "northbridge_piazza",
+   "position": [
+    256.04,
+    17.9,
+    240.47
+   ],
+   "yaw": -0.4923,
+   "name": "Northbridge Piazza",
+   "suburb": "Northbridge"
+  },
+  {
+   "id": "subiaco_markets",
+   "position": [
+    -2900.87,
+    29.1,
+    202.66
+   ],
+   "yaw": 3.1355,
+   "name": "Station Street Markets",
+   "suburb": "Subiaco"
+  },
+  {
+   "id": "kings_park_lookout",
+   "position": [
+    -935.59,
+    65.75,
+    1455.61
+   ],
+   "yaw": 3.0739,
+   "name": "Kings Park lookout",
+   "suburb": "West Perth"
+  },
+  {
+   "id": "beaufort_st",
+   "position": [
+    1226.24,
+    17.67,
+    -335.34
+   ],
+   "yaw": 2.658,
+   "name": "Beaufort Street",
+   "suburb": "Highgate"
+  }
+ ],
+ "workshops": [
+  {
+   "id": "home_carport",
+   "position": [
+    -25.57,
+    22.13,
+    -12.1
+   ],
+   "yaw": 1.0793,
+   "name": "Carport",
+   "kinds": [
+    "parts",
+    "tuning"
+   ]
+  },
+  {
+   "id": "spray_shop",
+   "position": [
+    -592.98,
+    19.43,
+    -526.3
+   ],
+   "yaw": -0.4744,
+   "name": "West Perth Smash & Spray",
+   "kinds": [
+    "paint"
+   ],
+   "color": [
+    1.0,
+    0.6,
+    0.35
+   ]
+  },
+  {
+   "id": "fitzgerald_st_servo",
+   "position": [
+    -149.44,
+    15.84,
+    -46.03
+   ],
+   "yaw": -0.4887,
+   "name": "Fitzgerald St servo",
+   "kinds": [
+    "fuel",
+    "wash"
+   ],
+   "color": [
+    0.95,
+    0.85,
+    0.4
+   ]
+  }
+ ]
+}

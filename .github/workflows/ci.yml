@@ -69,3 +69,25 @@ jobs:
             echo "::error::GDScript errors while running traffic"
             exit 1
           fi
+
+      - name: Map test
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/map_test.gd 2>&1 \
+            | tee map.log | grep -E "ok |FAIL|MAP TEST|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" map.log; then
+            echo "::error::GDScript errors while running the map"
+            exit 1
+          fi
+
+  map-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install importer dependencies
+        run: pip install -r tools/osm_import/requirements.txt
+      - name: Importer unit tests
+        run: python -m pytest -q tools/osm_import/tests

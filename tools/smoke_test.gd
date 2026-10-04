@@ -20,6 +20,15 @@ func _process(_delta: float) -> bool:
 	# The scene is loaded on the first frame, once the autoloads exist.
 	if _main == null:
 		_main = load("res://scenes/main.tscn").instantiate()
+		# The car checks need open space: swap the Perth map for the test grid.
+		var world := _main.get_node("LoFi/SubViewport/World")
+		var map := world.get_node_or_null("PerthMap")
+		if map:
+			world.remove_child(map)
+			map.free()
+			var grid: Node = load("res://scenes/world/test_grid.tscn").instantiate()
+			world.add_child(grid)
+			world.move_child(grid, 0)
 		root.add_child(_main)
 		_car = _main.get_node("LoFi/SubViewport/World/Car")
 		var clock := root.get_node("GameClock")

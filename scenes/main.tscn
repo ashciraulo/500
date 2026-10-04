@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Shader" path="res://shaders/lofi_post.gdshader" id="2_post"]
 [ext_resource type="Script" path="res://scripts/world/environment_controller.gd" id="3_env"]
-[ext_resource type="PackedScene" path="res://scenes/world/test_grid.tscn" id="4_grid"]
+[ext_resource type="PackedScene" path="res://map/perth_map.tscn" id="4_map"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/fiat_500_pop.tscn" id="5_car"]
 [ext_resource type="Script" path="res://scripts/camera/car_camera_rig.gd" id="6_cam"]
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="7_hud"]
@@ -114,7 +114,8 @@ visibility_aabb = AABB(-25, -30, -25, 50, 34, 50)
 process_material = SubResource("ParticleProcessMaterial_rain")
 draw_pass_1 = SubResource("QuadMesh_drop")
 
-[node name="TestGrid" parent="LoFi/SubViewport/World" instance=ExtResource("4_grid")]
+[node name="PerthMap" parent="LoFi/SubViewport/World" instance=ExtResource("4_map")]
+target_path = NodePath("../Car")
 
 [node name="Car" parent="LoFi/SubViewport/World" instance=ExtResource("5_car")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)

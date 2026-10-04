@@ -1,0 +1,64 @@
+# Perth map
+
+The drivable city, generated from OpenStreetMap by `tools/osm_import`.
+
+| Path | What it is |
+| --- | --- |
+| `perth_map.tscn` | Drop-in map node (`MapStreamer`). `scenes/main.tscn` uses it with `target_path` pointing at the car. |
+| `scripts/map_streamer.gd` | Streams 500 m tiles around the target, adds colliders near it, runs the night street-light pool. |
+| `scripts/tile_loader.gd` | Decodes a `.p5t` tile into meshes, multimeshes and collision data. |
+| `scripts/map_overview.gd`, `shaders/overview.gdshader` | The far backdrop: a coarse painted heightfield drawn past ~700 m. |
+| `scripts/map_props.gd` | Low-poly trees and street lights (override any with `props/<kind>.tres`). |
+| `materials/`, `textures/` | Generated PS1 `ShaderMaterial`s and 64 px textures, one per surface type. Safe to hand-edit, but `osm_import` rewrites them on every build. |
+| `tiles/` | Generated: `<i>_<j>.p5t` tiles, `<i>_<j>.p5r` traffic road data, `overview.p5o`, `index.json` (spawn, home, markers, landmarks, tile list). |
+
+## World coordinates
+
+- 1 unit = 1 metre. X = east, Z = south (−Z is north), Y = up.
+- Origin: the townhouses on Little Shenton Lane, Northbridge. The player's
+  townhouse (`scenes/home/shenton.tscn`) is placed at its real spot and the car
+  starts in its carport (`MapStreamer.get_spawn_transform()`, `get_home()`).
+- Tile `i_j` covers east `i*500 .. (i+1)*500` and north `j*500 .. (j+1)*500`,
+  so its node sits at `(i*500, 0, -j*500)`. `MapStreamer.tile_at(pos)` converts.
+
+## For other systems
+
+- **Colliders** are `StaticBody3D`s on layer 1 (buildings also on layer 2) with
+  `surface` metadata: asphalt, concrete, brick (red paving), gravel (rail
+  ballast), dirt, grass, sand.
+- **Night**: the map is in the `night_lights` group. `set_night_amount()` turns
+  on lit windows, street lamp heads, and moves a pool of real lights to the
+  street lights nearest the car.
+- **Signals**: `map_ready`, `tile_loaded(key)`, `tile_unloaded(key)`.
+- **Home, job sites and workshops**: `index.json` lists the townhouse and the
+  `JobSite` / `WorkshopSpot` markers from `docs/HOOKS.md`; the streamer adds
+  them once at start (they don't stream). Sites outside the built map appear
+  when a later region covers them. Positions live in `tools/osm_import/config.json`.
+- **Traffic**: each tile has a `.p5r` with its roads, junction controls,
+  rail, stations and bus stops in the `docs/TRAFFIC.md` format. The streamer
+  hands each one to `add_network` the first time the tile loads.
+- `get_landmarks()` returns suburb and square names with XZ positions, for a
+  map screen or GPS later.
+
+## What's in the first slice
+
+CBD, Northbridge, Elizabeth Quay, Kings Park, the Narrows Bridge and the South
+Perth foreshore (120 tiles, about 6 × 5 km). Roads are draped on real terrain,
+bridges are lifted with ramps, the Graham Farmer Freeway tunnel is sunk, and
+the river has a bed under the water surface.
+
+Known simplifications: one asphalt look for all roads, flat or gabled roofs
+only, building heights guessed from size and zone where OSM has no levels,
+no traffic lights or signs yet.
+
+## Regenerating
+
+See `tools/osm_import/README.md`. Tiles are committed so the game runs without
+Python; regenerate only when the importer or style changes, because each full
+rebuild adds about 37 MB to the repository history.
+
+## Credits
+
+Map data © OpenStreetMap contributors, available under the Open Database
+License (ODbL). Elevation: Mapzen/AWS Terrain Tiles (SRTM, Geoscience
+Australia and others). Both need to appear in the game's credits.

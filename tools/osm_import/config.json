@@ -1,0 +1,71 @@
+{
+  "origin": {"name": "Little Shenton Lane townhouses, Northbridge", "lat": -31.9459746, "lon": 115.8539188},
+  "spawn": {
+    "comment": "Player home. On Little Shenton Lane outside the townhouse row, heading SW down the lane.",
+    "lat": -31.9461824,
+    "lon": 115.8537884,
+    "heading_deg": 212
+  },
+  "home": {
+    "comment": "15 Little Shenton Lane. The townhouse scene (art/models, scenes/home) is placed with its origin here; heading_deg is the compass direction its +Z (towards the lane out front) faces. OSM buildings, roads and trees inside footprint [x0, z0, x1, z1] (scene coordinates) are dropped. The front lane is matched to Little Shenton Lane and the carport lane to the service lane behind, splitting the 3 m difference between OSM and the scene.",
+    "name": "15 Little Shenton Lane",
+    "scene": "res://scenes/home/shenton.tscn",
+    "lat": -31.9459635,
+    "lon": 115.853834,
+    "heading_deg": 118.16,
+    "footprint": [-12.0, -28.4, 24.0, 9.0],
+    "spawn_marker": "Spawn_Car"
+  },
+  "places": {
+    "comment": "JobSite and WorkshopSpot markers (docs/HOOKS.md). lat/lon entries snap to the nearest road, on the near side, unless snap is false; home entries are townhouse scene [x, z]. Entries off the built map are left out until a region covers them.",
+    "job_sites": [
+      {"id": "little_shenton_lane", "name": "Little Shenton Lane", "suburb": "Northbridge", "home": [2.7, 6.1]},
+      {"id": "northbridge_piazza", "name": "Northbridge Piazza", "suburb": "Northbridge", "lat": -31.94814, "lon": 115.85662},
+      {"id": "oxford_st", "name": "Oxford Street", "suburb": "Leederville", "lat": -31.9365, "lon": 115.8418},
+      {"id": "subiaco_markets", "name": "Station Street Markets", "suburb": "Subiaco", "lat": -31.9478, "lon": 115.8235},
+      {"id": "kings_park_lookout", "name": "Kings Park lookout", "suburb": "West Perth", "lat": -31.959117, "lon": 115.844293},
+      {"id": "fremantle_markets", "name": "Fremantle Markets", "suburb": "Fremantle", "lat": -32.0569, "lon": 115.7489},
+      {"id": "cottesloe_surf_club", "name": "Surf club car park", "suburb": "Cottesloe", "lat": -31.9945, "lon": 115.751},
+      {"id": "beaufort_st", "name": "Beaufort Street", "suburb": "Highgate", "lat": -31.943, "lon": 115.867},
+      {"id": "albany_hwy", "name": "Albany Highway", "suburb": "Victoria Park", "lat": -31.9745, "lon": 115.8968},
+      {"id": "scarborough_beach", "name": "Scarborough Beach", "suburb": "Scarborough", "lat": -31.894, "lon": 115.7556},
+      {"id": "guildford_antiques", "name": "James Street antiques", "suburb": "Guildford", "lat": -31.8996, "lon": 115.9717}
+    ],
+    "workshops": [
+      {"id": "home_carport", "name": "Carport", "kinds": ["parts", "tuning"], "home": [1.3, -20.6]},
+      {"id": "spray_shop", "name": "West Perth Smash & Spray", "kinds": ["paint"], "color": [1.0, 0.6, 0.35], "lat": -31.941157, "lon": 115.847485},
+      {"id": "fitzgerald_st_servo", "name": "Fitzgerald St servo", "kinds": ["fuel", "wash"], "color": [0.95, 0.85, 0.4], "lat": -31.9455595, "lon": 115.8523382, "heading_deg": 28, "snap": false}
+    ]
+  },
+  "tile_size": 500,
+  "grid_step": 5.0,
+  "data_margin": 400,
+  "sources": {
+    "osm_pbf": "https://download.bbbike.org/osm/bbbike/Perth/Perth.osm.pbf",
+    "dem_tiles": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+    "dem_zoom": 14
+  },
+  "regions": {
+    "first_slice": {"stage": 1, "description": "CBD, Northbridge, Elizabeth Quay, Kings Park, the Narrows Bridge and the South Perth foreshore", "bbox": [115.822, -31.978, 115.878, -31.938]},
+    "leederville_subiaco": {"stage": 2, "description": "Leederville, West Leederville and Subiaco", "bbox": [115.8, -31.954, 115.842, -31.926]},
+    "east_perth": {"stage": 2, "description": "East Perth, Claisebrook and Optus Stadium", "bbox": [115.866, -31.964, 115.896, -31.938]},
+    "victoria_park": {"stage": 2, "description": "Victoria Park, Burswood and the Causeway", "bbox": [115.872, -31.992, 115.91, -31.96]},
+    "stirling_hwy_fremantle": {
+      "stage": 3,
+      "description": "Stirling Highway corridor from Crawley to Fremantle, plus central Fremantle",
+      "corridor": {"roads": ["Stirling Highway", "Mounts Bay Road"], "buffer": 160, "bbox": [115.735, -32.065, 115.835, -31.96]},
+      "extra_bbox": [115.738, -32.064, 115.76, -32.045]
+    },
+    "canning_hwy": {
+      "stage": 3,
+      "description": "Canning Highway corridor from South Perth to Fremantle",
+      "corridor": {"roads": ["Canning Highway"], "buffer": 160, "bbox": [115.74, -32.06, 115.88, -31.965]}
+    },
+    "coast_road": {
+      "stage": 3,
+      "description": "West Coast Highway / Marine Parade from Fremantle to Scarborough via Cottesloe",
+      "corridor": {"roads": ["West Coast Highway", "Marine Parade", "Curtin Avenue", "West Coast Drive", "The Esplanade"], "buffer": 200, "bbox": [115.74, -32.05, 115.775, -31.88]}
+    }
+  },
+  "cbd_bbox": [115.848, -31.962, 115.873, -31.9505]
+}

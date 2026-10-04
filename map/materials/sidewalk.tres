@@ -1,0 +1,11 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://shaders/ps1_surface.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://map/textures/sidewalk.png" id="2_albedo"]
+
+[resource]
+resource_name = "sidewalk"
+shader = ExtResource("1_shader")
+shader_parameter/albedo_texture = ExtResource("2_albedo")
+shader_parameter/roughness = 0.92
+shader_parameter/wet_response = 0.6

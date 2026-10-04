@@ -129,13 +129,13 @@ func _run_step() -> bool:
 				clock.set_time(8.0)
 				_root3d.queue_free()
 				_next()
-		5:  # The main scene gets traffic on the test grid.
+		5:  # The main scene gets traffic on the Perth map's roads.
 			if _main == null:
 				_main = load("res://scenes/main.tscn").instantiate()
 				root.add_child(_main)
 			if _seconds() >= 8.0:
 				var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
-				_check(traffic.graph.roads.size() > 80, "main scene loads the test grid network (%d roads)" % traffic.graph.roads.size())
+				_check(traffic.graph.roads.size() > 80, "main scene loads the map's road network (%d roads)" % traffic.graph.roads.size())
 				_check(traffic.vehicles.size() > 3, "main scene has traffic near the start (%d cars)" % traffic.vehicles.size())
 				var car = _main.get_node("LoFi/SubViewport/World/Car")
 				_check(car.collision_mask & 4 != 0, "the player's car collides with traffic")

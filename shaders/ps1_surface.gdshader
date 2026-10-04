@@ -22,6 +22,9 @@ uniform float roughness : hint_range(0.0, 1.0) = 0.9;
 uniform float metallic : hint_range(0.0, 1.0) = 0.0;
 uniform vec4 emission_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 uniform float emission_energy = 0.0;
+// Optional emission mask (e.g. lit windows). White by default, so emission_color
+// alone still works as before.
+uniform sampler2D emission_texture : source_color, filter_nearest_mipmap, repeat_enable, hint_default_white;
 // 0 = ignores rain, 1 = road surface (darkens and gets glossy when wet).
 uniform float wet_response : hint_range(0.0, 1.0) = 0.0;
 // World-space blockout grid. 0 disables it.
@@ -69,5 +72,5 @@ void fragment() {
 	ROUGHNESS = mix(roughness, 0.12, wet);
 	METALLIC = metallic;
 	SPECULAR = mix(0.15, 0.8, wet);
-	EMISSION = emission_color.rgb * emission_energy;
+	EMISSION = emission_color.rgb * emission_energy * texture(emission_texture, uv).rgb;
 }

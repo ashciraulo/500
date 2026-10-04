@@ -9,3 +9,5 @@
 *.wav    binary
 *.mp3    binary
 *.pbf    binary
+*.p5t    binary
+*.p5o    binary
