@@ -1,10 +1,10 @@
 """Points of interest for side activities (index.json "pois", docs/HOOKS.md).
 
 Every entry is somewhere worth driving to: lookouts, beaches, servos,
-drive-thrus, quiet spots to park and watch the city, and the hand-built
-landmarks. Each has a spot on the ground to stop the car (`p`, snapped to a
-road or in a car park), the facing for that spot, and the feature itself
-(`at`).
+drive-thrus, quiet spots to park and watch the city, fishing spots on jetties,
+groynes and foreshores, and the hand-built landmarks. Each has a spot on the
+ground to stop the car (`p`, snapped to a road or in a car park), the facing
+for that spot, and the feature itself (`at`; for a jetty, its far end).
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from shapely.geometry import Point
 from shapely.strtree import STRtree
 
 from . import places
+from .meshbuild import polygons_of
 from .places import godot_yaw
 
 LOOKOUT_PARK = 250.0  # metres from a lookout to the road or car park you leave the car in
@@ -61,6 +62,7 @@ class _Lots:
 
 def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[dict]:
     """POIs inside this build's terrain and on built tiles."""
+    from .build import deck_heights  # build imports this module
     hf = world.hf
     lots = _Lots(world)
     zoo = shapely.union_all([a.geom for a in world.poi_areas if a.tags.get("tourism") == "zoo"]) \
@@ -107,9 +109,28 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
             return (snap[0], snap[1]), snap[2]
         return None, None
 
+    decks = {oid: (g, kind) for g, kind, oid in world.decks}
     seen = []
-    # Hand-picked quiet spots and lookouts (config "pois").
+    # Hand-picked quiet spots, lookouts and fishing spots (config "pois").
     for spec in cfg.get("pois", {}).get("spots", []):
+        if "pier" in spec:
+            # Fishing off a jetty or groyne: park at its shore end, `at` is the far end.
+            if spec["pier"] not in decks:
+                continue
+            g, kind = decks[spec["pier"]]
+            ring = np.asarray(max(polygons_of(g), key=lambda q: q.area).exterior.coords)
+            land = ring[int(np.argmax(hf.sample(ring[:, 0], ring[:, 1])))]
+            far = ring[int(np.argmax(np.hypot(*(ring - land).T)))]
+            top, _ = deck_heights(hf, max(polygons_of(g), key=lambda q: q.area), kind)
+            park, _ = park_near(float(land[0]), float(land[1]), SPOT_PARK)
+            if park is None:
+                continue
+            at = (float(far[0]), float(far[1]))
+            add(spec["id"], spec["kind"], spec["name"], at, park,
+                godot_yaw(at[0] - park[0], at[1] - park[1]), suburb=spec.get("suburb", ""))
+            if spec["id"] in out:
+                out[spec["id"]]["at"][1] = round(top, 2)
+            continue
         e, n = proj.fwd(spec["lon"], spec["lat"])
         at = proj.fwd(*spec["look_at"]) if "look_at" in spec else (e, n)
         park, yaw = (e, n), None
@@ -117,9 +138,16 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
             park, yaw = park_near(e, n, SPOT_PARK)
             if park is None:
                 continue
-        if "look_at" in spec:
+        if spec["kind"] == "fishing":
+            # Cast from the water's edge nearest the car.
+            edge = _water_edge(world, park, 150.0)
+            if edge is not None:
+                at = edge[:2]
+        if "look_at" in spec or spec["kind"] == "fishing":
             yaw = godot_yaw(at[0] - park[0], at[1] - park[1])
         add(spec["id"], spec["kind"], spec["name"], at, park, yaw, suburb=spec.get("suburb", ""))
+        if spec["kind"] == "fishing" and spec["id"] in out:
+            out[spec["id"]]["at"][1] = round(edge[2], 2) if edge is not None else max(out[spec["id"]]["at"][1], 0.0)
         seen.append((e, n))
     # Lookouts: OSM viewpoints, named or not (zoo enclosures aren't views).
     for oid, t, e, n in world.poi_nodes:
@@ -171,6 +199,24 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
             continue
         add(f"landmark_{lm.id}", "landmark", lm.name, (e, n), park, None, suburb=lm.suburb)
     return list(out.values())
+
+
+def _water_edge(world, park, radius: float):
+    """Nearest point on a shore at about sea level (the river, its coves and
+    marinas) within `radius` of park, as (e, n, water level), or None."""
+    from shapely.ops import nearest_points
+    p = Point(*park)
+    best = None
+    for wb in world.water:
+        if wb.level > 3.0:  # a pond up in a park, not the river
+            continue
+        d = wb.geom.distance(p)
+        if d < radius and (best is None or d < best[0]):
+            best = (d, wb.geom, wb.level)
+    if best is None:
+        return None
+    q = nearest_points(best[1].boundary if best[0] == 0 else best[1], p)[0]
+    return float(q.x), float(q.y), float(best[2])
 
 
 def _suburb(world, e, n) -> str:

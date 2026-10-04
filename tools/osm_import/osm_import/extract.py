@@ -70,9 +70,14 @@ def _keep(tags) -> dict:
     return {t.k: t.v for t in tags if t.k in KEEP or t.k.startswith(KEEP_PREFIX)}
 
 
+PIER_LINES = ("pier", "breakwater", "groyne")
+
+
 def _linear_way(tags) -> bool:
     if "highway" in tags or "railway" in tags:
         return tags.get("area") != "yes"
+    if tags.get("man_made") in PIER_LINES:
+        return True  # areas come through as areas too; build.World keeps only open ways
     return tags.get("natural") == "tree_row" or tags.get("waterway") in ("river", "stream", "canal", "drain")
 
 
@@ -88,7 +93,7 @@ def _area_way(tags) -> bool:
 
 def extract(pbf: Path, proj: Projector, bbox_lonlat: tuple, use_cache: bool = True) -> Features:
     """bbox_lonlat = (lon0, lat0, lon1, lat1)."""
-    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 9)).encode()).hexdigest()[:16]
+    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 10)).encode()).hexdigest()[:16]
     cache = CACHE_DIR / f"features_{key}.pkl"
     if use_cache and cache.exists():
         with open(cache, "rb") as f:

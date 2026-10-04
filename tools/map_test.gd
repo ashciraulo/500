@@ -51,6 +51,16 @@ func _process(_delta: float) -> bool:
 			_check(spots.has("home_carport") and _flat(spots.home_carport.global_position).distance_to(_flat(_spawn.origin)) < 1.0,
 				"the car starts in the carport bay")
 			_check(spots.has("fitzgerald_st_servo") and spots.fitzgerald_st_servo.offers("fuel"), "the servo sells fuel")
+			var galup: Dictionary = {}
+			for lake: Dictionary in _map.get_lakes():
+				if lake.name == "Galup":
+					galup = lake
+			var mid := Vector2.ZERO
+			for p: Vector2 in galup.get("outline", PackedVector2Array()):
+				mid += p / galup.outline.size()
+			_check(not galup.is_empty() and absf(_map.water_level_at(Vector3(mid.x, 0, mid.y)) - galup.level) < 0.01,
+				"Lake Monger has a water level (%.2f)" % galup.get("level", NAN))
+			_check(is_nan(_map.water_level_at(_spawn.origin)), "no lake at home")
 			_next()
 		1:
 			if _seconds() >= 3.0:

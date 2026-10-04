@@ -36,6 +36,7 @@ from .variant import pack_tile
 
 RIVER_LEVEL = 0.0
 HOME_RAMP = 30.0        # roads ease to the townhouse's ground over this distance
+PIER_WIDTH = {"pier": 3.0, "breakwater": 6.0, "groyne": 5.0}  # metres, when OSM has no width
 ROAD_OFFSET = 0.02      # road surface above terrain
 PATH_OFFSET = 0.04
 SIDEWALK_TOP = 0.16
@@ -68,11 +69,24 @@ class WaterBody:
     geom: object
     level: float
     big: bool
+    name: str = ""
 
 
 # ---------------------------------------------------------------------------
 # World preparation (shared by every tile in a build)
 # ---------------------------------------------------------------------------
+
+def deck_heights(hf, poly, kind: str) -> tuple[float, float]:
+    """Top and bottom of a pier, groyne or platform deck."""
+    ring = np.asarray(poly.exterior.coords)
+    gh = hf.sample(ring[:, 0], ring[:, 1])
+    if kind in ("pier", "groyne"):
+        # Out over the water: above the waves, or level with the shore it leaves.
+        top = max(float(np.max(gh)) if kind == "pier" else float(np.median(gh)) + 0.6,
+                  RIVER_LEVEL + (1.2 if kind == "pier" else 1.6))
+        return top, min(float(np.min(gh)), RIVER_LEVEL) - 1.0
+    return float(np.median(gh)) + 0.9, float(np.min(gh)) - 0.3
+
 
 class World:
     def __init__(self, cfg: dict, proj: Projector, feats, hf: HeightField):
@@ -97,9 +111,16 @@ class World:
         if self.home:
             self._level_to_home(src_ways, node_h)
         self.ways: list[LinearWay] = []
+        self.decks = []        # piers and platforms: (polygon, kind, osm id)
         for w in src_ways:
             g = way_group(w.tags)
             if not g:
+                mm = w.tags.get("man_made")
+                if mm in PIER_WIDTH and len(w.coords) > 1 and not np.allclose(w.coords[0], w.coords[-1]):
+                    # Jetties and groynes drawn as a line: a deck of their usual width.
+                    width = styles._num(w.tags.get("width"), PIER_WIDTH[mm]) or PIER_WIDTH[mm]
+                    self.decks.append((LineString(w.coords).buffer(width / 2, cap_style=2),
+                                       "pier" if mm == "pier" else "groyne", w.id))
                 continue
             hmap = node_h[g]
             h = np.array([hmap[int(n)] for n in w.nodes])
@@ -121,7 +142,6 @@ class World:
         self.cover: list[tuple[str, int, object]] = []
         self.buildings = []
         self.parts = []
-        self.decks = []        # piers and platforms: (polygon, kind)
         self.parking = []      # amenity=parking / parking_space areas, for traffic
         for a in feats.areas:
             t = a.tags
@@ -135,7 +155,8 @@ class World:
                 self.buildings.append(a)
                 continue
             if t.get("man_made") == "pier" or t.get("railway") == "platform":
-                self.decks.append((a.geom, "pier" if t.get("man_made") == "pier" else "platform"))
+                # (Breakwater and groyne areas stay terrain: some carry roads, like North Mole.)
+                self.decks.append((a.geom, "pier" if t.get("man_made") == "pier" else "platform", a.id))
                 continue
             lc = styles.landcover(t)
             if lc is None:
@@ -229,7 +250,7 @@ class World:
         hb = self.hf.sample(ring[:, 0], ring[:, 1])
         big = area > 3000
         level = float(np.percentile(hb, 10)) - (0.4 if big else 0.0)
-        return WaterBody(g, level, big)
+        return WaterBody(g, level, big, t.get("name", ""))
 
     def _resolve_building_parts(self):
         """Buildings drawn from building:part pieces skip their outline."""
@@ -759,21 +780,14 @@ class TileBuilder:
 
     def _decks(self):
         hf = self.w.hf
-        for g, kind in self.w.decks:
+        for g, kind, _ in self.w.decks:
             for p in polygons_of(g):
                 c = p.representative_point()
                 if not self.box.contains(c):
                     continue
                 p = orient(p, 1.0)
-                ring = np.asarray(p.exterior.coords)
-                gh = hf.sample(ring[:, 0], ring[:, 1])
-                if kind == "pier":
-                    top = max(float(np.max(gh)), RIVER_LEVEL + 1.2)
-                    bottom = RIVER_LEVEL - 1.0
-                else:
-                    top = float(np.median(gh)) + 0.9
-                    bottom = float(np.min(gh)) - 0.3
-                surf = self.mb.surface("props", "path" if kind == "pier" else "sidewalk", "world")
+                top, bottom = deck_heights(hf, p, kind)
+                surf = self.mb.surface("props", {"pier": "path", "groyne": "concrete"}.get(kind, "sidewalk"), "world")
                 flat_cap(surf, p, top, 3.0)
                 side = self.mb.surface("props", "concrete", "world")
                 for r in [p.exterior, *p.interiors]:
@@ -1098,6 +1112,28 @@ def _write_index(cfg, proj, world: World, index: dict, path: Path, region_of: di
             e, n = proj.fwd(lon, lat)
             landmarks[tags["name"]] = [round(e, 1), round(-n, 1)]
     index["landmarks"] = dict(sorted(landmarks.items()))
+    # Lakes and ponds with their water level, in lakes.json (MapStreamer.water_level_at):
+    # rebuilt where this build has terrain, kept elsewhere.
+    lakes = {}
+    for wb in world.water:
+        if wb.level == RIVER_LEVEL or wb.geom.area < 1500:
+            continue
+        for poly in polygons_of(wb.geom):
+            c = poly.representative_point()
+            if not inside_hf(c.x, c.y) or poly.area < 1500:
+                continue
+            ring = np.asarray(poly.exterior.simplify(4.0).coords)[:-1]
+            lakes[(wb.name, round(c.x), round(c.y))] = {
+                "name": wb.name, "level": round(wb.level, 2),
+                "outline": [[round(float(e), 1), round(float(-n), 1)] for e, n in ring]}
+    lakes_path = path.with_name("lakes.json")
+    old = json.loads(lakes_path.read_text()) if lakes_path.exists() else []
+    kept = [l for l in old if not inside_hf(l["outline"][0][0], -l["outline"][0][1])]
+    # One lake per line: the outlines would be most of index.json in its layout.
+    rows = [json.dumps(l, separators=(",", ":")) for l in
+            sorted(kept + list(lakes.values()), key=lambda l: (l["name"], l["outline"][0]))]
+    lakes_path.write_text("[\n" + ",\n".join(rows) + "\n]\n")
+    index.pop("lakes", None)
     _write_places(cfg, proj, world, index, inside_hf, region_of)
     index["tiles"] = dict(sorted(index["tiles"].items(), key=lambda kv: (kv[1]["j"], kv[1]["i"])))
     path.write_text(json.dumps(index, indent=1) + "\n")

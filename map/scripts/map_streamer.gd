@@ -58,6 +58,8 @@ var _has_last_safe := false
 var _pools_on := true
 var _traffic_sent := {}   # Vector2i -> true: tiles whose roads traffic already has
 var _traffic_queue: Array[Dictionary] = []
+var _lakes: Array[Dictionary] = []  # from lakes.json, read on first use
+var _lakes_read := false
 
 
 func _ready() -> void:
@@ -210,6 +212,38 @@ func get_pois(kind := "") -> Array[Dictionary]:
 		poi.at = Vector3(at[0], at[1], at[2])
 		out.append(poi)
 	return out
+
+
+## Water surface height of the lake or pond under a world position, from
+## lakes.json next to index.json, or NAN off them (the river and sea are at y 0).
+func water_level_at(pos: Vector3) -> float:
+	var at := Vector2(pos.x, pos.z)
+	for lake: Dictionary in _get_lakes():
+		var box: Rect2 = lake.box
+		if box.has_point(at) and Geometry2D.is_point_in_polygon(at, lake.outline):
+			return lake.level
+	return NAN
+
+
+## Named and unnamed lakes and ponds: name, level, outline (x, z) and its box.
+func get_lakes() -> Array[Dictionary]:
+	return _get_lakes().duplicate()
+
+
+func _get_lakes() -> Array[Dictionary]:
+	if not _lakes_read:
+		_lakes_read = true
+		var path := tiles_dir.path_join("lakes.json")
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else []
+		for entry: Dictionary in data if data is Array else []:
+			var outline := PackedVector2Array()
+			for p: Array in entry.outline:
+				outline.append(Vector2(p[0], p[1]))
+			var box := Rect2(outline[0], Vector2.ZERO)
+			for p in outline:
+				box = box.expand(p)
+			_lakes.append({ name = entry.name, level = float(entry.level), outline = outline, box = box })
+	return _lakes
 
 
 ## Tile key containing a world position.

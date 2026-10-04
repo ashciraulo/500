@@ -84,7 +84,7 @@
   },
   "cbd_bbox": [115.848, -31.962, 115.873, -31.9505],
   "pois": {
-    "comment": "Hand-picked stops for the POI export (osm_import/pois.py). look_at is [lon, lat] of what the car faces.",
+    "comment": "Hand-picked stops for the POI export (osm_import/pois.py). look_at is [lon, lat] of what the car faces. A pier spot names an OSM jetty or groyne way: the car parks at its shore end and at is its far end.",
     "spots": [
       {"id": "lookout_fraser_avenue", "kind": "lookout", "name": "Fraser Avenue lookout", "suburb": "Kings Park", "lat": -31.95995, "lon": 115.8441, "look_at": [115.859, -31.955]},
       {"id": "quiet_point_fraser", "kind": "quiet_spot", "name": "Point Fraser", "suburb": "East Perth", "lat": -31.9637, "lon": 115.8766, "look_at": [115.86, -31.956]},
@@ -92,7 +92,18 @@
       {"id": "quiet_matagarup_car_park", "kind": "quiet_spot", "name": "Burswood riverside", "suburb": "Burswood", "lat": -31.9542, "lon": 115.887, "look_at": [115.86, -31.955]},
       {"id": "quiet_lake_monger", "kind": "quiet_spot", "name": "Lake Monger", "suburb": "Wembley", "lat": -31.929, "lon": 115.8332, "look_at": [115.858, -31.953]},
       {"id": "quiet_hyde_park", "kind": "quiet_spot", "name": "Hyde Park", "suburb": "Highgate", "lat": -31.9386, "lon": 115.8621},
-      {"id": "quiet_reabold_hill", "kind": "quiet_spot", "name": "Reabold Hill", "suburb": "Bold Park", "lat": -31.9456, "lon": 115.7765, "look_at": [115.75, -31.95]}
+      {"id": "quiet_reabold_hill", "kind": "quiet_spot", "name": "Reabold Hill", "suburb": "Bold Park", "lat": -31.9456, "lon": 115.7765, "look_at": [115.75, -31.95]},
+      {"id": "fishing_south_mole", "kind": "fishing", "name": "South Mole", "suburb": "Fremantle", "pier": 321065714},
+      {"id": "fishing_north_mole", "kind": "fishing", "name": "North Mole", "suburb": "North Fremantle", "lat": -32.052, "lon": 115.7259, "look_at": [115.7247, -32.0538]},
+      {"id": "fishing_south_cottesloe_groyne", "kind": "fishing", "name": "South Cottesloe Groyne", "suburb": "Cottesloe", "lat": -32.0072, "lon": 115.7525, "look_at": [115.7495, -32.0073]},
+      {"id": "fishing_point_walter_jetty", "kind": "fishing", "name": "Point Walter Jetty", "suburb": "Bicton", "pier": 273702981},
+      {"id": "fishing_mends_street_jetty", "kind": "fishing", "name": "Mends Street Jetty", "suburb": "South Perth", "pier": 8067081},
+      {"id": "fishing_coode_street_jetty", "kind": "fishing", "name": "Coode Street Jetty", "suburb": "South Perth", "pier": 241155387},
+      {"id": "fishing_elizabeth_quay_jetty", "kind": "fishing", "name": "Barrack Street Jetty", "suburb": "Perth", "pier": 396347489},
+      {"id": "fishing_claisebrook_cove", "kind": "fishing", "name": "Claisebrook Cove", "suburb": "East Perth", "lat": -31.9585, "lon": 115.876, "look_at": [115.87688, -31.95913]},
+      {"id": "fishing_matilda_bay", "kind": "fishing", "name": "Matilda Bay", "suburb": "Crawley", "pier": 8075825},
+      {"id": "fishing_canning_bridge", "kind": "fishing", "name": "Canning Bridge", "suburb": "Applecross", "lat": -32.0063, "lon": 115.8478, "look_at": [115.85, -32.006]},
+      {"id": "fishing_garratt_road_bridge", "kind": "fishing", "name": "Garratt Road Bridge", "suburb": "Bayswater", "pier": 300110699}
     ]
   }
 }

@@ -40,10 +40,18 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
 - **Points of interest**: `get_pois(kind := "")` lists places worth driving
   to, from `index.json` "pois": `lookout` (OSM viewpoints plus hand-picked
   ones), `beach` (stop in its car park), `servo`, `drive_thru`, `quiet_spot`
-  (hand-picked places to park and watch the city) and `landmark` (the
-  hand-built ones below). Each has a stable `id`, `name`, `suburb`, `p`
-  (where to stop the car), `yaw` (facing there) and `at` (the feature).
-  Hand-picked stops live in `tools/osm_import/config.json` "pois".
+  (hand-picked places to park and watch the city), `fishing` (hand-picked
+  jetties, groynes and foreshores; `at` is the jetty's far end or the water's
+  edge) and `landmark` (the hand-built ones below). Each has a stable `id`,
+  `name`, `suburb`, `p` (where to stop the car), `yaw` (facing there) and
+  `at` (the feature). Hand-picked stops live in
+  `tools/osm_import/config.json` "pois"; ones off the built map appear when a
+  region covers them.
+- **Lakes**: `water_level_at(pos)` is the water surface height of the lake or
+  pond under `pos`, or NAN; `get_lakes()` lists them (name, level, outline in
+  x/z). From `map/tiles/lakes.json`, one lake per line. Jetties and groynes
+  OSM draws as a line are built as walkable decks like the ones drawn as
+  areas.
 - **Landmarks**: the Bell Tower, Elizabeth Quay Bridge, Matagarup Bridge,
   Optus Stadium, the State War Memorial, the Round House and the Indiana Tea
   House are low-poly models built by `tools/osm_import/osm_import/landmarks.py`

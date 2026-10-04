@@ -252,9 +252,11 @@ records).
   `scenes/main.tscn`) spawns them. The home carport needs the `cars` and
   `restore` kinds (map/tiles/index.json) for swapping cars and restoration.
 - **Points of interest** from the map: `PerthMap.get_pois(kind)` returns
-  lookouts, beaches, servos, drive-thrus, quiet spots and landmarks, each
-  with a stable `id`, a stop for the car (`p`, `yaw`) and the feature's own
-  position (`at`). See map/README.md.
+  lookouts, beaches, servos, drive-thrus, quiet spots, fishing spots and
+  landmarks, each with a stable `id`, a stop for the car (`p`, `yaw`) and the
+  feature's own position (`at`). `PerthMap.water_level_at(pos)` gives the
+  surface height of the lake or pond under `pos` (NAN elsewhere; the river
+  and sea are at y 0). See map/README.md.
 - **Classics** (autoload `Classics`): you hear rumours (one per tier
   completed, one per night at the car meet), and each one makes its `BarnFind`
   wreck appear. Stopping next to the wreck claims it. Restoration stages are in
