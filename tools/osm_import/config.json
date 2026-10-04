@@ -82,5 +82,17 @@
       "extra_bbox": [115.963, -31.905, 115.978, -31.894]
     }
   },
-  "cbd_bbox": [115.848, -31.962, 115.873, -31.9505]
+  "cbd_bbox": [115.848, -31.962, 115.873, -31.9505],
+  "pois": {
+    "comment": "Hand-picked stops for the POI export (osm_import/pois.py). look_at is [lon, lat] of what the car faces.",
+    "spots": [
+      {"id": "lookout_fraser_avenue", "kind": "lookout", "name": "Fraser Avenue lookout", "suburb": "Kings Park", "lat": -31.95995, "lon": 115.8441, "look_at": [115.859, -31.955]},
+      {"id": "quiet_point_fraser", "kind": "quiet_spot", "name": "Point Fraser", "suburb": "East Perth", "lat": -31.9637, "lon": 115.8766, "look_at": [115.86, -31.956]},
+      {"id": "quiet_mill_point_foreshore", "kind": "quiet_spot", "name": "South Perth foreshore", "suburb": "South Perth", "lat": -31.9686, "lon": 115.8532, "look_at": [115.859, -31.956]},
+      {"id": "quiet_matagarup_car_park", "kind": "quiet_spot", "name": "Burswood riverside", "suburb": "Burswood", "lat": -31.9542, "lon": 115.887, "look_at": [115.86, -31.955]},
+      {"id": "quiet_lake_monger", "kind": "quiet_spot", "name": "Lake Monger", "suburb": "Wembley", "lat": -31.929, "lon": 115.8332, "look_at": [115.858, -31.953]},
+      {"id": "quiet_hyde_park", "kind": "quiet_spot", "name": "Hyde Park", "suburb": "Highgate", "lat": -31.9386, "lon": 115.8621},
+      {"id": "quiet_reabold_hill", "kind": "quiet_spot", "name": "Reabold Hill", "suburb": "Bold Park", "lat": -31.9456, "lon": 115.7765, "look_at": [115.75, -31.95]}
+    ]
+  }
 }

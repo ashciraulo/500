@@ -214,3 +214,34 @@ def test_roads_level_with_home_at_its_edge():
     assert np.isclose(h[int(s.nodes[1])], 22.0) and np.isclose(h[2], 22.0)
     assert np.isclose(h[1], 20.0)  # past the ramp, its own height
     assert HOME_RAMP < 70
+
+
+def test_landmarks_build_closed_solid_shapes():
+    from shapely.geometry import LineString, Point
+    from osm_import import landmarks
+    from osm_import.meshbuild import MeshBuilder
+    hf = flat_field(10.0)
+    foot = {"bell_tower": Point(0, 0).buffer(9), "obelisk": box(-4, -4, 4, 4),
+            "stadium": Point(0, 0).buffer(130).intersection(box(-150, -110, 150, 110)),
+            "round_house": Point(0, 0).buffer(6), "tea_house": box(-20, -12, 20, 12)}
+    for kind, geom in foot.items():
+        mb = MeshBuilder()
+        lm = landmarks.Landmark(kind, kind, kind, ("area", 1), geom=geom)
+        landmarks.build(mb, lm, hf)
+        v = np.concatenate([s.arrays()[0] for s in mb.meshes[landmarks.MESH].values()])
+        assert v[:, 2].min() >= 9.0 and v[:, 2].max() > 15.0, kind
+        assert np.hypot(v[:, 0], v[:, 1]).max() < 200, kind
+    for kind in ("eq_bridge", "matagarup"):
+        mb = MeshBuilder()
+        lm = landmarks.Landmark(kind, kind, kind, ("way", 1), geom=LineString([(0, 0), (300, 0)]),
+                                h=np.array([12.0, 12.0]))
+        landmarks.build(mb, lm, hf)
+        v = np.concatenate([s.arrays()[0] for s in mb.meshes[landmarks.MESH].values()])
+        assert v[:, 2].max() > 30.0 and v[:, 2].min() > 11.0, kind
+        assert mb.meshes[landmarks.DETAIL], kind  # hangers
+
+
+def test_poi_slugs():
+    from osm_import.pois import NOT_A_VIEW, slug
+    assert slug("Fraser Avenue lookout") == "fraser_avenue_lookout"
+    assert NOT_A_VIEW.search("Tiger enclosure") and not NOT_A_VIEW.search("Two Rivers Lookout")

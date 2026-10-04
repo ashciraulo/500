@@ -12,6 +12,7 @@ var _car: RigidBody3D
 var _failures: Array[String] = []
 var _step := 0
 var _frame := 0
+var _park := Vector3.ZERO
 var _spawn := Transform3D()
 
 
@@ -88,7 +89,16 @@ func _process(_delta: float) -> bool:
 				_check(_map.has_collision_at(_car.global_position), "colliders are built where the car is restored")
 				_check(absf(_car.global_position.y - 66.0) < 2.0, "restored car stays on the ground (y=%.1f)" % _car.global_position.y)
 				_next()
-		5:  # A save from before the map (test grid height) would leave the car under Perth.
+		5:  # Off the end of the built map: back to where it last drove, not home.
+			if _frame == 1:
+				_park = _car.global_position
+				_car.global_position = Vector3(40000.0, 60.0, 0.0)
+				_car.linear_velocity = Vector3.ZERO
+			if _seconds() >= 2.5:
+				_check(_flat(_car.global_position).distance_to(_flat(_park)) < 6.0,
+					"a car off the map goes back to where it last drove (%.0f m away)" % _flat(_car.global_position).distance_to(_flat(_park)))
+				_next()
+		6:  # A save from before the map (test grid height) would leave the car under Perth.
 			if _frame == 1:
 				_car.global_position = Vector3(0.0, 0.3, 8.0)
 				_car.linear_velocity = Vector3.ZERO

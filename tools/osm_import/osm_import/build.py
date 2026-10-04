@@ -21,7 +21,7 @@ import shapely
 from shapely.geometry import LineString, Point, Polygon, box as sbox
 from shapely.geometry.polygon import orient
 
-from . import fetch, places, styles, textures
+from . import fetch, landmarks, places, pois, styles, textures
 from .traffic import TrafficNetwork
 from .common import (CACHE_DIR, MAP_DIR, TILES_DIR, Projector, TileKey, load_config,
                      stable_rng, tiles_for_bbox)
@@ -93,6 +93,7 @@ class World:
             self.home.h = self._home_ground()
             src_ways = [_split_at_edge(w, self.home.footprint) for w in feats.ways]
         node_h = compute_node_heights(src_ways, hf)
+        self.carriageway_moves = _level_carriageways(src_ways, node_h)
         if self.home:
             self._level_to_home(src_ways, node_h)
         self.ways: list[LinearWay] = []
@@ -149,13 +150,25 @@ class World:
             fp = self.home.footprint.buffer(0.5)
             self.buildings = [b for b in self.buildings if not fp.contains(b.geom.representative_point())]
         self.water_union = shapely.union_all([w.geom for w in self.water]) if self.water else Polygon()
+        # Hand-built landmarks replace whatever OSM buildings stand on them.
+        self.landmarks = landmarks.collect(feats, self.ways)
+        zones = [z for z in (lm.clear_zone() for lm in self.landmarks) if not z.is_empty]
+        self.landmark_zone = shapely.union_all(zones) if zones else Polygon()
+        if zones:
+            self.buildings = [b for b in self.buildings
+                              if not self.landmark_zone.contains(b.geom.representative_point())]
         self.trees = feats.trees
+        if zones and len(self.trees):
+            self.trees = self.trees[~shapely.contains(self.landmark_zone, shapely.points(self.trees))]
         if self.home and len(self.trees):
             inside = shapely.contains(self.home.footprint, shapely.points(self.trees))
             self.trees = self.trees[~inside]
         self.named = feats.named_nodes
         self.control_nodes = feats.control_nodes
         self.bus_routes = getattr(feats, "bus_routes", [])
+        self.poi_nodes = getattr(feats, "poi_nodes", [])
+        self.poi_areas = [a for a in feats.areas if a.tags.get("natural") == "beach"
+                          or a.tags.get("amenity") in ("fuel", "fast_food") or a.tags.get("tourism") == "zoo"]
         self._sculpt_terrain()
         print(f"  world prepared in {time.time() - t0:.1f}s: {len(self.ways)} ways, "
               f"{len(self.buildings)} buildings, {len(self.water)} water bodies")
@@ -341,6 +354,61 @@ class World:
 # Per-tile building
 # ---------------------------------------------------------------------------
 
+TOUCH = 1.0      # carriageways closer than this past their kerbs share one road surface
+MISMATCH = 0.3   # height difference across a divided road that shows as a step
+
+
+def _level_carriageways(ways, node_h, passes=3):
+    """Bring the two halves of a divided road to the same height.
+
+    Each carriageway's heights come from the DEM along its own centre line, so
+    on a street that runs across a slope (St Georges Terrace) the uphill half
+    sits a metre above the downhill one. Both are draped into one road
+    surface, and where they meet the ground saw-tooths between the two. Nodes
+    of a one-way road move towards the height of the opposite one-way of the
+    same name beside it. Returns {node id: (e, n, change)} for nodes that
+    moved, so a rebuild can find the tiles that changed."""
+    hmap = node_h.get("road")
+    if not hmap:
+        return {}
+    by_name: dict[str, list] = {}
+    for w in ways:
+        t = w.tags
+        if way_group(t) == "road" and t.get("oneway") in ("yes", "-1") and t.get("name") \
+                and not styles.is_bridge(t) and not styles.is_tunnel(t) and len(w.coords) > 1:
+            by_name.setdefault(t["name"], []).append(w)
+    before = dict(hmap)
+    for _ in range(passes):
+        targets: dict[int, list] = {}
+        for group in by_name.values():
+            if len(group) < 2:
+                continue
+            lines = [(w, LineString(w.coords), styles.road_width(w.tags)) for w in group]
+            for wa, la, wid_a in lines:
+                for wb, lb, wid_b in lines:
+                    reach = (wid_a + wid_b) / 2 + TOUCH
+                    if wb is wa or not la.distance(lb) < reach:
+                        continue
+                    seg = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(wb.coords, axis=0), axis=1))])
+                    hb = np.array([hmap[int(n)] for n in wb.nodes])
+                    for nid, (e, n) in zip(wa.nodes, wa.coords):
+                        pt = Point(e, n)
+                        if lb.distance(pt) >= reach:
+                            continue
+                        sp = lb.project(pt)
+                        if sp <= 0.5 or sp >= lb.length - 0.5:
+                            continue  # past the partner's end: a junction, not alongside
+                        hp = float(np.interp(sp, seg, hb))
+                        if MISMATCH < abs(hp - hmap[int(nid)]) < 2.0:  # more is a real level change
+                            targets.setdefault(int(nid), []).append(hp)
+        if not targets:
+            break
+        for nid, hs in targets.items():
+            hmap[nid] = 0.5 * hmap[nid] + 0.5 * float(np.mean(hs))
+    pos = {int(n): (float(e), float(nn)) for w in ways for n, (e, nn) in zip(w.nodes, w.coords)}
+    return {nid: (*pos[nid], hmap[nid] - before[nid]) for nid in hmap if abs(hmap[nid] - before[nid]) > 0.01}
+
+
 def _split_at_edge(w, poly):
     """`w` with a node added wherever it crosses `poly`'s edge, so a road that
     runs into the townhouse block is exactly level with it there."""
@@ -422,6 +490,7 @@ class TileBuilder:
         self._rail()
         self._decks()
         self._buildings()
+        self._landmarks()
         self._trees()
         self._street_lights()
         return self._pack()
@@ -458,7 +527,7 @@ class TileBuilder:
         g = self.grid
         skip = np.zeros(len(g.cells), dtype=bool)
         for w in self.ways:
-            if not w.tunnel or w.group == "rail":
+            if not w.tunnel or w.group == "rail" or self._shallow_path(w):
                 continue
             xy, h = densify(w.xy, w.h, 2.5)
             line = LineString(xy)
@@ -638,9 +707,18 @@ class TileBuilder:
                         yaw = math.atan2(d[1], d[0])
                         _box(conc, ps[k], g[k] - 1.5, hh[k], (1.4, min(w.width * 0.6, 6.0)), yaw)
 
+    def _shallow_path(self, w) -> bool:
+        """A footpath tunnel the terrain doesn't cover (a coarse DEM over a small hill,
+        like Fremantle's Whaling Tunnel): left out, so it isn't a box sticking out."""
+        if w.group == "road":
+            return False
+        xy, h = densify(w.xy, w.h, 2.5)
+        ground = self.w.hf.sample(xy[:, 0], xy[:, 1])
+        return float(np.mean(ground < h + TUNNEL_HEIGHT + 0.6)) > 0.5
+
     def _tunnels(self):
         for w in self.ways:
-            if not w.tunnel or w.group == "rail":
+            if not w.tunnel or w.group == "rail" or self._shallow_path(w):
                 continue
             xy, h = densify(w.xy, w.h, 4.0)
             for rxy, rh in _clip_runs(xy, h, self.bounds):
@@ -756,6 +834,11 @@ class TileBuilder:
             mat = "roof_flat_dark" if stable_rng("roof", b.id).random() < 0.4 else "roof_flat"
             flat_cap(self.mb.surface("buildings", mat, "buildings"), p, eave, 6.0)
 
+    def _landmarks(self):
+        for lm in self.w.landmarks:
+            if self.box.contains(Point(*lm.center)):
+                landmarks.build(self.mb, lm, self.w.hf)
+
     # ---------------- props ----------------
     def _trees(self):
         hf = self.w.hf
@@ -774,6 +857,8 @@ class TileBuilder:
             blockers = blockers.union(shapely.union_all(bld).buffer(2.0))
         if self.w.home:
             blockers = blockers.union(self.w.home.footprint.buffer(1.0))
+        if not self.w.landmark_zone.is_empty:
+            blockers = blockers.union(self.w.landmark_zone)
         for mat, density, kinds in (("bush", 1 / 90.0, ("tree_gum", "tree_gum", "shrub")),
                                     ("grass", 1 / 450.0, ("tree_round", "tree_gum", "tree_palm")),
                                     ("wetland", 1 / 200.0, ("shrub",))):
@@ -917,7 +1002,8 @@ def region_tiles(cfg, proj, name, feats=None) -> list[TileKey]:
 
 
 def build(cfg: dict, keys: list[TileKey], region_of: dict, out_dir: Path = TILES_DIR,
-          refresh: bool = False, only: list[TileKey] | None = None, traffic_only: bool = False):
+          refresh: bool = False, only: list[TileKey] | None = None, traffic_only: bool = False,
+          index_only: bool = False):
     """Build `keys` (or, with `only`, prepare the world for `keys` but rewrite
     just those tiles and the index, leaving the rest and the backdrop alone).
     `traffic_only` rewrites just the traffic road data of those tiles."""
@@ -941,6 +1027,10 @@ def build(cfg: dict, keys: list[TileKey], region_of: dict, out_dir: Path = TILES
     index_path = out_dir / "index.json"
     index = json.loads(index_path.read_text()) if index_path.exists() else {"tiles": {}}
     total = 0
+    if index_only:
+        _write_index(cfg, proj, world, index, index_path, region_of)
+        print(f"Index: {len(index.get('pois', []))} points of interest")
+        return
     todo = [k for k in keys if k in set(only)] if only is not None else keys
     net = TrafficNetwork(world)
     for n, key in enumerate(todo):
@@ -1057,8 +1147,14 @@ def _write_places(cfg, proj, world: World, index: dict, inside_hf, region_of: di
     quotas = {r: q for r, q in cfg.get("places", {}).get("badges", {}).items() if r in region_keys}
     if quotas:
         fresh = places.pick_badges(world.ways, world.hf.sample, region_keys, quotas, size, home, stable_rng)
+        old_order = {b["id"]: k for k, b in enumerate(index.get("badges", []))}
         kept = [b for b in index.get("badges", []) if b.get("region") not in quotas]
-        index["badges"] = kept + fresh
+        index["badges"] = sorted(kept + fresh, key=lambda b: old_order.get(b["id"], len(old_order)))
+    # Points of interest: rebuilt where this build has terrain, kept elsewhere.
+    fresh = pois.build(world, cfg, proj, size, set(index["tiles"]), inside_hf)
+    ids = {p["id"] for p in fresh}
+    kept = [p for p in index.get("pois", []) if p["id"] not in ids and not inside_hf(p["p"][0], -p["p"][2])]
+    index["pois"] = sorted(kept + fresh, key=lambda p: p["id"])
 
 
 def main(argv=None):
@@ -1071,6 +1167,8 @@ def main(argv=None):
                          "the region still sets the terrain and road network they are built from")
     ap.add_argument("--traffic-only", action="store_true",
                     help="rewrite only the traffic road data (.p5r) of the tiles")
+    ap.add_argument("--index-only", action="store_true",
+                    help="rewrite only index.json (places, badges, points of interest)")
     ap.add_argument("--out", type=Path, default=TILES_DIR)
     ap.add_argument("--refresh", action="store_true", help="re-download the OSM extract")
     ap.add_argument("--list", action="store_true", help="list regions and their tile counts")
@@ -1101,7 +1199,7 @@ def main(argv=None):
         region_of.setdefault(TileKey(int(i), int(j)), "custom")
     keys = sorted(region_of, key=lambda k: (k.j, k.i))
     only = [TileKey(*map(int, t.split("_"))) for t in a.only] if a.only else None
-    build(cfg, keys, region_of, a.out, a.refresh, only, a.traffic_only)
+    build(cfg, keys, region_of, a.out, a.refresh, only, a.traffic_only, a.index_only)
 
 
 if __name__ == "__main__":

@@ -51,6 +51,14 @@ func _process(_delta: float) -> bool:
 			{name = "osborne_park", wait = 300, cam = [Vector3(-3251, 0, -5100), Vector3(-3451, 20, -5400)], fog = 0.0015, above = 60.0},
 			{name = "guildford_james_st", wait = 300, cam = [Vector3(10950, 0, -5320), Vector3(11142, 0, -5136)], fog = 0.003, above = 3.0},
 			{name = "night_james_st", wait = 300, hour = 22.0, cam = [Vector3(-125, 0, 2), Vector3(60, 0, 100)], fog = 0.003, above = 5.0},
+			{name = "lm_bell_tower", wait = 300, cam = [Vector3(520, 70, 1560), Vector3(408, 40, 1439)], fog = 0.002},
+			{name = "lm_eq_bridge", wait = 300, cam = [Vector3(110, 0, 1560), Vector3(177, 8, 1472)], fog = 0.002, above = 6.0},
+			{name = "lm_matagarup", wait = 300, cam = [Vector3(2700, 12, 760), Vector3(2884, 38, 991)], fog = 0.0015},
+			{name = "lm_optus", wait = 300, cam = [Vector3(3020, 110, 860), Vector3(3346, 10, 567)], fog = 0.0012},
+			{name = "night_lm_optus", wait = 300, hour = 21.5, cam = [Vector3(3020, 110, 860), Vector3(3346, 10, 567)], fog = 0.0012},
+			{name = "lm_memorial", wait = 300, cam = [Vector3(-850, 66, 1676), Vector3(-877, 72, 1647)], fog = 0.002},
+			{name = "lm_round_house", wait = 300, cam = [Vector3(-10610, 24, 12245), Vector3(-10637, 17, 12218)], fog = 0.003},
+			{name = "lm_indiana", wait = 300, cam = [Vector3(-9735, 14, 5455), Vector3(-9678, 13, 5494)], fog = 0.003},
 			{name = "night_aerial", wait = 240, hour = 22.0, cam = [Vector3(-100, 260, -450), Vector3(350, 20, 900)], fog = 0.0008},
 		]
 		var only := _arg("only", "")
@@ -101,6 +109,8 @@ func _place_camera(from: Vector3, to: Vector3, fog: float) -> void:
 	var world := _main.get_node("LoFi/SubViewport/World")
 	(world.get_node("Car") as RigidBody3D).freeze = true
 	_main.get_node("HUD").visible = false
+	for layer in _main.find_children("*", "CanvasLayer", true, false):
+		(layer as CanvasLayer).visible = false  # prompts and labels too
 	var rig := world.get_node("CameraRig")
 	rig.set_process(false)
 	rig.set_physics_process(false)

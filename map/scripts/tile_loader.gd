@@ -2,8 +2,9 @@ class_name MapTileLoader
 extends RefCounted
 ## Decodes the .p5t tiles written by tools/osm_import (tile format 1) into
 ## nodes. `build()` is safe to run on a worker thread: it makes meshes and
-## multimeshes but leaves physics bodies for the main thread (see
-## `make_collision()`), because the physics server isn't thread-safe by default.
+## multimeshes. `make_collision()` (static bodies and their baked concave
+## shapes, outside the scene tree) runs on a worker too; only adding the
+## result to the tree happens on the main thread.
 
 const FORMAT := 1
 const MAGIC := "P5TB"  # brotli
@@ -27,9 +28,9 @@ const SURFACE_OF := {
 
 ## Detail meshes are hidden past these distances (metres from the camera to
 ## the mesh's bounds centre, so roughly tile centre: keep them generous).
-const VISIBILITY_END := {&"markings": 600.0, &"rail": 750.0}
+const VISIBILITY_END := {&"markings": 600.0, &"rail": 750.0, &"landmark_detail": 600.0}
 ## Meshes that cast shadows (the rest only receive them).
-const SHADOW_MESHES := [&"buildings", &"bridges", &"props"]
+const SHADOW_MESHES := [&"buildings", &"bridges", &"props", &"landmarks"]
 
 
 class TileResult:
@@ -148,7 +149,8 @@ static func build(path: String, materials: Dictionary, props: Dictionary) -> Til
 	return result
 
 
-## Adds static bodies for the tile's collision meshes. Main thread only.
+## Static bodies for the tile's collision meshes, not yet in the tree. Safe on
+## a worker thread (MapStreamer builds them there).
 static func make_collision(result: TileResult) -> Node3D:
 	var holder := Node3D.new()
 	holder.name = "Collision"

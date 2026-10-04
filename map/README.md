@@ -37,6 +37,17 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
 - **Traffic**: each tile has a `.p5r` with its roads, junction controls,
   rail, stations and bus stops in the `docs/TRAFFIC.md` format. The streamer
   hands each one to `add_network` the first time the tile loads.
+- **Points of interest**: `get_pois(kind := "")` lists places worth driving
+  to, from `index.json` "pois": `lookout` (OSM viewpoints plus hand-picked
+  ones), `beach` (stop in its car park), `servo`, `drive_thru`, `quiet_spot`
+  (hand-picked places to park and watch the city) and `landmark` (the
+  hand-built ones below). Each has a stable `id`, `name`, `suburb`, `p`
+  (where to stop the car), `yaw` (facing there) and `at` (the feature).
+  Hand-picked stops live in `tools/osm_import/config.json` "pois".
+- **Landmarks**: the Bell Tower, Elizabeth Quay Bridge, Matagarup Bridge,
+  Optus Stadium, the State War Memorial, the Round House and the Indiana Tea
+  House are low-poly models built by `tools/osm_import/osm_import/landmarks.py`
+  on their OSM footprints, in the tiles' `landmarks` mesh.
 - `get_landmarks()` returns suburb and square names with XZ positions, for a
   map screen or GPS later.
 

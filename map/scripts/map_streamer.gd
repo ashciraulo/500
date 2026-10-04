@@ -38,6 +38,8 @@ var _props: Dictionary = {}
 var _tiles: Dictionary = {}  # Vector2i -> {result: TileResult, collision: Node3D}
 var _pending: Dictionary = {}  # Vector2i -> task id
 var _results: Dictionary = {}  # Vector2i -> TileResult (finished on a worker)
+var _collision_pending: Dictionary = {}  # Vector2i -> task id building that tile's colliders
+var _collision_results: Dictionary = {}  # Vector2i -> [TileResult, collision holder] from a worker
 var _mutex := Mutex.new()
 var _night := 0.0
 var _emissive: Array[ShaderMaterial] = []
@@ -48,6 +50,11 @@ var _ready_emitted := false
 var _overview: MapOverview
 var _home: Node3D
 var _settle_frames := 0  # physics frames until new colliders can be checked
+const VOID_FRAMES := 90   # physics frames (0.75 s) with no ground off the map before stepping in
+var _void_frames := 0
+var _safe_timer := 0
+var _last_safe := Transform3D()
+var _has_last_safe := false
 var _pools_on := true
 var _traffic_sent := {}   # Vector2i -> true: tiles whose roads traffic already has
 var _traffic_queue: Array[Dictionary] = []
@@ -92,21 +99,39 @@ func _exit_tree() -> void:
 	for key: Vector2i in _pending:
 		WorkerThreadPool.wait_for_task_completion(_pending[key])
 	_pending.clear()
+	for key: Vector2i in _collision_pending:
+		WorkerThreadPool.wait_for_task_completion(_collision_pending[key])
+	_collision_pending.clear()
+	for done: Array in _collision_results.values():
+		(done[1] as Node).free()
+	_collision_results.clear()
 
 
 ## Keeps the car on solid ground when it's moved somewhere the map hasn't
 ## loaded yet (a save restored, a teleport): that tile is built with colliders
 ## on the spot. A car with no ground under it at all (an old save from before
-## the map existed, or one that slipped through) goes back home. Runs before
-## each physics step.
+## the map existed, or one that slipped through) goes back home; one that
+## drives off the end of the built map goes back to where it last drove.
+## Runs before each physics step.
 func _physics_process(_delta: float) -> void:
 	if index.is_empty() or not (_target is RigidBody3D) or not is_instance_valid(_target):
 		return
 	var pos := _target.global_position
 	var name := "%d_%d" % [tile_at(pos).x, tile_at(pos).y]
 	if not index.get("tiles", {}).has(name):
-		_reset_target(get_spawn_transform())  # off the map entirely
+		# Off the built map, past the end of a corridor. Only step in once the
+		# car has had no ground under it for a moment, and put it back where
+		# it last drove, facing back onto the map, rather than at home.
+		_void_frames = _void_frames + 1 if _ground_below(pos).is_empty() else 0
+		if _void_frames >= VOID_FRAMES:
+			_void_frames = 0
+			_reset_target(_last_safe if _has_last_safe else get_spawn_transform())
 		return
+	_void_frames = 0
+	_safe_timer -= 1
+	if _safe_timer <= 0 and _settle_frames == 0:
+		_safe_timer = 30
+		_remember_safe(pos)
 	if not has_collision_at(pos):
 		_load_now(pos)
 	if pos.y < float(index.tiles[name].get("hmin", -50.0)) - 3.0:
@@ -160,6 +185,25 @@ func get_landmarks() -> Dictionary:
 	for name: String in marks:
 		var p: Array = marks[name]
 		out[name] = Vector2(p[0], p[1])
+	return out
+
+
+## Points of interest for side activities (lookouts, beaches, servos,
+## drive-thrus, quiet spots, landmarks), from index.json "pois". Each is a
+## Dictionary: id, kind, name, suburb, p (Vector3, where to stop the car),
+## yaw (the car's facing there, Basis(UP, yaw)), at (Vector3, the feature
+## itself), and brand for servos and drive-thrus. `kind` filters by kind.
+func get_pois(kind := "") -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for entry: Dictionary in index.get("pois", []):
+		if kind != "" and entry.kind != kind:
+			continue
+		var poi := entry.duplicate()
+		var p: Array = entry.p
+		var at: Array = entry.get("at", p)
+		poi.p = Vector3(p[0], p[1], p[2])
+		poi.at = Vector3(at[0], at[1], at[2])
+		out.append(poi)
 	return out
 
 
@@ -224,6 +268,10 @@ func set_night_amount(amount: float) -> void:
 ## Build the tiles around `pos` with colliders right now (blocking).
 func _load_now(pos: Vector3) -> void:
 	for key in _wanted(pos, minf(physics_radius, tile_size)):
+		if _collision_pending.has(key):
+			WorkerThreadPool.wait_for_task_completion(_collision_pending[key])
+			_collision_pending.erase(key)
+			_collect_collision(true)
 		if _tiles.has(key):
 			if _tiles[key].collision == null:
 				_add_collision(_tiles[key])
@@ -244,6 +292,20 @@ func _load_now(pos: Vector3) -> void:
 
 
 ## Ground straight under `pos` (not above it, so tunnels and car parks work).
+## Remembers where the car last sat upright on loaded ground, facing back the
+## way it came, for _physics_process to return it to.
+func _remember_safe(pos: Vector3) -> void:
+	var body := _target as RigidBody3D
+	if body.global_basis.y.dot(Vector3.UP) < 0.9 or not has_collision_at(pos):
+		return
+	var hit := _ground_below(pos)
+	if hit.is_empty() or pos.y - (hit.position as Vector3).y > 2.0:
+		return
+	var back := Basis(Vector3.UP, body.global_rotation.y + PI)
+	_last_safe = Transform3D(back, pos + Vector3.UP * 0.3)
+	_has_last_safe = true
+
+
 func _ground_below(pos: Vector3) -> Dictionary:
 	var query := PhysicsRayQueryParameters3D.create(pos + Vector3.UP, pos + Vector3.DOWN * 80.0, 1)
 	query.exclude = [(_target as CollisionObject3D).get_rid()]
@@ -430,19 +492,58 @@ func _add_collision(entry: Dictionary) -> void:
 	entry.collision = holder
 
 
+## Colliders for tiles coming into range are built on a worker (baking the
+## concave shapes takes tens of milliseconds a tile); the main thread only
+## adds the finished bodies, one tile a frame.
 func _update_collision(focus: Vector3) -> void:
+	_collect_collision(false)
 	var east := focus.x
 	var north := -focus.z
-	var added := false
 	for key: Vector2i in _tiles:
 		var entry: Dictionary = _tiles[key]
 		var d := _distance_to_tile(east, north, key.x, key.y)
-		if entry.collision == null and d <= physics_radius and not added:
-			_add_collision(entry)
-			added = true  # one tile per frame keeps hitches small
+		if entry.collision == null and d <= physics_radius:
+			if not _collision_pending.has(key) and not _collision_results.has(key) \
+					and _collision_pending.size() < max_parallel_loads:
+				var result: MapTileLoader.TileResult = entry.result
+				_collision_pending[key] = WorkerThreadPool.add_task(
+					_collision_worker.bind(key, result), false, "map tile collision")
 		elif entry.collision != null and d > physics_radius + unload_margin:
 			entry.collision.queue_free()
 			entry.collision = null
+
+
+func _collision_worker(key: Vector2i, result: MapTileLoader.TileResult) -> void:
+	var holder := MapTileLoader.make_collision(result)
+	_mutex.lock()
+	_collision_results[key] = [result, holder]
+	_mutex.unlock()
+
+
+## Adds colliders finished on a worker: one tile a frame, or all of them.
+func _collect_collision(all: bool) -> void:
+	for key: Vector2i in _collision_pending.keys():
+		if WorkerThreadPool.is_task_completed(_collision_pending[key]):
+			WorkerThreadPool.wait_for_task_completion(_collision_pending[key])
+			_collision_pending.erase(key)
+	_mutex.lock()
+	var keys := _collision_results.keys()
+	_mutex.unlock()
+	for key: Vector2i in keys:
+		_mutex.lock()
+		var done: Array = _collision_results[key]
+		_collision_results.erase(key)
+		_mutex.unlock()
+		var holder: Node3D = done[1]
+		var entry: Dictionary = _tiles.get(key, {})
+		# The tile may have been unloaded, reloaded or given colliders meanwhile.
+		if entry.is_empty() or entry.result != done[0] or entry.collision != null:
+			holder.free()
+			continue
+		entry.result.root.add_child(holder)
+		entry.collision = holder
+		if not all:
+			return
 
 
 func _unload_far(focus: Vector3) -> void:

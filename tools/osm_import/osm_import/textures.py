@@ -137,6 +137,7 @@ def generate() -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
 
     T.update(_facades(r))
     T.update(_roofs(r))
+    T.update(_landmarks(r))
     # Props (trees, street lights) built in Godot use these.
     rng = r("leaves")
     T["tree_leaves"] = (_speckle(_base((64, 92, 46), rng, (8, 14), (2, 10)), rng, 0.15, (40, 62, 30)), None)
@@ -253,10 +254,46 @@ def _roofs(r):
     return T
 
 
+def _landmarks(r):
+    """Materials for the hand-built landmarks (landmarks.py)."""
+    T = {}
+    rng = r("copper")  # the Bell Tower's copper sails
+    img = _base((176, 98, 58), rng, (16, 10), (4, 8))
+    img[:, ::8] -= 28
+    T["copper"] = (_speckle(img, rng, 0.06, (112, 142, 116), 12), None)
+    rng = r("limestone")  # Fremantle limestone, the war memorial
+    img = _base((214, 198, 160), rng, (16, 8), (4, 8))
+    img[::8, :] -= 22
+    for y in range(0, S, 8):
+        img[y:y + 8, ((y // 8) % 2) * 6::12] -= 14
+    T["limestone"] = (img, None)
+    rng = r("steel_white")  # bridge arches
+    img = _base((226, 228, 228), rng, (32, 4))
+    img[::16, :] -= 18
+    T["steel_white"] = (img, None)
+    rng = r("stadium_bronze")  # Optus Stadium's bronze fins, lit at night
+    img = _base((150, 112, 66), rng, (16, 6))
+    emit = np.zeros((S, S, 3))
+    for x in range(0, S, 8):
+        img[:, x:x + 2] = (92, 70, 44)
+        emit[:, x + 4:x + 5] = (90, 150, 255)
+    T["stadium_bronze"] = (img, emit)
+    rng = r("stadium_seats")
+    img = _base((52, 60, 92), rng, (8, 6))
+    img[::4, :] = (150, 150, 156)
+    T["stadium_seats"] = (img, None)
+    rng = r("roof_fabric")
+    img = _base((236, 236, 230), rng, (32, 5))
+    img[:, ::16] -= 26
+    T["roof_fabric"] = (img, None)
+    return T
+
+
 # Shader parameters per material (the shared PS1 surface shader).
 WET = {"asphalt": 1.0, "line_white": 0.8, "sidewalk": 0.6, "kerb": 0.6, "path": 0.7, "paving": 0.7,
        "concrete": 0.5, "ballast": 0.3, "rail_steel": 0.6}
-ROUGH = {"water": 0.15, "rail_steel": 0.5, "facade_glass": 0.4, "asphalt": 0.85}
+ROUGH = {"water": 0.15, "rail_steel": 0.5, "facade_glass": 0.4, "asphalt": 0.85, "copper": 0.6,
+         "steel_white": 0.6}
 
 
 def _tres(name: str, has_emit: bool) -> str:

@@ -107,7 +107,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -3.1,
    "hmax": 38.14,
-   "bytes": 504417,
+   "bytes": 394573,
    "traffic": "-22_-25.p5r"
   },
   "-21_-25": {
@@ -1037,7 +1037,7 @@
    "region": "coast_road",
    "hmin": -1.23,
    "hmax": 32.65,
-   "bytes": 292875,
+   "bytes": 221968,
    "traffic": "-20_-11.p5r"
   },
   "-19_-11": {
@@ -1837,7 +1837,7 @@
    "region": "first_slice",
    "hmin": -2.9,
    "hmax": 36.73,
-   "bytes": 164342,
+   "bytes": 126063,
    "traffic": "-6_-7.p5r"
   },
   "-5_-7": {
@@ -1907,7 +1907,7 @@
    "region": "first_slice",
    "hmin": -2.5,
    "hmax": 33.57,
-   "bytes": 305832,
+   "bytes": 234837,
    "traffic": "1_-7.p5r"
   },
   "2_-7": {
@@ -2037,7 +2037,7 @@
    "region": "first_slice",
    "hmin": -2.5,
    "hmax": 47.85,
-   "bytes": 372597,
+   "bytes": 290513,
    "traffic": "-6_-6.p5r"
   },
   "-5_-6": {
@@ -2047,7 +2047,7 @@
    "region": "first_slice",
    "hmin": -2.5,
    "hmax": 55.89,
-   "bytes": 282860,
+   "bytes": 217483,
    "traffic": "-5_-6.p5r"
   },
   "-4_-6": {
@@ -2057,7 +2057,7 @@
    "region": "first_slice",
    "hmin": -2.5,
    "hmax": 57.17,
-   "bytes": 196654,
+   "bytes": 148862,
    "traffic": "-4_-6.p5r"
   },
   "-3_-6": {
@@ -2267,7 +2267,7 @@
    "region": "first_slice",
    "hmin": -4.19,
    "hmax": 58.28,
-   "bytes": 222998,
+   "bytes": 169406,
    "traffic": "-3_-5.p5r"
   },
   "-2_-5": {
@@ -2477,7 +2477,7 @@
    "region": "first_slice",
    "hmin": -4.0,
    "hmax": 82.42,
-   "bytes": 545360,
+   "bytes": 413524,
    "traffic": "-2_-4.p5r"
   },
   "-1_-4": {
@@ -2527,7 +2527,7 @@
    "region": "first_slice",
    "hmin": -2.5,
    "hmax": 105.97,
-   "bytes": 419695,
+   "bytes": 327225,
    "traffic": "3_-4.p5r"
   },
   "4_-4": {
@@ -2536,8 +2536,8 @@
    "file": "4_-4.p5t",
    "region": "first_slice",
    "hmin": -1.46,
-   "hmax": 97.93,
-   "bytes": 654350,
+   "hmax": 98.09,
+   "bytes": 506117,
    "traffic": "4_-4.p5r"
   },
   "5_-4": {
@@ -2687,7 +2687,7 @@
    "region": "first_slice",
    "hmin": -11.18,
    "hmax": 67.09,
-   "bytes": 701019,
+   "bytes": 554588,
    "traffic": "-1_-3.p5r"
   },
   "0_-3": {
@@ -2697,7 +2697,7 @@
    "region": "first_slice",
    "hmin": -4.0,
    "hmax": 259.18,
-   "bytes": 682296,
+   "bytes": 532677,
    "traffic": "0_-3.p5r"
   },
   "1_-3": {
@@ -2707,7 +2707,7 @@
    "region": "first_slice",
    "hmin": -2.5,
    "hmax": 204.93,
-   "bytes": 662662,
+   "bytes": 517918,
    "traffic": "1_-3.p5r"
   },
   "2_-3": {
@@ -2715,9 +2715,9 @@
    "j": -3,
    "file": "2_-3.p5t",
    "region": "first_slice",
-   "hmin": 4.93,
+   "hmin": 4.97,
    "hmax": 127.93,
-   "bytes": 622531,
+   "bytes": 485260,
    "traffic": "2_-3.p5r"
   },
   "3_-3": {
@@ -2737,7 +2737,7 @@
    "region": "first_slice",
    "hmin": 3.55,
    "hmax": 66.23,
-   "bytes": 651296,
+   "bytes": 506138,
    "traffic": "4_-3.p5r"
   },
   "5_-3": {
@@ -2867,7 +2867,7 @@
    "region": "first_slice",
    "hmin": 42.48,
    "hmax": 95.74,
-   "bytes": 344043,
+   "bytes": 265557,
    "traffic": "-4_-2.p5r"
   },
   "-3_-2": {
@@ -2887,7 +2887,7 @@
    "region": "first_slice",
    "hmin": 15.21,
    "hmax": 139.27,
-   "bytes": 634809,
+   "bytes": 492271,
    "traffic": "-2_-2.p5r"
   },
   "-1_-2": {
@@ -2896,8 +2896,8 @@
    "file": "-1_-2.p5t",
    "region": "first_slice",
    "hmin": 8.68,
-   "hmax": 220.72,
-   "bytes": 595988,
+   "hmax": 220.08,
+   "bytes": 461200,
    "traffic": "-1_-2.p5r"
   },
   "0_-2": {
@@ -2907,7 +2907,7 @@
    "region": "first_slice",
    "hmin": 7.61,
    "hmax": 292.89,
-   "bytes": 630151,
+   "bytes": 482445,
    "traffic": "0_-2.p5r"
   },
   "1_-2": {
@@ -2927,7 +2927,7 @@
    "region": "first_slice",
    "hmin": 9.08,
    "hmax": 72.86,
-   "bytes": 611169,
+   "bytes": 474857,
    "traffic": "2_-2.p5r"
   },
   "3_-2": {
@@ -2956,8 +2956,8 @@
    "file": "5_-2.p5t",
    "region": "east_perth",
    "hmin": -4.0,
-   "hmax": 42.82,
-   "bytes": 310289,
+   "hmax": 83.56,
+   "bytes": 239535,
    "traffic": "5_-2.p5r"
   },
   "6_-2": {
@@ -2966,8 +2966,8 @@
    "file": "6_-2.p5t",
    "region": "east_perth",
    "hmin": -4.0,
-   "hmax": 52.29,
-   "bytes": 449876,
+   "hmax": 42.12,
+   "bytes": 349174,
    "traffic": "6_-2.p5r"
   },
   "7_-2": {
@@ -3077,7 +3077,7 @@
    "region": "first_slice",
    "hmin": 34.78,
    "hmax": 87.8,
-   "bytes": 652763,
+   "bytes": 507032,
    "traffic": "-4_-1.p5r"
   },
   "-3_-1": {
@@ -3087,7 +3087,7 @@
    "region": "first_slice",
    "hmin": 31.0,
    "hmax": 94.07,
-   "bytes": 645059,
+   "bytes": 505545,
    "traffic": "-3_-1.p5r"
   },
   "-2_-1": {
@@ -3097,7 +3097,7 @@
    "region": "first_slice",
    "hmin": 14.36,
    "hmax": 74.89,
-   "bytes": 589972,
+   "bytes": 458325,
    "traffic": "-2_-1.p5r"
   },
   "-1_-1": {
@@ -3107,7 +3107,7 @@
    "region": "first_slice",
    "hmin": 7.49,
    "hmax": 71.93,
-   "bytes": 569190,
+   "bytes": 569027,
    "traffic": "-1_-1.p5r"
   },
   "0_-1": {
@@ -3157,7 +3157,7 @@
    "region": "first_slice",
    "hmin": 6.78,
    "hmax": 38.54,
-   "bytes": 584711,
+   "bytes": 452912,
    "traffic": "4_-1.p5r"
   },
   "5_-1": {
@@ -3297,7 +3297,7 @@
    "region": "first_slice",
    "hmin": 17.67,
    "hmax": 69.62,
-   "bytes": 669707,
+   "bytes": 518500,
    "traffic": "-3_0.p5r"
   },
   "-2_0": {
@@ -3307,7 +3307,7 @@
    "region": "first_slice",
    "hmin": 13.58,
    "hmax": 53.14,
-   "bytes": 710907,
+   "bytes": 556821,
    "traffic": "-2_0.p5r"
   },
   "-1_0": {
@@ -3317,7 +3317,7 @@
    "region": "first_slice",
    "hmin": 9.63,
    "hmax": 39.29,
-   "bytes": 495692,
+   "bytes": 495426,
    "traffic": "-1_0.p5r"
   },
   "0_0": {
@@ -3347,7 +3347,7 @@
    "region": "first_slice",
    "hmin": 12.53,
    "hmax": 45.51,
-   "bytes": 592183,
+   "bytes": 462484,
    "traffic": "2_0.p5r"
   },
   "3_0": {
@@ -3467,7 +3467,7 @@
    "region": "first_slice",
    "hmin": 13.59,
    "hmax": 50.61,
-   "bytes": 488294,
+   "bytes": 363255,
    "traffic": "-7_1.p5r"
   },
   "-6_1": {
@@ -3477,7 +3477,7 @@
    "region": "first_slice",
    "hmin": 21.95,
    "hmax": 65.8,
-   "bytes": 521524,
+   "bytes": 394963,
    "traffic": "-6_1.p5r"
   },
   "-5_1": {
@@ -3497,7 +3497,7 @@
    "region": "first_slice",
    "hmin": 18.91,
    "hmax": 60.97,
-   "bytes": 535043,
+   "bytes": 405458,
    "traffic": "-4_1.p5r"
   },
   "-3_1": {
@@ -3517,7 +3517,7 @@
    "region": "first_slice",
    "hmin": 15.75,
    "hmax": 58.96,
-   "bytes": 593376,
+   "bytes": 462005,
    "traffic": "-2_1.p5r"
   },
   "-1_1": {
@@ -3527,7 +3527,7 @@
    "region": "first_slice",
    "hmin": 17.79,
    "hmax": 49.65,
-   "bytes": 559496,
+   "bytes": 434280,
    "traffic": "-1_1.p5r"
   },
   "0_1": {
@@ -3577,7 +3577,7 @@
    "region": "first_slice",
    "hmin": 10.83,
    "hmax": 34.17,
-   "bytes": 605772,
+   "bytes": 470761,
    "traffic": "4_1.p5r"
   },
   "5_1": {
@@ -5433,6 +5433,7 @@
   "ballast",
   "bush",
   "concrete",
+  "copper",
   "dirt",
   "facade_apartment",
   "facade_brick",
@@ -5450,11 +5451,13 @@
   "kerb",
   "light_head",
   "light_pole",
+  "limestone",
   "line_white",
   "path",
   "paving",
   "rail_steel",
   "riverbed",
+  "roof_fabric",
   "roof_flat",
   "roof_flat_dark",
   "roof_metal",
@@ -5462,6 +5465,9 @@
   "roof_tiles_dark",
   "sand",
   "sidewalk",
+  "stadium_bronze",
+  "stadium_seats",
+  "steel_white",
   "tree_bark",
   "tree_gum",
   "tree_leaves",
@@ -6632,6 +6638,1941 @@
     7.57,
     6195.98
    ]
+  }
+ ],
+ "pois": [
+  {
+   "id": "beach_bathers_beach",
+   "kind": "beach",
+   "name": "Bathers Beach",
+   "p": [
+    -10577.9,
+    6.4,
+    12236.49
+   ],
+   "yaw": 2.3497,
+   "at": [
+    -10654.89,
+    2.61,
+    12312.47
+   ]
+  },
+  {
+   "id": "beach_city_beach",
+   "kind": "beach",
+   "name": "City Beach",
+   "p": [
+    -9236.65,
+    6.99,
+    -1711.75
+   ],
+   "yaw": 0.8256,
+   "at": [
+    -9360.88,
+    3.59,
+    -1826.38
+   ],
+   "suburb": "City Beach"
+  },
+  {
+   "id": "beach_cottesloe_beach",
+   "kind": "beach",
+   "name": "Cottesloe Beach",
+   "p": [
+    -9651.5,
+    10.27,
+    5354.68
+   ],
+   "yaw": 2.7377,
+   "at": [
+    -9707.13,
+    6.88,
+    5484.83
+   ],
+   "suburb": "Cottesloe"
+  },
+  {
+   "id": "beach_leighton_beach",
+   "kind": "beach",
+   "name": "Leighton Beach",
+   "p": [
+    -9668.18,
+    7.13,
+    8602.56
+   ],
+   "yaw": 2.2198,
+   "at": [
+    -9749.13,
+    0.73,
+    8663.97
+   ],
+   "suburb": "North Fremantle"
+  },
+  {
+   "id": "beach_north_cottesloe_beach",
+   "kind": "beach",
+   "name": "North Cottesloe Beach",
+   "p": [
+    -9549.67,
+    14.44,
+    4720.59
+   ],
+   "yaw": 0.8171,
+   "at": [
+    -9603.1,
+    6.36,
+    4670.44
+   ],
+   "suburb": "Cottesloe"
+  },
+  {
+   "id": "beach_peters_pool",
+   "kind": "beach",
+   "name": "Peters Pool",
+   "p": [
+    -9651.5,
+    10.27,
+    5354.68
+   ],
+   "yaw": 0.1948,
+   "at": [
+    -9700.76,
+    2.71,
+    5104.99
+   ],
+   "suburb": "Cottesloe"
+  },
+  {
+   "id": "beach_scarborough_beach",
+   "kind": "beach",
+   "name": "Scarborough Beach",
+   "p": [
+    -9230.47,
+    10.65,
+    -5379.79
+   ],
+   "yaw": 1.2476,
+   "at": [
+    -9352.2,
+    3.41,
+    -5420.56
+   ],
+   "suburb": "Scarborough"
+  },
+  {
+   "id": "beach_south_trigg_beach",
+   "kind": "beach",
+   "name": "South Trigg Beach",
+   "p": [
+    -9432.62,
+    7.47,
+    -7014.92
+   ],
+   "yaw": 1.4971,
+   "at": [
+    -9546.22,
+    0.86,
+    -7023.31
+   ],
+   "suburb": "Trigg"
+  },
+  {
+   "id": "beach_trigg_beach",
+   "kind": "beach",
+   "name": "Trigg Beach",
+   "p": [
+    -9647.74,
+    1.77,
+    -7808.34
+   ],
+   "yaw": 2.9703,
+   "at": [
+    -9682.86,
+    1.48,
+    -7605.32
+   ],
+   "suburb": "Trigg"
+  },
+  {
+   "id": "drive_thru_1046370661",
+   "kind": "drive_thru",
+   "name": "coffee shot",
+   "p": [
+    -3136.54,
+    31.16,
+    -393.4
+   ],
+   "yaw": -0.8985,
+   "at": [
+    -3136.54,
+    30.86,
+    -393.4
+   ],
+   "suburb": "Subiaco"
+  },
+  {
+   "id": "drive_thru_1248948568",
+   "kind": "drive_thru",
+   "name": "Hungry Jack's",
+   "p": [
+    -6033.01,
+    40.45,
+    9917.76
+   ],
+   "yaw": -3.1334,
+   "at": [
+    -6033.01,
+    40.15,
+    9917.76
+   ],
+   "brand": "Hungry Jack's",
+   "suburb": "Bicton"
+  },
+  {
+   "id": "drive_thru_1251431051",
+   "kind": "drive_thru",
+   "name": "McDonald's",
+   "p": [
+    -6446.68,
+    14.3,
+    9932.65
+   ],
+   "yaw": 0.0185,
+   "at": [
+    -6446.68,
+    14.0,
+    9932.65
+   ],
+   "brand": "McDonald's",
+   "suburb": "Bicton"
+  },
+  {
+   "id": "drive_thru_14080164108",
+   "kind": "drive_thru",
+   "name": "McDonald's",
+   "p": [
+    1041.16,
+    15.63,
+    59.37
+   ],
+   "yaw": -2.0073,
+   "at": [
+    1041.16,
+    15.33,
+    59.37
+   ],
+   "brand": "McDonald's",
+   "suburb": "Perth Cultural Centre"
+  },
+  {
+   "id": "drive_thru_292293542",
+   "kind": "drive_thru",
+   "name": "Hungry Jack's",
+   "p": [
+    2630.27,
+    9.16,
+    3205.28
+   ],
+   "yaw": 0.6185,
+   "at": [
+    2630.27,
+    8.86,
+    3205.28
+   ],
+   "brand": "Hungry Jack's",
+   "suburb": "Kensington"
+  },
+  {
+   "id": "drive_thru_320187097",
+   "kind": "drive_thru",
+   "name": "KFC",
+   "p": [
+    -3580.82,
+    5.81,
+    9455.7
+   ],
+   "yaw": 1.8374,
+   "at": [
+    -3580.82,
+    5.51,
+    9455.7
+   ],
+   "brand": "KFC",
+   "suburb": "Alfred Cove"
+  },
+  {
+   "id": "drive_thru_395849134",
+   "kind": "drive_thru",
+   "name": "Red Rooster",
+   "p": [
+    6279.94,
+    12.4,
+    -2506.65
+   ],
+   "yaw": 0.8401,
+   "at": [
+    6279.94,
+    12.1,
+    -2506.65
+   ],
+   "brand": "Red Rooster",
+   "suburb": "Bayswater"
+  },
+  {
+   "id": "drive_thru_48487439",
+   "kind": "drive_thru",
+   "name": "Hungry Jack's",
+   "p": [
+    -6956.23,
+    19.56,
+    4114.57
+   ],
+   "yaw": 0.1603,
+   "at": [
+    -6956.23,
+    19.26,
+    4114.57
+   ],
+   "brand": "Hungry Jack's",
+   "suburb": "Claremont"
+  },
+  {
+   "id": "drive_thru_50775267",
+   "kind": "drive_thru",
+   "name": "McDonald's",
+   "p": [
+    -5218.75,
+    17.18,
+    -4825.22
+   ],
+   "yaw": -0.8778,
+   "at": [
+    -5218.75,
+    16.88,
+    -4825.22
+   ],
+   "brand": "McDonald's",
+   "suburb": "Woodlands"
+  },
+  {
+   "id": "drive_thru_51367072",
+   "kind": "drive_thru",
+   "name": "McDonalds Jolimont",
+   "p": [
+    -3919.61,
+    22.42,
+    130.42
+   ],
+   "yaw": 0.0031,
+   "at": [
+    -3919.61,
+    22.12,
+    130.42
+   ],
+   "brand": "McDonald's",
+   "suburb": "Jolimont"
+  },
+  {
+   "id": "drive_thru_570963407",
+   "kind": "drive_thru",
+   "name": "Hungry Jack's",
+   "p": [
+    -2969.04,
+    28.27,
+    156.46
+   ],
+   "yaw": 3.1274,
+   "at": [
+    -2969.04,
+    27.97,
+    156.46
+   ],
+   "brand": "Hungry Jack's",
+   "suburb": "Subiaco"
+  },
+  {
+   "id": "drive_thru_570963420",
+   "kind": "drive_thru",
+   "name": "KFC",
+   "p": [
+    -2949.72,
+    28.66,
+    161.56
+   ],
+   "yaw": -3.1062,
+   "at": [
+    -2949.72,
+    28.36,
+    161.56
+   ],
+   "brand": "KFC",
+   "suburb": "Subiaco"
+  },
+  {
+   "id": "drive_thru_854221955",
+   "kind": "drive_thru",
+   "name": "McDonald's",
+   "p": [
+    2758.67,
+    12.08,
+    3173.78
+   ],
+   "yaw": 2.3533,
+   "at": [
+    2758.67,
+    11.78,
+    3173.78
+   ],
+   "brand": "McDonald's",
+   "suburb": "Victoria Park"
+  },
+  {
+   "id": "landmark_bell_tower",
+   "kind": "landmark",
+   "name": "The Bell Tower",
+   "p": [
+    563.66,
+    11.91,
+    1317.86
+   ],
+   "yaw": 2.2382,
+   "at": [
+    406.69,
+    6.8,
+    1441.55
+   ],
+   "suburb": "Perth"
+  },
+  {
+   "id": "landmark_elizabeth_quay_bridge",
+   "kind": "landmark",
+   "name": "Elizabeth Quay Bridge",
+   "p": [
+    105.68,
+    0.64,
+    1342.61
+   ],
+   "yaw": -2.6139,
+   "at": [
+    179.77,
+    -2.5,
+    1469.74
+   ],
+   "suburb": "Perth"
+  },
+  {
+   "id": "landmark_indiana_tea_house",
+   "kind": "landmark",
+   "name": "Indiana Tea House",
+   "p": [
+    -9651.5,
+    10.27,
+    5354.68
+   ],
+   "yaw": 2.9417,
+   "at": [
+    -9679.96,
+    13.38,
+    5495.1
+   ],
+   "suburb": "Cottesloe"
+  },
+  {
+   "id": "landmark_matagarup_bridge",
+   "kind": "landmark",
+   "name": "Matagarup Bridge",
+   "p": [
+    3291.73,
+    8.69,
+    903.94
+   ],
+   "yaw": 1.7059,
+   "at": [
+    2973.95,
+    -2.5,
+    947.15
+   ],
+   "suburb": "East Perth"
+  },
+  {
+   "id": "landmark_optus_stadium",
+   "kind": "landmark",
+   "name": "Optus Stadium",
+   "p": [
+    3457.53,
+    9.04,
+    447.73
+   ],
+   "yaw": 2.3017,
+   "at": [
+    3324.37,
+    6.15,
+    567.12
+   ],
+   "suburb": "Burswood"
+  },
+  {
+   "id": "landmark_round_house",
+   "kind": "landmark",
+   "name": "Round House",
+   "p": [
+    -10627.78,
+    6.41,
+    12141.78
+   ],
+   "yaw": 3.0131,
+   "at": [
+    -10637.77,
+    9.11,
+    12219.03
+   ],
+   "suburb": "Fremantle"
+  },
+  {
+   "id": "landmark_state_war_memorial",
+   "kind": "landmark",
+   "name": "State War Memorial",
+   "p": [
+    -1184.0,
+    60.88,
+    1754.34
+   ],
+   "yaw": -1.2405,
+   "at": [
+    -875.66,
+    54.96,
+    1648.61
+   ],
+   "suburb": "Kings Park"
+  },
+  {
+   "id": "lookout_10269220040",
+   "kind": "lookout",
+   "name": "City Beach lookout",
+   "p": [
+    -9262.88,
+    9.81,
+    -1120.42
+   ],
+   "yaw": 2.8594,
+   "at": [
+    -9337.27,
+    3.94,
+    -863.79
+   ],
+   "suburb": "City Beach"
+  },
+  {
+   "id": "lookout_12513647368",
+   "kind": "lookout",
+   "name": "Lookout",
+   "p": [
+    -10685.19,
+    0.02,
+    12937.69
+   ],
+   "yaw": 2.7681,
+   "at": [
+    -10706.46,
+    0.67,
+    12991.98
+   ]
+  },
+  {
+   "id": "lookout_12651677646",
+   "kind": "lookout",
+   "name": "Victoria Park lookout",
+   "p": [
+    2825.97,
+    3.87,
+    2066.91
+   ],
+   "yaw": -3.0277,
+   "at": [
+    2854.31,
+    -2.5,
+    2314.63
+   ],
+   "suburb": "Victoria Park"
+  },
+  {
+   "id": "lookout_13159115105",
+   "kind": "lookout",
+   "name": "South Perth lookout",
+   "p": [
+    284.96,
+    5.23,
+    2977.77
+   ],
+   "yaw": -0.5265,
+   "at": [
+    299.75,
+    3.44,
+    2952.34
+   ],
+   "suburb": "South Perth"
+  },
+  {
+   "id": "lookout_13315599345",
+   "kind": "lookout",
+   "name": "Peppermint Grove lookout",
+   "p": [
+    -7513.98,
+    5.26,
+    6143.37
+   ],
+   "yaw": 0.8726,
+   "at": [
+    -7522.57,
+    6.42,
+    6153.6
+   ],
+   "suburb": "Peppermint Grove"
+  },
+  {
+   "id": "lookout_1640958489",
+   "kind": "lookout",
+   "name": "Kings Park lookout",
+   "p": [
+    -1582.51,
+    59.69,
+    2218.81
+   ],
+   "yaw": -3.0739,
+   "at": [
+    -1574.29,
+    57.15,
+    2340.01
+   ],
+   "suburb": "Kings Park"
+  },
+  {
+   "id": "lookout_3564839511",
+   "kind": "lookout",
+   "name": "Lookout",
+   "p": [
+    -10627.78,
+    6.41,
+    12141.78
+   ],
+   "yaw": 2.7707,
+   "at": [
+    -10662.82,
+    7.26,
+    12231.88
+   ]
+  },
+  {
+   "id": "lookout_4450242190",
+   "kind": "lookout",
+   "name": "West Perth lookout",
+   "p": [
+    -701.01,
+    3.55,
+    1584.62
+   ],
+   "yaw": -2.5754,
+   "at": [
+    -595.07,
+    5.69,
+    1751.28
+   ],
+   "suburb": "West Perth"
+  },
+  {
+   "id": "lookout_571457953",
+   "kind": "lookout",
+   "name": "Cottesloe lookout",
+   "p": [
+    -9504.64,
+    14.93,
+    4567.44
+   ],
+   "yaw": -2.6662,
+   "at": [
+    -9483.26,
+    17.45,
+    4608.97
+   ],
+   "suburb": "Cottesloe"
+  },
+  {
+   "id": "lookout_6451446677",
+   "kind": "lookout",
+   "name": "Prawn Bay lookout",
+   "p": [
+    -8769.54,
+    10.92,
+    10458.08
+   ],
+   "yaw": 2.9787,
+   "at": [
+    -8780.42,
+    13.57,
+    10524.34
+   ],
+   "suburb": "Prawn Bay"
+  },
+  {
+   "id": "lookout_8148200527",
+   "kind": "lookout",
+   "name": "West Perth lookout",
+   "p": [
+    -758.31,
+    63.17,
+    1084.91
+   ],
+   "yaw": 0.3686,
+   "at": [
+    -756.23,
+    58.6,
+    1091.49
+   ],
+   "suburb": "West Perth"
+  },
+  {
+   "id": "lookout_8594488441",
+   "kind": "lookout",
+   "name": "Jolimont lookout",
+   "p": [
+    -4059.93,
+    15.54,
+    -244.88
+   ],
+   "yaw": 1.9124,
+   "at": [
+    -4224.88,
+    15.63,
+    -186.24
+   ],
+   "suburb": "Jolimont"
+  },
+  {
+   "id": "lookout_9123620521",
+   "kind": "lookout",
+   "name": "Mosman Park lookout",
+   "p": [
+    -9229.74,
+    36.39,
+    8009.76
+   ],
+   "yaw": 2.6032,
+   "at": [
+    -9185.39,
+    39.83,
+    7948.25
+   ],
+   "suburb": "Mosman Park"
+  },
+  {
+   "id": "lookout_dryandra_lookout",
+   "kind": "lookout",
+   "name": "Dryandra Lookout",
+   "p": [
+    -2221.51,
+    25.32,
+    2845.96
+   ],
+   "yaw": 3.1189,
+   "at": [
+    -2222.18,
+    17.37,
+    2875.58
+   ],
+   "suburb": "Kings Park"
+  },
+  {
+   "id": "lookout_fraser_avenue",
+   "kind": "lookout",
+   "name": "Fraser Avenue lookout",
+   "p": [
+    -1105.66,
+    69.97,
+    1588.78
+   ],
+   "yaw": -1.2158,
+   "at": [
+    480.37,
+    49.8,
+    1000.8
+   ],
+   "suburb": "Kings Park"
+  },
+  {
+   "id": "lookout_two_rivers_lookout",
+   "kind": "lookout",
+   "name": "Two Rivers Lookout",
+   "p": [
+    -1184.0,
+    60.88,
+    1754.34
+   ],
+   "yaw": 2.5032,
+   "at": [
+    -1223.24,
+    56.88,
+    1807.23
+   ],
+   "suburb": "Kings Park"
+  },
+  {
+   "id": "quiet_hyde_park",
+   "kind": "quiet_spot",
+   "name": "Hyde Park",
+   "p": [
+    745.9,
+    24.97,
+    -763.67
+   ],
+   "yaw": -2.0442,
+   "at": [
+    773.58,
+    27.54,
+    -817.71
+   ],
+   "suburb": "Highgate"
+  },
+  {
+   "id": "quiet_lake_monger",
+   "kind": "quiet_spot",
+   "name": "Lake Monger",
+   "p": [
+    -1803.26,
+    19.0,
+    -2091.23
+   ],
+   "yaw": -2.49,
+   "at": [
+    385.84,
+    25.29,
+    779.03
+   ],
+   "suburb": "Wembley"
+  },
+  {
+   "id": "quiet_matagarup_car_park",
+   "kind": "quiet_spot",
+   "name": "Burswood riverside",
+   "p": [
+    3291.73,
+    8.69,
+    903.94
+   ],
+   "yaw": 1.6064,
+   "at": [
+    574.91,
+    45.2,
+    1000.81
+   ],
+   "suburb": "Burswood"
+  },
+  {
+   "id": "quiet_mill_point_foreshore",
+   "kind": "quiet_spot",
+   "name": "South Perth foreshore",
+   "p": [
+    -321.97,
+    5.76,
+    2521.4
+   ],
+   "yaw": -0.5174,
+   "at": [
+    480.37,
+    46.72,
+    1111.69
+   ],
+   "suburb": "South Perth"
+  },
+  {
+   "id": "quiet_point_fraser",
+   "kind": "quiet_spot",
+   "name": "Point Fraser",
+   "p": [
+    2340.58,
+    3.33,
+    1970.89
+   ],
+   "yaw": 1.1179,
+   "at": [
+    574.91,
+    42.49,
+    1111.69
+   ],
+   "suburb": "East Perth"
+  },
+  {
+   "id": "servo_1037479669",
+   "kind": "servo",
+   "name": "BP Rosegarden",
+   "p": [
+    -5260.49,
+    25.42,
+    3746.84
+   ],
+   "yaw": -0.0005,
+   "at": [
+    -5260.49,
+    25.12,
+    3746.84
+   ],
+   "brand": "BP",
+   "suburb": "Nedlands"
+  },
+  {
+   "id": "servo_10910595555",
+   "kind": "servo",
+   "name": "Vibe Subiaco",
+   "p": [
+    -2164.68,
+    48.15,
+    693.4
+   ],
+   "yaw": -0.778,
+   "at": [
+    -2164.68,
+    47.85,
+    693.4
+   ],
+   "brand": "Vibe",
+   "suburb": "Subiaco"
+  },
+  {
+   "id": "servo_10936227645",
+   "kind": "servo",
+   "name": "Caltex",
+   "p": [
+    -2412.68,
+    22.72,
+    -3586.82
+   ],
+   "yaw": -2.5507,
+   "at": [
+    -2412.68,
+    22.42,
+    -3586.82
+   ],
+   "brand": "Caltex",
+   "suburb": "Joondanna"
+  },
+  {
+   "id": "servo_1153965479",
+   "kind": "servo",
+   "name": "Ampol",
+   "p": [
+    -2806.28,
+    40.64,
+    527.42
+   ],
+   "yaw": 0.0003,
+   "at": [
+    -2806.28,
+    40.34,
+    527.42
+   ],
+   "brand": "Ampol",
+   "suburb": "Subiaco"
+  },
+  {
+   "id": "servo_1153969056",
+   "kind": "servo",
+   "name": "BP",
+   "p": [
+    -3185.49,
+    20.73,
+    -605.89
+   ],
+   "yaw": 1.5638,
+   "at": [
+    -3185.49,
+    20.43,
+    -605.89
+   ],
+   "brand": "BP",
+   "suburb": "Subiaco"
+  },
+  {
+   "id": "servo_11581293254",
+   "kind": "servo",
+   "name": "EG Australia",
+   "p": [
+    -3773.68,
+    14.07,
+    -3909.45
+   ],
+   "yaw": -3.1232,
+   "at": [
+    -3773.68,
+    13.77,
+    -3909.45
+   ],
+   "brand": "Ampol",
+   "suburb": "Osborne Park"
+  },
+  {
+   "id": "servo_1167485124",
+   "kind": "servo",
+   "name": "BP",
+   "p": [
+    -4248.78,
+    9.31,
+    9498.46
+   ],
+   "yaw": -1.5658,
+   "at": [
+    -4248.78,
+    9.01,
+    9498.46
+   ],
+   "brand": "BP",
+   "suburb": "Alfred Cove"
+  },
+  {
+   "id": "servo_1167486283",
+   "kind": "servo",
+   "name": "BP Applecross",
+   "p": [
+    -1008.13,
+    25.85,
+    7642.31
+   ],
+   "yaw": -1.0748,
+   "at": [
+    -1008.13,
+    25.55,
+    7642.31
+   ],
+   "brand": "BP",
+   "suburb": "Applecross"
+  },
+  {
+   "id": "servo_1236531306",
+   "kind": "servo",
+   "name": "Kwik",
+   "p": [
+    -3812.31,
+    28.99,
+    -4385.73
+   ],
+   "yaw": -0.8912,
+   "at": [
+    -3812.31,
+    28.69,
+    -4385.73
+   ],
+   "suburb": "Osborne Park"
+  },
+  {
+   "id": "servo_12373222430",
+   "kind": "servo",
+   "name": "Servo",
+   "p": [
+    -10896.15,
+    -0.0,
+    10579.62
+   ],
+   "yaw": 0.8407,
+   "at": [
+    -10896.15,
+    -0.3,
+    10579.62
+   ],
+   "suburb": "North Fremantle"
+  },
+  {
+   "id": "servo_12373222431",
+   "kind": "servo",
+   "name": "Servo",
+   "p": [
+    -10884.51,
+    0.06,
+    10564.6
+   ],
+   "yaw": 0.8578,
+   "at": [
+    -10884.51,
+    -0.24,
+    10564.6
+   ],
+   "suburb": "North Fremantle"
+  },
+  {
+   "id": "servo_12470373756",
+   "kind": "servo",
+   "name": "Reddy Express",
+   "p": [
+    954.68,
+    18.17,
+    -572.04
+   ],
+   "yaw": -0.4576,
+   "at": [
+    954.68,
+    17.87,
+    -572.04
+   ],
+   "brand": "Shell",
+   "suburb": "Highgate"
+  },
+  {
+   "id": "servo_1261413978",
+   "kind": "servo",
+   "name": "Ampol",
+   "p": [
+    -8271.96,
+    17.78,
+    10502.75
+   ],
+   "yaw": 1.5708,
+   "at": [
+    -8271.96,
+    17.48,
+    10502.75
+   ],
+   "brand": "Ampol",
+   "suburb": "East Fremantle"
+  },
+  {
+   "id": "servo_13109369748",
+   "kind": "servo",
+   "name": "BP",
+   "p": [
+    -207.16,
+    8.1,
+    2961.14
+   ],
+   "yaw": -2.1478,
+   "at": [
+    -207.16,
+    7.8,
+    2961.14
+   ],
+   "brand": "BP",
+   "suburb": "South Perth"
+  },
+  {
+   "id": "servo_1326523317",
+   "kind": "servo",
+   "name": "Ampol",
+   "p": [
+    -5646.55,
+    21.68,
+    -4948.2
+   ],
+   "yaw": 1.1041,
+   "at": [
+    -5646.55,
+    21.38,
+    -4948.2
+   ],
+   "brand": "Ampol",
+   "suburb": "Woodlands"
+  },
+  {
+   "id": "servo_1341998691",
+   "kind": "servo",
+   "name": "Ampol",
+   "p": [
+    -3803.96,
+    16.07,
+    3510.5
+   ],
+   "yaw": 0.2255,
+   "at": [
+    -3803.96,
+    15.77,
+    3510.5
+   ],
+   "brand": "Ampol",
+   "suburb": "Crawley"
+  },
+  {
+   "id": "servo_13429204501",
+   "kind": "servo",
+   "name": "OTR Pier St",
+   "p": [
+    1434.02,
+    22.01,
+    -195.93
+   ],
+   "yaw": 0.0221,
+   "at": [
+    1434.02,
+    21.71,
+    -195.93
+   ],
+   "brand": "Shell",
+   "suburb": "Highgate"
+  },
+  {
+   "id": "servo_14096849840",
+   "kind": "servo",
+   "name": "Burk",
+   "p": [
+    2485.95,
+    27.77,
+    -2225.58
+   ],
+   "yaw": -0.7963,
+   "at": [
+    2485.95,
+    27.47,
+    -2225.58
+   ],
+   "suburb": "Mount Lawley"
+  },
+  {
+   "id": "servo_149612931",
+   "kind": "servo",
+   "name": "United 24",
+   "p": [
+    -148.39,
+    16.11,
+    -46.4
+   ],
+   "yaw": -1.7213,
+   "at": [
+    -148.39,
+    15.81,
+    -46.4
+   ],
+   "brand": "United",
+   "suburb": "Northbridge"
+  },
+  {
+   "id": "servo_150049097",
+   "kind": "servo",
+   "name": "Ampol",
+   "p": [
+    1469.77,
+    13.04,
+    285.54
+   ],
+   "yaw": -2.0306,
+   "at": [
+    1469.77,
+    12.74,
+    285.54
+   ],
+   "brand": "Ampol",
+   "suburb": "Perth Cultural Centre"
+  },
+  {
+   "id": "servo_1596154053",
+   "kind": "servo",
+   "name": "Caltex",
+   "p": [
+    2851.66,
+    27.63,
+    -1269.0
+   ],
+   "yaw": 2.0634,
+   "at": [
+    2851.66,
+    27.33,
+    -1269.0
+   ],
+   "brand": "Caltex",
+   "suburb": "Mount Lawley"
+  },
+  {
+   "id": "servo_199343502",
+   "kind": "servo",
+   "name": "BP",
+   "p": [
+    -2371.73,
+    32.31,
+    -5518.4
+   ],
+   "yaw": 0.006,
+   "at": [
+    -2371.73,
+    32.01,
+    -5518.4
+   ],
+   "brand": "BP",
+   "suburb": "Tuart Hill"
+  },
+  {
+   "id": "servo_225708507",
+   "kind": "servo",
+   "name": "Caltex Mount Lawley",
+   "p": [
+    2654.25,
+    22.3,
+    -2281.93
+   ],
+   "yaw": -0.8065,
+   "at": [
+    2654.25,
+    22.0,
+    -2281.93
+   ],
+   "brand": "Caltex",
+   "suburb": "Mount Lawley"
+  },
+  {
+   "id": "servo_2528773041",
+   "kind": "servo",
+   "name": "Gull Guildford",
+   "p": [
+    10893.98,
+    9.22,
+    -4969.24
+   ],
+   "yaw": -1.617,
+   "at": [
+    10893.98,
+    8.92,
+    -4969.24
+   ],
+   "brand": "Gull",
+   "suburb": "Guildford"
+  },
+  {
+   "id": "servo_292155694",
+   "kind": "servo",
+   "name": "BP",
+   "p": [
+    -9048.48,
+    13.43,
+    -5678.93
+   ],
+   "yaw": -3.1407,
+   "at": [
+    -9048.48,
+    13.13,
+    -5678.93
+   ],
+   "brand": "BP",
+   "suburb": "Scarborough"
+  },
+  {
+   "id": "servo_292155695",
+   "kind": "servo",
+   "name": "BP",
+   "p": [
+    -9072.82,
+    13.52,
+    -5687.74
+   ],
+   "yaw": 0.0009,
+   "at": [
+    -9072.82,
+    13.22,
+    -5687.74
+   ],
+   "brand": "BP",
+   "suburb": "Scarborough"
+  },
+  {
+   "id": "servo_292293540",
+   "kind": "servo",
+   "name": "Coles Express",
+   "p": [
+    2671.39,
+    9.73,
+    3166.7
+   ],
+   "yaw": 2.1323,
+   "at": [
+    2671.39,
+    9.43,
+    3166.7
+   ],
+   "brand": "Coles Express",
+   "suburb": "Kensington"
+  },
+  {
+   "id": "servo_292293541",
+   "kind": "servo",
+   "name": "Coles Express",
+   "p": [
+    2641.5,
+    9.15,
+    3191.39
+   ],
+   "yaw": -2.5231,
+   "at": [
+    2641.5,
+    8.85,
+    3191.39
+   ],
+   "brand": "Coles Express",
+   "suburb": "Kensington"
+  },
+  {
+   "id": "servo_2959932164",
+   "kind": "servo",
+   "name": "Shell Reddy Express",
+   "p": [
+    3990.53,
+    24.46,
+    4388.89
+   ],
+   "yaw": 2.3821,
+   "at": [
+    3990.53,
+    24.16,
+    4388.89
+   ],
+   "brand": "Shell",
+   "suburb": "East Victoria Park"
+  },
+  {
+   "id": "servo_2971612385",
+   "kind": "servo",
+   "name": "Reddy Express",
+   "p": [
+    -3964.29,
+    22.58,
+    161.18
+   ],
+   "yaw": -1.835,
+   "at": [
+    -3964.29,
+    22.28,
+    161.18
+   ],
+   "brand": "Shell",
+   "suburb": "Jolimont"
+  },
+  {
+   "id": "servo_323403840",
+   "kind": "servo",
+   "name": "Shell",
+   "p": [
+    -9146.73,
+    20.63,
+    -5891.17
+   ],
+   "yaw": -0.2548,
+   "at": [
+    -9146.73,
+    20.33,
+    -5891.17
+   ],
+   "brand": "Shell",
+   "suburb": "Scarborough"
+  },
+  {
+   "id": "servo_3266895940",
+   "kind": "servo",
+   "name": "Ampol",
+   "p": [
+    -3653.37,
+    7.32,
+    9456.59
+   ],
+   "yaw": 2.8804,
+   "at": [
+    -3653.37,
+    7.02,
+    9456.59
+   ],
+   "brand": "Ampol",
+   "suburb": "Alfred Cove"
+  },
+  {
+   "id": "servo_33121767",
+   "kind": "servo",
+   "name": "Ampol",
+   "p": [
+    -3804.82,
+    16.08,
+    3509.59
+   ],
+   "yaw": 0.2255,
+   "at": [
+    -3804.82,
+    15.78,
+    3509.59
+   ],
+   "brand": "Ampol",
+   "suburb": "Crawley"
+  },
+  {
+   "id": "servo_33121776",
+   "kind": "servo",
+   "name": "Caltex",
+   "p": [
+    376.16,
+    28.93,
+    -1025.1
+   ],
+   "yaw": -0.4689,
+   "at": [
+    376.16,
+    28.63,
+    -1025.1
+   ],
+   "brand": "Caltex",
+   "suburb": "North Perth"
+  },
+  {
+   "id": "servo_33121784",
+   "kind": "servo",
+   "name": "Coles Express",
+   "p": [
+    498.85,
+    43.62,
+    -2456.85
+   ],
+   "yaw": -2.3497,
+   "at": [
+    498.85,
+    43.32,
+    -2456.85
+   ],
+   "brand": "Coles Express",
+   "suburb": "Menora"
+  },
+  {
+   "id": "servo_341104306",
+   "kind": "servo",
+   "name": "BP",
+   "p": [
+    -9520.35,
+    10.57,
+    11034.73
+   ],
+   "yaw": -0.5186,
+   "at": [
+    -9520.35,
+    10.27,
+    11034.73
+   ],
+   "brand": "BP",
+   "suburb": "Prawn Bay"
+  },
+  {
+   "id": "servo_342653147",
+   "kind": "servo",
+   "name": "Ampol",
+   "p": [
+    -9289.14,
+    19.5,
+    7325.77
+   ],
+   "yaw": -1.8435,
+   "at": [
+    -9289.14,
+    19.2,
+    7325.77
+   ],
+   "brand": "Ampol",
+   "suburb": "Dutchies"
+  },
+  {
+   "id": "servo_3739126542",
+   "kind": "servo",
+   "name": "Servo",
+   "p": [
+    4552.09,
+    16.1,
+    1574.44
+   ],
+   "yaw": 2.4617,
+   "at": [
+    4552.09,
+    15.8,
+    1574.44
+   ],
+   "suburb": "Burswood"
+  },
+  {
+   "id": "servo_3943263357",
+   "kind": "servo",
+   "name": "Puma",
+   "p": [
+    7104.41,
+    17.29,
+    -2935.15
+   ],
+   "yaw": 0.9621,
+   "at": [
+    7104.41,
+    16.99,
+    -2935.15
+   ],
+   "brand": "Puma",
+   "suburb": "Ashfield"
+  },
+  {
+   "id": "servo_4024765307",
+   "kind": "servo",
+   "name": "Caltex",
+   "p": [
+    -8456.67,
+    10.76,
+    -5752.86
+   ],
+   "yaw": -1.5055,
+   "at": [
+    -8456.67,
+    10.46,
+    -5752.86
+   ],
+   "brand": "Caltex",
+   "suburb": "Doubleview"
+  },
+  {
+   "id": "servo_41185280",
+   "kind": "servo",
+   "name": "Shell Express",
+   "p": [
+    -6605.82,
+    14.01,
+    4025.86
+   ],
+   "yaw": -1.3579,
+   "at": [
+    -6605.82,
+    13.71,
+    4025.86
+   ],
+   "brand": "Shell",
+   "suburb": "Claremont"
+  },
+  {
+   "id": "servo_4304649250",
+   "kind": "servo",
+   "name": "Coles Express",
+   "p": [
+    -372.55,
+    9.57,
+    7382.24
+   ],
+   "yaw": 0.0294,
+   "at": [
+    -372.55,
+    9.27,
+    7382.24
+   ],
+   "brand": "Coles Express",
+   "suburb": "Applecross"
+  },
+  {
+   "id": "servo_43201554",
+   "kind": "servo",
+   "name": "Shell",
+   "p": [
+    -9187.25,
+    11.67,
+    13012.99
+   ],
+   "yaw": -1.5556,
+   "at": [
+    -9187.25,
+    11.37,
+    13012.99
+   ],
+   "brand": "Shell",
+   "suburb": "Beaconsfield"
+  },
+  {
+   "id": "servo_4330444396",
+   "kind": "servo",
+   "name": "United",
+   "p": [
+    -4528.67,
+    22.1,
+    -4551.88
+   ],
+   "yaw": 1.3027,
+   "at": [
+    -4528.67,
+    21.8,
+    -4551.88
+   ],
+   "brand": "United",
+   "suburb": "Osborne Park"
+  },
+  {
+   "id": "servo_44038984",
+   "kind": "servo",
+   "name": "Reddy Express",
+   "p": [
+    -1346.79,
+    45.63,
+    -28.6
+   ],
+   "yaw": 2.3807,
+   "at": [
+    -1346.79,
+    45.33,
+    -28.6
+   ],
+   "brand": "Shell",
+   "suburb": "West Perth"
+  },
+  {
+   "id": "servo_4444842177",
+   "kind": "servo",
+   "name": "BP Highgate",
+   "p": [
+    1271.28,
+    17.4,
+    -383.65
+   ],
+   "yaw": -2.0518,
+   "at": [
+    1271.28,
+    17.1,
+    -383.65
+   ],
+   "brand": "BP",
+   "suburb": "Highgate"
+  },
+  {
+   "id": "servo_47414496",
+   "kind": "servo",
+   "name": "Ampol Foodary Applecross",
+   "p": [
+    -287.14,
+    6.87,
+    7274.1
+   ],
+   "yaw": 1.5038,
+   "at": [
+    -287.14,
+    6.57,
+    7274.1
+   ],
+   "brand": "Ampol",
+   "suburb": "Applecross"
+  },
+  {
+   "id": "servo_500805802",
+   "kind": "servo",
+   "name": "Ampol Foodary",
+   "p": [
+    -1307.71,
+    19.43,
+    -1030.88
+   ],
+   "yaw": 0.0032,
+   "at": [
+    -1307.71,
+    19.13,
+    -1030.88
+   ],
+   "brand": "Ampol",
+   "suburb": "Leederville"
+  },
+  {
+   "id": "servo_50775272",
+   "kind": "servo",
+   "name": "BP Nookenburra",
+   "p": [
+    -5175.21,
+    16.5,
+    -4805.11
+   ],
+   "yaw": 2.9112,
+   "at": [
+    -5175.21,
+    16.2,
+    -4805.11
+   ],
+   "brand": "BP",
+   "suburb": "Woodlands"
+  },
+  {
+   "id": "servo_5311582805",
+   "kind": "servo",
+   "name": "Shell Express",
+   "p": [
+    -8944.91,
+    18.74,
+    6573.99
+   ],
+   "yaw": -1.5662,
+   "at": [
+    -8944.91,
+    18.44,
+    6573.99
+   ],
+   "brand": "Shell",
+   "suburb": "Dutchies"
+  },
+  {
+   "id": "servo_5317836131",
+   "kind": "servo",
+   "name": "Shell NightOwl",
+   "p": [
+    2181.75,
+    21.0,
+    -855.94
+   ],
+   "yaw": -0.912,
+   "at": [
+    2181.75,
+    20.7,
+    -855.94
+   ],
+   "brand": "Shell",
+   "suburb": "Highgate"
+  },
+  {
+   "id": "servo_6247091955",
+   "kind": "servo",
+   "name": "BP",
+   "p": [
+    -425.88,
+    23.11,
+    -2238.77
+   ],
+   "yaw": -2.108,
+   "at": [
+    -425.88,
+    22.81,
+    -2238.77
+   ],
+   "brand": "BP",
+   "suburb": "North Perth"
+  },
+  {
+   "id": "servo_639546795",
+   "kind": "servo",
+   "name": "Better Choice",
+   "p": [
+    531.94,
+    22.5,
+    5348.67
+   ],
+   "yaw": -2.7589,
+   "at": [
+    531.94,
+    22.2,
+    5348.67
+   ],
+   "suburb": "South Perth"
+  },
+  {
+   "id": "servo_65012348",
+   "kind": "servo",
+   "name": "United",
+   "p": [
+    -8195.66,
+    23.08,
+    4167.63
+   ],
+   "yaw": -0.8688,
+   "at": [
+    -8195.66,
+    22.78,
+    4167.63
+   ],
+   "brand": "United",
+   "suburb": "Swanbourne"
+  },
+  {
+   "id": "servo_6943158251",
+   "kind": "servo",
+   "name": "Caltex",
+   "p": [
+    3613.31,
+    9.96,
+    2646.59
+   ],
+   "yaw": -0.3652,
+   "at": [
+    3613.31,
+    9.66,
+    2646.59
+   ],
+   "brand": "Caltex",
+   "suburb": "Victoria Park"
+  },
+  {
+   "id": "servo_793705140",
+   "kind": "servo",
+   "name": "Burk",
+   "p": [
+    9963.94,
+    9.22,
+    -4963.02
+   ],
+   "yaw": -0.0246,
+   "at": [
+    9963.94,
+    8.92,
+    -4963.02
+   ],
+   "brand": "Caltex",
+   "suburb": "Bassendean"
+  },
+  {
+   "id": "servo_8167030008",
+   "kind": "servo",
+   "name": "BP East Perh",
+   "p": [
+    2138.42,
+    13.26,
+    530.46
+   ],
+   "yaw": -1.5574,
+   "at": [
+    2138.42,
+    12.96,
+    530.46
+   ],
+   "brand": "BP",
+   "suburb": "East Perth"
+  },
+  {
+   "id": "servo_853323890",
+   "kind": "servo",
+   "name": "Caltex",
+   "p": [
+    802.88,
+    20.1,
+    5870.2
+   ],
+   "yaw": 3.129,
+   "at": [
+    802.88,
+    19.8,
+    5870.2
+   ],
+   "brand": "Caltex",
+   "suburb": "South Perth"
+  },
+  {
+   "id": "servo_9236585991",
+   "kind": "servo",
+   "name": "Shell Coles Express Bicton",
+   "p": [
+    -5774.38,
+    44.43,
+    9773.04
+   ],
+   "yaw": -1.3201,
+   "at": [
+    -5774.38,
+    44.13,
+    9773.04
+   ],
+   "brand": "Shell",
+   "suburb": "Bicton"
+  },
+  {
+   "id": "servo_9948985767",
+   "kind": "servo",
+   "name": "Reddy Express",
+   "p": [
+    -3961.65,
+    14.53,
+    -555.44
+   ],
+   "yaw": 1.5739,
+   "at": [
+    -3961.65,
+    14.23,
+    -555.44
+   ],
+   "brand": "Shell V-Power",
+   "suburb": "Jolimont"
   }
  ]
 }

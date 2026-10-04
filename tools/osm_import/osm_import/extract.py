@@ -14,7 +14,8 @@ from osmium.filter import KeyFilter
 from .common import CACHE_DIR, Projector
 
 KEYS = ("highway", "building", "building:part", "landuse", "leisure", "natural",
-        "waterway", "railway", "water", "amenity", "man_made", "place", "area:highway", "route")
+        "waterway", "railway", "water", "amenity", "man_made", "place", "area:highway", "route",
+        "tourism")
 
 # Tag keys kept on features (everything else is dropped to keep the cache small).
 KEEP = {"highway", "building", "building:part", "landuse", "leisure", "natural", "waterway",
@@ -26,7 +27,7 @@ KEEP = {"highway", "building", "building:part", "landuse", "leisure", "natural",
         "location", "level", "junction", "lit", "leaf_type", "genus", "species", "denotation",
         "gauge", "usage", "construction", "disused", "tracks", "access", "type", "maxspeed",
         "lanes:forward", "lanes:backward", "motor_vehicle", "parking_space", "capacity",
-        "orientation"}
+        "orientation", "tourism", "drive_through", "brand"}
 # Prefixes kept as well (street parking: parking:left=lane, parking:both:orientation=...).
 KEEP_PREFIX = ("parking:",)
 
@@ -57,9 +58,12 @@ class Features:
     control_nodes: list = field(default_factory=list)
     # route=bus relations: (id, ref, name, colour, [way ids in member order]).
     bus_routes: list = field(default_factory=list)
+    # Points of interest mapped as nodes (viewpoints, servos, fast food): (id, tags, e, n).
+    poi_nodes: list = field(default_factory=list)
 
 
 CONTROL = ("traffic_signals", "give_way", "stop", "bus_stop")
+POI_AMENITY = ("fuel", "fast_food")
 
 
 def _keep(tags) -> dict:
@@ -77,12 +81,14 @@ def _area_way(tags) -> bool:
         return True
     if "highway" in tags:
         return tags.get("area") == "yes" or "area:highway" in tags
+    if tags.get("tourism") in ("viewpoint", "zoo"):
+        return True
     return any(k in tags for k in ("landuse", "leisure", "natural", "water", "amenity", "place", "man_made", "area:highway"))
 
 
 def extract(pbf: Path, proj: Projector, bbox_lonlat: tuple, use_cache: bool = True) -> Features:
     """bbox_lonlat = (lon0, lat0, lon1, lat1)."""
-    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 7)).encode()).hexdigest()[:16]
+    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 8)).encode()).hexdigest()[:16]
     cache = CACHE_DIR / f"features_{key}.pkl"
     if use_cache and cache.exists():
         with open(cache, "rb") as f:
@@ -109,6 +115,9 @@ def extract(pbf: Path, proj: Projector, bbox_lonlat: tuple, use_cache: bool = Tr
             elif t.get("highway") in CONTROL or t.get("railway") in ("station", "halt"):
                 e, n = proj.fwd(loc.lon, loc.lat)
                 feats.control_nodes.append((o.id, _keep(t), float(e), float(n)))
+            elif t.get("tourism") == "viewpoint" or t.get("amenity") in POI_AMENITY:
+                e, n = proj.fwd(loc.lon, loc.lat)
+                feats.poi_nodes.append((o.id, _keep(t), float(e), float(n)))
             elif "name" in t and ("place" in t or "amenity" in t or "leisure" in t):
                 feats.named_nodes.append((o.id, _keep(t), loc.lon, loc.lat))
         elif o.is_way():
