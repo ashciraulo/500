@@ -365,6 +365,7 @@ def turn_scene_z180():
     meaningful rotation (the tilted steering wheel) keep it, premultiplied.
     """
     R = Matrix.Rotation(math.pi, 4, "Z")
+    bpy.context.view_layer.update()  # new objects' matrix_world is stale until then
     worlds = {o: o.matrix_world.copy() for o in bpy.data.objects}
 
     def has_rotation(o):

@@ -49,7 +49,7 @@ POP = {
     "seat_lower": "#5e6064",
     "seat_wear": True,
     "phone_holder": True,
-    "plate": "1CIN-500",
+    "plate": "1CIN-500",  # made-up plate; never the real one
 }
 
 

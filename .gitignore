@@ -17,3 +17,6 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+# Preview renders (build_pop.py --render)
+docs/renders/

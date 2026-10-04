@@ -185,7 +185,7 @@ def solidify(obj, thickness, inner_mat, rim=True):
     mod.use_rim = rim
     mod.material_offset = len(obj.data.materials) - 1
     mod.material_offset_rim = len(obj.data.materials) - 1
-    mod.use_even_offset = True
+    mod.use_even_offset = False
     with bpy.context.temp_override(object=obj, active_object=obj):
         bpy.ops.object.modifier_apply(modifier=mod.name)
 
@@ -350,3 +350,198 @@ def stick_box(name, where, size, material, up=(0, 0, 1), proud=0.0):
     o.location = loc + nor * (size[2] / 2 - 0.005 + proud)
     C.apply_transform(o)
     return o
+
+
+# ------------------------------------------------------------------ smooth curves
+
+def pchip(xs, ys):
+    """Monotone cubic interpolation (no overshoot) -> f(x)."""
+    n = len(xs)
+    h = [xs[i + 1] - xs[i] for i in range(n - 1)]
+    d = [(ys[i + 1] - ys[i]) / h[i] for i in range(n - 1)]
+    m = [0.0] * n
+    m[0], m[-1] = d[0], d[-1]
+    for i in range(1, n - 1):
+        if d[i - 1] * d[i] <= 0:
+            m[i] = 0.0
+        else:
+            w1, w2 = 2 * h[i] + h[i - 1], h[i] + 2 * h[i - 1]
+            m[i] = (w1 + w2) / (w1 / d[i - 1] + w2 / d[i])
+
+    def f(x):
+        if x <= xs[0]:
+            return ys[0]
+        if x >= xs[-1]:
+            return ys[-1]
+        i = max(j for j in range(n - 1) if xs[j] <= x)
+        t = (x - xs[i]) / h[i]
+        t2, t3 = t * t, t * t * t
+        return ((2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h[i] * m[i]
+                + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h[i] * m[i + 1])
+    return f
+
+
+def catmull(points, counts):
+    """Sample a Catmull-Rom spline through 2D control points; counts[i] points
+    are generated for segment i (excluding its end). Returns the list plus
+    the index of each control point in it."""
+    P = [points[0]] + list(points) + [points[-1]]
+    out, idx = [], []
+    for i in range(len(points) - 1):
+        p0, p1, p2, p3 = P[i], P[i + 1], P[i + 2], P[i + 3]
+        idx.append(len(out))
+        for k in range(counts[i]):
+            t = k / counts[i]
+            t2, t3 = t * t, t * t * t
+            out.append(tuple(0.5 * ((2 * p1[c]) + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2
+                                    + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3) for c in range(2)))
+    idx.append(len(out))
+    out.append(tuple(points[-1]))
+    return out, idx
+
+
+# ------------------------------------------------------------------ decals
+
+def _point_in_poly(p, poly):
+    x, y = p
+    inside = False
+    j = len(poly) - 1
+    for i in range(len(poly)):
+        xi, yi = poly[i]
+        xj, yj = poly[j]
+        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi:
+            inside = not inside
+        j = i
+    return inside
+
+
+def _dist_to_poly(p, poly):
+    best = 1e9
+    for i in range(len(poly)):
+        a, b = Vector(poly[i - 1]), Vector(poly[i])
+        ab = b - a
+        t = max(0, min(1, (Vector(p) - a).dot(ab) / max(ab.length_squared, 1e-12)))
+        best = min(best, (Vector(p) - (a + ab * t)).length)
+    return best
+
+
+def inside_poly(p, poly, inset=0.0):
+    return _point_in_poly(p, poly) and _dist_to_poly(p, poly) >= inset
+
+
+def offset_poly(poly, d):
+    """Inset (d > 0) a convex-ish polygon by moving each vertex along its bisector."""
+    out = []
+    n = len(poly)
+    area = sum(poly[i - 1][0] * poly[i][1] - poly[i][0] * poly[i - 1][1] for i in range(n))
+    sgn = 1 if area > 0 else -1
+    for i in range(n):
+        a, b, c = Vector(poly[i - 1]), Vector(poly[i]), Vector(poly[(i + 1) % n])
+        e1, e2 = (b - a).normalized(), (c - b).normalized()
+        n1 = Vector((-e1.y, e1.x)) * sgn
+        n2 = Vector((-e2.y, e2.x)) * sgn
+        bis = (n1 + n2)
+        if bis.length < 1e-6:
+            bis = n1
+        bis.normalize()
+        k = d / max(bis.dot(n1), 0.7)  # miter limit: no spikes at sharp corners
+        out.append(tuple(b + bis * k))
+    return out
+
+
+def project_poly(name, target, poly, frame, material, offset=0.004, cuts=4, border=None, border_mat=None):
+    """Mesh covering `poly` (2D) projected onto `target`'s surface.
+
+    frame(u, v) -> (origin, direction) gives the ray for a 2D point. With
+    `border` (metres), an outer ring of that width gets `border_mat` and the
+    inside gets `material` (window glass with a black seal); material None
+    leaves just the ring.
+    """
+    def build(p2, mat):
+        bm = bmesh.new()
+        vs = [bm.verts.new((u, v, 0)) for u, v in p2]
+        bm.faces.new(vs)
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+        if cuts:
+            bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=cuts, use_grid_fill=True)
+        me = bpy.data.meshes.new(name)
+        bm.to_mesh(me)
+        bm.free()
+        for v in me.vertices:
+            o, d = frame(v.co.x, v.co.y)
+            ok, loc, nor, _ = target.ray_cast(Vector(o), Vector(d).normalized())
+            if ok:
+                v.co = loc + nor * offset
+            else:
+                v.co = Vector(o) + Vector(d) * 4.6
+        o = bpy.data.objects.new(name, me)
+        me.materials.append(mat)
+        C.link(o)
+        return o
+
+    parts = []
+    if border:
+        inner = offset_poly(poly, border)
+        ring = []
+        n = len(poly)
+        for i in range(n):
+            ring.append((poly[i], poly[(i + 1) % n], inner[(i + 1) % n], inner[i]))
+        for q in ring:
+            parts.append(build(list(q), border_mat))
+        if material is not None:
+            parts.append(build(inner, material))
+    else:
+        parts.append(build(poly, material))
+    o = C.join(parts, name)
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
+    bm.to_mesh(o.data)
+    bm.free()
+    smooth(o, 60)
+    return o
+
+
+def project_line(name, target, pts, frame, width, material, offset=0.003, closed=False):
+    """A thin ribbon along a 2D polyline, projected onto the surface (shut lines)."""
+    seq = list(pts) + ([pts[0]] if closed else [])
+    verts, faces = [], []
+    for i, p in enumerate(seq):
+        a = Vector(seq[max(i - 1, 0)])
+        b = Vector(seq[min(i + 1, len(seq) - 1)])
+        t = (b - a).normalized()
+        nrm = Vector((-t.y, t.x)) * width / 2
+        for s in (-1, 1):
+            u, v = Vector(p) + nrm * s
+            o, d = frame(u, v)
+            ok, loc, nor, _ = target.ray_cast(Vector(o), Vector(d).normalized())
+            verts.append(tuple(loc + nor * offset) if ok else tuple(Vector(o) + Vector(d) * 4.6))
+    for i in range(len(seq) - 1):
+        faces.append((2 * i, 2 * i + 1, 2 * i + 3, 2 * i + 2))
+    o = C.mesh_obj(name, verts, faces, material)
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(o.data)
+    bm.free()
+    material.use_backface_culling = False
+    return o
+
+
+def side_frame(sx):
+    """2D (y, z) -> ray from outside on side sx toward the car."""
+    return lambda u, v: ((sx * 5, u, v), (-sx, 0, 0))
+
+
+def top_frame():
+    """2D (x, y) -> ray from above."""
+    return lambda u, v: ((u, v, 5), (0, 0, -1))
+
+
+def front_frame():
+    """2D (x, z) -> ray from the front (cars face -Y while being built)."""
+    return lambda u, v: ((u, -5, v), (0, 1, 0))
+
+
+def rear_frame():
+    return lambda u, v: ((u, 5, v), (0, -1, 0))

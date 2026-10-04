@@ -87,9 +87,11 @@ def plate(text, name="plate", ink=(0.09, 0.16, 0.50), w=64, h=16):
 
 # ------------------------------------------------------------------ paint wear
 
-def worn_paint(name, base, y_of_u, seg_of_v, seed=500, w=128, h=64, roof_y=(-0.12, 1.2),
-               bonnet_y=-0.78, fade=1.0):
+def worn_paint(name, base, zone, seed=500, w=128, h=64, fade=1.0):
     """Paint for the lofted shell UVs (u along the car, v round the profile).
+
+    zone(u, v) -> (kind, lowness): kind is 'roof', 'bonnet', 'top' or 'side'
+    and lowness (0..1) how close to the sills the point is.
 
     Sun-faded clear coat on the roof and bonnet (chalky blotches), a dull
     bonnet, road grime low down and a few scratches. `fade` 0 gives clean
@@ -110,27 +112,25 @@ def worn_paint(name, base, y_of_u, seg_of_v, seed=500, w=128, h=64, roof_y=(-0.1
 
     def px(x, y):
         u, v = (x + 0.5) / w, (y + 0.5) / h
-        ypos, seg = y_of_u(u), seg_of_v(v)
+        kind, low = zone(u, v)
         c = mul(base, 0.97 + flake(u, v) * 0.06)
         if fade <= 0:
             return c
-        on_roof = seg >= 7.4 and roof_y[0] <= ypos <= roof_y[1]
-        on_bonnet = seg >= 5.8 and ypos < bonnet_y
-        if on_roof:
+        if kind == "roof":
             b = blot(u * 1.6, v)
             if b > 0.52:
                 c = lerp(c, chalk, min(1, (b - 0.52) * 7) * fade)
             else:
                 c = lerp(c, dull, 0.3 * fade)
-        elif on_bonnet:
+        elif kind == "bonnet":
             c = lerp(c, dull, 0.7 * fade)
             hz = haze(u * 2, v * 2)
             if hz > 0.55:
                 c = lerp(c, chalk, min(0.6, (hz - 0.55) * 3) * fade)
-        elif seg >= 6.0:
+        elif kind == "top":
             c = lerp(c, dull, 0.25 * fade)
-        if seg <= 2.5:
-            c = lerp(c, grime, (1 - seg / 2.5) * 0.8 * fade)
+        if low > 0:
+            c = lerp(c, grime, low * 0.8 * fade)
         for su, sv, ln, slope in scratches:
             du = u - su
             if 0 <= du <= ln and abs((v - sv) - du * slope) < 0.004:

@@ -11,7 +11,7 @@ Either Blender 4.2+ or the `bpy` module from PyPI (Python 3.11) works:
 ```sh
 blender -b -P art/models/scripts/build_pop.py            # Blender binary
 python3.11 art/models/scripts/build_pop.py               # pip install bpy==4.2.0
-python3.11 art/models/scripts/build_pop.py --render      # also writes docs/renders/pop_*.png
+python3.11 art/models/scripts/build_pop.py --render      # also writes preview renders
 ```
 
 Then open Godot once so it re-imports the `.glb` files.
@@ -27,7 +27,12 @@ Then open Godot once so it re-imports the `.glb` files.
 - Scripts live in `scripts/`; shared code in `scripts/lib/`:
   `common.py` (scene, materials, export), `carkit.py` (lofted bodies, ray-cast
   detail placement), `wheels.py`, `textures.py` (pixel textures),
-  `fiat500_modern.py` (the 2007-on 500 family).
+  `fiat500_shell.py` (the 2007-on 500's body shape: key curves along the car,
+  window outlines) and `fiat500_modern.py` (everything built on that shell).
+- Bodies are lofted through cross sections interpolated from a table of key
+  curves (`KEYS`), so reshaping a car means editing a few numbers. Window
+  openings are boolean cuts from 2D outlines; glass, seals, lamps and shut
+  lines are projected onto the surface from outlines too.
 
 ## Cars
 
