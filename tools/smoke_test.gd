@@ -153,6 +153,56 @@ func _run_step() -> bool:
 			for key in ["rpm", "throttle", "gear", "speed_kmh", "surface", "weather_intensity"]:
 				_check(telemetry.has(key), "telemetry has '%s'" % key)
 			_next()
+		9:  # Job board: take a delivery and drive it (by teleporting).
+			var jobs := root.get_node("Jobs")
+			if _frame == 1:
+				jobs.refresh_offers()
+				_check(jobs.offers.size() >= 4, "job board has offers (%d)" % jobs.offers.size())
+				var delivery: Dictionary = {}
+				for job in jobs.offers:
+					if job.type == "delivery":
+						delivery = job
+						break
+				_check(not delivery.is_empty(), "a delivery is on offer")
+				if delivery.is_empty():
+					_next()
+					return false
+				_mark.money = root.get_node("Wallet").balance
+				_mark.deliveries = root.get_node("Progression").get_stat("deliveries")
+				jobs.accept(delivery)
+				_teleport(jobs.target_site().global_position)
+			elif _frame == 60:
+				_check(jobs.active.get("stage", "") == "to_dropoff", "stopping at the pickup loads the cargo")
+				_teleport(jobs.target_site().global_position)
+			elif _frame == 120:
+				_check(jobs.active.is_empty(), "stopping at the drop-off finishes the delivery")
+				_check(root.get_node("Wallet").balance > _mark.money, "the delivery paid ($%d)" % (root.get_node("Wallet").balance - _mark.money))
+				_check(root.get_node("Progression").get_stat("deliveries") == _mark.deliveries + 1, "the delivery counts towards challenges")
+				_check(root.get_node("Discoveries").all().size() >= 2, "driving past places discovers them")
+				_next()
+		10:  # Time trial through every checkpoint.
+			var jobs := root.get_node("Jobs")
+			if _frame == 1:
+				var trial: Dictionary = {}
+				for job in jobs.offers:
+					if job.type == "trial":
+						trial = job
+				_check(not trial.is_empty(), "a time trial is on offer")
+				if trial.is_empty():
+					_next()
+					return false
+				_mark.trial = trial.trial_id
+				jobs.accept(trial)
+			elif not jobs.active.is_empty() and _frame % 30 == 0:
+				_teleport(jobs.target_site().global_position)
+			elif jobs.active.is_empty() and _frame > 30:
+				_check(jobs.trial_records.has(_mark.trial), "finishing a trial records a best time")
+				_check(jobs.trial_records[_mark.trial].medal == "gold", "a teleporting car takes gold (of course)")
+				_check(root.get_node("Progression").get_stat("trials_gold") == 1, "gold counts towards challenges")
+				_next()
+			elif _frame > 2000:
+				_check(false, "time trial finished")
+				_next()
 		_:
 			Input.action_release("accelerate")
 			Input.action_release("brake")
@@ -166,6 +216,12 @@ func _run_step() -> bool:
 				quit(1)
 			return true
 	return false
+
+
+func _teleport(pos: Vector3) -> void:
+	_car.global_transform = Transform3D(_car.global_basis, pos + Vector3.UP * 0.5)
+	_car.linear_velocity = Vector3.ZERO
+	_car.angular_velocity = Vector3.ZERO
 
 
 func _seconds() -> float:

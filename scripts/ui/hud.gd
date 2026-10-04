@@ -8,7 +8,7 @@ const HELP := """W/S or triggers: throttle / brake    A/D or stick: steer    Spa
 E/Q or bumpers: gear up / down    G / Select: manual <-> auto    C / Y: camera
 L: headlights    R / D-pad down: reset car    Mouse click: look around (interior)
 F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
-F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings"""
+F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)"""
 
 var _car: CarController
 var _speed: Label
@@ -17,6 +17,10 @@ var _status: Label
 var _help: Label
 var _rev_bar: ColorRect
 var _rev_back: ColorRect
+var _objective: Label
+var _toast: Label
+var _toast_queue: PackedStringArray = []
+var _toast_time := 0.0
 
 
 func _ready() -> void:
@@ -55,8 +59,54 @@ func _ready() -> void:
 	_help.visible = Settings.show_help
 	root.add_child(_help)
 
+	_objective = Label.new()
+	_objective.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_objective.offset_left = -620
+	_objective.offset_right = -16
+	_objective.offset_top = 12
+	_objective.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_objective.add_theme_font_size_override("font_size", 16)
+	_objective.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55))
+	_objective.add_theme_color_override("font_outline_color", Color.BLACK)
+	_objective.add_theme_constant_override("outline_size", 5)
+	root.add_child(_objective)
 
-func _process(_delta: float) -> void:
+	_toast = Label.new()
+	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_toast.offset_left = -360
+	_toast.offset_right = 360
+	_toast.offset_top = 150
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_toast.add_theme_font_size_override("font_size", 20)
+	_toast.add_theme_color_override("font_outline_color", Color.BLACK)
+	_toast.add_theme_constant_override("outline_size", 6)
+	_toast.modulate.a = 0.0
+	root.add_child(_toast)
+
+	Jobs.job_started.connect(func(job: Dictionary) -> void: toast(job.title))
+	Jobs.job_completed.connect(func(_job: Dictionary, _pay: int, summary: String) -> void: toast(summary))
+	Jobs.place_discovered.connect(func(site: JobSite) -> void: toast("Discovered: %s" % site.label()))
+	Progression.challenge_completed.connect(func(_tier: int, challenge: Dictionary) -> void:
+		toast("Challenge done: %s" % challenge.title))
+	Progression.tier_completed.connect(func(_index: int, tier: Dictionary) -> void:
+		toast("Tier complete: %s! New jobs pay better now." % tier.title))
+
+
+## Show a message for a few seconds. Messages queue up.
+func toast(text: String) -> void:
+	_toast_queue.append(text)
+
+
+func _process(delta: float) -> void:
+	_objective.text = Jobs.objective_text()
+	_toast_time -= delta
+	if _toast_time <= 0.0 and not _toast_queue.is_empty():
+		_toast.text = _toast_queue[0]
+		_toast_queue.remove_at(0)
+		_toast_time = 4.5
+	_toast.modulate.a = clampf(_toast_time / 0.6, 0.0, 1.0) if _toast_time < 0.6 else 1.0
 	if Input.is_action_just_pressed("toggle_help"):
 		_help.visible = not _help.visible
 		Settings.show_help = _help.visible

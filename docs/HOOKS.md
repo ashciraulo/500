@@ -120,7 +120,9 @@ Registering after the save was read applies your section immediately.
 Run the game with `-- --no-save` to skip saving and loading entirely.
 
 Already saved: `clock` (time, day), `weather` (state, wetness), `car`
-(position, heading, parts, odometer), `wallet`, `discoveries`.
+(position, heading, parts, odometer), `wallet`, `discoveries`,
+`progression` (stats, tier, unlocked cars), `jobs` (offers, active job, trial
+records).
 
 ## Money (autoload `Wallet`) and discoveries (autoload `Discoveries`)
 
@@ -128,3 +130,17 @@ Already saved: `clock` (time, day), `weather` (state, wetness), `car`
   `can_afford(amount)`, `total_earned`, signal `changed(balance, delta)`.
 - `Discoveries.discover(id) -> bool` (true the first time), `has(id)`, `all()`,
   signal `discovered(id)`. Ids are free-form, e.g. `"place/kings_park"`.
+
+## Jobs (autoload `Jobs`) and career (autoload `Progression`)
+
+- Job sites are `JobSite` markers (group `job_sites`) placed by the map. Each has
+  `site_id`, `display_name`, `suburb` and `kinds`. The test grid places 11 of
+  them; the real map should place markers with the same ids.
+- `Jobs.offers`, `Jobs.active`, `accept(job)`, `abandon()`, `target_site()`,
+  `objective_text()`. Signals: `offers_changed`, `job_started`,
+  `job_stage_changed`, `job_completed(job, pay, summary)`, `job_abandoned`,
+  `place_discovered(site)`. Audio can hook stinger sounds to these.
+- `Progression.add_stat(stat, amount)` counts anything (deliveries, medals,
+  night drives). Tiers and their challenges live in
+  `data/progression/tiers.json`; each challenge names a stat and a target.
+  Signals: `stat_changed`, `challenge_completed`, `tier_completed`.

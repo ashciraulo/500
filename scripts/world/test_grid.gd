@@ -72,6 +72,20 @@ func _ready() -> void:
 		_street_light(Vector3(center.x - 65.5, 0, z))
 		_street_light(Vector3(center.x + 65.5, 0, z))
 
+	# Placeholder job sites with Perth names, until the map supplies real ones.
+	var hill_top := Vector3(-80, rise, -60)
+	_site("little_shenton_lane", "Little Shenton Lane", "Northbridge", Vector3(0, 0, 8))
+	_site("northbridge_piazza", "Northbridge Piazza", "Northbridge", Vector3(20, 0, -45))
+	_site("oxford_st", "Oxford Street", "Leederville", Vector3(100, 0, -40))
+	_site("subiaco_markets", "Station Street Markets", "Subiaco", Vector3(220, 0, -100))
+	_site("kings_park_lookout", "Kings Park lookout", "West Perth", hill_top)
+	_site("fremantle_markets", "Fremantle Markets", "Fremantle", Vector3(160, 0, -218))
+	_site("cottesloe_surf_club", "Surf club car park", "Cottesloe", Vector3(160, 0, 18))
+	_site("beaufort_st", "Beaufort Street", "Mount Lawley", Vector3(-225, 0, -225))
+	_site("albany_hwy", "Albany Highway", "Victoria Park", Vector3(-315, 0, -135))
+	_site("scarborough_beach", "Scarborough Beach", "Scarborough", Vector3(-18, 0, 32))
+	_site("guildford_antiques", "James Street antiques", "Guildford", Vector3(-135, 0, -315))
+
 	# Placeholder town block for scale, silhouettes and fog depth.
 	var colours := [Color(0.78, 0.72, 0.62), Color(0.6, 0.62, 0.66), Color(0.82, 0.8, 0.76), Color(0.55, 0.45, 0.4)]
 	for gx in 6:
@@ -84,6 +98,15 @@ func _ready() -> void:
 	for i in 7:
 		_road(Vector3(-315 + i * 30, 0, -225), Vector2(8, 190), 0.0, asphalt)
 		_road(Vector3(-225, 0, -315 + i * 30), Vector2(190, 8), 0.0, asphalt)
+
+
+func _site(id: String, title: String, suburb: String, pos: Vector3) -> void:
+	var site := JobSite.new()
+	site.site_id = id
+	site.display_name = title
+	site.suburb = suburb
+	site.position = pos
+	add_child(site)
 
 
 func _slab(pos: Vector3, size: Vector3, rot_deg: Vector3, surface: StringName, material: Material) -> StaticBody3D:
