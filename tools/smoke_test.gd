@@ -1,0 +1,141 @@
+extends SceneTree
+## Headless smoke test: loads the main scene and drives the car through a few
+## scripted checks. Run it with a fixed frame rate so physics is deterministic:
+##
+##   godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd
+##
+## Exits with code 1 if any check fails. CI runs this on every push.
+
+const FPS := 120
+
+var _main: Node
+var _car: RigidBody3D  # CarController (untyped so this compiles before autoloads exist)
+var _failures: Array[String] = []
+var _step := 0
+var _frame := 0
+var _mark := {}
+
+
+func _process(_delta: float) -> bool:
+	# The scene is loaded on the first frame, once the autoloads exist.
+	if _main == null:
+		_main = load("res://scenes/main.tscn").instantiate()
+		root.add_child(_main)
+		_car = _main.get_node("LoFi/SubViewport/World/Car")
+		var clock := root.get_node("GameClock")
+		clock.set_time(12.0)
+		clock.set_locked(true)
+		root.get_node("Weather").set_locked(true)
+		return false
+	_frame += 1
+	return _run_step()
+
+
+## Each step returns true when it's finished; the whole test returns true to quit.
+func _run_step() -> bool:
+	match _step:
+		0:  # Settle on the suspension.
+			if _seconds() >= 2.0:
+				_check(_car.global_position.y > 0.3 and _car.global_position.y < 0.7,
+					"car rests on its wheels (y=%.2f)" % _car.global_position.y)
+				_check(_car.global_basis.y.dot(Vector3.UP) > 0.98, "car sits level")
+				_check(_car.grounded_wheels == 4, "all four wheels touch the ground")
+				_check(_car.linear_velocity.length() < 0.2, "car is at rest (%.2f m/s)" % _car.linear_velocity.length())
+				_next()
+		1:  # Manual gearbox, first gear, full throttle.
+			_car.transmission = 0  # MANUAL
+			Input.action_press("accelerate")
+			if _seconds() >= 2.5:
+				_check(_car.gear == 1, "still in first without shifting")
+				_check(_car.rpm > 4000.0, "revs climb in first (%d rpm)" % _car.rpm)
+				_check(_car.speed_kmh() > 20.0, "car pulls away in first (%.0f km/h)" % _car.speed_kmh())
+				_car.shift_up()
+				_next()
+		2:  # Shift to second.
+			if _seconds() >= 1.0:
+				_check(_car.gear == 2, "manual upshift to second (gear=%d)" % _car.gear)
+				_car.set_transmission(1)  # AUTOMATIC
+				_next()
+		3:  # Automatic takes over and keeps accelerating.
+			if _seconds() >= 14.0:
+				_check(_car.gear >= 4, "automatic upshifts (gear=%d)" % _car.gear)
+				_check(_car.speed_kmh() > 100.0, "reaches highway speed (%.0f km/h)" % _car.speed_kmh())
+				_check(_car.speed_kmh() < 175.0, "top speed is sane (%.0f km/h)" % _car.speed_kmh())
+				_check(_car.global_basis.y.dot(Vector3.UP) > 0.95, "still upright at speed")
+				_mark.yaw = _car.global_rotation.y
+				Input.action_release("accelerate")
+				Input.action_press("brake")
+				_next()
+		4:  # Braking from speed.
+			if _car.speed_kmh() < 2.0 or _seconds() >= 10.0:
+				_check(_car.speed_kmh() < 2.0, "brakes stop the car (%.0f km/h after %.1fs)" % [_car.speed_kmh(), _seconds()])
+				_check(absf(angle_difference(_mark.yaw, _car.global_rotation.y)) < 0.35, "car brakes in a straight line")
+				_next()
+		5:  # Keep holding brake at a standstill: automatic goes into reverse.
+			if _seconds() >= 3.0:
+				_check(_car.gear == -1, "automatic engages reverse (gear=%d)" % _car.gear)
+				_check(_car.forward_speed < -1.0, "car reverses (%.1f m/s)" % _car.forward_speed)
+				_check(_car.speed_kmh() < 30.0, "reverse speed is limited (%.0f km/h)" % _car.speed_kmh())
+				Input.action_release("brake")
+				_next()
+		6:  # Throttle while reversing: automatic brakes, then goes back into first.
+			Input.action_press("accelerate")
+			if _car.gear == 1 and _car.forward_speed > 0.5:
+				_mark.yaw = _car.global_rotation.y
+				Input.action_press("accelerate", 0.7)
+				Input.action_press("steer_left")
+				_next()
+			elif _seconds() >= 8.0:
+				_check(false, "automatic leaves reverse when the throttle is pressed (gear=%d)" % _car.gear)
+				_next()
+		7:
+			# Accumulate per frame: at full lock the car can go round more than once.
+			_mark.turned = _mark.get("turned", 0.0) + angle_difference(_mark.yaw, _car.global_rotation.y)
+			_mark.yaw = _car.global_rotation.y
+			if _seconds() >= 5.0:
+				var turned: float = _mark.turned
+				_check(turned > 1.0, "steering left turns the car left (%.2f rad)" % turned)
+				_check(_car.global_basis.y.dot(Vector3.UP) > 0.9, "no rollover while turning")
+				Input.action_release("accelerate")
+				Input.action_release("steer_left")
+				_next()
+		8:  # Weather and clock respond.
+			var weather := root.get_node("Weather")
+			weather.set_state(2, true)
+			root.get_node("GameClock").set_time(23.0)
+			_check(weather.intensity() > 0.9, "storm sets full rain intensity")
+			_check(root.get_node("GameClock").is_night(), "23:00 is night")
+			var telemetry: Dictionary = _car.get_telemetry()
+			for key in ["rpm", "throttle", "gear", "speed_kmh", "surface", "weather_intensity"]:
+				_check(telemetry.has(key), "telemetry has '%s'" % key)
+			_next()
+		_:
+			Input.action_release("accelerate")
+			Input.action_release("brake")
+			if _failures.is_empty():
+				print("SMOKE TEST PASSED")
+				quit(0)
+			else:
+				print("SMOKE TEST FAILED (%d):" % _failures.size())
+				for failure in _failures:
+					print("  - ", failure)
+				quit(1)
+			return true
+	return false
+
+
+func _seconds() -> float:
+	return float(_frame) / FPS
+
+
+func _next() -> void:
+	_step += 1
+	_frame = 0
+	print("  [t] step %d  pos=%s  %.0f km/h  gear=%d  rpm=%d" % [
+		_step, _car.global_position.snapped(Vector3.ONE * 0.1), _car.speed_kmh(), _car.gear, _car.rpm])
+
+
+func _check(ok: bool, what: String) -> void:
+	print(("  ok   " if ok else "  FAIL ") + what)
+	if not ok:
+		_failures.append(what)

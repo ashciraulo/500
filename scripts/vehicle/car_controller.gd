@@ -1,0 +1,524 @@
+class_name CarController
+extends RigidBody3D
+## Arcade-leaning raycast car, tuned to feel like a small, heavy-ish hatch.
+##
+## Each wheel is a ray cast down from its anchor (a Marker3D under `Wheels`).
+## The ray gives spring/damper suspension, and the tyre at the contact patch
+## pushes the car with a simple grip model: sideways slip is cancelled up to a
+## friction limit, and engine/brake forces act along the wheel. It is not a
+## simulation, but weight transfer, body roll and wheelspin all fall out of it.
+##
+## Defaults match a 2013 Fiat 500 Pop: 1.2 FIRE (51 kW, 102 Nm), 5-speed
+## manual, front-wheel drive, about 940 kg.
+##
+## Scene layout this script expects (see scenes/vehicles/fiat_500_pop.tscn):
+##   Wheels/WheelFL, WheelFR, WheelRL, WheelRR  (Marker3D suspension anchors)
+##     <wheel>/Visual       moved up/down with the suspension, steers
+##     <wheel>/Visual/Spin  rolls with the wheel; put wheel meshes in here
+##   DriverSeat   (Marker3D, interior camera eye point)
+##   Headlights   (Node3D with lights, toggled by `headlights_on`)
+##   BrakeLights  (Node3D with lights, shown while braking)
+##
+## Audio and other systems should read `get_telemetry()` or the public vars
+## below, and connect to the signals. See docs/HOOKS.md.
+
+signal gear_changed(gear: int)
+signal transmission_changed(automatic: bool)
+## Body hit something. `strength` is the impact speed in m/s.
+signal impact(strength: float)
+signal surface_changed(surface: StringName)
+signal headlights_changed(on: bool)
+
+enum Transmission { MANUAL, AUTOMATIC }
+
+## Grip and rolling resistance multipliers per surface. Colliders declare
+## their surface with metadata, e.g. `collider.set_meta("surface", &"gravel")`.
+const SURFACES := {
+	&"asphalt": { "grip": 1.0, "rolling": 1.0 },
+	&"concrete": { "grip": 0.95, "rolling": 1.0 },
+	&"brick": { "grip": 0.9, "rolling": 1.3 },
+	&"gravel": { "grip": 0.68, "rolling": 3.0 },
+	&"dirt": { "grip": 0.65, "rolling": 2.5 },
+	&"grass": { "grip": 0.58, "rolling": 3.5 },
+	&"sand": { "grip": 0.5, "rolling": 6.0 },
+}
+const DEFAULT_SURFACE := &"asphalt"
+const RPM_PER_RAD_S := 60.0 / TAU
+
+@export var player_controlled := true
+
+@export_group("Engine")
+@export var idle_rpm := 850.0
+@export var redline_rpm := 6200.0
+@export var limiter_rpm := 6450.0
+## (rpm, Nm) points of the full-throttle torque curve.
+@export var torque_curve := PackedVector2Array([
+	Vector2(800, 62), Vector2(1500, 80), Vector2(2200, 94), Vector2(3000, 102),
+	Vector2(4000, 99), Vector2(5000, 93), Vector2(5500, 88), Vector2(6200, 76),
+	Vector2(6600, 60),
+])
+## Engine braking torque (Nm) per 1000 rpm when off the throttle.
+@export var engine_brake_per_krpm := 5.0
+## How quickly the engine revs freely (out of gear or clutch in), rpm/s.
+@export var free_rev_up := 9000.0
+@export var free_rev_down := 3500.0
+
+@export_group("Gearbox")
+@export var transmission := Transmission.MANUAL
+@export var gear_ratios := PackedFloat32Array([3.909, 2.238, 1.520, 1.156, 0.872])
+@export var reverse_ratio := 3.909
+@export var final_drive := 4.071
+@export var drivetrain_efficiency := 0.88
+## Seconds the clutch is out during a shift.
+@export var shift_time := 0.3
+@export var auto_upshift_rpm := 5300.0
+@export var auto_downshift_rpm := 1800.0
+@export var reverse_limit_kmh := 22.0
+
+@export_group("Suspension")
+@export var wheel_radius := 0.29
+## Ray length from the anchor to the bottom of the wheel at full droop.
+@export var suspension_length := 0.30
+@export var spring_strength := 26000.0
+@export var damper_strength := 2400.0
+@export var anti_roll_strength := 4500.0
+
+@export_group("Tyres and brakes")
+@export var tire_grip := 1.05
+## Share of sideways slide the tyre corrects per physics step (before the grip limit).
+@export_range(0.0, 1.0) var lateral_stiffness := 0.7
+## Rear grip multiplier while the handbrake is held.
+@export var handbrake_grip := 0.3
+## Total braking force at full pedal, N.
+@export var brake_force := 9000.0
+@export var handbrake_force := 3500.0
+@export var rolling_resistance := 0.014
+@export var drag_coefficient := 0.42
+
+@export_group("Steering")
+@export var max_steer_deg := 34.0
+@export var high_speed_steer_deg := 7.0
+## Speed (km/h) at which steering lock is down to `high_speed_steer_deg`.
+@export var steer_falloff_kmh := 110.0
+## Steering wheel speed, radians of road-wheel angle per second.
+@export var steer_rate := 2.2
+
+# --- Driver inputs, 0..1 (steer -1..1). Set by the player or by AI. ---
+var throttle_input := 0.0
+var brake_input := 0.0
+var steer_input := 0.0
+var handbrake_input := 0.0
+
+# --- Telemetry (read-only for other systems) ---
+## Engine speed.
+var rpm := 850.0
+## -1 reverse, 0 neutral, 1..5 forward.
+var gear := 1
+## Throttle actually reaching the engine after the shift logic, 0..1.
+var throttle := 0.0
+## Brake pedal actually applied, 0..1 (after auto-reverse swapping).
+var brake := 0.0
+## 0 = clutch fully in (disengaged), 1 = fully engaged.
+var clutch := 1.0
+## Engine torque output as a share of peak, -1..1 (negative = engine braking).
+var engine_load := 0.0
+## Signed speed along the car's nose, m/s.
+var forward_speed := 0.0
+## Worst tyre slip this step, 0..1. Good for skid/squeal volume.
+var tire_slip := 0.0
+## Surface under most of the wheels.
+var surface: StringName = DEFAULT_SURFACE
+var grounded_wheels := 0
+var is_shifting := false
+var headlights_on := false
+## Front road-wheel angle in radians, positive = left.
+var steer_angle := 0.0
+
+var _wheels: Array[Dictionary] = []
+var _shift_timer := 0.0
+var _pending_gear := 1
+var _reverse_hold := 0.0
+var _headlights_manual := false
+var _spawn_transform: Transform3D
+var _ray_query := PhysicsRayQueryParameters3D.new()
+var _last_velocity := Vector3.ZERO
+
+
+func _ready() -> void:
+	if player_controlled:
+		add_to_group(&"player_car")
+	_spawn_transform = global_transform
+	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
+	center_of_mass = Vector3.ZERO
+	contact_monitor = true
+	max_contacts_reported = 4
+	body_entered.connect(_on_body_entered)
+	_ray_query.exclude = [get_rid()]
+	for wheel_name in ["WheelFL", "WheelFR", "WheelRL", "WheelRR"]:
+		var anchor: Node3D = get_node("Wheels/" + wheel_name)
+		_wheels.append({
+			"anchor": anchor,
+			"visual": anchor.get_node_or_null("Visual"),
+			"spin": anchor.get_node_or_null("Visual/Spin"),
+			"front": wheel_name.contains("F"),
+			"left": wheel_name.ends_with("L"),
+			"compression": 0.0,
+			"last_compression": 0.0,
+			"grounded": false,
+			"hit_distance": suspension_length + wheel_radius,
+			"spin_angle": 0.0,
+			"spin_speed": 0.0,
+			"surface": DEFAULT_SURFACE,
+		})
+	_update_lights()
+
+
+func _physics_process(delta: float) -> void:
+	if player_controlled:
+		_read_player_input(delta)
+	_update_transmission_logic(delta)
+	_update_steering(delta)
+
+	var up := global_basis.y
+	var total_ray := suspension_length + wheel_radius
+	var space := get_world_3d().direct_space_state
+
+	# 1. Suspension rays.
+	for wheel in _wheels:
+		var origin: Vector3 = wheel.anchor.global_position
+		_ray_query.from = origin
+		_ray_query.to = origin - up * total_ray
+		var hit := space.intersect_ray(_ray_query)
+		wheel.last_compression = wheel.compression
+		if hit.is_empty():
+			wheel.grounded = false
+			wheel.compression = 0.0
+			wheel.hit_distance = total_ray
+		else:
+			wheel.grounded = true
+			wheel.hit_distance = origin.distance_to(hit.position)
+			wheel.compression = clampf(total_ray - wheel.hit_distance, 0.0, suspension_length)
+			wheel.contact = hit.position
+			wheel.normal = hit.normal
+			var collider: Object = hit.collider
+			wheel.surface = collider.get_meta("surface", DEFAULT_SURFACE) if collider else DEFAULT_SURFACE
+
+	# 2. Engine torque reaching the driven (front) wheels.
+	var drive_torque := _update_engine(delta)
+
+	# 3. Per-wheel forces.
+	var corner_mass := mass * 0.25
+	var surface_votes := {}
+	var worst_slip := 0.0
+	grounded_wheels = 0
+	var wet_grip := lerpf(1.0, 0.78, Weather.wetness)
+	for i in _wheels.size():
+		var wheel: Dictionary = _wheels[i]
+		var forward := -global_basis.z
+		if wheel.front:
+			forward = forward.rotated(up, steer_angle)
+		if not wheel.grounded:
+			wheel.spin_speed = lerpf(wheel.spin_speed, 0.0, delta * 0.5)
+			continue
+		grounded_wheels += 1
+		surface_votes[wheel.surface] = surface_votes.get(wheel.surface, 0) + 1
+
+		# Spring, damper and anti-roll bar.
+		var opposite: Dictionary = _wheels[i ^ 1]
+		var compression_speed: float = (wheel.compression - wheel.last_compression) / delta
+		var load: float = wheel.compression * spring_strength + compression_speed * damper_strength
+		load += (wheel.compression - opposite.compression) * anti_roll_strength
+		load = maxf(load, 0.0)
+		var contact: Vector3 = wheel.contact
+		var normal: Vector3 = wheel.normal
+		var offset := contact - global_position
+		apply_force(up * load, offset)
+
+		# Tyre frame on the contact plane.
+		forward = (forward - normal * forward.dot(normal)).normalized()
+		var right := forward.cross(normal).normalized()
+		var point_velocity := linear_velocity + angular_velocity.cross(offset)
+		var v_long := point_velocity.dot(forward)
+		var v_lat := point_velocity.dot(right)
+		var surface_info: Dictionary = SURFACES.get(wheel.surface, SURFACES[DEFAULT_SURFACE])
+		var max_force: float = tire_grip * load * surface_info.grip * wet_grip
+		var stop_force := absf(v_long) * corner_mass / delta
+
+		var lateral := -v_lat * corner_mass / delta * lateral_stiffness
+		var longitudinal := 0.0
+		if wheel.front:
+			longitudinal += drive_torque * 0.5 / wheel_radius
+		var braking := brake * brake_force * (0.3 if wheel.front else 0.2)
+		if not wheel.front:
+			braking += handbrake_input * handbrake_force * 0.5
+			if handbrake_input > 0.1:
+				max_force *= lerpf(1.0, handbrake_grip, handbrake_input)
+		braking += rolling_resistance * surface_info.rolling * load
+		longitudinal -= signf(v_long) * minf(braking, stop_force)
+
+		# Friction circle: the tyre can only push so hard in total.
+		var demand := Vector2(lateral, longitudinal)
+		var slip := 0.0
+		if demand.length() > max_force and max_force > 0.0:
+			slip = clampf(demand.length() / max_force - 1.0, 0.0, 1.0)
+			demand = demand.normalized() * max_force
+		worst_slip = maxf(worst_slip, slip)
+		apply_force(right * demand.x + forward * demand.y, offset)
+
+		# Visual wheel spin; driven wheels spin up when they slip.
+		var spin_target := v_long / wheel_radius
+		if wheel.front and slip > 0.0 and drive_torque != 0.0:
+			spin_target += signf(drive_torque) * slip * 25.0
+		if not wheel.front and handbrake_input > 0.5:
+			spin_target = 0.0
+		wheel.spin_speed = spin_target
+
+	# 4. Air drag.
+	apply_central_force(-linear_velocity * linear_velocity.length() * drag_coefficient)
+
+	tire_slip = worst_slip
+	forward_speed = linear_velocity.dot(-global_basis.z)
+	var new_surface: StringName = surface
+	var best := 0
+	for key in surface_votes:
+		if surface_votes[key] > best:
+			best = surface_votes[key]
+			new_surface = key
+	if new_surface != surface:
+		surface = new_surface
+		surface_changed.emit(surface)
+	_last_velocity = linear_velocity
+
+
+func _process(delta: float) -> void:
+	for wheel in _wheels:
+		if wheel.visual:
+			wheel.visual.position.y = -(wheel.hit_distance - wheel_radius)
+			wheel.visual.rotation.y = steer_angle if wheel.front else 0.0
+		if wheel.spin:
+			wheel.spin_angle = wrapf(wheel.spin_angle - wheel.spin_speed * delta, -PI, PI)
+			wheel.spin.rotation.x = wheel.spin_angle
+	var brake_lights := get_node_or_null("BrakeLights")
+	if brake_lights:
+		brake_lights.visible = brake > 0.05
+	if not _headlights_manual:
+		var want := GameClock.daylight() < 0.45 or Weather.rain > 0.6
+		if want != headlights_on:
+			headlights_on = want
+			_update_lights()
+
+
+## Everything audio (or a HUD) needs in one place. See docs/HOOKS.md.
+func get_telemetry() -> Dictionary:
+	return {
+		"rpm": rpm,
+		"idle_rpm": idle_rpm,
+		"redline_rpm": redline_rpm,
+		"throttle": throttle,
+		"brake": brake,
+		"clutch": clutch,
+		"engine_load": engine_load,
+		"gear": gear,
+		"automatic": transmission == Transmission.AUTOMATIC,
+		"is_shifting": is_shifting,
+		"speed_kmh": linear_velocity.length() * 3.6,
+		"forward_speed": forward_speed,
+		"tire_slip": tire_slip,
+		"surface": surface,
+		"grounded_wheels": grounded_wheels,
+		"handbrake": handbrake_input,
+		"weather_intensity": Weather.intensity(),
+		"wetness": Weather.wetness,
+	}
+
+
+func speed_kmh() -> float:
+	return linear_velocity.length() * 3.6
+
+
+func shift_up() -> void:
+	if gear < gear_ratios.size():
+		_begin_shift(gear + 1)
+
+
+func shift_down() -> void:
+	if gear == 1 and absf(forward_speed) > 2.0:
+		_begin_shift(0)  # Refuse reverse while rolling; leave it in neutral.
+	elif gear > -1:
+		_begin_shift(gear - 1)
+
+
+func set_transmission(mode: Transmission) -> void:
+	transmission = mode
+	if mode == Transmission.AUTOMATIC and gear == 0:
+		_begin_shift(1)
+	transmission_changed.emit(mode == Transmission.AUTOMATIC)
+
+
+func toggle_transmission() -> void:
+	set_transmission(Transmission.MANUAL if transmission == Transmission.AUTOMATIC else Transmission.AUTOMATIC)
+
+
+func toggle_headlights() -> void:
+	_headlights_manual = true
+	headlights_on = not headlights_on
+	_update_lights()
+
+
+## Put the car back on its wheels a little above where it is now.
+func reset_upright() -> void:
+	var forward := -global_basis.z
+	forward.y = 0.0
+	if forward.length() < 0.1:
+		forward = Vector3.FORWARD
+	global_transform = Transform3D(Basis.looking_at(forward.normalized(), Vector3.UP), global_position + Vector3.UP * 1.0)
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+
+
+func reset_to_spawn() -> void:
+	global_transform = _spawn_transform
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	_begin_shift(1)
+
+
+func _read_player_input(delta: float) -> void:
+	var raw_throttle := Input.get_action_strength("accelerate")
+	var raw_brake := Input.get_action_strength("brake")
+	# Rate limit so keyboard input feels like a pedal rather than a switch.
+	throttle_input = move_toward(throttle_input, raw_throttle, delta * (5.0 if raw_throttle > throttle_input else 8.0))
+	brake_input = move_toward(brake_input, raw_brake, delta * (6.0 if raw_brake > brake_input else 10.0))
+	steer_input = Input.get_axis("steer_right", "steer_left")
+	handbrake_input = Input.get_action_strength("handbrake")
+	if Input.is_action_just_pressed("shift_up"):
+		shift_up()
+	if Input.is_action_just_pressed("shift_down"):
+		shift_down()
+	if Input.is_action_just_pressed("toggle_transmission"):
+		toggle_transmission()
+	if Input.is_action_just_pressed("toggle_headlights"):
+		toggle_headlights()
+	if Input.is_action_just_pressed("reset_car"):
+		reset_upright()
+
+
+func _update_steering(delta: float) -> void:
+	var speed_factor := clampf(speed_kmh() / steer_falloff_kmh, 0.0, 1.0)
+	var lock := deg_to_rad(lerpf(max_steer_deg, high_speed_steer_deg, speed_factor))
+	steer_angle = move_toward(steer_angle, steer_input * lock, steer_rate * delta)
+
+
+func _update_transmission_logic(delta: float) -> void:
+	throttle = throttle_input
+	brake = brake_input
+	if transmission == Transmission.AUTOMATIC:
+		# Arcade auto: hold brake at a standstill to reverse, and in reverse
+		# the pedals swap so "brake" drives backwards.
+		var stopped := absf(forward_speed) < 1.0 and not is_shifting
+		if gear > 0 and stopped and brake_input > 0.5 and throttle_input < 0.1:
+			_reverse_hold += delta
+			if _reverse_hold > 0.25:
+				_begin_shift(-1)
+		elif gear == -1 and stopped and throttle_input > 0.5 and brake_input < 0.1:
+			_reverse_hold += delta
+			if _reverse_hold > 0.1:
+				_begin_shift(1)
+		else:
+			_reverse_hold = 0.0
+		if gear == -1:
+			throttle = brake_input
+			brake = throttle_input
+		elif gear >= 1 and not is_shifting:
+			if rpm > auto_upshift_rpm and gear < gear_ratios.size() and throttle > 0.1:
+				_begin_shift(gear + 1)
+			elif rpm < auto_downshift_rpm and gear > 1:
+				_begin_shift(gear - 1)
+	if gear == -1:
+		# Keep reversing gentle: fade the throttle out above reverse_limit_kmh.
+		throttle *= clampf(1.0 - (speed_kmh() - reverse_limit_kmh) / 6.0, 0.0, 1.0)
+	if is_shifting:
+		_shift_timer -= delta
+		throttle = 0.0
+		if _shift_timer <= 0.0:
+			is_shifting = false
+			gear = _pending_gear
+			gear_changed.emit(gear)
+
+
+func _begin_shift(target: int) -> void:
+	if target == gear and not is_shifting:
+		return
+	_pending_gear = target
+	is_shifting = true
+	_shift_timer = shift_time
+	_reverse_hold = 0.0
+
+
+func _gear_ratio(g: int) -> float:
+	if g == 0:
+		return 0.0
+	if g < 0:
+		return -reverse_ratio
+	return gear_ratios[g - 1]
+
+
+## Returns the torque at the driven wheels (both together), Nm.
+func _update_engine(delta: float) -> float:
+	var ratio := _gear_ratio(gear) * final_drive
+	var driven_speed := 0.0
+	var driven_count := 0
+	for wheel in _wheels:
+		if wheel.front and wheel.grounded:
+			driven_speed += linear_velocity.dot(-global_basis.z)
+			driven_count += 1
+	var wheel_omega := (driven_speed / driven_count) / wheel_radius if driven_count > 0 else 0.0
+
+	var engaged := gear != 0 and not is_shifting
+	var torque := 0.0
+	if engaged:
+		var wheel_rpm := absf(wheel_omega * ratio) * RPM_PER_RAD_S
+		# Below idle the clutch slips (auto-clutch, no stalling), letting
+		# the engine rev up for a launch.
+		var launch_rpm := idle_rpm + throttle * 1800.0
+		clutch = clampf(wheel_rpm / launch_rpm, 0.0, 1.0)
+		var target := maxf(wheel_rpm, launch_rpm)
+		rpm = lerpf(rpm, target, 1.0 - exp(-20.0 * delta))
+		torque = _torque_at(rpm) * throttle
+		if rpm >= limiter_rpm:
+			torque = 0.0
+		torque -= engine_brake_per_krpm * rpm / 1000.0 * (1.0 - throttle) * clutch
+	else:
+		clutch = 0.0
+		var free_target := idle_rpm + throttle * (limiter_rpm - idle_rpm)
+		var rate := free_rev_up if free_target > rpm else free_rev_down
+		rpm = move_toward(rpm, free_target, rate * delta)
+	rpm = clampf(rpm, idle_rpm * 0.9, limiter_rpm + 100.0)
+	engine_load = clampf(torque / 102.0, -1.0, 1.0)
+	if not engaged:
+		return 0.0
+	return torque * ratio * drivetrain_efficiency
+
+
+func _torque_at(at_rpm: float) -> float:
+	if at_rpm <= torque_curve[0].x:
+		return torque_curve[0].y
+	for i in range(1, torque_curve.size()):
+		if at_rpm <= torque_curve[i].x:
+			var a := torque_curve[i - 1]
+			var b := torque_curve[i]
+			return lerpf(a.y, b.y, (at_rpm - a.x) / (b.x - a.x))
+	return torque_curve[torque_curve.size() - 1].y
+
+
+func _update_lights() -> void:
+	var lights := get_node_or_null("Headlights")
+	if lights:
+		lights.visible = headlights_on
+	headlights_changed.emit(headlights_on)
+
+
+func _on_body_entered(_body: Node) -> void:
+	var change := (linear_velocity - _last_velocity).length()
+	if change > 1.5:
+		impact.emit(change)
