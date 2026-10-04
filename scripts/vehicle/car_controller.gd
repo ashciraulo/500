@@ -193,6 +193,8 @@ var _stock := {}
 var _scene_defaults := {}
 var _peak_torque := 102.0
 var _wheelbase := 2.3
+## The Pop's rig: wheel anchors, wheel models, collision boxes, tyre radius.
+var _rig_defaults := {}
 ## CarController values a car spec may set (data/cars/cars.json).
 const SPEC_KEYS := [
 	"mass", "idle_rpm", "redline_rpm", "limiter_rpm", "torque_curve", "gear_ratios",
@@ -751,6 +753,123 @@ func _swap_model(model: String) -> void:
 	body.name = "Body"
 	add_child(body)
 	move_child(body, index)
+	_fit_rig(body)
+
+
+## Fit the wheels and collision to a model that marks its own hubs
+## (`Hub_FL`... empties, plus a `WheelStyle_<style>` empty):
+## the classic 500s are much smaller than the Pop. Models without hubs get
+## the Pop's rig back unchanged.
+func _fit_rig(body: Node3D) -> void:
+	if _rig_defaults.is_empty():
+		_rig_defaults = {"wheel_radius": wheel_radius, "anchors": [], "wheels": [], "shapes": {}}
+		for wheel in _wheels:
+			_rig_defaults.anchors.append(wheel.anchor.position)
+			var spin: Node3D = wheel.spin
+			_rig_defaults.wheels.append(spin.get_child(0).scene_file_path if spin and spin.get_child_count() > 0 else "")
+		for shape_name in ["LowerBodyCollision", "CabinCollision"]:
+			var col := get_node_or_null(shape_name) as CollisionShape3D
+			if col and col.shape is BoxShape3D:
+				_rig_defaults.shapes[shape_name] = [col.position, (col.shape as BoxShape3D).size]
+	var hubs: Array[Node3D] = []
+	for hub_name in ["Hub_FL", "Hub_FR", "Hub_RL", "Hub_RR"]:
+		var hub := body.find_child(hub_name, true, false) as Node3D
+		if hub:
+			hubs.append(hub)
+	var fitted := hubs.size() == 4
+	var style := _wheel_style(body) if fitted else ""
+	# The model's origin is on the ground, so a hub's height is the tyre radius.
+	var ground := body.transform.origin.y
+	wheel_radius = _in_car_space(body, hubs[0]).origin.y - ground if fitted else float(_rig_defaults.wheel_radius)
+	# Anchor height that puts the model's ground on the road at rest, with
+	# this car's own spring sag (each corner carries a quarter of the mass).
+	var sag := mass * 9.8 * 0.25 / maxf(spring_strength, 1.0)
+	var anchor_y := suspension_length + wheel_radius - sag + ground
+	for i in _wheels.size():
+		var wheel: Dictionary = _wheels[i]
+		var rest: Vector3 = _rig_defaults.anchors[i]
+		if fitted:
+			var hub_pos := _in_car_space(body, hubs[i]).origin
+			wheel.anchor.position = Vector3(hub_pos.x, anchor_y, hub_pos.z)
+		else:
+			wheel.anchor.position = rest
+		wheel.hit_distance = suspension_length + wheel_radius
+		var path: String = _rig_defaults.wheels[i]
+		if style != "":
+			var styled := "res://art/models/cars/parts/wheel_%s_%s.glb" % [style, "l" if wheel.left else "r"]
+			if ResourceLoader.exists(styled):
+				path = styled
+		_set_wheel_model(wheel.spin, path)
+	_wheelbase = absf(_wheels[0].anchor.position.z - _wheels[2].anchor.position.z)
+	_fit_collision(body if fitted else null)
+
+
+## The model's wheel style, from its `WheelStyle_<style>` empty.
+func _wheel_style(body: Node3D) -> String:
+	for node in body.get_children():
+		if node.name.begins_with("WheelStyle_"):
+			return String(node.name).trim_prefix("WheelStyle_")
+	return ""
+
+
+func _set_wheel_model(spin: Node3D, path: String) -> void:
+	if spin == null or path == "":
+		return
+	var current := spin.get_child(0) if spin.get_child_count() > 0 else null
+	if current and current.scene_file_path == path:
+		return
+	if current:
+		spin.remove_child(current)
+		current.queue_free()
+	var wheel := (load(path) as PackedScene).instantiate() as Node3D
+	wheel.name = "Wheel"
+	spin.add_child(wheel)
+	PS1Model.apply(wheel)
+
+
+## Scale the Pop's two collision boxes to a smaller body's footprint
+## (null puts the Pop's back).
+func _fit_collision(body: Node3D) -> void:
+	var sx := 1.0
+	var sz := 1.0
+	var sy := 1.0
+	if body:
+		var box := _model_bounds(body)
+		var lower: Array = _rig_defaults.shapes.get("LowerBodyCollision", [])
+		if box.size.x > 0.1 and not lower.is_empty():
+			sx = box.size.x / 1.63
+			sz = box.size.z / 3.55
+			sy = box.size.y / 1.49
+	for shape_name in _rig_defaults.shapes:
+		var col := get_node(shape_name) as CollisionShape3D
+		var rest: Array = _rig_defaults.shapes[shape_name]
+		var size: Vector3 = rest[1]
+		var pos: Vector3 = rest[0]
+		var box_shape := col.shape.duplicate() as BoxShape3D
+		box_shape.size = Vector3(size.x * sx, size.y * sy, size.z * sz)
+		col.shape = box_shape
+		col.position = Vector3(pos.x * sx, pos.y * sy, pos.z * sz)
+
+
+## A model node's transform in the car's space (works before entering the tree).
+func _in_car_space(body: Node3D, node: Node3D) -> Transform3D:
+	var chain := Transform3D.IDENTITY
+	var n: Node = node
+	while n and n != body:
+		chain = (n as Node3D).transform * chain
+		n = n.get_parent()
+	return body.transform * chain
+
+
+## Bounding box of a model's meshes in the car's space.
+func _model_bounds(body: Node3D) -> AABB:
+	var box := AABB()
+	var first := true
+	for mesh: MeshInstance3D in body.find_children("*", "MeshInstance3D", true, false):
+		var mesh_box: AABB = _in_car_space(body, mesh) * mesh.get_aabb()
+		box = mesh_box if first else box.merge(mesh_box)
+		first = false
+	return box
 
 
 func _apply_cosmetics() -> void:

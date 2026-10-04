@@ -517,6 +517,47 @@ def interior(M):
     out.append(it("Plant_Bed2", F.plant("monstera", 15, 0.7), (0.62, 11.38, z1)))
     out.append(it("Curtains_Bed2", F.curtains(2.0, 2.2), (2.5, D - 0.08, z1), 180))
     out.append(it("DeskLamp", F.table_lamp(), (W - 0.22, 9.55, z1 + 0.8)))     # on the bass amp
+    out += deco_slots(z0)
+    return out
+
+
+def _blank_frame(w, h, mat="cream", depth=0.025):
+    """Picture frame facing -Y with a blank mat, origin at its centre."""
+    return [F.bx((-w / 2, -depth, -h / 2), (w / 2, 0, h / 2), F.M("frame")),
+            F.bx((-w / 2 + 0.03, -depth - 0.004, -h / 2 + 0.03), (w / 2 - 0.03, -depth, h / 2 - 0.03), F.M(mat))]
+
+
+def deco_slots(z0):
+    """Blank props and empties the game fills in as you play (scripts in the
+    driving thread spawn their own meshes at the Deco_*, Corkboard_Pin_* and
+    Photo_Frame_* empties). Empties face like the furniture: local -Y points
+    out of the wall into the room (Godot +Z)."""
+    out = []
+    # rear living, x=0 wall beside the dining table: a blank corkboard for
+    # rumour and secret cards, and a frame waiting for a street directory map
+    cw, ch, cz = 1.2, 0.8, z0 + 1.15
+    out.append(it("Corkboard_Blank", [F.bx((-cw / 2, -0.02, 0), (cw / 2, 0.0, ch), F.M("frame")),
+                                       F.bx((-cw / 2 + 0.04, -0.03, 0.04), (cw / 2 - 0.04, -0.02, ch - 0.04),
+                                            F.M("cork"))], (0.02, 10.0, cz), 90))
+    for i in range(12):
+        col, row = i % 4, i // 4
+        y = 10.0 - (cw / 2 - 0.2) + col * (cw - 0.4) / 3
+        marker("Corkboard_Pin_%d" % (i + 1), (0.055, y, cz + ch - 0.18 - row * (ch - 0.36) / 2), 90)
+    out.append(it("RoadMap_Frame", _blank_frame(0.9, 0.62, "paper"), (0.02, 11.35, z0 + 1.55), 90))
+    marker("Deco_RoadMap", (0.05, 11.35, z0 + 1.55), 90)
+    # lounge: two floating shelves over the couch for trophies, four slots each
+    for k, z in enumerate((z0 + 1.45, z0 + 1.85)):
+        out.append(it("TrophyShelf", [F.bx((-0.9, -0.22, -0.03), (0.9, 0.0, 0.0), F.M("wood_mid"))],
+                      (W - 0.01, 3.35, z), -90))
+        for j in range(4):
+            marker("Deco_Shelf_%d" % (k * 4 + j + 1), (W - 0.12, 3.35 - 0.675 + j * 0.45, z), -90)
+    # up the stairs: six blank frames for album photos, following the flight
+    for i in range(6):
+        y = 8.25 - i * 0.55
+        stair_z = FZ0 + (9.053 - y) * (FZ1 - FZ0) / (9.053 - 5.0)
+        z = stair_z + (1.45 if i % 2 == 0 else 1.75)
+        out.append(it("PhotoFrame_Blank", _blank_frame(0.3, 0.24), (0.02, y, z), 90))
+        marker("Photo_Frame_%d" % (i + 1), (0.05, y, z), 90)
     return out
 
 
@@ -652,6 +693,11 @@ def site(M):
                                 F.M("steel"))
             A.add(hasp, "Site")
             lock.name = "Padlock"
+            # a blank backing board for the neon "500" over the player's bay
+            neon_x, neon_z = (door_x0 + 0.84 + x1) / 2, 1.85
+            A.add(C.box_minmax("NeonSign_Backing", (neon_x - 0.3, cy0 + 1.6, neon_z - 0.16),
+                               (neon_x + 0.3, cy0 + 1.625, neon_z + 0.16), F.M("black")), "Site")
+            marker("Deco_NeonSign", (neon_x, cy0 + 1.63, neon_z), 180)
         else:
             A.block((door_x0, cy0 + 1.6, 0.02), (door_x0 + 0.84, cy0 + 1.62, 2.02), M["door"], "Site")
     # inside the player's shed (seen once the padlock comes off)

@@ -61,6 +61,48 @@ along X, outer face pointing away from the car. Styles: `pop_trim` (stock),
 Real proportions: length 3.55 m, width 1.63 m, height 1.49 m, wheelbase
 2.30 m, track 1.41 m, tyres 175/65 R14 (radius 0.29 m).
 
+## Classic 500s
+
+`scripts/build_classic.py` writes the 1957-1975 cars: `nuova`, `classic_sport`,
+`classic_d`, `classic_f`, `classic_l`, `classic_r`, `giardiniera`,
+`abarth595_classic`, `abarth695_classic` and `jolly` (`cars/<name>/<name>.glb`),
+plus the classic wheels (`classic12`, `classic_steel`, `abarth_classic`,
+`campagnolo`: 12" rims, 125R12-ish tyres, radius 0.27 m) and
+`exhaust_abarth_classic.glb` (the megaphone). The body is
+`scripts/lib/fiat500_classic.py`: the same key-curve loft as the modern shell
+(table `SALOON`, the Giardiniera's `_estate_keys()`), doors cut out of the
+shell along their exact outline with booleans. Paint is the clean restored
+car in its `data/cars/restoration.json` original colour; barn-find rust is
+the shader's job. `check_car_clipping.py <name>` works on them too.
+
+Real proportions: length 2.97 m, width 1.32 m, height 1.32 m, wheelbase
+1.84 m, track 1.12 m front / 1.13 m rear (Giardiniera: 3.185 m long, 1.35 m
+high, wheelbase 1.94 m).
+
+Same node contract as the modern cars, plus:
+
+| Node / extra | What it is |
+| --- | --- |
+| `Hub_FL`, `Hub_FR`, `Hub_RL`, `Hub_RR` | Wheel hub centres (the classics' track and wheelbase differ from the modern car's). `CarController._fit_rig()` moves the wheel anchors to them, takes the tyre radius from their height and sets the ride height so the model's ground meets the road. |
+| `WheelStyle_<style>` | Empty naming the wheel style the car came with (`wheel_<style>_l/_r.glb`); Godot 4.3 drops glTF extras, so the `Body` extra `wheels` is only a copy. |
+| `Door_*` extras `hinge`, `open_sign` | `hinge` is `front` (F, L, R) or `rear` (Nuova, Sport, D, Giardiniera, the Abarths: rear-hinged "suicide" doors, origin on the rear shut line). Suicide doors open the other way: rotate by `open_sign * angle` about local Y (Door_L: `-1` front-hinged, `+1` rear-hinged). |
+| `Mount_Spotlights` | Centre of the front bumper, where period spotlights clamp (the modern cars have one too). |
+| `Mount_Roof` | Roof centre (top of the canopy frame on the Jolly). |
+
+The Jolly has no doors (no `Door_*` nodes) and no roof; its `Glass` is the low
+windscreen and `Mount_Mirror` sits on the windscreen's top rail.
+
+Every car (modern and classic) also marks its trinket slots: `Mount_Mirror`
+(under the rear-view mirror), `Mount_Dash` (passenger side of the dash top),
+`Mount_Shelf` (parcel shelf) and `Mount_Gear` (gear knob centre).
+
+## Found parts
+
+`scripts/build_accessories.py` writes bolt-on extras to `cars/parts/`, origin
+at the mount and front toward -Z: `roofrack_surf.glb` (gutter rack with a
+mini-mal surfboard, at `Mount_Roof`) and `spotlights_period.glb` (a pair of
+round driving lamps, at `Mount_Spotlights`).
+
 ## Home: 15 Little Shenton Lane
 
 `scripts/build_shenton.py` writes `home/shenton/shenton_house.glb` (shell,
@@ -78,6 +120,7 @@ x 0..5.4, z 0..-12.
 | `*-col`, `*-colonly` | Trimesh collision; `HomeBase` puts ground and floors on layer 1, everything else on layers 1+2. |
 | `Door_*`, `Shed_Door` | Origin on the hinge, swing about local Y. `Door_Sliding` slides along local X. `HomeBase.toggle_door()` animates them; `Shed_Door` stays locked until `unlock_shed()`. |
 | `Padlock` | Hidden once the shed is unlocked. |
+| `Deco_RoadMap`, `Deco_NeonSign`, `Deco_Shelf_1`..`8`, `Corkboard_Pin_1`..`12`, `Photo_Frame_1`..`6` | Empties where the game puts things you collect: a framed street directory and a corkboard (rear living, x=0 wall), a neon "500" (on the player's shed, over the bay), trophies (two shelves over the lounge couch) and album photos (frames up the stairs). Blank props sit behind them. They face like the furniture: local -Y (Godot +Z) points into the room. |
 | `Spawn_Player`, `Spawn_Front`, `Spawn_Courtyard`, `Spawn_Car` | Spawn points (`HomeBase.spawn_transform()`). |
 | `Bed` | Walk here to sleep (`HomeBase.sleep()` skips to 7:00 next day). |
 | `Light_*` | Warm lamp positions; `HomeBase` adds lights that come on at dusk. `Light_WC_Up` flickers. |

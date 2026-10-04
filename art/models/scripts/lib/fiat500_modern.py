@@ -157,6 +157,8 @@ def build(spec):
     cab = _cabin_bvh(root_objs)
     interior, wheel_obj = _interior(M, spec, cab)
     root_objs += [interior, wheel_obj]
+    # where a pair of period spotlights clamps on, just proud of the bumper
+    spot, _ = K.on_front(ref, 0, 0.40)
     bpy.data.objects.remove(ref, do_unlink=True)
 
     ws = spec.get("wheels", "pop_trim")
@@ -167,6 +169,13 @@ def build(spec):
     C.empty("Cam_Cockpit", (-0.36, 0.20, 1.17 + ride))
     C.empty("Mount_Exhaust", (0.42, 1.70, 0.24 + ride))
     C.empty("Mount_Roof", (0, 0.35, 1.49 + ride))
+    # trinket slots (scripts/vehicle/trinkets.gd): under the rear-view mirror,
+    # on the passenger side of the dash mat, the parcel shelf and the gear knob
+    C.empty("Mount_Mirror", (0, -0.30, 1.295 + ride))
+    C.empty("Mount_Dash", (0.18, -0.77, 0.985 + ride))
+    C.empty("Mount_Shelf", (0.32, 1.38, 0.95 + ride))
+    C.empty("Mount_Gear", (0, -0.37, 0.595 + ride))
+    C.empty("Mount_Spotlights", (0, spot.y - 0.03, spot.z + ride))
     if ride:
         for o in root_objs:
             if not o.name.startswith("Wheel_"):

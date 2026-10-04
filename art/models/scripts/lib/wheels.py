@@ -107,27 +107,84 @@ def _abarth17(r, t, rim):
     return (0.16, 0.16, 0.17) if a < 14 else (0.03, 0.03, 0.03)
 
 
-@style("classic12", 0.152, 0.26, 0.13)
+# ------------------------------------------------------------------ classics (12" rims, 125R12 tyres)
+
+def _holes(rr, t, ring_r, hole_r, n, phase=0.0):
+    ang = 2 * math.pi / n
+    a = (t + phase + ang / 2) % ang - ang / 2
+    dx = rr * math.cos(a) - ring_r
+    dy = rr * math.sin(a)
+    return dx * dx + dy * dy < hole_r * hole_r
+
+
+@style("classic12", 0.1524, 0.27, 0.125)
 def _classic12(r, t, rim):
+    """Nuova/D/F/L: steel wheel in silver with a big domed chrome hubcap."""
     c = _tyre(r, rim)
     if c:
         return c
     rr = r / rim
-    if rr < 0.62:
-        return (0.88, 0.88, 0.9) if rr > 0.08 else (0.6, 0.6, 0.62)
-    return (0.85, 0.82, 0.74) if rr > 0.92 else (0.78, 0.77, 0.72)
+    if rr < 0.66:
+        if rr < 0.10:
+            return (0.70, 0.71, 0.73)
+        return (0.93, 0.93, 0.95) if rr < 0.60 else (0.62, 0.63, 0.66)
+    if rr > 0.95:
+        return (0.60, 0.60, 0.62)
+    if _holes(rr, t, 0.81, 0.055, 8):
+        return (0.05, 0.05, 0.05)
+    return (0.74, 0.74, 0.73)
 
 
-@style("classic_steel", 0.152, 0.26, 0.13)
+@style("classic_steel", 0.1524, 0.27, 0.125)
 def _classic_steel(r, t, rim):
+    """500 R: plain steel wheel, small chrome centre cap, four nuts."""
     c = _tyre(r, rim)
     if c:
         return c
     rr = r / rim
-    if rr < 0.35:
-        return (0.82, 0.82, 0.84)
-    hole = 0.55 < rr < 0.7 and (math.degrees(t) % 90) < 25
-    return (0.05, 0.05, 0.05) if hole else (0.62, 0.62, 0.6)
+    if rr < 0.34:
+        return (0.85, 0.85, 0.87) if rr < 0.30 else (0.4, 0.4, 0.42)
+    if 0.40 < rr < 0.50 and _holes(rr, t, 0.45, 0.04, 4):
+        return (0.25, 0.25, 0.26)
+    if 0.62 < rr < 0.80 and _holes(rr, t, 0.71, 0.075, 8, 0.2):
+        return (0.05, 0.05, 0.05)
+    return (0.66, 0.66, 0.64)
+
+
+@style("abarth_classic", 0.1524, 0.27, 0.145)
+def _abarth_classic(r, t, rim):
+    """Classic Abarth: wider exposed steel wheel, silver with big round
+    lightening holes and a small chrome nut cap."""
+    c = _tyre(r, rim)
+    if c:
+        return c
+    rr = r / rim
+    if rr < 0.22:
+        return (0.88, 0.88, 0.9) if rr < 0.18 else (0.3, 0.3, 0.32)
+    if 0.30 < rr < 0.40 and _holes(rr, t, 0.35, 0.03, 4):
+        return (0.12, 0.12, 0.13)
+    if _holes(rr, t, 0.66, 0.13, 6, 0.3):
+        return (0.04, 0.04, 0.04)
+    return (0.72, 0.72, 0.72) if rr < 0.95 else (0.5, 0.5, 0.52)
+
+
+@style("campagnolo", 0.1524, 0.27, 0.14)
+def _campagnolo(r, t, rim):
+    """Campagnolo-style cast magnesium: five broad spokes in gold-grey,
+    a polished lip and a black centre cap."""
+    c = _tyre(r, rim)
+    if c:
+        return c
+    rr = r / rim
+    gold = (0.70, 0.62, 0.42)
+    if rr > 0.92:
+        return (0.80, 0.80, 0.80)
+    if rr < 0.24:
+        return (0.10, 0.10, 0.10) if rr < 0.16 else gold
+    a = math.degrees(t) % 72
+    w = 22 - 8 * (rr - 0.24) / 0.68         # spokes taper toward the rim
+    spoke = a < w / 2 or a > 72 - w / 2
+    return gold if spoke else (0.05, 0.05, 0.05)
 
 
 @style("cromodora13", 0.165, 0.265, 0.16)

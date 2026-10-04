@@ -1,6 +1,6 @@
-"""Clipping check for the scripted modern Fiat 500s.
+"""Clipping check for the scripted Fiat 500s, modern and classic.
 
-    python3.11 art/models/scripts/check_car_clipping.py [pop|lounge|abarth500|...]
+    python3.11 art/models/scripts/check_car_clipping.py [pop|lounge|abarth500|nuova|giardiniera|...]
 
 Builds the car with every joined sub-part tagged, then intersects the parts
 with BVH trees: interior vs interior, interior vs body/glass/doors, closed
@@ -105,6 +105,8 @@ dash-column dash-stack dash-vent dash-vent_c dash-vent_ring dash-firewall dash-l
 gaiter-gear_stick gear_stick-gear_knob post-headrest rear_back_up-rear_headrest rear_cushion-rear_back
 rear_back-rear_back_up stack-gaiter stack-hvac stack-console stack-radio vent_ring-vent hub-hub_ring
 hub-spoke hub_ring-sw_badge rim rim-spoke phone_clip-phone_cradle column-hub floor-mat floor-footwell
+tunnel-gear_stick tunnel-gaiter tunnel-choke dash-speedo_pod dash-switch speedo_pod-gauge pedal-pedal_arm
+cushion-piping hub-horn floor-floor_r floor_r-tunnel floor-tunnel floor-seat_leg parcel_tray-parcel_lip binnacle-gauge dash-binnacle
 """.split()}
 
 
@@ -134,14 +136,20 @@ def report(title, A, B, skip=lambda a, b: False, same=False):
 
 
 def main(spec_name="pop"):
+    import build_classic as BC
+    builder = F.build
     if spec_name == "pop":
         import build_pop as B
         spec = B.POP
+    elif spec_name in BC.CARS:
+        from lib import fiat500_classic as FC
+        builder = FC.build
+        spec = dict(BC.CARS[spec_name], plate="1CIN-500")
     else:
         import build_modern as BM
         spec = dict(BM.CARS[spec_name], plate="1CIN-500")
     C.reset()
-    F.build(spec)
+    builder(spec)
     bpy.context.view_layer.update()
     ob = bpy.data.objects
     body = part_trees(ob["Body"])
@@ -150,7 +158,8 @@ def main(spec_name="pop"):
     interior = part_trees(ob["Interior"])
     interior.update(part_trees(ob["SteeringWheel"]))
     doors_closed = {}
-    for d in ("Door_L", "Door_R"):
+    door_names = [d for d in ("Door_L", "Door_R") if d in ob]
+    for d in door_names:
         doors_closed.update(part_trees(ob[d]))
         doors_closed.update(part_trees(ob[d + "_Glass"]))
     total = 0
@@ -162,11 +171,13 @@ def main(spec_name="pop"):
     total += len(report("doors (closed) vs body shell+glass", doors_closed, {**shell, **glass},
                         skip=lambda a, b: False))
     # open doors
-    for ang in (15, 30, 45, 65):
+    for ang in ((15, 30, 45, 65) if door_names else ()):
         opened = {}
-        for d, sx in (("Door_L", 1), ("Door_R", -1)):
+        for d in door_names:
             o = ob[d]
-            o.rotation_euler.z = math.radians(-ang * sx)
+            # front-hinged doors open with Door_L negative; rear-hinged
+            # (suicide) doors carry open_sign = +1 on Door_L
+            o.rotation_euler.z = math.radians(ang * o.get("open_sign", -1 if d == "Door_L" else 1))
             bpy.context.view_layer.update()
             opened.update(part_trees(o))
             opened.update(part_trees(ob[d + "_Glass"]))
