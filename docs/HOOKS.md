@@ -48,7 +48,14 @@ The car's driver inputs (`throttle_input`, `brake_input`, `steer_input`,
 `handbrake_input`) are plain vars; set `player_controlled = false` to drive
 it from AI or a replay.
 
-Physics layers: 1 = world (roads, ground), 2 = buildings. The car is on layer 1 and collides with both.
+Physics layers: 1 = world (roads, ground), 2 = buildings, 3 = traffic (AI vehicles and trains). The car is on layer 1 and collides with all three (traffic adds layer 3 to its mask).
+
+## Traffic
+
+AI cars, buses, trains and people, and the road data format the map feeds
+them, are documented in [TRAFFIC.md](TRAFFIC.md). Sound hooks: the
+`TrafficManager` signals `horn`, `crossing_changed`, `pedestrian_startled`,
+`vehicle_spawned` and `train_spawned`.
 
 ## Clock (autoload `GameClock`)
 

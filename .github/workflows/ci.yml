@@ -59,3 +59,13 @@ jobs:
             echo "::error::GDScript errors in the home scene"
             exit 1
           fi
+
+      - name: Traffic test
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/traffic_test.gd 2>&1 \
+            | tee traffic.log | grep -E "ok |FAIL|\[t\]|TRAFFIC|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" traffic.log; then
+            echo "::error::GDScript errors while running traffic"
+            exit 1
+          fi

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://traffic/sandbox/traffic_sandbox.gd" id="1_sandbox"]
+
+[node name="TrafficSandbox" type="Node"]
+script = ExtResource("1_sandbox")

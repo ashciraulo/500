@@ -52,6 +52,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the folder layout and conventions,
 and [docs/HOOKS.md](docs/HOOKS.md) for the values the car, clock and weather
 expose to other systems (audio, map, UI).
 
+## Traffic sandbox
+
+Open `traffic/sandbox/traffic_sandbox.tscn` and press **F6** to drive around a
+small suburb with traffic lights, a roundabout, a railway with boom gates,
+buses and people. See [docs/TRAFFIC.md](docs/TRAFFIC.md).
+
 ## Tests
 
 `tools/smoke_test.gd` loads the game headless and drives the car through a
@@ -61,4 +67,5 @@ turns). CI runs it on every push; locally:
 ```sh
 godot --headless --path . --import
 godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd -- --no-save
+godot --headless --path . --fixed-fps 60 --script res://tools/traffic_test.gd
 ```
