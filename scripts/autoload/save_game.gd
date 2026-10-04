@@ -15,7 +15,9 @@ extends Node
 signal saved(path: String)
 signal loaded(path: String)
 
-const VERSION := 1
+## 2: the real Perth map replaced the test grid, so older car positions point
+## at empty space.
+const VERSION := 2
 ## Real seconds between autosaves.
 @export var autosave_interval := 180.0
 
@@ -120,7 +122,12 @@ func delete_save() -> void:
 
 
 func _migrate(data: Dictionary) -> Dictionary:
-	# Future: upgrade older save versions here, one step at a time.
+	var version := int(data.get("version", 1))
+	if version < 2 and data.get("car") is Dictionary:
+		# Saved on the test grid: keep the car, start it at home.
+		data.car.erase("position")
+		data.car.erase("yaw")
+	data.version = VERSION
 	return data
 
 

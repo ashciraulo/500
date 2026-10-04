@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  # PR branches run once through pull_request; push only covers main.
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -38,6 +40,16 @@ jobs:
             | tee smoke.log | grep -E "ok |FAIL|\[t\]|SMOKE|  - |SCRIPT ERROR"
           if grep -q "SCRIPT ERROR" smoke.log; then
             echo "::error::GDScript errors while running the game"
+            exit 1
+          fi
+
+      - name: Spawn test
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/spawn_test.gd -- --no-save 2>&1 \
+            | tee spawn.log | grep -E "ok |FAIL|SPAWN|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" spawn.log; then
+            echo "::error::GDScript errors while spawning on the map"
             exit 1
           fi
 
