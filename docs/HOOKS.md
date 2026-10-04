@@ -29,6 +29,7 @@ The player's car is in the `player_car` group:
 | `handbrake` | float 0..1 | Handbrake lever. |
 | `weather_intensity` | float 0..1 | Rain amount, copied from `Weather`. |
 | `wetness` | float 0..1 | How wet the road is (lags behind rain). Tyre hiss on wet roads. |
+| `is_player_inside` | bool | Camera is in the cabin: use the muffled interior mix. |
 
 Signals:
 
@@ -46,6 +47,8 @@ listener is the active camera inside `LoFi/SubViewport`
 The car's driver inputs (`throttle_input`, `brake_input`, `steer_input`,
 `handbrake_input`) are plain vars; set `player_controlled = false` to drive
 it from AI or a replay.
+
+Physics layers: 1 = world (roads, ground), 2 = buildings. The car is on layer 1 and collides with both.
 
 ## Clock (autoload `GameClock`)
 

@@ -133,6 +133,9 @@ var is_shifting := false
 var headlights_on := false
 ## Front road-wheel angle in radians, positive = left.
 var steer_angle := 0.0
+## True while the camera is in the cabin (set by CarCameraRig). Audio uses it
+## to switch to the muffled interior mix.
+var is_player_inside := false
 
 var _wheels: Array[Dictionary] = []
 var _shift_timer := 0.0
@@ -329,6 +332,7 @@ func get_telemetry() -> Dictionary:
 		"handbrake": handbrake_input,
 		"weather_intensity": Weather.intensity(),
 		"wetness": Weather.wetness,
+		"is_player_inside": is_player_inside,
 	}
 
 

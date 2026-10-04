@@ -39,6 +39,7 @@ radial_segments = 5
 rings = 1
 
 [node name="Fiat500Pop" type="RigidBody3D"]
+collision_mask = 3
 mass = 940.0
 center_of_mass_mode = 1
 continuous_cd = true

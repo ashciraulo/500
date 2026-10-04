@@ -47,6 +47,7 @@ func _ready() -> void:
 	if _car:
 		_yaw = _car.global_rotation.y
 		_ray_query.exclude = [_car.get_rid()]
+		_car.is_player_inside = mode == Mode.INTERIOR
 		global_position = _car.global_position
 
 
@@ -59,6 +60,8 @@ func _input(event: InputEvent) -> void:
 
 func toggle_mode() -> void:
 	mode = Mode.INTERIOR if mode == Mode.CHASE else Mode.CHASE
+	if _car:
+		_car.is_player_inside = mode == Mode.INTERIOR
 	_look_yaw = 0.0
 	_look_pitch = 0.0
 
