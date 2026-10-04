@@ -663,7 +663,8 @@ def site(M):
 
     # rear lane
     A.block((-12, cy1, -0.05), (24, cy1 + 5.0, 0.0), M["asphalt"], b, uv=3.0)
-    A.block((-12, cy1 + 5.0, 0), (24, cy1 + 5.2, 1.8), M["render_n13"], b)
+    # no wall across the far side: the lane opens onto the street behind, so
+    # the car can drive straight out of the carport
     return gate, shed_door
 
 
