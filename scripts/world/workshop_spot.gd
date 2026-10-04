@@ -43,6 +43,10 @@ func _ready() -> void:
 	sign.outline_size = 8
 	sign.modulate = color
 	sign.position = Vector3(0, 2.6, -size.y * 0.5)
+	# Read from the street; up close (parked in the bay) the prompt says it instead.
+	sign.visibility_range_begin = 9.0
+	sign.visibility_range_begin_margin = 2.0
+	sign.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(sign)
 
 

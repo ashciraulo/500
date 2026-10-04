@@ -10,4 +10,5 @@ description = "Cat-back system with twin tips."
 slot = &"exhaust"
 price = 900
 modifiers = {"torque_mult": 1.04}
+ladders = PackedStringArray("modern", "electric")
 visual = "exhaust_twin"

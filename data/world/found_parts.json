@@ -1,0 +1,9 @@
+{
+	"_comment": "Parts you can't buy: each one is somewhere in the city (scripts/world/found_part.gd). `near` is a barn find (barn:<car id>), a job site (site:<id>) or a photo spot (photo:<id>) from data/world/places.json or the map; `offset` is metres east, up and south of it. `rumour` shows in the phone's Leads tab until it's found. Stop next to it or walk up to it to take it home.",
+	"parts": [
+		{"part": "wheels_campagnolo", "near": "barn:classic_500l", "offset": [7.0, 0.0, 3.0], "rumour": "The warehouse on Royal Street had a set of old magnesium wheels leaning by the roller door."},
+		{"part": "exhaust_abarth_classic", "near": "barn:classic_abarth_595", "offset": [-6.0, 0.0, 4.0], "rumour": "Someone left an Abarth tailpipe on the bench of a Kensington shed."},
+		{"part": "roof_surf_rack", "near": "site:cottesloe_surf_club", "offset": [9.0, 0.0, -5.0], "rumour": "There's a rack and an old single-fin out the back of the Cottesloe surf club. Nobody's claimed it."},
+		{"part": "lights_period_spots", "near": "photo:mounts_bay_crawley", "offset": [5.0, 0.0, 6.0], "rumour": "A pair of chrome spotlights is sitting on a wall along Mounts Bay Road in Crawley."}
+	]
+}

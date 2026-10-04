@@ -98,16 +98,18 @@ func _update_chase(delta: float) -> void:
 
 	var speed := _car.linear_velocity.length()
 	var speed_t := clampf(speed / 33.0, 0.0, 1.0)
-	var distance := chase_distance + speed_t * 1.0
+	# Smaller cars (the classics) get the camera lower and closer.
+	var fit := clampf(_car.body_size.y / CarController.POP_SIZE.y, 0.75, 1.2)
+	var distance := chase_distance * sqrt(fit) + speed_t * 1.0
 	var orbit := Basis(Vector3.UP, _yaw + _look_yaw) * Basis(Vector3.RIGHT, -_look_pitch)
 	# Under a low roof (carport, car park), drop the camera and pull it in so
 	# it stays below the ceiling instead of filming the roof.
-	var height := chase_height
+	var height := chase_height * fit
 	_ray_query.from = car_pos + Vector3.UP * 0.9
 	_ray_query.to = car_pos + Vector3.UP * (chase_height + 0.8)
 	var ceiling := get_world_3d().direct_space_state.intersect_ray(_ray_query)
 	if not ceiling.is_empty():
-		height = clampf(ceiling.position.y - car_pos.y - 0.45, look_height, chase_height)
+		height = clampf(ceiling.position.y - car_pos.y - 0.45, look_height, chase_height * fit)
 	var desired := car_pos + orbit * Vector3(0.0, height, distance)
 	var target := car_pos + Vector3.UP * look_height + (-_car.global_basis.z) * look_ahead
 

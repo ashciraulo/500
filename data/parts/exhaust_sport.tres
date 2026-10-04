@@ -10,4 +10,5 @@ description = "A freer-flowing back box with a bigger tip."
 slot = &"exhaust"
 price = 550
 modifiers = {"torque_mult": 1.03}
+ladders = PackedStringArray("modern", "electric")
 visual = "exhaust_sport"

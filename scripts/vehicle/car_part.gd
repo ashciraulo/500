@@ -17,7 +17,8 @@ extends Resource
 @export var id: StringName
 @export var display_name := ""
 @export_multiline var description := ""
-## engine, intake, exhaust, gearbox, suspension, tyres, wheels, brakes, weight
+## engine, intake, exhaust, gearbox, suspension, tyres, wheels, brakes,
+## weight, roof, lights
 @export var slot: StringName
 ## Price in Australian dollars. Stock parts are 0.
 @export var price := 0
@@ -26,7 +27,16 @@ extends Resource
 ## have no engine, intake, exhaust or gearbox to swap).
 @export var fits: PackedStringArray = []
 ## Model id for the car body to show, e.g. "exhaust_sport". Empty = none.
+## Wheels use art/models/cars/parts/<visual>_l/_r.glb; exhaust, roof and
+## lights parts use <visual>.glb at the body's Mount_Exhaust, Mount_Roof or
+## Mount_Spotlights.
 @export var visual := ""
+## Which kinds of car it suits (CarCatalogue "ladder": modern, electric,
+## classic). Empty = all. A 17" Abarth wheel won't go on a 1957 Nuova.
+@export var ladders: PackedStringArray = []
+## Can't be bought: it's somewhere in the city (data/world/found_parts.json).
+## Once found (discovery "part/<id>") it's yours for any car it fits.
+@export var found_only := false
 
 
 func is_stock() -> bool:

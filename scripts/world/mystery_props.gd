@@ -5,6 +5,21 @@ extends RefCounted
 ## is under the sheet in the shed. Each `build()` sits on its origin.
 
 
+const CLUE_MODEL := "res://art/models/home/mystery/%s.glb"
+
+
+## A clue's own model (art/models/home/mystery/<id>.glb, origin at its base),
+## or the built prop for its kind if there isn't one.
+static func for_clue(id: String, kind: String) -> Node3D:
+	var path := CLUE_MODEL % id
+	if ResourceLoader.exists(path):
+		var model := (load(path) as PackedScene).instantiate() as Node3D
+		model.name = id.capitalize()
+		PS1Model.apply(model)
+		return model
+	return build(kind)
+
+
 static func build(kind: String) -> Node3D:
 	var root := Node3D.new()
 	root.name = kind.capitalize() if kind != "" else "Thing"

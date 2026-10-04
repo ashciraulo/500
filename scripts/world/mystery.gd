@@ -151,7 +151,7 @@ func _broadcast() -> void:
 		clue_heard.emit(heard)
 	var c := clue(heard)
 	Activities.say("Under the static, a calm voice: " + String(c.get("broadcast", "")))
-	_variant("oddity/odd_clue")
+	_variant(_clue_cue(heard))
 	_bed_swell(20.0)
 
 
@@ -238,7 +238,7 @@ func _place_waiting(id: String, at: Vector3) -> void:
 	add_child(_waiting)
 	_waiting.global_position = _ground(at)
 	var kind := String(clue(id).get("cupboard", ""))
-	var thing := MysteryProps.build("key" if id == "shed_key" else kind)
+	var thing := MysteryProps.for_clue(id, "key" if id == "shed_key" else kind)
 	_waiting.add_child(thing)
 	# A faint glow so it can be seen from the car at night.
 	var glow := OmniLight3D.new()
@@ -336,7 +336,7 @@ func _build_shelf() -> void:
 	var box := boxes.global_transform * boxes.get_aabb()
 	var top := Vector3(box.get_center().x, box.end.y, box.get_center().z)
 	for i in in_cupboard.size():
-		var thing := MysteryProps.build(String(clue(in_cupboard[i]).get("cupboard", "")))
+		var thing := MysteryProps.for_clue(in_cupboard[i], String(clue(in_cupboard[i]).get("cupboard", "")))
 		_shelf.add_child(thing)
 		var row := Vector3((i % 3 - 1) * 0.13, 0.0, (i / 3 - 0.5) * 0.16)
 		thing.global_position = top + row
@@ -430,6 +430,18 @@ func _play_2d(sound: String, bus: String, volume_db := 0.0) -> void:
 	var audio := _audio()
 	if audio and audio.has(sound):
 		audio.play_2d(sound, bus, volume_db)
+
+
+## The station's cue for a clue: odd_clue_01 to _07 get closer to the
+## station as the arc goes on; any odd_clue variant if that one's missing.
+func _clue_cue(id: String) -> String:
+	var n := 0
+	for i in clues.size():
+		if clues[i].id == id:
+			n = i + 1
+	var ordered := "oddity/odd_clue_%02d" % n
+	var audio := _audio()
+	return ordered if audio and audio.has(ordered) else "oddity/odd_clue"
 
 
 func _variant(sound: String) -> void:

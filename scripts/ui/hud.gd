@@ -28,6 +28,8 @@ var _toast: Label
 var _toast_queue: PackedStringArray = []
 var _toast_time := 0.0
 
+const TOAST_TOP := 150.0
+
 
 func _ready() -> void:
 	_car = get_node_or_null(car_path) as CarController
@@ -98,7 +100,7 @@ func _ready() -> void:
 	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_toast.offset_left = -360
 	_toast.offset_right = 360
-	_toast.offset_top = 150
+	_toast.offset_top = TOAST_TOP
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_toast.add_theme_font_size_override("font_size", 20)
@@ -157,6 +159,8 @@ func _process(delta: float) -> void:
 		_toast_queue.remove_at(0)
 		_toast_time = 4.5
 	_toast.modulate.a = clampf(_toast_time / 0.6, 0.0, 1.0) if _toast_time < 0.6 else 1.0
+	# Messages sit under the controls list while it's showing, not over it.
+	_toast.offset_top = (_help.position.y + _help.size.y + 24.0) if _help.visible else TOAST_TOP
 	if Input.is_action_just_pressed("toggle_help"):
 		_help.visible = not _help.visible
 		Settings.show_help = _help.visible

@@ -8,7 +8,7 @@ const ACCENT := Color(0.6, 0.85, 0.8)
 const SLOT_NAMES := {
 	"engine": "Engine", "intake": "Intake", "exhaust": "Exhaust", "gearbox": "Gearbox",
 	"suspension": "Suspension", "tyres": "Tyres", "wheels": "Wheels", "brakes": "Brakes",
-	"weight": "Weight",
+	"weight": "Weight", "roof": "Roof", "lights": "Driving lights",
 }
 ## Tab order; a spot shows the tabs for its kinds.
 ## "cars" lets you swap between cars you own; "dealer" also sells them.
@@ -287,7 +287,12 @@ func _refresh_parts() -> void:
 	for slot in PartsCatalogue.SLOTS:
 		_heading(_parts_list, SLOT_NAMES.get(String(slot), String(slot).capitalize()))
 		var fitted: CarPart = _car.parts.get(slot)
-		for part in PartsCatalogue.for_car(slot, _car.car_id):
+		var choices := PartsCatalogue.for_car(slot, _car.car_id).filter(func(p: CarPart) -> bool:
+			return not p.found_only or Garage.is_found(p))
+		if choices.size() <= 1 and slot in [&"roof", &"lights"]:
+			_text(_parts_list, "Nothing yet. Some parts can't be bought; they turn up around the city.")
+			continue
+		for part: CarPart in choices:
 			var is_fitted := (fitted == null and part.is_stock()) or (fitted != null and fitted.id == part.id)
 			var owned := Garage.owns(part, _car)
 			var row := HBoxContainer.new()

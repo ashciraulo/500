@@ -32,6 +32,7 @@ const PAINTS := [
 const FIT_HOURS := {
 	"engine": 4.0, "gearbox": 3.0, "suspension": 2.5, "exhaust": 1.0,
 	"intake": 0.5, "brakes": 1.5, "tyres": 1.0, "wheels": 0.5, "weight": 0.5,
+	"roof": 0.5, "lights": 1.0,
 }
 const RESPRAY_HOURS := 6.0
 
@@ -64,15 +65,17 @@ func _ready() -> void:
 func owns(part: CarPart, car: CarController) -> bool:
 	if part.is_stock() or owned.has(_key(car.car_id, part)):
 		return true
+	if part.found_only and is_found(part):
+		return true
 	return car.get_part_ids().has(String(part.id))
 
 
-## Pay for a part for this car. Returns false if you can't afford it or it
-## doesn't fit.
+## Pay for a part for this car. Returns false if you can't afford it, it
+## doesn't fit, or it's one you have to find.
 func buy(part: CarPart, car: CarController) -> bool:
 	if owns(part, car):
 		return true
-	if not PartsCatalogue.fits(part, car.car_id) or not Wallet.spend(part.price):
+	if part.found_only or not PartsCatalogue.fits(part, car.car_id) or not Wallet.spend(part.price):
 		return false
 	owned.append(_key(car.car_id, part))
 	Progression.add_stat("parts_bought")
@@ -233,6 +236,11 @@ func km_in_tier(tier: int, car: CarController) -> float:
 		var km: float = car.odometer_km if car and car.car_id == id else float(cars.get(id, {}).get("odometer_km", 0.0))
 		best = maxf(best, km)
 	return best
+
+
+## Found-only parts (CarPart.found_only) are yours once found in the city.
+func is_found(part: CarPart) -> bool:
+	return Discoveries.has("part/" + String(part.id))
 
 
 func _key(car_id: String, part: CarPart) -> String:

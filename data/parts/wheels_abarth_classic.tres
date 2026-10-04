@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"wheels_abarth_classic"
+display_name = "Abarth classic wheels"
+description = "Wide steel wheels with the scorpion centre caps."
+slot = &"wheels"
+price = 900
+modifiers = {"mass_add": 1.0, "grip_mult": 1.03}
+ladders = PackedStringArray("classic")
+visual = "wheel_abarth_classic"

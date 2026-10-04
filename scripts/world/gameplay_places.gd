@@ -28,6 +28,9 @@ func _ready() -> void:
 	var mystery := Mystery.new()
 	mystery.name = "Mystery"
 	add_child(mystery)
+	var decor := HomeDecor.new()
+	decor.name = "HomeDecor"
+	add_child(decor)
 	for p: Dictionary in places.get("photo_spots", []):
 		var spot := PhotoSpot.new()
 		spot.spot_id = p.id
@@ -69,6 +72,7 @@ func _ready() -> void:
 		_add(site, c, c.id)
 	# Workshops: wait a frame so the map has placed its own.
 	_top_up_badges.call_deferred()
+	_place_found_parts.call_deferred()
 
 
 func _add(node: Node3D, entry: Dictionary, node_name: String) -> void:
@@ -76,6 +80,42 @@ func _add(node: Node3D, entry: Dictionary, node_name: String) -> void:
 	node.name = node_name
 	node.transform = Transform3D(Basis(Vector3.UP, float(entry.get("yaw", 0.0))), Vector3(p[0], p[1], p[2]))
 	add_child(node)
+
+
+## Parts you can't buy (data/world/found_parts.json), placed near a barn
+## find, a job site or a photo spot.
+func _place_found_parts() -> void:
+	for entry: Dictionary in FoundPart.entries():
+		var at := _place_ref(String(entry.get("near", "")))
+		if at == Vector3.INF:
+			push_warning("Found part %s: nowhere called '%s'" % [entry.get("part"), entry.get("near")])
+			continue
+		var o: Array = entry.get("offset", [0.0, 0.0, 0.0])
+		var node := FoundPart.new()
+		node.part_id = entry.part
+		node.name = "FoundPart_" + String(entry.part)
+		node.position = at + Vector3(o[0], o[1], o[2])
+		add_child(node)
+
+
+## Where a "barn:<car>", "site:<id>" or "photo:<id>" reference is.
+func _place_ref(ref: String) -> Vector3:
+	var kind := ref.get_slice(":", 0)
+	var id := ref.get_slice(":", 1)
+	match kind:
+		"barn":
+			for p: Dictionary in places.get("barn_finds", []):
+				if p.car == id:
+					return Vector3(p.p[0], p.p[1], p.p[2])
+		"photo":
+			for p: Dictionary in places.get("photo_spots", []):
+				if p.id == id:
+					return Vector3(p.p[0], p.p[1], p.p[2])
+		"site":
+			for site in get_tree().get_nodes_in_group(&"job_sites"):
+				if site.get("site_id") == id:
+					return (site as Node3D).global_position
+	return Vector3.INF
 
 
 ## The map hides badges of its own; ours top them up to BADGE_TOTAL, skipping

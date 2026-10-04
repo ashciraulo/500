@@ -10,4 +10,5 @@ description = "Big, bold, a little heavy."
 slot = &"wheels"
 price = 1900
 modifiers = {"grip_mult": 1.03, "mass_add": 2}
+ladders = PackedStringArray("modern", "electric")
 visual = "wheel_abarth17"

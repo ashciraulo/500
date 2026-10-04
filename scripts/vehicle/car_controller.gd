@@ -92,6 +92,10 @@ const RPM_PER_RAD_S := 60.0 / TAU
 @export var wheel_radius := 0.29
 ## Ray length from the anchor to the bottom of the wheel at full droop.
 @export var suspension_length := 0.30
+## How far ahead of a wheel (in tyre radii) to look for a kerb, furthest first.
+const STEP_PROBES: Array[float] = [0.8, 0.55, 0.3]
+## The highest step a tyre rides up, in tyre radii (a 13 cm kerb is 0.45).
+const STEP_CLIMB := 0.62
 @export var spring_strength := 26000.0
 @export var damper_strength := 2400.0
 @export var anti_roll_strength := 4500.0
@@ -195,6 +199,14 @@ var _peak_torque := 102.0
 var _wheelbase := 2.3
 ## The Pop's rig: wheel anchors, wheel models, collision boxes, tyre radius.
 var _rig_defaults := {}
+## The body's size (m); the chase camera frames smaller cars closer.
+const POP_SIZE := Vector3(1.63, 1.49, 3.55)
+var body_size := POP_SIZE
+## Each wheel's model from the body (its WheelStyle), before any wheel part.
+var _model_wheels := {}
+const PART_MODEL_PATH := "res://art/models/cars/parts/%s.glb"
+## Slots whose parts sit on the body, and the empty each sits at.
+const PART_MOUNTS := {&"exhaust": "Mount_Exhaust", &"roof": "Mount_Roof", &"lights": "Mount_Spotlights"}
 ## CarController values a car spec may set (data/cars/cars.json).
 const SPEC_KEYS := [
 	"mass", "idle_rpm", "redline_rpm", "limiter_rpm", "torque_curve", "gear_ratios",
@@ -252,6 +264,10 @@ func _ready() -> void:
 			"spin_speed": 0.0,
 			"surface": DEFAULT_SURFACE,
 		})
+	_capture_rig()
+	var lower := get_node_or_null("LowerBodyCollision") as CollisionShape3D
+	if lower and lower.shape is BoxShape3D:
+		lower.shape = _lower_hull((lower.shape as BoxShape3D).size)
 	_update_lights()
 	_wheelbase = absf(_wheels[0].anchor.position.z - _wheels[2].anchor.position.z)
 
@@ -284,6 +300,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			wheel.grounded = true
 			wheel.hit_distance = origin.distance_to(hit.position)
+			_climb_step(wheel, origin, up, total_ray, space)
 			wheel.compression = clampf(total_ray - wheel.hit_distance, 0.0, suspension_length)
 			wheel.contact = hit.position
 			wheel.normal = hit.normal
@@ -494,6 +511,7 @@ func install_part(part: CarPart) -> void:
 	else:
 		parts[part.slot] = part
 	_rebuild_stats()
+	_apply_part_visuals()
 	parts_changed.emit(part.slot, part)
 
 
@@ -503,6 +521,7 @@ func remove_part(slot: StringName) -> void:
 		return
 	parts.erase(slot)
 	_rebuild_stats()
+	_apply_part_visuals()
 	parts_changed.emit(slot, PartsCatalogue.get_part(StringName(String(slot) + "_stock")))
 
 
@@ -761,16 +780,7 @@ func _swap_model(model: String) -> void:
 ## the classic 500s are much smaller than the Pop. Models without hubs get
 ## the Pop's rig back unchanged.
 func _fit_rig(body: Node3D) -> void:
-	if _rig_defaults.is_empty():
-		_rig_defaults = {"wheel_radius": wheel_radius, "anchors": [], "wheels": [], "shapes": {}}
-		for wheel in _wheels:
-			_rig_defaults.anchors.append(wheel.anchor.position)
-			var spin: Node3D = wheel.spin
-			_rig_defaults.wheels.append(spin.get_child(0).scene_file_path if spin and spin.get_child_count() > 0 else "")
-		for shape_name in ["LowerBodyCollision", "CabinCollision"]:
-			var col := get_node_or_null(shape_name) as CollisionShape3D
-			if col and col.shape is BoxShape3D:
-				_rig_defaults.shapes[shape_name] = [col.position, (col.shape as BoxShape3D).size]
+	_capture_rig()
 	var hubs: Array[Node3D] = []
 	for hub_name in ["Hub_FL", "Hub_FR", "Hub_RL", "Hub_RR"]:
 		var hub := body.find_child(hub_name, true, false) as Node3D
@@ -799,9 +809,110 @@ func _fit_rig(body: Node3D) -> void:
 			var styled := "res://art/models/cars/parts/wheel_%s_%s.glb" % [style, "l" if wheel.left else "r"]
 			if ResourceLoader.exists(styled):
 				path = styled
-		_set_wheel_model(wheel.spin, path)
+		_model_wheels[i] = path
 	_wheelbase = absf(_wheels[0].anchor.position.z - _wheels[2].anchor.position.z)
 	_fit_collision(body if fitted else null)
+	_apply_part_visuals()
+
+
+## Remember the Pop's rig (once), so other bodies can be fitted and undone.
+func _capture_rig() -> void:
+	if _rig_defaults.is_empty() and not _wheels.is_empty():
+		_rig_defaults = {"wheel_radius": wheel_radius, "anchors": [], "wheels": [], "shapes": {}}
+		for wheel in _wheels:
+			_rig_defaults.anchors.append(wheel.anchor.position)
+			var spin: Node3D = wheel.spin
+			_rig_defaults.wheels.append(spin.get_child(0).scene_file_path if spin and spin.get_child_count() > 0 else "")
+		for shape_name in ["LowerBodyCollision", "CabinCollision"]:
+			var col := get_node_or_null(shape_name) as CollisionShape3D
+			if col and col.shape is BoxShape3D:
+				_rig_defaults.shapes[shape_name] = [col.position, (col.shape as BoxShape3D).size]
+
+
+## A round tyre rides up a kerb before its centre gets there: probe the
+## ground just ahead (in the direction of travel) and, where it's a low step
+## up, raise this wheel's contact by however much of the step the tyre's curve
+## already touches. Steps higher than STEP_CLIMB of the radius are walls.
+func _climb_step(wheel: Dictionary, origin: Vector3, up: Vector3, total_ray: float, space: PhysicsDirectSpaceState3D) -> void:
+	var v := linear_velocity - up * linear_velocity.dot(up)
+	if v.length() < 0.3:
+		return
+	var ahead := v.normalized()
+	var lift := 0.0
+	for f: float in STEP_PROBES:
+		var x := wheel_radius * f
+		_ray_query.from = origin + ahead * x
+		_ray_query.to = _ray_query.from - up * total_ray
+		var probe := space.intersect_ray(_ray_query)
+		if probe.is_empty():
+			continue
+		var step: float = wheel.hit_distance - _ray_query.from.distance_to(probe.position)
+		if step < 0.01:
+			if f == STEP_PROBES[0]:
+				return  # Flat ahead: no need to look closer.
+			continue
+		if step > wheel_radius * STEP_CLIMB:
+			return
+		lift = maxf(lift, step - (wheel_radius - sqrt(wheel_radius * wheel_radius - x * x)))
+	wheel.hit_distance -= lift
+
+
+## Show the fitted parts that have models: wheels (instead of the body's own
+## style), and an exhaust, roof rack or spotlights at the body's Mount_* empties.
+func _apply_part_visuals() -> void:
+	var wheels: CarPart = parts.get(&"wheels")
+	for i in _wheels.size():
+		var wheel: Dictionary = _wheels[i]
+		_capture_rig()
+		var path: String = _model_wheels.get(i, _rig_defaults.wheels[i])
+		if wheels and wheels.visual != "":
+			var fitted := PART_MODEL_PATH % ("%s_%s" % [wheels.visual, "l" if wheel.left else "r"])
+			if ResourceLoader.exists(fitted):
+				path = fitted
+		if path != "":
+			_set_wheel_model(wheel.spin, path)
+	var body := get_node_or_null("Body") as Node3D
+	if body == null:
+		return
+	for slot: StringName in PART_MOUNTS:
+		var old := body.get_node_or_null(NodePath("Part_" + String(slot)))
+		if old:
+			body.remove_child(old)
+			old.queue_free()
+		var part: CarPart = parts.get(slot)
+		if part == null or part.visual == "" or not ResourceLoader.exists(PART_MODEL_PATH % part.visual):
+			continue
+		var model := (load(PART_MODEL_PATH % part.visual) as PackedScene).instantiate() as Node3D
+		model.name = "Part_" + String(slot)
+		var mount := body.find_child(PART_MOUNTS[slot], true, false) as Node3D
+		model.transform = _in_body_space(body, mount) if mount else Transform3D.IDENTITY
+		body.add_child(model)
+		PS1Model.apply(model)
+		if slot == &"lights":
+			_add_spotlights(model)
+
+
+## Two lamps for the period spotlights, on with the headlights.
+func _add_spotlights(model: Node3D) -> void:
+	for x in [-0.28, 0.28]:
+		var lamp := SpotLight3D.new()
+		lamp.position = Vector3(x, 0.1, -0.1)
+		lamp.light_color = Color(1.0, 0.9, 0.7)
+		lamp.light_energy = 3.0
+		lamp.spot_range = 45.0
+		lamp.spot_angle = 18.0
+		lamp.visible = headlights_on
+		lamp.add_to_group(&"car_spotlights")
+		model.add_child(lamp)
+
+
+func _in_body_space(body: Node3D, node: Node3D) -> Transform3D:
+	var chain := Transform3D.IDENTITY
+	var n: Node = node
+	while n and n != body:
+		chain = (n as Node3D).transform * chain
+		n = n.get_parent()
+	return chain
 
 
 ## The model's wheel style, from its `WheelStyle_<style>` empty.
@@ -833,8 +944,11 @@ func _fit_collision(body: Node3D) -> void:
 	var sx := 1.0
 	var sz := 1.0
 	var sy := 1.0
+	body_size = POP_SIZE
 	if body:
 		var box := _model_bounds(body)
+		if box.size.x > 0.1:
+			body_size = box.size
 		var lower: Array = _rig_defaults.shapes.get("LowerBodyCollision", [])
 		if box.size.x > 0.1 and not lower.is_empty():
 			sx = box.size.x / 1.63
@@ -845,10 +959,40 @@ func _fit_collision(body: Node3D) -> void:
 		var rest: Array = _rig_defaults.shapes[shape_name]
 		var size: Vector3 = rest[1]
 		var pos: Vector3 = rest[0]
-		var box_shape := col.shape.duplicate() as BoxShape3D
-		box_shape.size = Vector3(size.x * sx, size.y * sy, size.z * sz)
-		col.shape = box_shape
+		var scaled := Vector3(size.x * sx, size.y * sy, size.z * sz)
+		if shape_name == "LowerBodyCollision":
+			col.shape = _lower_hull(scaled)
+		else:
+			var box_shape := BoxShape3D.new()
+			box_shape.size = scaled
+			col.shape = box_shape
 		col.position = Vector3(pos.x * sx, pos.y * sy, pos.z * sz)
+
+
+## The lower body as a box with its bottom edges cut away: the overhangs
+## slope up to the bumpers and the sills are bevelled, so a kerb meets a
+## slope and lifts the car instead of hitting a wall. Proportions from the Pop.
+static func _lower_hull(size: Vector3) -> ConvexPolygonShape3D:
+	var w := size.x * 0.5
+	var h := size.y * 0.5
+	var l := size.z * 0.5
+	var rise := size.y * 0.26  # Bumper bottoms this much higher than the floor.
+	var front := size.z * 0.13  # Front overhang slope length.
+	var rear := size.z * 0.1
+	var sill := size.x * 0.06
+	var points := PackedVector3Array()
+	for x in [-1.0, 1.0]:
+		points.append(Vector3(x * w, h, -l))
+		points.append(Vector3(x * w, h, l))
+		points.append(Vector3(x * w, -h + rise, -l))
+		points.append(Vector3(x * w, -h + rise, l))
+		points.append(Vector3(x * w, -h + rise, -l + front))
+		points.append(Vector3(x * w, -h + rise, l - rear))
+		points.append(Vector3(x * (w - sill), -h, -l + front))
+		points.append(Vector3(x * (w - sill), -h, l - rear))
+	var hull := ConvexPolygonShape3D.new()
+	hull.points = points
+	return hull
 
 
 ## A model node's transform in the car's space (works before entering the tree).
@@ -1071,6 +1215,9 @@ func _update_lights() -> void:
 	var lights := get_node_or_null("Headlights")
 	if lights:
 		lights.visible = headlights_on
+	for lamp in find_children("*", "SpotLight3D", true, false):
+		if lamp.is_in_group(&"car_spotlights"):
+			lamp.visible = headlights_on
 	headlights_changed.emit(headlights_on)
 
 

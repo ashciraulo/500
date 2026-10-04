@@ -5,7 +5,7 @@ extends RefCounted
 const DIR := "res://data/parts/"
 const SLOTS: Array[StringName] = [
 	&"engine", &"intake", &"exhaust", &"gearbox", &"suspension",
-	&"tyres", &"wheels", &"brakes", &"weight",
+	&"tyres", &"wheels", &"brakes", &"weight", &"roof", &"lights",
 ]
 
 static var _parts := {}
@@ -43,6 +43,8 @@ static func fits(part: CarPart, car_id: String) -> bool:
 	if not part.fits.is_empty():
 		return part.fits.has(car_id)
 	var car := CarCatalogue.get_car(car_id)
+	if not part.ladders.is_empty() and not part.ladders.has(String(car.get("ladder", "modern"))):
+		return false
 	if car.get("electric", false) and COMBUSTION_SLOTS.has(part.slot):
 		return part.is_stock()
 	return true

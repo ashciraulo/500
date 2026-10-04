@@ -96,7 +96,7 @@ should keep running while paused needs `process_mode = PROCESS_MODE_ALWAYS`.
 
 Parts are data in `data/parts/<id>.tres` (`CarPart`, `scripts/vehicle/car_part.gd`).
 Each has a `slot` (engine, intake, exhaust, gearbox, suspension, tyres, wheels,
-brakes, weight), a `price` (AUD), stat `modifiers` (keys documented in
+brakes, weight, roof, lights), a `price` (AUD), stat `modifiers` (keys documented in
 `car_part.gd`) and an optional `visual` model id (`exhaust_sport`,
 `wheel_alloy15`, ...) for the car body to show. `PartsCatalogue` lists them:
 `all()`, `for_slot(slot)`, `get_part(id)`.
@@ -106,6 +106,28 @@ On the car: `install_part(part)`, `remove_part(slot)`, `parts` (slot -> part),
 headline numbers (power_kw, torque_nm, mass_kg, grip, ...). Parts always stack
 from the stock values. Signal `parts_changed(slot, part)` fires on every change;
 the car body uses `part.visual` to swap wheels and exhausts.
+
+Part models live in `art/models/cars/parts/<visual>.glb` (wheels as
+`<visual>_l` / `_r`). Exhaust, roof and lights parts sit at the body's
+`Mount_Exhaust`, `Mount_Roof` and `Mount_Spotlights` empties as `Body/Part_<slot>`;
+the spotlights add two lamps (group `car_spotlights`) that follow the
+headlights. Without a fitted wheels part the car uses its model's own
+`WheelStyle_<style>` wheels.
+
+`ladders` limits a part to cars whose cars.json `ladder` is listed (empty fits
+everything). `found_only` parts can't be bought: each is somewhere in the city
+(`data/world/found_parts.json`, `FoundPart` nodes in group `found_parts`), and
+picking it up records the discovery `part/<id>`, after which `Garage.owns()` is
+true for every car it fits. The phone lists their rumours.
+
+## Home decorations (`HomeDecor`, `scripts/world/home_decor.gd`)
+
+Built at the home model's empties, refreshed when rewards, tiers, photos or
+classics change: `Deco_RoadMap` and `Deco_NeonSign` (garage cosmetics
+`garage_road_map`, `garage_neon_sign`), `Deco_Shelf_1..8` (a gold trophy per
+career tier finished, then silver per classic restored), `Corkboard_Pin_1..12`
+(a card per classic found) and `Photo_Frame_1..6` (latest album photos). Each
+prop is a child named `Decor`.
 
 ## Saving (autoload `SaveGame`)
 

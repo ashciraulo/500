@@ -10,4 +10,5 @@ description = "The loud one. Four tips, valved."
 slot = &"exhaust"
 price = 1600
 modifiers = {"torque_mult": 1.05}
+ladders = PackedStringArray("modern", "electric")
 visual = "exhaust_abarth_quad"

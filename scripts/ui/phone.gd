@@ -210,6 +210,16 @@ func _refresh_leads() -> void:
 		_text(_leads_list, "  Probably a %s. Stop next to it to claim it." % car.get("name", "classic"), 13, Color(0.7, 0.7, 0.68))
 	_text(_leads_list, "Classics found: %d of %d" % [Classics.found_count(), Classics.barn_finds().size()], 14)
 
+	var parts := FoundPart.entries()
+	var found := 0
+	_text(_leads_list, "Parts you can't buy", 18, accent)
+	for entry: Dictionary in parts:
+		if Discoveries.has("part/" + String(entry.part)):
+			found += 1
+		else:
+			_text(_leads_list, "\"%s\"" % entry.get("rumour", ""))
+	_text(_leads_list, "Found: %d of %d. Stop next to one (or walk up to it) to take it home." % [found, parts.size()], 14)
+
 	_text(_leads_list, "Things to do", 18, accent)
 	_text(_leads_list, "Photo spots: %d of %d. Press P for photo mode near a blue PHOTO sign. %d photos in the album." % [
 		Activities.photo_spots_found(), Activities.PHOTO_SPOTS_TOTAL, Activities.photos.size()])

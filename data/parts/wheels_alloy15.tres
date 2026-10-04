@@ -10,4 +10,5 @@ description = "Lighter alloys."
 slot = &"wheels"
 price = 900
 modifiers = {"mass_add": -4}
+ladders = PackedStringArray("modern", "electric")
 visual = "wheel_alloy15"

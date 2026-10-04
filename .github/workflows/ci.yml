@@ -73,6 +73,26 @@ jobs:
             exit 1
           fi
 
+      - name: Kerb test
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/kerb_test.gd -- --no-save 2>&1 \
+            | tee kerb.log | grep -E "ok |FAIL|KERBS|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" kerb.log; then
+            echo "::error::GDScript errors in the kerb test"
+            exit 1
+          fi
+
+      - name: Parts and home decor test
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/parts_test.gd -- --no-save 2>&1 \
+            | tee parts.log | grep -E "FAIL|PARTS|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" parts.log; then
+            echo "::error::GDScript errors in parts or home decor"
+            exit 1
+          fi
+
       - name: Playthrough (fresh save, real time)
         run: |
           set -o pipefail

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"wheels_campagnolo"
+display_name = "Campagnolo-style alloys"
+description = "Light magnesium-look wheels from the sixties, found in a warehouse in East Perth."
+slot = &"wheels"
+modifiers = {"mass_add": -4.0, "grip_mult": 1.02}
+ladders = PackedStringArray("classic")
+visual = "wheel_campagnolo"
+found_only = true

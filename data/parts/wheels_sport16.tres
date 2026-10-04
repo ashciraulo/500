@@ -10,4 +10,5 @@ description = "Wider rims for a bit more bite."
 slot = &"wheels"
 price = 1300
 modifiers = {"mass_add": -2, "grip_mult": 1.02}
+ladders = PackedStringArray("modern", "electric")
 visual = "wheel_sport16"

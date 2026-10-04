@@ -87,6 +87,8 @@ godot --headless --path . --import
 godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/traffic_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tools/mystery_test.gd -- --no-save
+godot --headless --path . --fixed-fps 60 --script res://tools/parts_test.gd -- --no-save
+godot --headless --path . --fixed-fps 60 --script res://tools/kerb_test.gd -- --no-save
 # A real-time playthrough from whatever save you have (or none): load, drive
 # out of the carport, workshop, a job, switching cars, walking, sleeping.
 # Without tour=off it also tours the whole map and reports streaming hitches.

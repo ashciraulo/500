@@ -45,6 +45,7 @@ var _yaw := 0.0
 var _pitch := 0.0
 var _bob := 0.0
 var _prompt: Label
+var _ui: CanvasLayer
 var _fade: ColorRect
 var _note_timer := 0.0
 var _hold := 0.0
@@ -78,18 +79,26 @@ func _ready() -> void:
 	_camera.position.y = eye_height
 	add_child(_camera)
 
+	# Drawn in the window at its resolution, not inside the low-res lo-fi
+	# viewport (where the prompt came out scaled up, blurry and over the HUD).
 	var ui := CanvasLayer.new()
 	ui.layer = 5
-	add_child(ui)
+	_ui = ui
+	get_tree().root.add_child.call_deferred(ui)
 	_fade = ColorRect.new()
 	_fade.color = Color(0, 0, 0, 0)
 	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(_fade)
 	_prompt = Label.new()
-	_prompt.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_prompt.position = Vector2(-160, -96)
-	_prompt.size = Vector2(320, 24)
+	_prompt.anchor_left = 0.5
+	_prompt.anchor_right = 0.5
+	_prompt.anchor_top = 1.0
+	_prompt.anchor_bottom = 1.0
+	_prompt.offset_left = -160.0
+	_prompt.offset_right = 160.0
+	_prompt.offset_top = -96.0
+	_prompt.offset_bottom = -72.0
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.add_theme_color_override("font_color", Color(1.0, 0.95, 0.85))
 	_prompt.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
@@ -120,6 +129,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not in_car:
 		interact()
 		get_viewport().set_input_as_handled()
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(_ui):
+		_ui.queue_free()
 
 
 func _process(delta: float) -> void:
