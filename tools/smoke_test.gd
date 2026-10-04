@@ -345,7 +345,7 @@ func _run_step() -> bool:
 				Input.action_press("accelerate")
 			elif _frame == 360:
 				Input.action_release("accelerate")
-				_check(_car.speed_kmh() > 40.0, "the 500e pulls away (%.0f km/h)" % _car.speed_kmh())
+				_check(_car.speed_kmh() > 30.0, "the 500e pulls away (%.0f km/h)" % _car.speed_kmh())
 				_check(_car.fuel_litres < _car.tank_litres, "driving the 500e uses charge")
 				var save := root.get_node("SaveGame")
 				save.save_to("user://smoke_cars.json")

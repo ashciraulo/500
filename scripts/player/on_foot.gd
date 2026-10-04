@@ -269,6 +269,7 @@ func get_out() -> void:
 	_car.steer_input = 0.0
 	_car.handbrake_input = 1.0
 	_set_car_sounds_controlled(false)  # The engine winds down.
+	_set_audio_inside(true)  # Still in the seat for the belt and key.
 	var side := _driver_side()
 	_car_sound("seatbelt", [false])
 	_car_sound("key", ["off"])
@@ -293,6 +294,7 @@ func _step_out(spot: Vector3) -> void:
 	in_car = false
 	_busy = false
 	_car.is_player_inside = false
+	_set_audio_inside(false)
 	if _rig:
 		_rig.set_process(false)
 	global_position = spot
@@ -334,6 +336,9 @@ func _sit() -> void:
 	in_car = true
 	_hold_armed = false
 	_set_body_active(false)
+	# In the seat with the door shut: the belt and key are heard from inside,
+	# not faintly from the street (the car's own sounds take over at _drive).
+	_set_audio_inside(true)
 	if _rig:
 		_rig.set_process(true)
 		var cam := _rig.get_node_or_null(^"Camera3D") as Camera3D
@@ -361,6 +366,12 @@ func _swing_door(side: String, open: bool) -> void:
 	var body := _car.get_node_or_null(^"Body")
 	if body and body.has_method("set_door_open"):
 		body.set_door_open(side, open)
+
+
+func _set_audio_inside(inside: bool) -> void:
+	var audio := get_node_or_null(^"/root/Audio")
+	if audio and audio.has_method("set_player_inside"):
+		audio.set_player_inside(inside)
 
 
 func _car_sound(method: String, args: Array) -> void:
