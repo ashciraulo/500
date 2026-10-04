@@ -26,7 +26,8 @@ func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(_out)
 	# [name, hour, weather, seconds to simulate, junction near, camera height, distance back]
 	# The camera stands back along the junction's busiest approach road,
-	# where the street keeps buildings out of the way.
+	# where the street keeps buildings out of the way. Freeway shots (height
+	# over 12 m) follow the busiest stretch of traffic near the spot instead.
 	_shots = [
 		["william_wellington", 8.2, 0, 24.0, Vector3(391, 25, 587), 14.0, 40.0],
 		["st_georges_tce", 8.4, 0, 24.0, Vector3(550, 47, 1090), 14.0, 40.0],
@@ -44,6 +45,8 @@ func _init() -> void:
 
 func _process(_delta: float) -> bool:
 	if _main == null:
+		# Never write a save file, which would move the next run's start.
+		root.get_node("SaveGame").enabled = false
 		_main = load("res://scenes/main.tscn").instantiate()
 		root.add_child(_main)
 		var world: Node3D = _main.get_node("LoFi/SubViewport/World")
@@ -63,7 +66,7 @@ func _process(_delta: float) -> bool:
 	_frames += 1
 	var shot: Array = _shots[_shot]
 	if _frames == int(shot[3] * 60.0) - 20 and shot[0] != "perth_station":
-		var view := _junction_view(shot[4], shot[5], shot[6])
+		var view := _junction_view(shot[4], shot[5], shot[6]) if shot[5] <= 12.0 else _traffic_view(shot[4], shot[5], shot[6])
 		_cam.look_at_from_position(view[0], view[1])
 	var ready := _frames >= int(shot[3] * 60.0)
 	if ready and shot[0] == "perth_station" and _train != null:
@@ -94,7 +97,7 @@ func _next_shot() -> void:
 	if shot[0] == "perth_station":
 		var pick := _station_view()
 		if pick.is_empty():
-			print("no station found; skipping")
+			print("no station found (%d rail edges, %d stations); skipping" % [_traffic.graph.rail_edges.size(), _traffic.graph.stations.size()])
 			_frames = 1 << 30
 			return
 		cam_pos = pick[0]
@@ -136,20 +139,46 @@ func _junction_view(near: Vector3, height: float, back: float) -> Array:
 	return [p + side + Vector3(0, height, 0), best.pos + Vector3(0, 1.0, 0)]
 
 
-## A camera on a city station's platform end, with a train on its way in.
+## Behind and above the car near `near` with the most company, looking
+## down the road ahead of it.
+func _traffic_view(near: Vector3, height: float, back: float) -> Array:
+	var best = null
+	var best_score := -INF
+	for v in _traffic.vehicles:
+		var company := 0
+		for o in _traffic.vehicles:
+			if o != v and o.position.distance_to(v.position + v.forward * 25.0) < 30.0:
+				company += 1
+		var score: float = company * 50.0 - v.position.distance_to(near)
+		if score > best_score:
+			best_score = score
+			best = v
+	if best == null:
+		return [near + Vector3(30, 30, 30), near]
+	return [best.position - best.forward * back + Vector3(0, height, 0), best.position + best.forward * 30.0]
+
+
+## A camera on Perth station's platform end (or another city station), with
+## a train on its way in.
 func _station_view() -> Array:
+	var pick = null
 	for edge in _traffic.graph.rail_edges:
 		for st in edge.stations:
-			if st.s < 260.0 or st.s > edge.length - 40.0:
+			if st.s < 80.0 or st.s > edge.length - 40.0:
 				continue
-			var p: Vector3 = TrafficGraph.point_at(edge.pts, edge.cum, st.s)
-			var ahead: Vector3 = TrafficGraph.point_at(edge.pts, edge.cum, st.s + 30.0)
-			var dir := (ahead - p).normalized()
-			_train = _traffic.spawn_train_at(edge, st.s - 250.0, true, 4)
-			print("station: ", st.name, " at ", p)
-			var side := Vector3(dir.z, 0, -dir.x)
-			return [p + dir * 75.0 + side * 9.0 + Vector3(0, 5.0, 0), p - dir * 20.0 + Vector3(0, 1.5, 0)]
-	return []
+			if pick == null or (st.name == "Perth" and pick[1].name != "Perth"):
+				pick = [edge, st]
+	if pick == null:
+		return []
+	var edge = pick[0]
+	var st = pick[1]
+	var p: Vector3 = TrafficGraph.point_at(edge.pts, edge.cum, st.s)
+	var ahead: Vector3 = TrafficGraph.point_at(edge.pts, edge.cum, st.s + 30.0)
+	var dir := (ahead - p).normalized()
+	_train = _traffic.spawn_train_at(edge, maxf(st.s - 250.0, 0.0), true, 4)
+	print("station: ", st.name, " at ", p)
+	var side := Vector3(dir.z, 0, -dir.x)
+	return [p + dir * 75.0 + side * 9.0 + Vector3(0, 5.0, 0), p - dir * 20.0 + Vector3(0, 1.5, 0)]
 
 
 func _capture(shot_name: String) -> void:

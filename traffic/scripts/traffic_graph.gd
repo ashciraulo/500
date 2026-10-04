@@ -316,11 +316,15 @@ var rail_edges: Array = []
 var crossings: Array = []
 var bus_stops: Array = []
 var stations: Array = []
+## Parking spots from the map: { pos, yaw, kind, seed }. See TrafficParking.
+var parking: Array = []
 
 ## Bumped whenever roads are added, so cached route facts get refreshed.
 var version := 0
 var _road_keys := {}
 var _pending_bus_stops: Array = []
+var _parking_keys := {}
+var _parking_cells := {}
 var _lane_cells := {}
 var _ped_cells := {}
 var _rail_cells := {}
@@ -354,6 +358,8 @@ func add_data(data: Dictionary) -> int:
 		dirty[road.a] = true
 		dirty[road.b] = true
 
+	for p in data.get("parking", []):
+		_add_parking(p)
 	if added.is_empty() and data.get("rail", []).is_empty() and data.get("footways", []).is_empty():
 		return 0
 
@@ -1015,6 +1021,26 @@ func _add_bus_stop(p: Vector3) -> void:
 	gate.pos = p
 	best.add_stop(best_s, gate)
 	bus_stops.append({ "pos": p, "lane": best, "s": best_s })
+
+
+func _add_parking(p: Dictionary) -> void:
+	var pos := _vec(p.pos)
+	var key := pos.snapped(Vector3.ONE * 0.5)
+	if _parking_keys.has(key):
+		return  # Tiles overlap a little at their edges.
+	_parking_keys[key] = true
+	var spot := { "pos": pos, "yaw": float(p.get("yaw", 0.0)), "kind": StringName(p.get("kind", "street")),
+		"seed": hash(key) }
+	parking.append(spot)
+	var cell := cell_of(pos)
+	if not _parking_cells.has(cell):
+		_parking_cells[cell] = []
+	_parking_cells[cell].append(spot)
+
+
+## Parking spots within `radius` of `p` (roughly: whole cells).
+func parking_near(p: Vector3, radius: float) -> Array:
+	return _cells_near(_parking_cells, p, radius)
 
 
 func _find_level_crossings() -> void:

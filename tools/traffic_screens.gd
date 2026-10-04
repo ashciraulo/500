@@ -2,7 +2,7 @@ extends SceneTree
 ## Screenshots of the traffic sandbox for review. Needs a display (xvfb):
 ##
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --rendering-driver opengl3 \
-##       --resolution 1280x720 --fixed-fps 60 --script res://tools/traffic_screens.gd -- <out_dir>
+##       --resolution 1280x720 --fixed-fps 60 --script res://tools/traffic_screens.gd -- <out_dir> [shot name filter]
 ##
 ## Writes PNGs to <out_dir> (default user://traffic_screens).
 
@@ -34,7 +34,13 @@ func _init() -> void:
 		{ "name": "rain_umbrellas", "time": 18.7, "weather": 1, "sim": 6.0, "cam": [Vector3(-120, 1.8, 14), Vector3(-96, 1.0, 8)] },
 		{ "name": "night_avenue", "time": 22.0, "weather": 0, "sim": 12.0, "cam": [Vector3(-84, 3.2, 9.5), Vector3(-200, 1.0, -2)] },
 		{ "name": "night_chase", "time": 22.1, "weather": 0, "sim": 6.0 },
+		{ "name": "car_park_day", "time": 11.0, "weather": 0, "sim": 3.0, "cam": [Vector3(-24, 9, -22), Vector3(-56, 0, -44)] },
+		{ "name": "car_park_night", "time": 2.0, "weather": 0, "sim": 3.0, "cam": [Vector3(-24, 9, -22), Vector3(-56, 0, -44)] },
+		{ "name": "street_parking", "time": 21.0, "weather": 0, "sim": 3.0, "cam": [Vector3(-93, 2.0, -160), Vector3(-90, 0.8, -110)] },
 	]
+	if args.size() > 1:
+		# Optional second argument: render only the shots whose names contain it.
+		_shots = _shots.filter(func(shot): return args[1] in shot.name)
 
 
 func _process(_delta: float) -> bool:
@@ -79,6 +85,8 @@ func _next_shot() -> void:
 	var weather := root.get_node("Weather")
 	weather.set_state(shot.weather, true)
 	weather.set_locked(true)
+	# Parked cars only change out of sight; start each shot from a fresh draw.
+	_traffic.parking.clear()
 	if shot.has("cam"):
 		_cam.look_at_from_position(shot.cam[0], shot.cam[1])
 		_cam.current = true

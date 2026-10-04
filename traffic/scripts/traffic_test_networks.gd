@@ -7,7 +7,7 @@ extends RefCounted
 ##   current prototype has traffic: the town block, the oval and its link road.
 ## - `sandbox()` is a small suburb with everything traffic handles: a
 ##   four-lane avenue with traffic lights, give-ways, a roundabout, a railway
-##   with level crossings and a station, and bus stops.
+##   with level crossings and a station, bus stops and a car park.
 
 const Y := 0.02
 
@@ -18,6 +18,7 @@ class Net:
 	var rail: Array = []
 	var stations: Array = []
 	var bus_stops: Array = []
+	var parking: Array = []
 	var _ids := {}
 	var _next := 1
 
@@ -55,7 +56,7 @@ class Net:
 			road(points[i], points[i + 1], extra)
 
 	func data() -> Dictionary:
-		return { "nodes": nodes, "roads": roads, "rail": rail, "stations": stations, "bus_stops": bus_stops }
+		return { "nodes": nodes, "roads": roads, "rail": rail, "stations": stations, "bus_stops": bus_stops, "parking": parking }
 
 
 static func test_grid() -> Dictionary:
@@ -153,4 +154,16 @@ static func sandbox() -> Dictionary:
 	# Bus stops on the avenue, one each way.
 	net.bus_stops.append({ "p": Vector3(-30, Y, -6.6) })
 	net.bus_stops.append({ "p": Vector3(150, Y, 6.6) })
+
+	# A shopping-centre car park north of the avenue: two rows of bays nose to
+	# nose, and two bays too close to the avenue that traffic must ignore.
+	for k in 14:
+		var x := -70.0 + k * 2.6
+		net.parking.append({ "pos": [x, Y, -40.0], "yaw": 0.0, "kind": "lot" })
+		net.parking.append({ "pos": [x, Y, -45.4], "yaw": PI, "kind": "lot" })
+	# Parallel parking along Station Street's verge.
+	for k in 8:
+		net.parking.append({ "pos": [-91.0, Y, -150.0 + k * 6.0], "yaw": PI, "kind": "street" })
+	net.parking.append({ "pos": [0.0, Y, -1.6], "yaw": PI * 0.5, "kind": "street" })
+	net.parking.append({ "pos": [20.0, Y, 4.8], "yaw": -PI * 0.5, "kind": "street" })
 	return net.data()

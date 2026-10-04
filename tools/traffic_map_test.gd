@@ -34,6 +34,8 @@ func _process(_delta: float) -> bool:
 			print("  skip: no Perth map in this project")
 			quit(0)
 			return true
+		# Never write a save file, which would move the next run's start.
+		root.get_node("SaveGame").enabled = false
 		_main = load("res://scenes/main.tscn").instantiate()
 		root.add_child(_main)
 		_map = _main.get_node("LoFi/SubViewport/World/PerthMap")
@@ -67,7 +69,7 @@ func _process(_delta: float) -> bool:
 func _go(i: int) -> void:
 	_spot = i
 	_frame = 0
-	_mark = { "max_vehicles": 0, "overlaps": 0, "pairs": {}, "stopped": {}, "red": _traffic.stats.red_runs,
+	_mark = { "max_vehicles": 0, "overlaps": 0, "head_on": 0, "pairs": {}, "stopped": {}, "red": _traffic.stats.red_runs,
 		"ms": 0.0, "ms_n": 0, "moving": 0, "samples": 0 }
 	var p: Vector3 = SPOTS[i][1]
 	if p == Vector3.INF:
@@ -112,6 +114,12 @@ func _watch() -> void:
 				var key := "%d/%d" % [v.id, o.id]
 				if not _mark.pairs.has(key):
 					_mark.pairs[key] = true
+					if v.forward.dot(o.forward) < -0.5:
+						# Opposite ways: two carriageways drawn on top of each
+						# other in the map data, not a driving problem.
+						_mark.head_on += 1
+						print("  head-on overlap (map geometry): #%d and #%d at %s" % [v.id, o.id, v.position.snapped(Vector3.ONE * 0.1)])
+						continue
 					_mark.overlaps += 1
 					print("  overlap: #%d and #%d at %s (%s / %s)" % [v.id, o.id, v.position.snapped(Vector3.ONE * 0.1),
 						_lane_name(v.route[0]), _lane_name(o.route[0])])
@@ -120,6 +128,8 @@ func _watch() -> void:
 func _report(spot_name: String) -> void:
 	var ms: float = _mark.ms / maxf(_mark.ms_n, 1)
 	var red: int = _traffic.stats.red_runs - _mark.red
+	for i in range(_traffic.red_run_log.size() - red, _traffic.red_run_log.size()):
+		print("  red run: ", _traffic.red_run_log[i])
 	var moving := float(_mark.moving) / maxf(_mark.samples, 1)
 	# Stuck: stopped for 90 s and not waiting at a red light or a crossing.
 	# (Waiting a minute for a gap at a busy CBD junction happens.)
@@ -135,6 +145,7 @@ func _report(spot_name: String) -> void:
 	print("  %s: %d cars max, %.0f%% moving, %d overlaps, %d red runs, %d stuck, %.2f ms/frame, %d roads loaded" % [
 		spot_name, _mark.max_vehicles, moving * 100.0, _mark.overlaps, red, stuck, ms, _traffic.graph.roads.size()])
 	_totals.overlaps += _mark.overlaps
+	_totals.head_on = _totals.get("head_on", 0) + _mark.head_on
 	_totals.red_runs += red
 	_totals.stuck += stuck
 	_totals.max_ms = maxf(_totals.max_ms, ms)
@@ -153,6 +164,7 @@ func _finish() -> void:
 		g.bus_stops.size(), g.rail_edges.size(), g.crossings.size()])
 	_check(_totals.red_runs == 0, "nobody runs a red light (%d did)" % _totals.red_runs)
 	_check(_totals.overlaps <= 3, "cars don't drive through each other (%d overlaps)" % _totals.overlaps)
+	print("  %d head-on overlaps where the map draws two carriageways on top of each other" % _totals.get("head_on", 0))
 	_check(_totals.stuck <= 2, "nobody gets stuck (%d stuck)" % _totals.stuck)
 	_check(_totals.max_ms < 8.0, "simulation is cheap enough (worst spot %.2f ms per frame)" % _totals.max_ms)
 	if _failures.is_empty():

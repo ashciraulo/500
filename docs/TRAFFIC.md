@@ -3,20 +3,21 @@
 Everything that moves around the player: cars, utes, vans and Transperth
 buses driving on the left, traffic lights, give-ways, stop signs and
 roundabouts, Transperth trains with boom gates at level crossings, and people
-walking the footpaths. The code lives in `traffic/`.
+walking the footpaths, and parked cars. The code lives in `traffic/`.
 
 | File | What it does |
 | --- | --- |
 | `traffic/scripts/traffic_graph.gd` | `TrafficGraph`: turns road data into lanes, junction connectors, signal controllers, footpaths and rail. |
 | `traffic/scripts/traffic_manager.gd` | `TrafficManager` node: spawns, drives, pools and despawns everything near the player. |
+| `traffic/scripts/traffic_parking.gd` | `TrafficParking`: parked cars on the map's parking spots, filled by time of day. |
 | `traffic/scripts/traffic_models.gd` | Low-poly vehicle, train, people and street furniture meshes, built in code. |
 | `traffic/scripts/traffic_vehicle.gd`, `traffic_pedestrian.gd`, `traffic_train.gd` | Per-agent state. |
 | `traffic/scripts/traffic_test_networks.gd` | Test road networks: one matching the test grid, one sandbox suburb. |
 | `traffic/sandbox/` | `traffic_sandbox.tscn`: the full game on the sandbox suburb. Open it and press F6. |
 | `tools/traffic_test.gd` | Headless test (CI runs it). |
-| `tools/traffic_screens.gd` | Screenshots of the sandbox (needs xvfb). |
+| `tools/traffic_screens.gd` | Screenshots of the sandbox (needs xvfb). A second argument renders only the shots whose names contain it. |
 | `tools/traffic_map_test.gd` | Soak test on the Perth map: a few minutes of rush hour at home, two CBD junctions and both freeways. Too slow for CI; run it after changing driving rules. |
-| `tools/traffic_map_screens.gd` | Screenshots of traffic on the Perth map (needs xvfb). |
+| `tools/traffic_map_screens.gd` | Screenshots of traffic on the Perth map (needs xvfb), with the same shot filter. |
 
 `scenes/main.tscn` has a `Traffic` node (a `TrafficManager`) under `World`.
 The Perth map hands it each tile's roads as the tile streams in. Scenes with
@@ -34,7 +35,16 @@ the old test grid get a network matching the grid's streets instead.
   weather (storms thin it out). People follow their own curve (lunchtime
   peak, Northbridge evenings) and mostly stay in when it rains.
   `density_scale` and `pedestrian_scale` on the manager are there for a
-  settings slider.
+  settings slider. Arterials get more of the cars than back streets
+  (`KIND_SHARE`: a residential street carries about a third of what a
+  primary road does per lane), and parts of town have their own rhythm
+  (`AREAS`): the CBD is busy in working hours and quiet at night, and
+  Northbridge fills with people in the evening.
+- **Parked cars** fill the parking spots the map hands over. Car parks fill
+  up in working hours and empty out overnight; street spots are fullest
+  overnight. Which spots are taken is redrawn every two game hours, and a
+  spot only changes while the camera isn't on it. Parked cars are solid to
+  the player, and spots within 3 m of a lane are ignored.
 - **Driving** uses the intelligent driver model: each car keeps a safe gap to
   whatever is ahead (the car in front, a stop line, a person, the player).
   Cars slow for bends, change lanes to pass slow traffic, and drive a little
@@ -106,6 +116,9 @@ World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 	"stations": [{ "p": [x, y, z], "name": "Perth" }],   # railway=station/stop positions
 	"bus_stops": [{ "p": [x, y, z] }],                   # highway=bus_stop positions
 	"footways": [{ "pts": [[x, y, z], ...] }],           # optional extra paths for people
+	# Optional parking spots, clear of footpaths, street lights and driveways.
+	# yaw: the way the nose points, radians about +Y (0 faces -Z).
+	"parking": [{ "pos": [x, y, z], "yaw": 1.57, "kind": "street" }],  # kind: "street" | "lot"
 }
 ```
 

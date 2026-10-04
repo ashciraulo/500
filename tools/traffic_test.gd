@@ -66,6 +66,7 @@ func _run_step() -> bool:
 				_check(_mark.crossers > 0, "people cross at junctions (%d seen crossing)" % _mark.crossers)
 				_check(_mark.buses > 0, "Transperth buses turn up (%d seen)" % _mark.buses)
 				_check(_traffic.step_ms < 12.0, "simulation is cheap enough (%.2f ms per frame)" % _traffic.step_ms)
+				_check_parking()
 				print("  [t] vehicles=%d peds=%d step=%.2fms created=%d spawned=%d" % [
 					_traffic.vehicles.size(), _traffic.pedestrians.size(), _traffic.step_ms,
 					_traffic.stats.created, _traffic.stats.spawned])
@@ -125,6 +126,15 @@ func _run_step() -> bool:
 				_check(night < rush * 0.3, "3am is quiet (%d cars vs %d at 8am)" % [night, rush])
 				_check(night_peds < lunch_peds * 0.2, "few people about at 3am")
 				_check(storm_peds < lunch_peds * 0.5, "storms clear the footpaths")
+				var tm = _traffic.get_script()
+				var cbd := Vector3(470, 0, 850)
+				var northbridge := Vector3(230, 0, 200)
+				_check(tm.area_factor(cbd, 11.0) > 1.15 and tm.area_factor(cbd, 23.0) < 0.75, "the CBD is busy by day and quiet at night")
+				_check(tm.area_factor(northbridge, 22.0, true) > 1.8, "Northbridge fills with people at night")
+				_check(is_equal_approx(tm.area_factor(Vector3(-5000, 0, -5000), 11.0), 1.0), "the suburbs are ordinary")
+				var busy: float = _mark.kind_cars.get(&"primary", 0.0) / maxf(_mark.kind_km.get(&"primary", 0.0), 0.01)
+				var quiet: float = _mark.kind_cars.get(&"residential", 0.0) / maxf(_mark.kind_km.get(&"residential", 0.0), 0.01)
+				_check(busy > quiet * 1.3, "the avenue is busier than the back streets (%.1f vs %.1f cars per lane-km)" % [busy, quiet])
 				root.get_node("Weather").set_state(0, true)
 				clock.set_time(8.0)
 				_root3d.queue_free()
@@ -153,6 +163,22 @@ func _run_step() -> bool:
 	return false
 
 
+func _check_parking() -> void:
+	var parking = _traffic.parking
+	var lot := 0
+	var near_avenue := 0
+	for spot in parking.shown:
+		if spot.kind == &"lot":
+			lot += 1
+		if absf(spot.pos.z) < 6.0:
+			near_avenue += 1
+	_check(lot >= 14 and lot <= 28, "the car park is busy at 8am (%d of 28 bays taken)" % lot)
+	_check(near_avenue == 0, "nobody parks in a traffic lane (%d did)" % near_avenue)
+	_check(_mark.get("parked_hits", 0) == 0, "traffic and people keep clear of parked cars (%d hits)" % _mark.get("parked_hits", 0))
+	_check(parking.occupancy(&"lot", 3.0) < parking.occupancy(&"lot", 11.0) * 0.3, "car parks empty out overnight")
+	_check(parking.occupancy(&"street", 3.0) > parking.occupancy(&"street", 11.0), "streets fill up overnight")
+
+
 func _check_graph() -> void:
 	var g = _graph
 	_check(g.roads.size() > 25, "sandbox network loads (%d roads)" % g.roads.size())
@@ -160,6 +186,7 @@ func _check_graph() -> void:
 	_check(g.crossings.size() >= 6, "level crossings found where rail meets road (%d)" % g.crossings.size())
 	_check(g.bus_stops.size() == 2, "bus stops placed on kerb lanes (%d)" % g.bus_stops.size())
 	_check(g.ped_edges.size() > 50, "footpaths built (%d edges)" % g.ped_edges.size())
+	_check(g.parking.size() == 38, "parking spots load (%d)" % g.parking.size())
 	var dead := 0
 	var right_side := 0
 	for lane in g.lanes:
@@ -218,6 +245,13 @@ func _watch() -> void:
 		_mark.buses = 0
 		_mark.signal_lane = {}
 		_mark.overlap_pairs = {}
+		_mark.kind_cars = {}
+		_mark.kind_km = {}
+	if _frame % 30 == 0:
+		# Lane-km of each kind of road in range, counted on the same frames.
+		for lane in _graph.lanes:
+			if lane.point(lane.length * 0.5).distance_to(_focus.position) < _traffic.spawn_radius:
+				_mark.kind_km[lane.road.kind] = _mark.kind_km.get(lane.road.kind, 0.0) + lane.length / 1000.0
 	_mark.max_vehicles = maxi(_mark.max_vehicles, _traffic.vehicles.size())
 	_mark.max_peds = maxi(_mark.max_peds, _traffic.pedestrians.size())
 	var vs: Array = _traffic.vehicles
@@ -233,6 +267,8 @@ func _watch() -> void:
 		if _frame % 30 != 0:
 			continue
 		_mark.samples += 1
+		if not lane.connector:
+			_mark.kind_cars[lane.road.kind] = _mark.kind_cars.get(lane.road.kind, 0.0) + 1.0
 		if v.speed > 1.0:
 			_mark.moving += 1
 		if not lane.connector and lane.road.lanes_back > 0 and v.change_from == null and absf(v.lateral) < 0.1:
@@ -255,6 +291,14 @@ func _watch() -> void:
 					_mark.overlaps += 1
 					print("  overlap: %s #%d and %s #%d at %s (%s / %s)" % [v.type, v.id, o.type, o.id, v.position.snapped(Vector3.ONE * 0.1),
 						_lane_name(v.route[0]), _lane_name(o.route[0])])
+	if _frame % 30 == 0:
+		for spot in _traffic.parking.shown:
+			for o in _traffic.vehicles:
+				if o.position.distance_to(spot.pos) < 2.0:
+					_mark.parked_hits = _mark.get("parked_hits", 0) + 1
+			for o in _traffic.pedestrians:
+				if o.position.distance_to(spot.pos) < 1.2:
+					_mark.parked_hits = _mark.get("parked_hits", 0) + 1
 	if _frame % 30 == 0 and _mark.samples > 0:
 		_mark.moving_frac = float(_mark.moving) / _mark.samples
 	for p in _traffic.pedestrians:

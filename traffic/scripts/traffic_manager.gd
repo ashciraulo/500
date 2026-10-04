@@ -66,6 +66,8 @@ var trains: Array = []
 ## Rolling average of the simulation cost per physics frame, in ms.
 var step_ms := 0.0
 ## Counters for tests and debugging.
+## Where red lights were run, for tests.
+var red_run_log: Array[String] = []
 var stats := { "spawned": 0, "despawned": 0, "created": 0, "red_runs": 0, "peds_created": 0, "trains": 0 }
 
 var _rng := RandomNumberGenerator.new()
@@ -93,6 +95,7 @@ var _props_root: Node3D
 var _beams: Array = []
 var _beam_owners: Array = []
 var _beam_timer := 0.0
+var parking: TrafficParking
 
 
 class PlayerProxy:
@@ -114,6 +117,10 @@ func _ready() -> void:
 	_props_root = Node3D.new()
 	_props_root.name = "Props"
 	add_child(_props_root)
+	parking = TrafficParking.new()
+	parking.name = "Parked"
+	parking.setup(self, graph)
+	add_child(parking)
 	_horn_car = _make_horn(415.0, 523.0, 1.4)
 	_horn_bus = _make_horn(247.0, 311.0, 1.6)
 	_load_sources.call_deferred()
@@ -158,6 +165,7 @@ func clear_all() -> void:
 		_despawn_ped(p)
 	for t in trains.duplicate():
 		_despawn_train(t)
+	parking.clear()
 	_warm = 2.0
 
 
@@ -185,6 +193,7 @@ func _physics_process(delta: float) -> void:
 		_manage_population()
 	_warm = maxf(_warm - delta, 0.0)
 	_update_props()
+	parking.update(delta, focus_position())
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	step_ms = lerpf(step_ms, ms, 0.05)
 
@@ -240,6 +249,46 @@ const PED_CURVE := [0.3, 0.2, 0.08, 0.04, 0.04, 0.08, 0.25, 0.6, 0.8, 0.65, 0.7,
 	1.0, 0.95, 0.75, 0.7, 0.8, 0.85, 0.7, 0.6, 0.6, 0.55, 0.5, 0.4]
 
 
+## Share of the traffic each kind of road carries, per lane-km: the
+## arterials are busy, back streets see the odd car.
+const KIND_SHARE := {
+	&"motorway": 1.0, &"motorway_link": 0.7, &"trunk": 1.0, &"trunk_link": 0.7,
+	&"primary": 1.0, &"primary_link": 0.7, &"secondary": 0.85, &"secondary_link": 0.6,
+	&"tertiary": 0.6, &"tertiary_link": 0.5, &"unclassified": 0.4, &"residential": 0.3,
+	&"living_street": 0.15, &"service": 0.15,
+}
+## Parts of town that are busier (or quieter) than the hour alone says, in
+## world metres (origin at Little Shenton Lane; centres are rough). [cars,
+## people] multipliers for the day and the night; see AREA_HOURS.
+const AREAS := [
+	{ "name": "Perth CBD", "center": Vector3(470, 0, 850), "radius": 600.0,
+		"day": [1.25, 1.6], "night": [0.6, 0.5] },
+	{ "name": "Northbridge", "center": Vector3(230, 0, 200), "radius": 420.0,
+		"day": [1.0, 1.0], "night": [1.25, 2.0] },
+]
+
+## -1 in working hours, +1 for the night out, 0 in between (ordinary).
+const AREA_HOURS := [1.0, 0.8, 0.3, 0.0, 0.0, 0.0, 0.0, -0.5, -1.0, -1.0, -1.0, -1.0,
+	-1.0, -1.0, -1.0, -1.0, -1.0, -0.8, -0.2, 0.5, 1.0, 1.0, 1.0, 1.0]
+
+
+## How busy the area around `p` is right now compared with an ordinary street.
+## people: true for footpaths, false for roads.
+static func area_factor(p: Vector3, hour: float, people := false) -> float:
+	var x := _curve(AREA_HOURS, hour)
+	var k := 1 if people else 0
+	var f := 1.0
+	for area in AREAS:
+		var d := Vector2(p.x - area.center.x, p.z - area.center.z).length()
+		# Full strength in the middle 70%, fading out to the edge.
+		var w := clampf((area.radius - d) / (area.radius * 0.3), 0.0, 1.0)
+		if w <= 0.0:
+			continue
+		var m: float = lerpf(1.0, area.day[k], -x) if x < 0.0 else lerpf(1.0, area.night[k], x)
+		f *= lerpf(1.0, m, w)
+	return f
+
+
 static func _curve(curve: Array, hour: float) -> float:
 	var h := fposmod(hour, 24.0)
 	var i := int(h)
@@ -262,11 +311,13 @@ func people_density() -> float:
 
 
 func target_vehicles() -> int:
-	return mini(roundi(_lane_km_cache * cars_per_lane_km * car_density()), max_vehicles)
+	var area := area_factor(focus_position(), GameClock.time_of_day)
+	return mini(roundi(_lane_km_cache * cars_per_lane_km * car_density() * area), max_vehicles)
 
 
 func target_pedestrians() -> int:
-	return mini(roundi(_foot_km_cache * people_per_km * people_density()), max_pedestrians)
+	var area := area_factor(focus_position(), GameClock.time_of_day, true)
+	return mini(roundi(_foot_km_cache * people_per_km * people_density() * area), max_pedestrians)
 
 
 # --- Spatial hash (vehicles, people, the player) ------------------------------
@@ -693,6 +744,8 @@ func _advance(v: TrafficVehicle) -> void:
 			var gate := old.signal_gate
 			if gate.state() == TrafficGraph.Gate.STOP and gate.controller.timer > 1.0 and gate.controller.phase % 3 != 1:
 				stats.red_runs += 1
+				red_run_log.append("#%d at %s, node %d, %.1f s into phase %d, committed %s" % [v.id,
+					v.position.snapped(Vector3.ONE * 0.1), nxt.node.id, gate.controller.timer, gate.controller.phase, v.commits.has(nxt)])
 		v.s -= old.length
 		_finish_lane_change(v)
 		_leave_lane(v, old)
@@ -1037,8 +1090,9 @@ func _manage_population() -> void:
 				_try_spawn_train(focus)
 
 
-func _count_samples(cells: Dictionary, focus: Vector3, radius: float) -> int:
-	var n := 0
+## Samples within `radius`; lane samples count by their road's share of traffic.
+func _count_samples(cells: Dictionary, focus: Vector3, radius: float) -> float:
+	var n := 0.0
 	for list in graph.samples_in_ring(cells, focus, 0.0, radius):
 		for entry in list:
 			var p: Vector3
@@ -1047,8 +1101,12 @@ func _count_samples(cells: Dictionary, focus: Vector3, radius: float) -> int:
 			else:
 				p = TrafficGraph.point_at(entry[0].pts, entry[0].cum, entry[1])
 			if p.distance_to(focus) <= radius:
-				n += 1
+				n += _share(entry[0]) if entry[0] is TrafficGraph.Lane else 1.0
 	return n
+
+
+func _share(lane: TrafficGraph.Lane) -> float:
+	return KIND_SHARE.get(lane.road.kind, 0.5)
 
 
 func _pick_sample(cells: Dictionary, focus: Vector3, inner: float, outer: float) -> Array:
@@ -1061,7 +1119,13 @@ func _pick_sample(cells: Dictionary, focus: Vector3, inner: float, outer: float)
 
 func _try_spawn_vehicle(focus: Vector3) -> void:
 	var inner := 25.0 if _warm > 0.0 else min_spawn_radius
-	var entry := _pick_sample(graph.lane_cells(), focus, inner, spawn_radius)
+	# Busy roads get more of the new cars than back streets.
+	var entry: Array = []
+	for attempt in 4:
+		entry = _pick_sample(graph.lane_cells(), focus, inner, spawn_radius)
+		if entry.is_empty() or _rng.randf() < _share(entry[0]):
+			break
+		entry = []
 	if entry.is_empty():
 		return
 	var lane: TrafficGraph.Lane = entry[0]
@@ -1087,7 +1151,32 @@ func _try_spawn_vehicle(focus: Vector3) -> void:
 			return
 	if _player_proxy.present and _player_proxy.position.distance_to(p) < 20.0:
 		return
-	_spawn_vehicle(type, lane, s)
+	# Start slow enough to stop behind a queue just ahead, which can be on
+	# the next few short lanes rather than this one.
+	var gap := _gap_ahead(lane, s, 60.0) - length
+	if gap < 6.0:
+		return
+	var speed: float = minf(lane.speed * 0.75, sqrt(2.0 * 2.0 * (gap - 4.0)))
+	_spawn_vehicle(type, lane, s, speed)
+
+
+## Distance along the road from `s` on `lane` to the nearest vehicle ahead on
+## any way out, up to `limit`.
+func _gap_ahead(lane: TrafficGraph.Lane, s: float, limit: float) -> float:
+	var best := limit
+	var open := [[lane, -s]]
+	while not open.is_empty():
+		var item: Array = open.pop_back()
+		var l: TrafficGraph.Lane = item[0]
+		var base: float = item[1]
+		for o in l.vehicles:
+			var d: float = base + o.s
+			if d > 0.0 and d < best:
+				best = d
+		if base + l.length < best:
+			for n in l.next:
+				open.append([n, base + l.length])
+	return best
 
 
 func _pick_type() -> StringName:
