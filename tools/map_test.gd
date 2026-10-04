@@ -70,11 +70,28 @@ func _process(_delta: float) -> bool:
 		3:  # Jump to the Narrows Bridge approach and check streaming follows.
 			if _frame == 1:
 				_car.freeze = true
-				_car.global_position = Vector3(-1500, 40, 2300)
+				_car.global_position = Vector3(-1250, 40, 2050)
 			if _seconds() >= 6.0:
 				var key: Vector2i = _map.tile_at(_car.global_position)
 				_check(_map.is_tile_loaded(key), "tiles stream around the car's new position")
 				_check(not _map.is_tile_loaded(_map.tile_at(_spawn.origin)), "far tiles are unloaded")
+				_next()
+		4:  # Restore a save somewhere not loaded yet (Kings Park): the ground must be there.
+			if _frame == 1:
+				_car.freeze = false
+				_car.global_position = Vector3(-935.6, 66.0, 1455.6)
+				_car.linear_velocity = Vector3.ZERO
+			if _seconds() >= 2.0:
+				_check(_map.has_collision_at(_car.global_position), "colliders are built where the car is restored")
+				_check(absf(_car.global_position.y - 66.0) < 2.0, "restored car stays on the ground (y=%.1f)" % _car.global_position.y)
+				_next()
+		5:  # A save from before the map (test grid height) would leave the car under Perth.
+			if _frame == 1:
+				_car.global_position = Vector3(0.0, 0.3, 8.0)
+				_car.linear_velocity = Vector3.ZERO
+			if _seconds() >= 2.0:
+				_check(_flat(_car.global_position).distance_to(_flat(_spawn.origin)) < 2.0 and absf(_car.global_position.y - _spawn.origin.y) < 1.5,
+					"a car under the ground goes back to the carport (%s)" % _car.global_position)
 				_next()
 		_:
 			Input.action_release("accelerate")

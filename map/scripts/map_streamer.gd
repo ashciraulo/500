@@ -46,6 +46,7 @@ var _light_timer := 0.0
 var _ready_emitted := false
 var _overview: MapOverview
 var _home: Node3D
+var _settle_frames := 0  # physics frames until new colliders can be checked
 var _pools_on := true
 var _traffic_sent := {}   # Vector2i -> true: tiles whose roads traffic already has
 var _traffic_queue: Array[Dictionary] = []
@@ -90,6 +91,30 @@ func _exit_tree() -> void:
 	for key: Vector2i in _pending:
 		WorkerThreadPool.wait_for_task_completion(_pending[key])
 	_pending.clear()
+
+
+## Keeps the car on solid ground when it's moved somewhere the map hasn't
+## loaded yet (a save restored, a teleport): that tile is built with colliders
+## on the spot. A car with no ground under it at all (an old save from before
+## the map existed, or one that slipped through) goes back home. Runs before
+## each physics step.
+func _physics_process(_delta: float) -> void:
+	if index.is_empty() or not (_target is RigidBody3D) or not is_instance_valid(_target):
+		return
+	var pos := _target.global_position
+	var name := "%d_%d" % [tile_at(pos).x, tile_at(pos).y]
+	if not index.get("tiles", {}).has(name):
+		_reset_target(get_spawn_transform())  # off the map entirely
+		return
+	if not has_collision_at(pos):
+		_load_now(pos)
+	if pos.y < float(index.tiles[name].get("hmin", -50.0)) - 3.0:
+		_reset_target(get_spawn_transform())  # below the lowest ground here
+		return
+	if _settle_frames > 0:
+		_settle_frames -= 1
+		if _settle_frames == 0 and _ground_below(pos).is_empty():
+			_reset_target(get_spawn_transform())
 
 
 func _process(delta: float) -> void:
@@ -171,6 +196,42 @@ func set_night_amount(amount: float) -> void:
 	if _overview and _overview.mesh:
 		var m := _overview.mesh.surface_get_material(0) as ShaderMaterial
 		m.set_shader_parameter("brightness", lerpf(0.95, 0.07, amount))
+
+
+## Build the tiles around `pos` with colliders right now (blocking).
+func _load_now(pos: Vector3) -> void:
+	for key in _wanted(pos, minf(physics_radius, tile_size)):
+		if _tiles.has(key):
+			if _tiles[key].collision == null:
+				_add_collision(_tiles[key])
+			continue
+		if _pending.has(key):
+			WorkerThreadPool.wait_for_task_completion(_pending[key])
+			_pending.erase(key)
+			_collect_finished()
+			if _tiles.has(key) and _tiles[key].collision == null:
+				_add_collision(_tiles[key])
+			continue
+		var result := MapTileLoader.build(_tile_path(key), _materials, _props)
+		result.key = key
+		_read_traffic(result)
+		_finish_tile(result, true)
+	# New colliders are only queryable after the next physics step.
+	_settle_frames = maxi(_settle_frames, 3)
+
+
+## Ground straight under `pos` (not above it, so tunnels and car parks work).
+func _ground_below(pos: Vector3) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(pos + Vector3.UP, pos + Vector3.DOWN * 80.0, 1)
+	query.exclude = [(_target as CollisionObject3D).get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(query)
+
+
+func _reset_target(t: Transform3D) -> void:
+	var body := _target as RigidBody3D
+	body.global_transform = t
+	body.linear_velocity = Vector3.ZERO
+	body.angular_velocity = Vector3.ZERO
 
 
 # --- placed scenes and markers -----------------------------------------------
