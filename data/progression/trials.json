@@ -1,13 +1,110 @@
 {
-	"_comment": "Named time trials. Each route is a list of JobSite ids (start, checkpoints, finish). These point at the test grid's placeholder sites for now; the map thread should re-point them at the real roads. Medal times come from the route length and the car class (see Jobs.CLASS_PACE), so every class gets its own bronze, silver and gold.",
+	"_comment": "Named time trials. Each route is a list of JobSite ids (start, checkpoints, finish). The cp_* checkpoints come from data/world/places.json (tools/places/gen_places.py); swan_valley uses a job site in a region the map hasn't built yet, so it's skipped until that exists. Medal times come from the route length and the car class (see Jobs.CLASS_PACE), so every class gets its own bronze, silver and gold.",
 	"trials": [
-		{"id": "kings_park_loop", "title": "Kings Park loop", "route": ["little_shenton_lane", "kings_park_lookout", "northbridge_piazza"]},
-		{"id": "mounts_bay_dusk", "title": "Mounts Bay Road at dusk", "route": ["northbridge_piazza", "oxford_st", "subiaco_markets"]},
-		{"id": "canning_hwy", "title": "Canning Highway to Fremantle", "route": ["subiaco_markets", "fremantle_markets"]},
-		{"id": "coast_road", "title": "The coast road", "route": ["cottesloe_surf_club", "oxford_st", "scarborough_beach"]},
-		{"id": "beaufort_sprint", "title": "Beaufort Street sprint", "route": ["beaufort_st", "albany_hwy"]},
-		{"id": "swan_valley", "title": "Out to the Swan Valley", "route": ["albany_hwy", "guildford_antiques", "beaufort_st"]},
-		{"id": "freeway_onramp", "title": "Freeway on-ramp", "route": ["oxford_st", "cottesloe_surf_club"]},
-		{"id": "northbridge_night", "title": "Northbridge night loop", "route": ["little_shenton_lane", "northbridge_piazza", "oxford_st", "little_shenton_lane"]}
+		{
+			"id": "kings_park_loop",
+			"title": "Kings Park loop",
+			"route": [
+				"cp_kings_park_loop_0",
+				"cp_kings_park_loop_1",
+				"cp_kings_park_loop_2",
+				"cp_kings_park_loop_3",
+				"cp_kings_park_loop_4"
+			]
+		},
+		{
+			"id": "mounts_bay_dusk",
+			"title": "Mounts Bay Road at dusk",
+			"route": [
+				"cp_mounts_bay_dusk_0",
+				"cp_mounts_bay_dusk_1",
+				"cp_mounts_bay_dusk_2"
+			]
+		},
+		{
+			"id": "riverside_run",
+			"title": "Riverside Drive run",
+			"route": [
+				"cp_riverside_run_0",
+				"cp_riverside_run_1",
+				"cp_riverside_run_2"
+			]
+		},
+		{
+			"id": "beaufort_sprint",
+			"title": "Beaufort Street sprint",
+			"route": [
+				"cp_beaufort_sprint_0",
+				"cp_beaufort_sprint_1",
+				"cp_beaufort_sprint_2"
+			]
+		},
+		{
+			"id": "northbridge_night",
+			"title": "Northbridge night loop",
+			"route": [
+				"cp_northbridge_night_0",
+				"cp_northbridge_night_1",
+				"cp_northbridge_night_2",
+				"cp_northbridge_night_3",
+				"cp_northbridge_night_4"
+			]
+		},
+		{
+			"id": "freeway_onramp",
+			"title": "Mitchell Freeway on-ramp",
+			"route": [
+				"cp_freeway_onramp_0",
+				"cp_freeway_onramp_1"
+			]
+		},
+		{
+			"id": "south_perth_sprint",
+			"title": "South Perth foreshore sprint",
+			"route": [
+				"cp_south_perth_sprint_0",
+				"cp_south_perth_sprint_1",
+				"cp_south_perth_sprint_2"
+			]
+		},
+		{
+			"id": "subiaco_climb",
+			"title": "Hay Street to Hamersley Road",
+			"route": [
+				"cp_subiaco_climb_0",
+				"cp_subiaco_climb_1",
+				"cp_subiaco_climb_2"
+			]
+		},
+		{
+			"id": "canning_hwy",
+			"title": "Canning Highway to Fremantle",
+			"route": [
+				"subiaco_markets",
+				"cp_canning_hwy_2",
+				"cp_canning_hwy_1",
+				"cp_canning_hwy_0",
+				"fremantle_markets"
+			]
+		},
+		{
+			"id": "coast_road",
+			"title": "The coast road",
+			"route": [
+				"cottesloe_surf_club",
+				"cp_coast_road_2",
+				"cp_coast_road_1",
+				"scarborough_beach"
+			]
+		},
+		{
+			"id": "swan_valley",
+			"title": "Out to the Swan Valley",
+			"route": [
+				"albany_hwy",
+				"guildford_antiques",
+				"beaufort_st"
+			]
+		}
 	]
 }

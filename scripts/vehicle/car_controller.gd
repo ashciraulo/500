@@ -182,6 +182,10 @@ const DIRT_PER_KM := {&"asphalt": 0.004, &"concrete": 0.004, &"gravel": 0.05, &"
 var tuning := {}
 ## Respray colour; alpha 0 means the original paint.
 var paint_color := Color(0, 0, 0, 0)
+## Earned extras fitted to this car: "livery" (a cosmetic id or "") and
+## "trinkets" (cosmetic ids, one per slot). See data/progression/cosmetics.json.
+var cosmetics := {"livery": "", "trinkets": []}
+const MODEL_PATH := "res://art/models/cars/%s/%s.glb"
 
 ## Stock values captured on _ready, so parts always stack from stock.
 var _stock := {}
@@ -522,6 +526,13 @@ func set_tuning(values: Dictionary) -> void:
 	_rebuild_stats()
 
 
+## Re-apply the body paint and stats after something outside the car changed
+## them (a restoration stage, a restomod).
+func apply_paint_refresh() -> void:
+	_apply_paint()
+	_rebuild_stats()
+
+
 ## Respray the body. The paint is kept with the car and saved.
 func set_paint(color: Color) -> void:
 	paint_color = Color(color, 1.0)
@@ -566,6 +577,9 @@ func apply_car(id: String) -> void:
 		wheel.driven = wheel.front != rear_wheel_drive
 	tuning = {}
 	paint_color = Color(0, 0, 0, 0)
+	cosmetics = {"livery": "", "trinkets": []}
+	_swap_model(car.get("model", "pop"))
+	_apply_paint()
 	_capture_stock()
 	gear = mini(gear, gear_ratios.size())
 	fuel_litres = minf(fuel_litres, tank_litres)
@@ -583,6 +597,7 @@ func vehicle_state() -> Dictionary:
 		"fuel_litres": fuel_litres,
 		"dirt": dirt,
 		"paint": paint_color.to_html() if has_custom_paint() else "",
+		"cosmetics": cosmetics.duplicate(true),
 	}
 
 
@@ -598,9 +613,13 @@ func load_vehicle_state(data: Dictionary) -> void:
 	fuel_litres = clampf(float(data.get("fuel_litres", tank_litres)), 0.0, tank_litres)
 	dirt = clampf(float(data.get("dirt", dirt)), 0.0, 1.0)
 	paint_color = Color(0, 0, 0, 0)
+	var saved: Dictionary = data.get("cosmetics", {})
+	cosmetics = {"livery": String(saved.get("livery", "")), "trinkets": Array(saved.get("trinkets", []))}
 	var paint: String = data.get("paint", "")
 	if paint != "":
 		set_paint(Color.html(paint))
+	else:
+		_apply_paint()
 
 
 func save_state() -> Dictionary:
@@ -656,6 +675,7 @@ func _rebuild_stats() -> void:
 	for part in parts.values():
 		modifier_sets.append(part.modifiers)
 	modifier_sets.append(CarTuning.to_modifiers(tuning, get_part_ids()))
+	modifier_sets.append(Classics.modifiers(car_id))
 	for m in modifier_sets:
 		torque_multiplier *= m.get("torque_mult", 1.0)
 		wet_penalty_multiplier *= m.get("wet_penalty_mult", 1.0)
@@ -689,12 +709,73 @@ static func _copy(value: Variant) -> Variant:
 	return value
 
 
-func _apply_paint() -> void:
-	if not has_custom_paint():
+## Put a livery on (a cosmetic id from Progression.rewards, or "" for none).
+func set_livery(id: String) -> void:
+	cosmetics.livery = id
+	_apply_cosmetics()
+
+
+func has_trinket(id: String) -> bool:
+	return Array(cosmetics.trinkets).has(id)
+
+
+## Fit a trinket (replacing whatever is in its slot) or take it off.
+func toggle_trinket(id: String) -> void:
+	var list: Array = cosmetics.trinkets
+	if list.has(id):
+		list.erase(id)
+	else:
+		var slot: String = Progression.cosmetic(id).get("slot", "")
+		for other: String in list.duplicate():
+			if Progression.cosmetic(other).get("slot", "") == slot:
+				list.erase(other)
+		list.append(id)
+	_apply_cosmetics()
+
+
+## Put this car's own body on (art/models/cars/<model>/<model>.glb, all on
+## the Pop's rig). Cars without a model of their own keep the Pop's.
+func _swap_model(model: String) -> void:
+	var path := MODEL_PATH % [model, model]
+	if not ResourceLoader.exists(path):
+		path = MODEL_PATH % ["pop", "pop"]
+	var old := get_node_or_null("Body") as Node3D
+	if old == null or old.scene_file_path == path:
 		return
+	var body := (load(path) as PackedScene).instantiate() as Node3D
+	body.transform = old.transform
+	body.set_script(old.get_script())
+	var index := old.get_index()
+	remove_child(old)
+	old.queue_free()
+	body.name = "Body"
+	add_child(body)
+	move_child(body, index)
+
+
+func _apply_cosmetics() -> void:
 	var body := get_node_or_null("Body")
-	if body and body.has_method("set_paint"):
+	if body == null or not body.has_method("apply_cosmetics"):
+		return
+	var trinkets := []
+	for id: String in cosmetics.trinkets:
+		trinkets.append(Progression.cosmetic(id))
+	var livery: Dictionary = Progression.cosmetic(cosmetics.livery) if cosmetics.livery != "" else {}
+	body.apply_cosmetics(livery, trinkets)
+
+
+func _apply_paint() -> void:
+	var body := get_node_or_null("Body")
+	if body == null or not body.has_method("set_paint"):
+		return
+	_apply_cosmetics()
+	if has_custom_paint():
 		body.set_paint(paint_color)
+	elif CarCatalogue.get_car(car_id).get("ladder", "") == "classic":
+		# Barn finds wear rust until the paint stage is done.
+		body.set_paint(Classics.paint_for(car_id), not Classics.is_stage_done(car_id, "paint"))
+	elif body.has_method("reset_paint"):
+		body.reset_paint()
 
 
 func _read_player_input(delta: float) -> void:

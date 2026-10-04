@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Shader" path="res://shaders/lofi_post.gdshader" id="2_post"]
@@ -11,6 +11,8 @@
 [ext_resource type="Script" path="res://scripts/ui/phone.gd" id="9_phone"]
 [ext_resource type="Script" path="res://scripts/ui/workshop.gd" id="10_workshop"]
 [ext_resource type="Script" path="res://traffic/scripts/traffic_manager.gd" id="11_traffic"]
+[ext_resource type="Script" path="res://scripts/world/gameplay_places.gd" id="12_places"]
+[ext_resource type="Script" path="res://scripts/ui/photo_mode.gd" id="13_photo"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
 shader = ExtResource("2_post")
@@ -120,6 +122,9 @@ target_path = NodePath("../Car")
 [node name="Car" parent="LoFi/SubViewport/World" instance=ExtResource("5_car")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 
+[node name="GameplayPlaces" type="Node3D" parent="LoFi/SubViewport/World"]
+script = ExtResource("12_places")
+
 [node name="Traffic" type="Node3D" parent="LoFi/SubViewport/World"]
 script = ExtResource("11_traffic")
 
@@ -142,3 +147,6 @@ script = ExtResource("9_phone")
 
 [node name="Workshop" type="CanvasLayer" parent="."]
 script = ExtResource("10_workshop")
+
+[node name="PhotoMode" type="CanvasLayer" parent="."]
+script = ExtResource("13_photo")

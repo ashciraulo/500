@@ -219,3 +219,51 @@ records).
 - `Garage.fuel_price()` follows a weekly Perth-style cycle (day 1 is a
   Monday, Tuesday is cheapest); `buy_fuel(car, litres)`, `wash(car)`,
   `roadside_assist(car)` (also on the phone when the tank is empty).
+
+## Places, classics and side activities
+
+- `data/world/places.json` holds every gameplay marker on the real map: 60
+  badges (spawned only to top the map's own badges up to 60), 30 photo spots, 10 parking challenges, the barn finds, scenic
+  drives, the car meet and the time-trial checkpoints. It's generated from the
+  map's roads (`tools/places/dump_roads.gd`, then `tools/places/gen_places.py`);
+  re-run both after the map is regenerated. `GameplayPlaces` (under `World` in
+  `scenes/main.tscn`) spawns them. The home carport needs the `cars` and
+  `restore` kinds (map/tiles/index.json) for swapping cars and restoration.
+- **Classics** (autoload `Classics`): you hear rumours (one per tier
+  completed, one per night at the car meet), and each one makes its `BarnFind`
+  wreck appear. Stopping next to the wreck claims it. Restoration stages are in
+  `data/cars/restoration.json` and happen at the carport's Restore tab. The car
+  can be driven once the mechanical stages are done; the restomod finish adds
+  modifiers through `Classics.modifiers(car_id)`. Signals: `rumour_heard`,
+  `wreck_found`, `stage_done`, `restored`. Audio could hang the discovery
+  sting on `wreck_found`.
+- **Activities** (autoload `Activities`) covers the photo album
+  (`user://photos`), parking records, scenic drives, the meet and relaxed
+  cruising (lighter traffic via `TrafficManager.density_scale`, no jobs).
+  Signals: `photo_taken`, `photo_spot_found`, `parking_finished`,
+  `scenic_finished`, `meet_visited`, and `message` (HUD toasts).
+- **Photo mode** (`PhotoMode`, P / L3) pauses the game and gives you a free
+  camera. Its filters drive the post shader's `saturation`, `contrast`,
+  `tint` and `vignette`. Audio's shutter sound can hang on
+  `Activities.photo_taken`.
+- **Lifts** are job-board offers (`job.lift`). Passengers and their lines are
+  in `data/progression/lifts.json`.
+- **The car meet** runs Friday and Saturday nights, 8 pm to 2 am. Its ambience
+  can follow `CarMeet.is_meet_time()` and the `car_meets` group.
+
+## Cosmetics and car bodies
+
+- `data/progression/cosmetics.json` says how each cosmetic reward looks
+  (trinket slot, livery mode and colour) and which come from nights at the car
+  meet; mileage rewards keep their ids from `mileage_rewards.json`.
+  `Progression.grant_reward(id, why)` gives one; `reward_unlocked` fires.
+- Trinkets are built in code (`scripts/vehicle/trinkets.gd`). A car model can
+  mark where they go with `Mount_Mirror`, `Mount_Dash`, `Mount_Shelf` and
+  `Mount_Gear` nodes; without them the Pop's measured spots are used.
+- Liveries are drawn by `shaders/ps1_surface.gdshader` in the car's own space
+  over the `Body` mesh's bounds (`car_body.gd` `apply_cosmetics()`).
+- Garage decorations (`kind: garage`) are earned but not shown yet: the home
+  scene can read `Progression.earned_cosmetics("garage")`.
+- `data/cars/cars.json` `model` names the body under
+  `art/models/cars/<model>/<model>.glb`; `CarController.apply_car()` swaps it
+  in. Cars without one borrow the Pop's.

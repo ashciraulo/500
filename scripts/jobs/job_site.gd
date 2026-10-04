@@ -9,6 +9,9 @@ extends Marker3D
 @export var suburb := ""
 ## What can happen here: "pickup", "dropoff", "trial".
 @export var kinds := PackedStringArray(["pickup", "dropoff", "trial"])
+## False for invisible markers like trial checkpoints, which shouldn't pop up
+## as discoveries.
+@export var discoverable := true
 
 
 func _ready() -> void:

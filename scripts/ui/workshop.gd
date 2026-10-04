@@ -12,9 +12,12 @@ const SLOT_NAMES := {
 }
 ## Tab order; a spot shows the tabs for its kinds.
 ## "cars" lets you swap between cars you own; "dealer" also sells them.
-const TAB_KINDS := ["parts", "tuning", "paint", "fuel", "wash", "cars"]
+## "extras" (trinkets and liveries you've earned) shows wherever parts,
+## paint or your cars are.
+const TAB_KINDS := ["parts", "tuning", "paint", "fuel", "wash", "cars", "restore", "extras"]
+const SLOT_TITLES := {"mirror": "Mirror", "dash": "Dash", "shelf": "Parcel shelf", "gear": "Gear lever"}
 const PLACE_NAMES := {"parts": "workshop", "tuning": "workshop", "paint": "paint booth",
-	"dealer": "car yard", "cars": "garage",
+	"dealer": "car yard", "cars": "garage", "restore": "restoration bench",
 	"fuel": "servo", "wash": "car wash"}
 ## Below this speed (km/h) the prompt shows and the workshop opens.
 const STOP_SPEED_KMH := 5.0
@@ -33,6 +36,8 @@ var _paint_list: VBoxContainer
 var _fuel_list: VBoxContainer
 var _wash_list: VBoxContainer
 var _cars_list: VBoxContainer
+var _restore_list: VBoxContainer
+var _extras_list: VBoxContainer
 var _car_name: Label
 var _stats: GridContainer
 var _change: Label
@@ -109,7 +114,8 @@ func _set_open(open_it: bool) -> void:
 	_title.text = _spot.display_name
 	_change.text = ""
 	for i in TAB_KINDS.size():
-		var shown: bool = _spot.offers(TAB_KINDS[i]) or (TAB_KINDS[i] == "cars" and _spot.offers("dealer"))
+		var shown: bool = _spot.offers(TAB_KINDS[i]) or (TAB_KINDS[i] == "cars" and _spot.offers("dealer")) \
+			or (TAB_KINDS[i] == "extras" and (_spot.offers("parts") or _spot.offers("paint") or _spot.offers("cars")))
 		_tabs.set_tab_hidden(i, not shown)
 	for i in TAB_KINDS.size():
 		if not _tabs.is_tab_hidden(i):
@@ -192,6 +198,8 @@ func _build() -> void:
 	_fuel_list = _scroll_tab("Fuel")
 	_wash_list = _scroll_tab("Wash")
 	_cars_list = _scroll_tab("Cars")
+	_restore_list = _scroll_tab("Restore")
+	_extras_list = _scroll_tab("Extras")
 
 	var side := VBoxContainer.new()
 	side.custom_minimum_size.x = 270
@@ -235,6 +243,8 @@ func _refresh() -> void:
 	_refresh_fuel()
 	_refresh_wash()
 	_refresh_cars()
+	_refresh_restore()
+	_refresh_extras()
 
 
 func _refresh_stats() -> void:
@@ -437,7 +447,7 @@ func _refresh_cars() -> void:
 		if id == _car.car_id:
 			button.text = "Driving it"
 			button.disabled = true
-		elif not CarCatalogue.is_drivable(car):
+		elif not CarCatalogue.is_drivable(car) or not Classics.can_drive(id):
 			button.text = "Needs restoring"
 			button.disabled = true
 		else:
@@ -482,6 +492,108 @@ func _refresh_cars() -> void:
 				_refresh_after_action())
 			row.add_child(button)
 			_cars_list.add_child(row)
+
+
+func _refresh_restore() -> void:
+	_clear(_restore_list)
+	if Classics.projects.is_empty():
+		_heading(_restore_list, "Restoration bench")
+		_text(_restore_list, "Nothing on the bench. Classic 500s turn up as rumours: at the Friday and Saturday night meet, and as your career grows. Find the wreck and it comes here.")
+	for id: String in Classics.projects:
+		var car := CarCatalogue.get_car(id)
+		_heading(_restore_list, "%s (%s)  %d%% restored%s" % [car.get("name", id), car.get("years", ""),
+			roundi(Classics.condition(id) * 100.0), "" if Classics.can_drive(id) else "  (not driveable yet)"])
+		var next := Classics.next_stage(id)
+		for stage: Dictionary in Classics.stages():
+			var done := Classics.is_stage_done(id, stage.id)
+			var row := HBoxContainer.new()
+			var label := Label.new()
+			label.text = "%s %s%s" % ["[done]" if done else "[    ]", stage.title, "" if done else "   $%s, %s" % [_number(Classics.stage_price(id, stage)), _hours(stage.hours) + " h work"]]
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.62) if done else Color.WHITE)
+			row.add_child(label)
+			if not done and not next.is_empty() and next.id == stage.id:
+				var button := Button.new()
+				button.custom_minimum_size.x = 170
+				button.text = "Do it"
+				button.disabled = Wallet.balance < Classics.stage_price(id, stage)
+				var stage_id: String = stage.id
+				button.pressed.connect(func() -> void:
+					if Classics.do_stage(id, stage_id):
+						_change.text = stage.text
+						_car.apply_paint_refresh()
+					_refresh_after_action())
+				row.add_child(button)
+			_restore_list.add_child(row)
+		if next.is_empty() and not Classics.is_restored(id):
+			_text(_restore_list, "Every stage done. How do you want it?")
+			for kind: String in Classics.finishes():
+				var f: Dictionary = Classics.finishes()[kind]
+				var row := HBoxContainer.new()
+				var label := Label.new()
+				var price := roundi(float(f.price) * Classics.cost_scale(id))
+				label.text = "%s: %s   $%s" % [f.title, f.text, _number(price)]
+				label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				row.add_child(label)
+				var button := Button.new()
+				button.custom_minimum_size.x = 170
+				button.text = "Finish it"
+				button.disabled = Wallet.balance < price
+				button.pressed.connect(func() -> void:
+					if Classics.choose_finish(id, kind):
+						_car.apply_paint_refresh()
+						_change.text = "The %s is finished: %s." % [car.get("name", id), f.title.to_lower()]
+					_refresh_after_action())
+				row.add_child(button)
+				_restore_list.add_child(row)
+		elif Classics.is_restored(id):
+			_text(_restore_list, "Finished: %s." % Classics.finishes()[Classics.finish(id)].title)
+
+
+func _refresh_extras() -> void:
+	_clear(_extras_list)
+	var liveries := Progression.earned_cosmetics("livery")
+	var trinkets := Progression.earned_cosmetics("trinket")
+	if liveries.is_empty() and trinkets.is_empty():
+		_heading(_extras_list, "Extras")
+		_text(_extras_list, "Nothing yet. Trinkets and liveries come from kilometres on the clock and nights at the car meet. Next at %s km." % _number(float(Progression.next_mileage_reward().get("km", 0))))
+		return
+	_heading(_extras_list, "Livery")
+	var current: String = _car.cosmetics.get("livery", "")
+	for item: Dictionary in [{"id": "", "title": "None, just the paint"}] + liveries:
+		var id: String = item.id
+		_extras_list.add_child(_extra_row(item.title, "On" if id == current else "Use it", id == current, func() -> void:
+			_car.set_livery(id)
+			_change.text = "Livery: %s." % item.title.to_lower()))
+	if not trinkets.is_empty():
+		_heading(_extras_list, "Trinkets")
+		_text(_extras_list, "One per spot: the mirror, the dash, the parcel shelf and the gear lever.")
+	for item: Dictionary in trinkets:
+		var id: String = item.id
+		var fitted := _car.has_trinket(id)
+		_extras_list.add_child(_extra_row("%s (%s)" % [item.title, SLOT_TITLES.get(item.get("slot", ""), "")],
+			"Take it off" if fitted else "Fit it", false, func() -> void:
+				_car.toggle_trinket(id)
+				_change.text = ("Fitted: %s." if _car.has_trinket(id) else "Took off: %s.") % item.title.to_lower()))
+
+
+func _extra_row(title: String, action: String, disabled: bool, on_press: Callable) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	var label := Label.new()
+	label.text = title
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(label)
+	var button := Button.new()
+	button.custom_minimum_size.x = 170
+	button.text = action
+	button.disabled = disabled
+	button.pressed.connect(func() -> void:
+		on_press.call()
+		_refresh_after_action())
+	row.add_child(button)
+	return row
 
 
 func _refresh_wash() -> void:

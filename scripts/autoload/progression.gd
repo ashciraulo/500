@@ -19,17 +19,21 @@ extends Node
 signal stat_changed(stat: String, value: float)
 signal challenge_completed(tier_index: int, challenge: Dictionary)
 signal tier_completed(tier_index: int, tier: Dictionary)
-## A lifetime-mileage reward (trinket, livery...) was earned.
+## A cosmetic reward (trinket, livery...) was earned. `reward` has id, title,
+## kind and `why` (what earned it, for the toast).
 signal reward_unlocked(reward: Dictionary)
 
 const TIERS_PATH := "res://data/progression/tiers.json"
 const MILEAGE_PATH := "res://data/progression/mileage_rewards.json"
+const COSMETICS_PATH := "res://data/progression/cosmetics.json"
 ## Every stat a challenge may name (the smoke test checks tiers.json against it).
 const KNOWN_STATS := [
 	"deliveries", "night_deliveries", "rain_deliveries", "storm_deliveries", "fragile_perfect",
 	"trials_completed", "trials_medalled", "trials_silver", "trials_gold", "parts_bought",
 	"cars_bought", "washes", "resprays", "litres_bought", "earned", "km_driven", "km_tier_car",
 	"discoveries", "upgrades_fitted", "suburbs_delivered", "cars_owned", "badges",
+	"barn_finds", "restoration_stages", "classics_restored", "photos_taken", "photo_spots",
+	"parking_done", "parking_gold", "scenic_drives", "meets_attended", "lifts_given",
 ]
 
 var tiers: Array = []
@@ -37,7 +41,9 @@ var tier_index := 0
 ## Suburbs you've delivered to.
 var suburbs: PackedStringArray = []
 var mileage_rewards: Array = []
-## Ids of mileage rewards earned.
+## How each cosmetic looks (data/progression/cosmetics.json), by id.
+var cosmetics := {}
+## Ids of cosmetic rewards earned (mileage, meets...).
 var rewards: PackedStringArray = []
 
 var _stats := {}
@@ -52,6 +58,9 @@ func _ready() -> void:
 	parsed = JSON.parse_string(FileAccess.get_file_as_string(MILEAGE_PATH))
 	if parsed is Dictionary:
 		mileage_rewards = parsed.get("rewards", [])
+	parsed = JSON.parse_string(FileAccess.get_file_as_string(COSMETICS_PATH))
+	if parsed is Dictionary:
+		cosmetics = parsed.get("items", {})
 	Wallet.changed.connect(func(_b: int, _d: int) -> void: check())
 	Discoveries.discovered.connect(func(_id: String) -> void: check())
 	SaveGame.register("progression", self)
@@ -87,7 +96,9 @@ func get_stat(stat: String) -> float:
 		"earned":
 			return Wallet.total_earned
 		"discoveries":
-			return Discoveries.all().size() - Collectible.found_count()
+			# Places only: badges, barn finds and photo spots have their own stats.
+			return Array(Discoveries.all()).filter(func(id: String) -> bool:
+				return not (id.begins_with("badge/") or id.begins_with("barn/") or id.begins_with("photo/"))).size()
 		"km_driven":
 			return Garage.lifetime_km(_car())
 		"km_tier_car":
@@ -136,9 +147,49 @@ func check() -> void:
 func _check_mileage() -> void:
 	var km := get_stat("km_driven")
 	for reward in mileage_rewards:
-		if km >= float(reward.km) and not rewards.has(reward.id):
-			rewards.append(reward.id)
-			reward_unlocked.emit(reward)
+		if km >= float(reward.km):
+			grant_reward(reward.id, "%d km driven" % int(reward.km))
+
+
+## Give a cosmetic reward (once). `why` says what earned it.
+func grant_reward(id: String, why := "") -> void:
+	if rewards.has(id):
+		return
+	rewards.append(id)
+	var reward := cosmetic(id)
+	reward["why"] = why
+	reward_unlocked.emit(reward)
+
+
+## Everything known about a cosmetic: its look from cosmetics.json plus its
+## title (from the mileage list when it isn't given there).
+func cosmetic(id: String) -> Dictionary:
+	var item: Dictionary = cosmetics.get(id, {}).duplicate()
+	item["id"] = id
+	for reward in mileage_rewards:
+		if reward.id == id:
+			item.merge(reward)
+	if not item.has("title"):
+		item["title"] = id.capitalize()
+	return item
+
+
+## Cosmetics earned so far of one kind ("trinket", "livery", "garage").
+func earned_cosmetics(kind: String) -> Array:
+	var out := []
+	for id in rewards:
+		var item := cosmetic(id)
+		if item.get("kind", "") == kind:
+			out.append(item)
+	return out
+
+
+## Rewards for a number of nights at the car meet.
+func check_meet_rewards(visits: int) -> void:
+	for id: String in cosmetics:
+		var need := int(cosmetics[id].get("meet", 0))
+		if need > 0 and visits >= need:
+			grant_reward(id, "%d night%s at the meet" % [need, "" if need == 1 else "s"])
 
 
 ## The next mileage reward still to earn, or {}.

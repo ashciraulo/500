@@ -7,6 +7,7 @@ var _dim: ColorRect
 var _tabs: TabContainer
 var _jobs_list: VBoxContainer
 var _progress_list: VBoxContainer
+var _leads_list: VBoxContainer
 var _stats_label: Label
 var _close: Button
 var _roadside: Button
@@ -47,7 +48,7 @@ func _set_open(open: bool) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		var car := get_tree().get_first_node_in_group(&"player_car") as CarController
 		if car and car.fuel_litres < 1.0:
-			_tabs.current_tab = 2  # Straight to roadside assist.
+			_tabs.current_tab = 3  # Straight to roadside assist.
 		_refresh()
 		_close.grab_focus()
 
@@ -95,6 +96,7 @@ func _build() -> void:
 	box.add_child(_tabs)
 	_jobs_list = _scroll_tab("Jobs")
 	_progress_list = _scroll_tab("Progress")
+	_leads_list = _scroll_tab("Leads & fun")
 	var stats_tab := _scroll_tab("Car & stats")
 	_stats_label = Label.new()
 	_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -127,6 +129,7 @@ func _refresh() -> void:
 		return
 	_refresh_jobs()
 	_refresh_progress()
+	_refresh_leads()
 	_refresh_stats()
 
 
@@ -192,6 +195,38 @@ func _refresh_progress() -> void:
 		bar.custom_minimum_size.y = 6
 		row.add_child(bar)
 		_progress_list.add_child(row)
+
+
+func _refresh_leads() -> void:
+	_clear(_leads_list)
+	var accent := Color(0.6, 0.85, 0.8)
+	_text(_leads_list, "Barn-find rumours", 18, accent)
+	var leads := Classics.open_leads()
+	if leads.is_empty():
+		_text(_leads_list, "No leads right now. People talk at the Friday and Saturday night meet (Roe Street car park, 8 pm to 2 am), and word gets around as your career grows.")
+	for lead: Dictionary in leads:
+		var car := CarCatalogue.get_car(lead.car)
+		_text(_leads_list, "%s: \"%s\"" % [String(lead.where)[0].to_upper() + String(lead.where).substr(1), lead.rumour])
+		_text(_leads_list, "  Probably a %s. Stop next to it to claim it." % car.get("name", "classic"), 13, Color(0.7, 0.7, 0.68))
+	_text(_leads_list, "Classics found: %d of %d" % [Classics.found_count(), Classics.barn_finds().size()], 14)
+
+	_text(_leads_list, "Things to do", 18, accent)
+	_text(_leads_list, "Photo spots: %d of %d. Press P for photo mode near a blue PHOTO sign. %d photos in the album." % [
+		Activities.photo_spots_found(), Activities.PHOTO_SPOTS_TOTAL, Activities.photos.size()])
+	var golds := 0
+	for record: Dictionary in Activities.parking.values():
+		if record.get("medal", "") == "gold":
+			golds += 1
+	_text(_leads_list, "Parking challenges: %d tried, %d gold. Look for the yellow PARK signs." % [Activities.parking.size(), golds])
+	_text(_leads_list, "Scenic drives done: %d. Green SCENIC DRIVE signs start them." % Progression.get_stat("scenic_drives"))
+	_text(_leads_list, "Lifts given: %d. Passengers show up on the job board." % Progression.get_stat("lifts_given"))
+	var relaxed := CheckButton.new()
+	relaxed.text = "Relaxed cruising (lighter traffic, no jobs)"
+	relaxed.button_pressed = Activities.relaxed
+	relaxed.toggled.connect(func(on: bool) -> void:
+		Activities.set_relaxed(on)
+		Jobs.refresh_offers())
+	_leads_list.add_child(relaxed)
 
 
 func _refresh_stats() -> void:

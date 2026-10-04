@@ -1,0 +1,89 @@
+class_name GameplayPlaces
+extends Node3D
+## Puts the gameplay markers into the world from data/world/places.json
+## (generated from the map's roads by tools/places/gen_places.py): photo
+## spots, parking challenges, barn finds, scenic drives, the car meet, the
+## time-trial checkpoints, and badges topping up the map's own to 60.
+
+## Hidden 500 badges in the whole game (the plan's 60), map and ours together.
+const BADGE_TOTAL := 60
+const PLACES_PATH := "res://data/world/places.json"
+
+var places := {}
+
+
+func _ready() -> void:
+	if not FileAccess.file_exists(PLACES_PATH):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(PLACES_PATH))
+	if not parsed is Dictionary:
+		return
+	places = parsed
+	for p: Dictionary in places.get("photo_spots", []):
+		var spot := PhotoSpot.new()
+		spot.spot_id = p.id
+		spot.title = p.title
+		_add(spot, p, "Photo_" + p.id)
+	for p: Dictionary in places.get("parking", []):
+		var bay := ParkingChallenge.new()
+		bay.bay_id = p.id
+		bay.title = p.title
+		bay.gap = float(p.get("gap", 4.6))
+		_add(bay, p, "Parking_" + p.id)
+	for p: Dictionary in places.get("barn_finds", []):
+		var wreck := BarnFind.new()
+		wreck.car_id = p.car
+		wreck.hours = p.get("hours", [])
+		_add(wreck, p, "BarnFind_" + p.car)
+	for d: Dictionary in places.get("scenic_drives", []):
+		var drive := ScenicDrive.new()
+		drive.drive_id = d.id
+		drive.title = d.title
+		var points := PackedVector3Array()
+		for q: Array in d.points:
+			points.append(Vector3(q[0], q[1], q[2]))
+		drive.points = points
+		drive.name = "Scenic_" + d.id
+		add_child(drive)
+	var meet: Dictionary = places.get("car_meet", {})
+	if not meet.is_empty():
+		var node := CarMeet.new()
+		node.meet_id = meet.id
+		node.title = meet.title
+		_add(node, meet, "Meet_" + meet.id)
+	for c: Dictionary in places.get("checkpoints", []):
+		var site := JobSite.new()
+		site.site_id = c.id
+		site.display_name = "Checkpoint"
+		site.kinds = PackedStringArray(["trial"])
+		site.discoverable = false
+		_add(site, c, c.id)
+	# Workshops: wait a frame so the map has placed its own.
+	_top_up_badges.call_deferred()
+
+
+func _add(node: Node3D, entry: Dictionary, node_name: String) -> void:
+	var p: Array = entry.get("p", [0.0, 0.0, 0.0])
+	node.name = node_name
+	node.transform = Transform3D(Basis(Vector3.UP, float(entry.get("yaw", 0.0))), Vector3(p[0], p[1], p[2]))
+	add_child(node)
+
+
+## The map hides badges of its own; ours top them up to BADGE_TOTAL, skipping
+## any that would land near one of the map's.
+func _top_up_badges() -> void:
+	var existing: Array[Vector3] = []
+	for node in get_tree().get_nodes_in_group(&"collectibles"):
+		existing.append((node as Node3D).global_position)
+	var wanted := BADGE_TOTAL - existing.size()
+	for b: Dictionary in places.get("badges", []):
+		if wanted <= 0:
+			break
+		var at := Vector3(b.p[0], b.p[1], b.p[2])
+		if existing.any(func(p: Vector3) -> bool: return p.distance_to(at) < 120.0):
+			continue
+		var badge := Collectible.new()
+		badge.badge_id = b.id
+		_add(badge, b, "Badge_" + b.id)
+		existing.append(at)
+		wanted -= 1

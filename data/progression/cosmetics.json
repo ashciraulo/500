@@ -1,0 +1,19 @@
+{
+	"_comment": "How each cosmetic reward looks and where else it comes from. Mileage rewards are listed in mileage_rewards.json (same ids); `meet` rewards come from nights at the car meet (number of visits). Trinket `slot`: mirror (hangs from the rear-view mirror), dash (top of the dash), shelf (parcel shelf), gear (on the gear lever). Livery `mode`: stripes, chequered_roof, scorpion, side_stripe, two_tone. Garage decorations are shown at home (see docs/HOOKS.md).",
+	"items": {
+		"trinket_fluffy_dice": {"kind": "trinket", "slot": "mirror", "color": "#e8e4dc"},
+		"trinket_nodding_dog": {"kind": "trinket", "slot": "shelf", "color": "#8a5a32"},
+		"trinket_hula_girl": {"kind": "trinket", "slot": "dash", "color": "#d9a27a"},
+		"trinket_bobblehead": {"kind": "trinket", "slot": "dash", "color": "#9c7a56"},
+		"trinket_air_freshener": {"kind": "trinket", "slot": "mirror", "color": "#3f9a4a", "meet": 1, "title": "A little tree air freshener from the meet"},
+		"interior_wooden_knob": {"kind": "trinket", "slot": "gear", "color": "#7a4a24"},
+		"livery_racing_stripes": {"kind": "livery", "mode": "stripes", "color": "#f2f0ea"},
+		"livery_checkered_roof": {"kind": "livery", "mode": "chequered_roof", "color": "#f2f0ea"},
+		"livery_gold_scorpion": {"kind": "livery", "mode": "scorpion", "color": "#c9a23a"},
+		"livery_side_stripe": {"kind": "livery", "mode": "side_stripe", "color": "#c8242b", "meet": 3, "title": "An Abarth-style side stripe"},
+		"livery_two_tone": {"kind": "livery", "mode": "two_tone", "color": "#efece4", "meet": 6, "title": "A two-tone white roof"},
+		"trinket_meet_plaque": {"kind": "trinket", "slot": "dash", "color": "#b8b8b0", "meet": 10, "title": "A Roe Street meet dash plaque"},
+		"garage_road_map": {"kind": "garage"},
+		"garage_neon_sign": {"kind": "garage"}
+	}
+}

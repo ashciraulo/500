@@ -9,7 +9,7 @@ E/Q or bumpers: gear up / down    G / Select: manual <-> auto    C / Y: camera
 L: headlights    R / D-pad down: reset car    Mouse click: look around (interior)
 F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
 F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)
-F / A: use a workshop, servo or spray shop when parked in its bay
+F / A: use a workshop, servo or spray shop when parked in its bay    P / L3: photo mode
 Radio: . / , station    / on-off    M next track    N next playlist (My Music)    H: horn"""
 
 var _car: CarController
@@ -112,8 +112,23 @@ func _ready() -> void:
 		var cars := " The car yard has the %s for you." % " and ".join(names) if not names.is_empty() else ""
 		toast("Tier complete: %s! Jobs pay better now.%s" % [tier.title, cars]))
 	Progression.reward_unlocked.connect(func(reward: Dictionary) -> void:
-		toast("%d km driven: %s" % [int(reward.km), reward.title]))
+		toast("%s: %s. Fit it in any workshop's Extras tab." % [reward.why, reward.title] if reward.get("kind", "") in ["trinket", "livery"] else "%s: %s" % [reward.why, reward.title]))
+	add_to_group(&"hud")
+	Activities.message.connect(toast)
+	Activities.photo_spot_found.connect(func(_id: String, title: String) -> void:
+		toast("Photo spot: %s (%d of %d)" % [title, Activities.photo_spots_found(), Activities.PHOTO_SPOTS_TOTAL]))
+	Activities.scenic_finished.connect(func(_id: String, title: String) -> void:
+		toast("Scenic drive done: %s. Nice one." % title))
+	Classics.rumour_heard.connect(func(_car: String, _text: String) -> void:
+		toast("New barn-find rumour. Check Leads on your phone (Tab / X)."))
+	Classics.wreck_found.connect(func(car_id: String) -> void:
+		toast("Found it: a %s, rotten but complete. It's waiting on the restoration bench at home." % CarCatalogue.get_car(car_id).get("name", "classic")))
+	Classics.restored.connect(func(car_id: String, _finish: String) -> void:
+		toast("The %s is finished. Take it out from the Cars tab at home." % CarCatalogue.get_car(car_id).get("name", "classic")))
 	Discoveries.discovered.connect(func(id: String) -> void:
+		if id.begins_with("spot/"):
+			var spot := get_tree().get_root().find_child("Photo_" + id.substr(5), true, false)
+			toast("Discovered: %s. A good spot for a photo (P)." % (spot.title if spot else "a photo spot"))
 		if id.begins_with("badge/"):
 			toast("Found a 500 badge (%d of %d)" % [Collectible.found_count(), Collectible.TOTAL]))
 	if _car:

@@ -1,14 +1,14 @@
 {
-	"_comment": "Every car in the game. Specs are approximate (power and torque from memory, gear ratios typical for the model) and get checked against a spec source before final tuning. Keys map onto CarController exports; anything missing keeps the Pop's value. unlock: 'tier' (buy at a dealer once career tier `tier` is reached), 'barn_find' (found as a wreck, later phase) or 'secret'. scene is the car model; cars without their own model yet borrow the Pop's.",
+	"_comment": "Every car in the game. Specs are approximate (power and torque from memory, gear ratios typical for the model) and get checked against a spec source before final tuning. Keys map onto CarController exports; anything missing keeps the Pop's value. unlock: 'tier' (buy at a dealer once career tier `tier` is reached), 'barn_find' (found as a wreck, later phase) or 'secret'. model is the folder and file name under art/models/cars/ (model/model.glb); cars without their own model yet borrow the Pop's.",
 	"cars": [
 		{
-			"id": "pop_12", "name": "500 Pop 1.2", "years": "2007-2024", "ladder": "modern", "tier": 0,
+			"id": "pop_12", "model": "pop", "name": "500 Pop 1.2", "years": "2007-2024", "ladder": "modern", "tier": 0,
 			"unlock": "starter", "price": 0, "power_kw": 51,
 			"blurb": "Your car. Light, honest and gutless uphill.",
 			"spec": {}
 		},
 		{
-			"id": "lounge_14", "name": "500 Lounge 1.4", "years": "2007-2024", "ladder": "modern", "tier": 1,
+			"id": "lounge_14", "model": "lounge", "name": "500 Lounge 1.4", "years": "2007-2024", "ladder": "modern", "tier": 1,
 			"unlock": "tier", "price": 2400, "power_kw": 74,
 			"blurb": "The first real step up. A 16-valve 1.4 that likes to rev, and a sixth gear.",
 			"spec": {
@@ -19,7 +19,7 @@
 			}
 		},
 		{
-			"id": "twinair_09", "name": "500 TwinAir 0.9", "years": "2010-2024", "ladder": "modern", "tier": 1,
+			"id": "twinair_09", "model": "twinair", "name": "500 TwinAir 0.9", "years": "2010-2024", "ladder": "modern", "tier": 1,
 			"unlock": "tier", "price": 2900, "power_kw": 63,
 			"blurb": "Two cylinders, a turbo and a thrum like a tractor. Torquey low down and sips fuel.",
 			"spec": {
@@ -30,7 +30,7 @@
 			}
 		},
 		{
-			"id": "abarth_500", "name": "Abarth 500 esseesse", "years": "2008-2014", "ladder": "modern", "tier": 2,
+			"id": "abarth_500", "model": "abarth500", "name": "Abarth 500 esseesse", "years": "2008-2014", "ladder": "modern", "tier": 2,
 			"unlock": "tier", "price": 7500, "power_kw": 118,
 			"blurb": "The first Abarth. A T-Jet turbo, a scorpion on the bonnet and stiffer everything.",
 			"spec": {
@@ -42,7 +42,7 @@
 			}
 		},
 		{
-			"id": "abarth_595_turismo", "name": "Abarth 595 Turismo", "years": "2012-", "ladder": "modern", "tier": 3,
+			"id": "abarth_595_turismo", "model": "abarth595", "name": "Abarth 595 Turismo", "years": "2012-", "ladder": "modern", "tier": 3,
 			"unlock": "tier", "price": 14000, "power_kw": 121,
 			"blurb": "The comfortable hot hatch. Leather, a bigger turbo and manners.",
 			"spec": {
@@ -54,7 +54,7 @@
 			}
 		},
 		{
-			"id": "abarth_595_comp", "name": "Abarth 595 Competizione", "years": "2012-", "ladder": "modern", "tier": 3,
+			"id": "abarth_595_comp", "model": "abarth595c", "name": "Abarth 595 Competizione", "years": "2012-", "ladder": "modern", "tier": 3,
 			"unlock": "tier", "price": 17000, "power_kw": 132,
 			"blurb": "Stiffer, louder, sharper. The Record Monza exhaust wakes the neighbours.",
 			"spec": {
@@ -66,7 +66,7 @@
 			}
 		},
 		{
-			"id": "abarth_695_tributo", "name": "Abarth 695 Tributo", "years": "2009-", "ladder": "modern", "tier": 4,
+			"id": "abarth_695_tributo", "model": "abarth695", "name": "Abarth 695 Tributo", "years": "2009-", "ladder": "modern", "tier": 4,
 			"unlock": "tier", "price": 19000, "power_kw": 132,
 			"blurb": "The special editions: Ferrari, Maserati, Rivale, XSR. One car, many liveries.",
 			"spec": {
@@ -78,7 +78,7 @@
 			}
 		},
 		{
-			"id": "abarth_695_biposto", "name": "Abarth 695 biposto", "years": "2014-2016", "ladder": "modern", "tier": 4,
+			"id": "abarth_695_biposto", "model": "abarth695", "name": "Abarth 695 biposto", "years": "2014-2016", "ladder": "modern", "tier": 4,
 			"unlock": "tier", "price": 24000, "power_kw": 140,
 			"blurb": "Two seats, no back seat, a dog-ring gearbox. The top petrol car.",
 			"spec": {
@@ -90,7 +90,7 @@
 			}
 		},
 		{
-			"id": "e_500e_2013", "name": "500e", "years": "2013-2019", "ladder": "electric", "tier": 2,
+			"id": "e_500e_2013", "model": "lounge", "name": "500e", "years": "2013-2019", "ladder": "electric", "tier": 2,
 			"unlock": "tier", "price": 7000, "power_kw": 83, "electric": true,
 			"blurb": "Silent, instant torque, and a range you'll learn to respect.",
 			"spec": {
@@ -127,7 +127,7 @@
 			}
 		},
 		{
-			"id": "hybrid_10", "name": "500 Hybrid", "years": "2025-", "ladder": "modern", "tier": 4,
+			"id": "hybrid_10", "model": "sport", "name": "500 Hybrid", "years": "2025-", "ladder": "modern", "tier": 4,
 			"unlock": "tier", "price": 12000, "power_kw": 48,
 			"blurb": "A petrol engine back in the new body. A late, gentle curiosity.",
 			"spec": {
@@ -137,15 +137,15 @@
 				"fuel_per_kwh": 0.32
 			}
 		},
-		{"id": "classic_nuova", "name": "Nuova 500", "years": "1957-1960", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 10, "rear_engine": true, "blurb": "The original. Full fabric roof, very slow.", "spec": {}},
-		{"id": "classic_sport", "name": "500 Sport", "years": "1958-1960", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 16, "rear_engine": true, "blurb": "A lively classic with a red side stripe.", "spec": {}},
-		{"id": "classic_d", "name": "500 D", "years": "1960-1965", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "Rear-hinged suicide doors.", "spec": {}},
-		{"id": "classic_giardiniera", "name": "500 Giardiniera", "years": "1960-1977", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "The wagon, with a flat engine under the floor. Carries the most.", "spec": {}},
-		{"id": "classic_500f", "name": "500 F", "years": "1965-1972", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "Front-hinged doors. The most common classic.", "spec": {}},
-		{"id": "classic_500l", "name": "500 L (Lusso)", "years": "1968-1972", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "Chrome bumper bars and a nicer interior.", "spec": {}},
-		{"id": "classic_500r", "name": "500 R", "years": "1972-1975", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "The last of the line, with the 594 cc engine.", "spec": {}},
-		{"id": "classic_abarth_595", "name": "Abarth 595 SS", "years": "1963-", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 24, "rear_engine": true, "blurb": "The classic hot rod.", "spec": {}},
-		{"id": "classic_abarth_695", "name": "Abarth 695 SS", "years": "1964-", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 28, "rear_engine": true, "blurb": "The fastest classic, rear lid propped open.", "spec": {}},
-		{"id": "classic_jolly", "name": "500 Jolly", "years": "1958-", "ladder": "classic", "tier": 0, "unlock": "secret", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "Wicker seats, no doors, a beach car. You'll have to find it.", "spec": {}}
+		{"id": "classic_nuova", "name": "Nuova 500", "years": "1957-1960", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 10, "rear_engine": true, "blurb": "The original. Full fabric roof, very slow.", "spec": {"mass": 470, "idle_rpm": 750, "redline_rpm": 4300, "limiter_rpm": 4600, "torque_curve": [[700, 15], [1500, 20], [2500, 25], [3200, 27], [3750, 25], [4300, 21], [4700, 15]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 5.125, "auto_upshift_rpm": 4000, "spring_strength": 13000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 5200, "tire_grip": 0.9, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_sport", "name": "500 Sport", "years": "1958-1960", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 16, "rear_engine": true, "blurb": "A lively classic with a red side stripe.", "spec": {"mass": 470, "idle_rpm": 750, "redline_rpm": 5000, "limiter_rpm": 5300, "torque_curve": [[700, 19], [1500, 26], [2500, 31], [3500, 34], [4250, 32], [5000, 27], [5400, 19]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 5.125, "auto_upshift_rpm": 4700, "spring_strength": 13000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 5200, "tire_grip": 0.93, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_d", "name": "500 D", "years": "1960-1965", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "Rear-hinged suicide doors.", "spec": {"mass": 500, "idle_rpm": 750, "redline_rpm": 4600, "limiter_rpm": 4900, "torque_curve": [[700, 16], [1500, 22], [2500, 28], [3500, 30], [4050, 28], [4600, 23], [5000, 16]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 5.125, "auto_upshift_rpm": 4300, "spring_strength": 13000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 5200, "tire_grip": 0.9, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_giardiniera", "name": "500 Giardiniera", "years": "1960-1977", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "The wagon, with a flat engine under the floor. Carries the most.", "spec": {"mass": 560, "idle_rpm": 750, "redline_rpm": 4600, "limiter_rpm": 4900, "torque_curve": [[700, 16], [1500, 22], [2500, 28], [3500, 30], [4050, 28], [4600, 23], [5000, 16]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 5.125, "auto_upshift_rpm": 4300, "spring_strength": 15000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 5200, "tire_grip": 0.9, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_500f", "name": "500 F", "years": "1965-1972", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "Front-hinged doors. The most common classic.", "spec": {"mass": 520, "idle_rpm": 750, "redline_rpm": 4600, "limiter_rpm": 4900, "torque_curve": [[700, 16], [1500, 22], [2500, 28], [3500, 30], [4050, 28], [4600, 23], [5000, 16]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 5.125, "auto_upshift_rpm": 4300, "spring_strength": 13000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 5200, "tire_grip": 0.9, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_500l", "name": "500 L (Lusso)", "years": "1968-1972", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "Chrome bumper bars and a nicer interior.", "spec": {"mass": 530, "idle_rpm": 750, "redline_rpm": 4600, "limiter_rpm": 4900, "torque_curve": [[700, 16], [1500, 22], [2500, 28], [3500, 30], [4050, 28], [4600, 23], [5000, 16]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 5.125, "auto_upshift_rpm": 4300, "spring_strength": 13000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 5200, "tire_grip": 0.9, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_500r", "name": "500 R", "years": "1972-1975", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "The last of the line, with the 594 cc engine.", "spec": {"mass": 530, "idle_rpm": 750, "redline_rpm": 4600, "limiter_rpm": 4900, "torque_curve": [[700, 21], [1500, 29], [2500, 36], [2800, 39], [3700, 36], [4600, 30], [5000, 21]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 5.125, "auto_upshift_rpm": 4300, "spring_strength": 13000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 5200, "tire_grip": 0.9, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_abarth_595", "name": "Abarth 595 SS", "years": "1963-", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 24, "rear_engine": true, "blurb": "The classic hot rod.", "spec": {"mass": 470, "idle_rpm": 750, "redline_rpm": 5800, "limiter_rpm": 6100, "torque_curve": [[700, 22], [1500, 30], [2500, 37], [4000, 40], [4900, 37], [5800, 31], [6200, 22]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 4.875, "auto_upshift_rpm": 5500, "spring_strength": 13000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 6000, "tire_grip": 0.98, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_abarth_695", "name": "Abarth 695 SS", "years": "1964-", "ladder": "classic", "tier": 0, "unlock": "barn_find", "price": 0, "power_kw": 28, "rear_engine": true, "blurb": "The fastest classic, rear lid propped open.", "spec": {"mass": 480, "idle_rpm": 750, "redline_rpm": 6000, "limiter_rpm": 6300, "torque_curve": [[700, 27], [1500, 37], [2500, 45], [4000, 49], [5000, 46], [6000, 38], [6400, 27]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 4.556, "auto_upshift_rpm": 5700, "spring_strength": 15000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 6500, "tire_grip": 1.0, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}},
+		{"id": "classic_jolly", "name": "500 Jolly", "years": "1958-", "ladder": "classic", "tier": 0, "unlock": "secret", "price": 0, "power_kw": 13, "rear_engine": true, "blurb": "Wicker seats, no doors, a beach car. You'll have to find it.", "spec": {"mass": 460, "idle_rpm": 750, "redline_rpm": 4600, "limiter_rpm": 4900, "torque_curve": [[700, 16], [1500, 22], [2500, 28], [3500, 30], [4050, 28], [4600, 23], [5000, 16]], "gear_ratios": [3.7, 2.067, 1.3, 0.875], "final_drive": 5.125, "auto_upshift_rpm": 4300, "spring_strength": 13000, "damper_strength": 1250, "anti_roll_strength": 1800, "brake_force": 5200, "tire_grip": 0.88, "suspension_length": 0.26, "drag_coefficient": 0.46, "tank_litres": 22}}
 	]
 }

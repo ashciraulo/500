@@ -108,7 +108,6 @@ func _update_chase(delta: float) -> void:
 	var ceiling := get_world_3d().direct_space_state.intersect_ray(_ray_query)
 	if not ceiling.is_empty():
 		height = clampf(ceiling.position.y - car_pos.y - 0.45, look_height, chase_height)
-		distance *= lerpf(0.75, 1.0, (height - look_height) / maxf(chase_height - look_height, 0.01))
 	var desired := car_pos + orbit * Vector3(0.0, height, distance)
 	var target := car_pos + Vector3.UP * look_height + (-_car.global_basis.z) * look_ahead
 

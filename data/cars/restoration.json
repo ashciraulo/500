@@ -1,0 +1,24 @@
+{
+	"_comment": "Barn-find restoration, done at the home carport's Restore bench. Each stage costs money and workshop hours, scaled per car by cost_scale. A car can be driven once every stage marked 'needed_to_drive' is done; the rest are looks. The last choice picks original spec or a restomod.",
+	"stages": [
+		{"id": "assess", "title": "Strip and assess", "price": 150, "hours": 4, "needed_to_drive": true, "text": "Drag it out, drain the old fuel, find out how bad it is."},
+		{"id": "engine", "title": "Engine rebuild", "price": 900, "hours": 12, "needed_to_drive": true, "text": "New rings, bearings and seals. The twin coughs into life."},
+		{"id": "brakes", "title": "Brakes and suspension", "price": 450, "hours": 6, "needed_to_drive": true, "text": "Seized drums freed, new kingpins, fresh fluid."},
+		{"id": "body", "title": "Rust and panels", "price": 1200, "hours": 16, "needed_to_drive": false, "text": "Cut out the rust, let in new floor pans and sills."},
+		{"id": "paint", "title": "Paint", "price": 700, "hours": 8, "needed_to_drive": false, "text": "Back to bare metal and a fresh coat in its original colour."},
+		{"id": "interior", "title": "Interior", "price": 500, "hours": 6, "needed_to_drive": false, "text": "Re-covered seats, a new headliner, the roof canvas restitched."},
+		{"id": "trim", "title": "Chrome and trim", "price": 350, "hours": 4, "needed_to_drive": false, "text": "Re-chromed bumpers, new badges, rubber seals all round."}
+	],
+	"finish": {
+		"original": {"title": "Original spec", "price": 0, "hours": 2, "text": "Exactly as it left Turin.", "modifiers": {}},
+		"restomod": {"title": "Restomod", "price": 1600, "hours": 10, "text": "Bigger bore, twin-choke carb, front discs and sticky tyres.", "modifiers": {"torque_mult": 1.25, "grip_mult": 1.12, "brake_mult": 1.3}}
+	},
+	"cost_scale": {"classic_abarth_595": 1.6, "classic_abarth_695": 1.8, "classic_jolly": 1.4, "classic_sport": 1.2},
+	"rust_color": [0.45, 0.28, 0.18],
+	"original_colors": {
+		"classic_nuova": [0.62, 0.72, 0.78], "classic_sport": [0.92, 0.9, 0.84], "classic_d": [0.55, 0.15, 0.12],
+		"classic_giardiniera": [0.45, 0.6, 0.5], "classic_500f": [0.9, 0.85, 0.6], "classic_500l": [0.2, 0.3, 0.45],
+		"classic_500r": [0.95, 0.55, 0.2], "classic_abarth_595": [0.75, 0.1, 0.1], "classic_abarth_695": [0.9, 0.9, 0.88],
+		"classic_jolly": [0.4, 0.75, 0.75]
+	}
+}

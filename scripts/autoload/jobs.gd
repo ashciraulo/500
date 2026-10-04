@@ -29,6 +29,11 @@ const MEDALS := ["gold", "silver", "bronze"]
 const MEDAL_SPEEDS := {"gold": 62.0, "silver": 52.0, "bronze": 42.0}
 const MEDAL_REWARDS := {"gold": 220, "silver": 120, "bronze": 60}
 const TRIALS_PATH := "res://data/progression/trials.json"
+const LIFTS_PATH := "res://data/progression/lifts.json"
+const LIFT_OFFERS := 1
+## Lifts pay less than deliveries: it's mostly about the company.
+const LIFT_BASE_PAY := 30.0
+const LIFT_PAY_PER_KM := 16.0
 ## Medal pace per car class: quicker cars have to be quicker. Each class keeps
 ## its own records, so every trial can be medalled once per class.
 const CLASS_PACE := {"classic": 0.7, "t0": 1.0, "t1": 1.07, "t2": 1.16, "t3": 1.22, "t4": 1.28}
@@ -70,6 +75,7 @@ var _car: CarController
 var _discover_timer := 0.0
 var _next_id := 1
 var _trials: Array = []
+var _passengers: Array = []
 
 
 func _ready() -> void:
@@ -119,6 +125,10 @@ func refresh_offers() -> void:
 	if all_sites.size() < 2:
 		return
 	offers.clear()
+	# Relaxed cruising: no jobs on the board at all.
+	if Activities.relaxed:
+		offers_changed.emit()
+		return
 	for i in DELIVERY_OFFERS:
 		var job := _make_delivery(all_sites)
 		if not job.is_empty():
@@ -127,6 +137,10 @@ func refresh_offers() -> void:
 		var trial := _make_trial(all_sites)
 		if not trial.is_empty():
 			offers.append(trial)
+	for i in LIFT_OFFERS:
+		var lift := _make_lift(all_sites)
+		if not lift.is_empty():
+			offers.append(lift)
 	offers_changed.emit()
 
 
@@ -181,6 +195,8 @@ func objective_text() -> String:
 		"to_pickup":
 			return "Pick up %s at %s%s" % [active.cargo, where, distance]
 		"to_dropoff":
+			if active.get("lift", false):
+				return "Drop %s at %s%s" % [active.cargo.get_slice(",", 0), where, distance]
 			var damage := "  (cargo %d%% damaged)" % roundi(active.damage) if active.damage > 0.5 else ""
 			return "Deliver to %s%s  %s%s" % [where, distance, _clock(active.elapsed), damage]
 		"to_start":
@@ -202,6 +218,10 @@ func weather_bonus() -> float:
 
 
 func describe(job: Dictionary) -> String:
+	if job.get("lift", false):
+		return "Give %s a lift from %s to %s. %.1f km, $%d." % [job.cargo,
+			site(job.pickup).label() if site(job.pickup) else job.pickup,
+			site(job.dropoff).label() if site(job.dropoff) else job.dropoff, job.km, job.pay]
 	if job.type == "delivery":
 		var fragile := " Fragile." if job.fragile else ""
 		var bonus := weather_bonus()
@@ -220,6 +240,8 @@ func _update_active() -> void:
 	var target := target_site()
 	if target == null or _car == null:
 		return
+	if active.get("lift", false) and active.stage == "to_dropoff":
+		_passenger_chat(target)
 	if not _beacon.contains(_car.global_position):
 		return
 	match active.stage:
@@ -261,6 +283,12 @@ func _finish_delivery() -> void:
 	# Jobs taken in the rain pay 25% more, storm jobs 50%.
 	var weather_extra := roundi(job.pay * (float(job.get("weather_bonus", 1.0)) - 1.0))
 	var total := roundi(pay) + bonus + tip + weather_extra
+	if job.get("lift", false):
+		Wallet.earn(total, "lift")
+		Progression.add_stat("lifts_given")
+		job_completed.emit(job, total, "Dropped off %s. They hand you $%d%s." % [
+			job.cargo.get_slice(",", 0), total, " and say it was the nicest ride all week" if job.elapsed <= job.par_seconds else ""])
+		return
 	Wallet.earn(total, "delivery")
 	Progression.add_stat("deliveries")
 	var drop := site(job.dropoff)
@@ -375,6 +403,39 @@ func _make_trial(_all_sites: Array[JobSite]) -> Dictionary:
 	}
 
 
+func _make_lift(all_sites: Array[JobSite]) -> Dictionary:
+	if _passengers.is_empty():
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(LIFTS_PATH))
+		if parsed is Dictionary:
+			_passengers = parsed.get("passengers", [])
+	var job := _make_delivery(all_sites)
+	if job.is_empty() or _passengers.is_empty():
+		return {}
+	var passenger: Dictionary = _passengers[_rng.randi() % _passengers.size()]
+	job.lift = true
+	job.fragile = false
+	job.cargo = passenger.name
+	job.lines = passenger.lines
+	job.said = 0
+	job.title = "Give %s a lift" % passenger.name.get_slice(",", 0)
+	job.pay = roundi((LIFT_BASE_PAY + job.km * LIFT_PAY_PER_KM) * Progression.pay_multiplier() / 5.0) * 5
+	return job
+
+
+## Passengers talk a quarter, half and three quarters of the way.
+func _passenger_chat(target: JobSite) -> void:
+	var pickup := site(active.pickup)
+	if pickup == null:
+		return
+	var total := maxf(pickup.global_position.distance_to(target.global_position), 1.0)
+	var progress := 1.0 - _car.global_position.distance_to(target.global_position) / total
+	var said: int = active.get("said", 0)
+	var lines: Array = active.get("lines", [])
+	if said < lines.size() and progress >= 0.25 * (said + 1):
+		active.said = said + 1
+		Activities.say("%s: \"%s\"" % [active.cargo.get_slice(",", 0), lines[said]])
+
+
 ## Named trials from data/progression/trials.json.
 func trials() -> Array:
 	if _trials.is_empty():
@@ -411,7 +472,7 @@ func _check_discoveries() -> void:
 	if _car == null:
 		return
 	for s in sites():
-		if _car.global_position.distance_to(s.global_position) < DISCOVER_RADIUS:
+		if s.discoverable and _car.global_position.distance_to(s.global_position) < DISCOVER_RADIUS:
 			if Discoveries.discover("place/" + s.site_id):
 				place_discovered.emit(s)
 

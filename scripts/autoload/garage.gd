@@ -203,7 +203,7 @@ func add_car(id: String) -> void:
 
 ## Put the current car away and take another one you own.
 func switch_car(id: String, car: CarController) -> bool:
-	if not owns_car(id) or not CarCatalogue.is_drivable(CarCatalogue.get_car(id)):
+	if not owns_car(id) or not CarCatalogue.is_drivable(CarCatalogue.get_car(id)) or not Classics.can_drive(id):
 		return false
 	if id == car.car_id:
 		return true

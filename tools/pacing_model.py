@@ -39,6 +39,12 @@ PLACE_HALF_LIFE_H = 10.0 # hours to find half of the places
 SUBURBS = 24             # suburbs with drop-offs
 BADGES = 60              # hidden 500 badges
 BADGE_HALF_LIFE_H = 25.0 # hours to stumble on half of them
+PHOTO_SPOTS = 30         # marked photo spots
+PHOTO_HALF_LIFE_H = 20.0 # hours to photograph half of them
+PARKING_BAYS = 10        # parking challenges
+PARKING_GOLD_HALF_LIFE_H = 30.0
+SCENIC_PER_HOUR = 0.12   # scenic drives finished per hour of play
+CLASSIC_FIRST_H = 45.0   # hours before the first barn find is restored (rumours come with tiers and meets)
 PARTS_SHARE = 0.25       # share of income spent on parts, paint, washes
 AVG_PART_PRICE = 600     # what a typical upgrade costs
 FUEL_PER_KM = 0.27       # dollars of fuel per km (7 L/100 km x2 scale, $1.90/L)
@@ -71,7 +77,8 @@ def main():
         "deliveries", "night_deliveries", "rain_deliveries", "storm_deliveries",
         "fragile_perfect", "km_driven", "km_tier_car", "earned", "trials_medalled",
         "trials_silver", "trials_gold", "discoveries", "suburbs_delivered",
-        "upgrades_fitted", "cars_owned", "washes", "badges"]}
+        "upgrades_fitted", "cars_owned", "washes", "badges", "photo_spots", "parking_gold",
+        "scenic_drives", "classics_restored"]}
     stats["cars_owned"] = 1
     money = 400.0
     tier = 0
@@ -110,6 +117,10 @@ def main():
         stats["badges"] = BADGES * (1 - 0.5 ** (hour / BADGE_HALF_LIFE_H))
         stats["suburbs_delivered"] = SUBURBS * (1 - (1 - 1 / SUBURBS) ** stats["deliveries"])
         stats["washes"] += step * 0.25
+        stats["photo_spots"] = PHOTO_SPOTS * (1 - 0.5 ** (hour / PHOTO_HALF_LIFE_H))
+        stats["parking_gold"] = PARKING_BAYS * (1 - 0.5 ** (hour / PARKING_GOLD_HALF_LIFE_H))
+        stats["scenic_drives"] += SCENIC_PER_HOUR * step
+        stats["classics_restored"] = max(0.0, (hour - CLASSIC_FIRST_H) / 12.0)
         money += (pay + trial_pay) * (1 - PARTS_SHARE) - km * FUEL_PER_KM
         parts_spend += (pay + trial_pay) * PARTS_SHARE
         stats["upgrades_fitted"] = min(9, parts_spend / AVG_PART_PRICE)

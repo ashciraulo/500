@@ -383,6 +383,124 @@ func _run_step() -> bool:
 							"quicker cars get tighter medal times")
 				root.get_node("Garage").switch_car("pop_12", _car)
 				_next()
+		15:  # Classics, photos, parking, scenic drives, lifts and relaxed cruising.
+			var classics := root.get_node("Classics")
+			var activities := root.get_node("Activities")
+			var garage := root.get_node("Garage")
+			var wallet := root.get_node("Wallet")
+			var jobs := root.get_node("Jobs")
+			var progression := root.get_node("Progression")
+			var tree := _main.get_tree()
+			if _frame == 1:
+				_check(tree.get_nodes_in_group(&"photo_spots").size() == 30, "30 photo spots are placed")
+				_check(tree.get_nodes_in_group(&"parking_bays").size() >= 8, "parking challenges are placed")
+				_check(tree.get_nodes_in_group(&"barn_finds").size() == 10, "ten barn finds are placed")
+				_check(tree.get_nodes_in_group(&"scenic_drives").size() >= 4, "scenic drives are placed")
+				_check(tree.get_nodes_in_group(&"car_meets").size() == 1, "the car meet is placed")
+				# Rumour, then find the wreck by stopping next to it.
+				var first: String = classics.hear_next_rumour()
+				_check(first != "" and classics.open_leads().size() == 1, "a rumour opens a lead (%s)" % first)
+				_check(classics.next_rumour() != "classic_jolly", "the Jolly stays secret until the rest are found")
+				var wreck: Node3D = null
+				for b in tree.get_nodes_in_group(&"barn_finds"):
+					if b.car_id == first:
+						wreck = b
+				_check(wreck != null and wreck.is_present(), "the wreck appears once you've heard the rumour")
+				_mark.wreck = first
+				# The wrecks sit on the Perth map; bring this one to the test grid.
+				wreck.global_position = _car.global_position + _car.global_basis.x * 3.0 + Vector3.DOWN * 0.45
+			elif _frame == 150:
+				var id: String = _mark.wreck
+				_check(classics.is_found(id) and garage.owns_car(id), "stopping next to the wreck claims it")
+				_check(not classics.can_drive(id) and not garage.switch_car(id, _car), "a wreck can't be driven yet")
+				wallet.earn(20000)
+				for stage in ["assess", "engine", "brakes"]:
+					_check(classics.do_stage(id, stage), "restoration: %s" % stage)
+				_check(classics.can_drive(id), "the classic runs once the mechanical work is done")
+				_check(not classics.do_stage(id, "trim"), "stages go in order")
+				for stage in ["body", "paint", "interior", "trim"]:
+					classics.do_stage(id, stage)
+				_check(classics.choose_finish(id, "restomod"), "finish it as a restomod")
+				_check(garage.switch_car(id, _car) and _car.car_id == id, "drive the restored classic")
+				_check(_car.torque_multiplier > 1.2, "the restomod adds power (x%.2f)" % _car.torque_multiplier)
+				_check(progression.get_stat("classics_restored") == 1.0, "restoring counts for the career")
+				_check(root.get_node("Jobs").current_class() == "classic", "classics race in their own class")
+				garage.switch_car("pop_12", _car)
+				# Photos: one at a photo spot counts it.
+				var spot: Node3D = tree.get_nodes_in_group(&"photo_spots")[0]
+				var entry: Dictionary = activities.add_photo(null, spot)
+				_check(entry.spot == spot.spot_id and progression.get_stat("photo_spots") == 1.0, "a photo at a spot counts it")
+				activities.add_photo(null, spot)
+				_check(progression.get_stat("photo_spots") == 1.0 and progression.get_stat("photos_taken") == 2.0, "the same spot only counts once")
+				# Parking: score a gap the honest way by placing the car in it.
+				var bay: Node3D = tree.get_nodes_in_group(&"parking_bays")[0]
+				_mark.bay = bay
+				bay.global_transform = Transform3D(Basis(), _car.global_position + Vector3(12.0, -0.45, 0.0))
+				bay._car = _car
+				bay._active = true
+				bay._time = 6.0
+				_car.global_transform = Transform3D(bay.global_basis, bay.global_position + bay.global_basis.x * -0.15 + Vector3.UP * 0.5)
+				_car.linear_velocity = Vector3.ZERO
+			elif _frame == 400:
+				var bay: Node3D = _mark.bay
+				var record: Dictionary = activities.parking.get(bay.bay_id, {})
+				_check(record.get("medal", "") == "gold", "a straight park in the gap takes gold (%s, best %s)" % [record.get("medal", "none"), record.get("best", 0)])
+				# Scenic drive: drive past each point.
+				var drive: Node3D = tree.get_nodes_in_group(&"scenic_drives")[0]
+				drive._car = _car
+				drive.start()
+				for point in drive.points.slice(1):
+					_car.global_position = point
+					drive._process(0.1)
+				_check(progression.get_stat("scenic_drives") == 1.0, "finishing a scenic drive counts it")
+				# Lifts and relaxed cruising.
+				jobs.refresh_offers()
+				var lift: Dictionary = {}
+				for job in jobs.offers:
+					if job.get("lift", false):
+						lift = job
+				_check(not lift.is_empty() and lift.lines.size() == 3, "a passenger wants a lift")
+				activities.set_relaxed(true)
+				jobs.refresh_offers()
+				_check(jobs.offers.is_empty(), "relaxed cruising clears the job board")
+				activities.set_relaxed(false)
+				jobs.refresh_offers()
+				# The car meet passes on one rumour a night.
+				_check(classics.meet_rumour() != "" and classics.meet_rumour() == "", "the meet gives one rumour a night")
+				_next()
+		16:  # Cosmetics (trinkets, liveries, meet rewards) and each car's own model.
+			var progression := root.get_node("Progression")
+			var garage := root.get_node("Garage")
+			if _frame == 1:
+				progression.grant_reward("trinket_fluffy_dice", "test")
+				progression.grant_reward("livery_racing_stripes", "test")
+				_check(progression.earned_cosmetics("trinket").size() >= 1, "a trinket reward is earned")
+				_car.toggle_trinket("trinket_fluffy_dice")
+				var body: Node = _car.get_node("Body")
+				_check(body.get_node("Trinkets").get_child_count() == 1, "the dice hang in the cabin")
+				progression.check_meet_rewards(3)
+				_check(progression.rewards.has("trinket_air_freshener") and progression.rewards.has("livery_side_stripe"), "nights at the meet earn extras")
+				_car.toggle_trinket("trinket_air_freshener")
+				_check(_car.has_trinket("trinket_air_freshener") and not _car.has_trinket("trinket_fluffy_dice"), "one trinket per slot")
+				_car.set_livery("livery_racing_stripes")
+				var paint: ShaderMaterial = body._materials.get("Paint")
+				_check(paint != null and paint.get_shader_parameter("livery_mode") == 1, "stripes go on the paint")
+				var state: Dictionary = _car.vehicle_state()
+				_car.load_vehicle_state({"car_id": "pop_12"})
+				_check(_car.cosmetics.livery == "", "a bare state has no livery")
+				_car.load_vehicle_state(state)
+				_check(_car.cosmetics.livery == "livery_racing_stripes" and _car.has_trinket("trinket_air_freshener"), "extras are saved with the car")
+				# The modern lineup has its own bodies.
+				garage.add_car("lounge_14")
+				_check(garage.switch_car("lounge_14", _car), "switch to the Lounge")
+			elif _frame == 3:
+				_check(_car.get_node("Body").scene_file_path.ends_with("lounge/lounge.glb"), "the Lounge has its own body (%s)" % _car.get_node("Body").scene_file_path)
+				_check(_car.cosmetics.livery == "", "extras stay with the car they were fitted to")
+				garage.switch_car("pop_12", _car)
+			elif _frame == 5:
+				_check(_car.get_node("Body").scene_file_path.ends_with("pop/pop.glb"), "back in the Pop's body")
+				_check(_car.cosmetics.livery == "livery_racing_stripes", "the Pop kept its stripes")
+				_next()
 		_:
 			Input.action_release("accelerate")
 			Input.action_release("brake")

@@ -9,6 +9,9 @@ uniform float dither_strength : hint_range(0.0, 2.0) = 1.0;
 // Gentle contrast/saturation grade for the "faded VHS" look.
 uniform float saturation = 0.92;
 uniform float contrast = 1.04;
+// Photo-mode filters: a colour tint and a soft vignette.
+uniform vec3 tint : source_color = vec3(1.0);
+uniform float vignette : hint_range(0.0, 1.5) = 0.0;
 
 const float BAYER[16] = float[](
 	0.0, 8.0, 2.0, 10.0,
@@ -22,6 +25,9 @@ void fragment() {
 	float luma = dot(c, vec3(0.299, 0.587, 0.114));
 	c = mix(vec3(luma), c, saturation);
 	c = (c - 0.5) * contrast + 0.5;
+	c *= tint;
+	vec2 v = UV - 0.5;
+	c *= 1.0 - vignette * dot(v, v) * 1.6;
 
 	if (dither_enabled) {
 		ivec2 px = ivec2(floor(UV / TEXTURE_PIXEL_SIZE));

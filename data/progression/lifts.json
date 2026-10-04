@@ -1,0 +1,13 @@
+{
+	"_comment": "Optional passengers (Jobs offers one lift at a time). Each says its lines a quarter, half and three quarters of the way there.",
+	"passengers": [
+		{"name": "Marnie, a night-shift nurse", "lines": ["Twelve hours on my feet. This little car's nicer than a taxi.", "When I started at Royal Perth they still had the old ward where the lights hum.", "They say the lift up there stops on a floor that isn't on the buttons. I always take the stairs."]},
+		{"name": "Dev, a uni student", "lines": ["Sorry, I missed the last bus by like eight seconds.", "Do you know the radio station that only plays after midnight? My housemate swears it's real.", "He says it plays songs from records that were never released. Anyway, this is great, thank you."]},
+		{"name": "Gwen, who's lived here since 1962", "lines": ["My husband had one of these. The old kind, with the doors the wrong way round.", "He used to drive it down to the foreshore every Sunday. Sold it in seventy-nine.", "Funny thing. I saw it go past last week. Same colour, same dent. Couldn't be, of course."]},
+		{"name": "Sam, a chef heading home", "lines": ["If you ever want the best sausage roll in Perth, it's the servo on Fitzgerald, two a.m.", "Kitchen's been weird lately. Someone keeps leaving the walk-in open.", "Nobody's on the roster at that hour. Anyway, smells like rain, doesn't it?"]},
+		{"name": "Tilly, a busker with a ukulele", "lines": ["You don't mind the uke on my lap? It's had a big night.", "Played the Murray Street mall till the security guard asked for a song.", "He requested something I'd never heard of and then hummed the whole thing. Lovely voice. Wasn't there when I looked up."]},
+		{"name": "Ray, a retired cabbie", "lines": ["Forty years driving this city. Never been driven by a 500 before.", "Kings Park at three in the morning, you'd get fares who wanted to go nowhere. Just drive.", "One of them used to get out at the lookout and not come back. Paid in coins from before decimal."]},
+		{"name": "Priya, off to an early flight", "lines": ["Thank you, my Uber cancelled twice.", "I'm meeting my sister in Bali. She left Perth because she said the nights here felt like someone was watching.", "I think it's lovely. Quiet. Look how empty the roads are."]},
+		{"name": "Jonno, a bloke with a surfboard", "lines": ["Board fits if I hang it out the window, yeah? Legend.", "Swell's meant to be pumping at dawn. You surf?", "Mate of mine reckons he saw a doorless little car on the foreshore at four a.m. Wicker seats. Probably the beers."]}
+	]
+}
