@@ -135,3 +135,13 @@ def test_home_frame_and_marker_snap():
     assert np.isclose(e, 40) and np.isclose(n, 4 - places.KERB_GAP)
     assert np.isclose(yaw, places.godot_yaw(1, 0))
 
+
+
+def test_traffic_lanes_and_access():
+    from osm_import.traffic import drives, lane_split
+    assert lane_split({"highway": "primary", "lanes": "3"}, False) == (2, 1)
+    assert lane_split({"highway": "primary", "lanes": "3", "lanes:backward": "2"}, False) == (1, 2)
+    assert lane_split({"highway": "primary", "lanes": "2", "oneway": "yes"}, True) == (2, 0)
+    assert drives({"highway": "residential"})
+    assert not drives({"highway": "residential", "access": "private"})
+    assert not drives({"highway": "service"})

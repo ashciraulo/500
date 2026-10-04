@@ -40,7 +40,14 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
 - `get_landmarks()` returns suburb and square names with XZ positions, for a
   map screen or GPS later.
 
-## What's in the first slice
+## What's built
+
+Stage 2 adds Leederville, West Leederville, Subiaco, East Perth, Claisebrook,
+Optus Stadium, Victoria Park, Burswood and the Causeway (232 tiles in all).
+60 badges (`Collectible`) are shared out per region in `config.json`, so
+building a new region never moves one already placed.
+
+### The first slice
 
 CBD, Northbridge, Elizabeth Quay, Kings Park, the Narrows Bridge and the South
 Perth foreshore (120 tiles, about 6 × 5 km). Roads are draped on real terrain,

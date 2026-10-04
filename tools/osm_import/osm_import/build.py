@@ -886,7 +886,7 @@ def build(cfg: dict, keys: list[TileKey], region_of: dict, out_dir: Path = TILES
             "traffic": tname,
         }
         print(f"  [{n + 1}/{len(todo)}] tile {key.name}: {nbytes / 1024:.0f} KB in {time.time() - t0:.1f}s")
-    _write_index(cfg, proj, world, index, index_path)
+    _write_index(cfg, proj, world, index, index_path, region_of)
     if traffic_only:
         print(f"Traffic data: {total / 1e6:.2f} MB")
         return
@@ -902,7 +902,7 @@ def write_traffic(path: Path, data: dict) -> int:
     return len(blob)
 
 
-def _write_index(cfg, proj, world: World, index: dict, path: Path):
+def _write_index(cfg, proj, world: World, index: dict, path: Path, region_of: dict):
     sp = cfg["spawn"]
     se, sn = proj.fwd(sp["lon"], sp["lat"])
     nj, ni = world.hf.shape
@@ -933,12 +933,12 @@ def _write_index(cfg, proj, world: World, index: dict, path: Path):
             e, n = proj.fwd(lon, lat)
             landmarks[tags["name"]] = [round(e, 1), round(-n, 1)]
     index["landmarks"] = dict(sorted(landmarks.items()))
-    _write_places(cfg, proj, world, index, inside_hf)
+    _write_places(cfg, proj, world, index, inside_hf, region_of)
     index["tiles"] = dict(sorted(index["tiles"].items(), key=lambda kv: (kv[1]["j"], kv[1]["i"])))
     path.write_text(json.dumps(index, indent=1) + "\n")
 
 
-def _write_places(cfg, proj, world: World, index: dict, inside_hf):
+def _write_places(cfg, proj, world: World, index: dict, inside_hf, region_of: dict):
     """The townhouse, job sites and workshop bays. Entries outside this build's
     terrain keep what an earlier build wrote; entries off the built map are left
     out until a region covers them."""
@@ -975,6 +975,15 @@ def _write_places(cfg, proj, world: World, index: dict, inside_hf):
             entry.update({f: spec[f] for f in fields if f in spec})
             out.append(entry)
         index[group] = out
+    # Badges (Collectible): a quota per region, picked when the region is built.
+    region_keys: dict[str, set] = {}
+    for key, region in region_of.items():
+        region_keys.setdefault(region, set()).add((key.i, key.j))
+    quotas = {r: q for r, q in cfg.get("places", {}).get("badges", {}).items() if r in region_keys}
+    if quotas:
+        fresh = places.pick_badges(world.ways, world.hf.sample, region_keys, quotas, size, home, stable_rng)
+        kept = [b for b in index.get("badges", []) if b.get("region") not in quotas]
+        index["badges"] = kept + fresh
 
 
 def main(argv=None):
@@ -1001,8 +1010,16 @@ def main(argv=None):
     names = list(a.region) + [n for n, r in cfg["regions"].items() if r["stage"] in a.stage]
     if not names and not a.tiles:
         names = ["first_slice"]
+    # Tiles already built for a region outside this run belong to it: they are
+    # left alone (an earlier stage wins where regions overlap).
+    index_path = a.out / "index.json"
+    built = json.loads(index_path.read_text())["tiles"] if index_path.exists() else {}
+    names.sort(key=lambda n: cfg["regions"][n]["stage"])
     for name in names:
         for k in region_tiles(cfg, proj, name):
+            owner = built.get(k.name, {}).get("region")
+            if owner and owner != name and owner not in names and owner != "custom":
+                continue
             region_of.setdefault(k, name)
     for t in a.tiles:
         i, j = t.split("_")

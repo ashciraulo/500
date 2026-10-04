@@ -24,7 +24,8 @@ KEEP = {"highway", "building", "building:part", "landuse", "leisure", "natural",
         "roof:height", "roof:colour", "building:colour", "building:material", "service",
         "area", "surface", "historic", "heritage", "parking", "golf", "sport", "covered",
         "location", "level", "junction", "lit", "leaf_type", "genus", "species", "denotation",
-        "gauge", "usage", "construction", "disused", "tracks", "access", "type", "maxspeed"}
+        "gauge", "usage", "construction", "disused", "tracks", "access", "type", "maxspeed",
+        "lanes:forward", "lanes:backward", "motor_vehicle"}
 
 
 @dataclass
@@ -76,7 +77,7 @@ def _area_way(tags) -> bool:
 
 def extract(pbf: Path, proj: Projector, bbox_lonlat: tuple, use_cache: bool = True) -> Features:
     """bbox_lonlat = (lon0, lat0, lon1, lat1)."""
-    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 4)).encode()).hexdigest()[:16]
+    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 5)).encode()).hexdigest()[:16]
     cache = CACHE_DIR / f"features_{key}.pkl"
     if use_cache and cache.exists():
         with open(cache, "rb") as f:

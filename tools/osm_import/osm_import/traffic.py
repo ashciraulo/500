@@ -18,6 +18,35 @@ TRAFFIC_KINDS = {
     "residential", "living_street",
 }
 SIGNAL_REACH = 35.0  # metres along a way a signal tag may sit from its junction
+SIGNAL_SPREAD = 30.0  # junctions this close along a road share one set of lights
+NO_CARS = {"private", "no"}
+
+
+def _int(v):
+    m = re.match(r"\s*(\d+)", v or "")
+    return int(m.group(1)) if m else None
+
+
+def lane_split(tags, oneway: bool) -> tuple[int, int]:
+    """(forward, backward) lanes. lanes:forward/backward win; otherwise an odd
+    lane count gives the extra lane to the forward direction."""
+    lanes = styles.road_lanes(tags)
+    if oneway:
+        return max(1, lanes), 0
+    fwd, back = _int(tags.get("lanes:forward")), _int(tags.get("lanes:backward"))
+    if fwd and back:
+        return fwd, back
+    if fwd:
+        return fwd, max(1, lanes - fwd)
+    if back:
+        return max(1, lanes - back), back
+    back = max(1, lanes // 2)
+    return max(1, lanes - back), back
+
+
+def drives(tags) -> bool:
+    return tags.get("highway") in TRAFFIC_KINDS and tags.get("access") not in NO_CARS \
+        and tags.get("motor_vehicle") not in NO_CARS
 
 
 def _speed(tags):
@@ -31,7 +60,7 @@ class TrafficNetwork:
     def __init__(self, world):
         self.w = world
         hf = world.hf
-        ways = [w for w in world.ways if w.group == "road" and w.tags.get("highway") in TRAFFIC_KINDS]
+        ways = [w for w in world.ways if w.group == "road" and drives(w.tags)]
         ctrl_tags = {int(nid): t for nid, t, _, _ in world.control_nodes}
         # Where ways must be split: junctions plus give-way/stop nodes.
         split = set(world.junctions)
@@ -64,21 +93,24 @@ class TrafficNetwork:
                 if best is not None:
                     self.ctrl[nodes[best]] = "signals"
             cuts = [0] + [k for k in range(1, len(nodes) - 1) if nodes[k] in split] + [len(nodes) - 1]
-            lanes = styles.road_lanes(w.tags)
-            oneway = styles.is_oneway(w.tags)
+            reverse = w.tags.get("oneway") == "-1"
+            oneway = styles.is_oneway(w.tags) or reverse
+            fwd, back = lane_split(w.tags, oneway)
             speed = _speed(w.tags)
             for part, (k0, k1) in enumerate(zip(cuts[:-1], cuts[1:])):
                 xy = w.xy[k0:k1 + 1]
                 h = w.h[k0:k1 + 1]
+                a, b = nodes[k0], nodes[k1]
+                if reverse:
+                    xy, h, a, b = xy[::-1], h[::-1], b, a
                 pts = np.column_stack([xy[:, 0], h, -xy[:, 1]]).astype(np.float32)
                 for k in (k0, k1):
                     self.pos[nodes[k]] = (float(w.xy[k, 0]), float(w.h[k]), float(-w.xy[k, 1]))
                 mid_s = (s[k0] + s[k1]) / 2
                 r = {
-                    "a": nodes[k0], "b": nodes[k1], "pts": pts,
+                    "a": a, "b": b, "pts": pts,
                     "kind": w.tags["highway"],
-                    "lanes_fwd": lanes if oneway else max(1, lanes // 2),
-                    "lanes_back": 0 if oneway else max(1, lanes - lanes // 2),
+                    "lanes_fwd": fwd, "lanes_back": back,
                     "oneway": oneway,
                     "roundabout": w.tags.get("junction") == "roundabout",
                     "width": round(float(w.width), 2),
@@ -91,6 +123,7 @@ class TrafficNetwork:
                 if "name" in w.tags:
                     r["name"] = w.tags["name"]
                 self.roads.append(r)
+        self._spread_signals(ways)
         self.rails = [w for w in world.ways if w.group == "rail" and w.tags.get("railway") == "rail"]
         self.stations = []
         self.bus_stops = []
@@ -103,6 +136,26 @@ class TrafficNetwork:
                 self.stations.append((e, n, y, t.get("name", "")))
             elif t.get("highway") == "bus_stop":
                 self.bus_stops.append((e, n, y))
+
+    def _spread_signals(self, ways):
+        """Dual carriageways cross as two or four junction nodes a few metres
+        apart; OSM often tags only one. Give their neighbours along the road
+        the same lights so both halves run one cycle."""
+        junctions = self.w.junctions
+        add = set()
+        for w in ways:
+            nodes = [int(n) for n in w.nodes]
+            seg = np.linalg.norm(np.diff(w.xy, axis=0), axis=1)
+            s = np.concatenate([[0.0], np.cumsum(seg)])
+            js = [k for k, n in enumerate(nodes) if n in junctions]
+            for k in js:
+                if self.ctrl.get(nodes[k]) != "signals":
+                    continue
+                for kk in js:
+                    if kk != k and abs(s[kk] - s[k]) <= SIGNAL_SPREAD:
+                        add.add(nodes[kk])
+        for n in add:
+            self.ctrl[n] = "signals"
 
     def tile_data(self, bounds) -> dict:
         e0, n0, e1, n1 = bounds

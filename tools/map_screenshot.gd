@@ -34,6 +34,10 @@ func _process(_delta: float) -> bool:
 			{name = "kings_park", wait = 240, cam = [Vector3(-700, 170, 1100), Vector3(-1600, 10, 2300)], fog = 0.0010},
 			{name = "street_level", wait = 240, cam = [Vector3(596, 0, 973), Vector3(512, 0, 1178)], fog = 0.0030, above = 2.5},
 			{name = "narrows", wait = 240, cam = [Vector3(-1250, 0, 2050), Vector3(-1650, 0, 2500)], fog = 0.0025, above = 9.0},
+			{name = "oxford_st", wait = 300, cam = [Vector3(-1136, 0, -1055), Vector3(-1346, 0, -1056)], fog = 0.003, above = 3.0},
+			{name = "albany_hwy", wait = 300, cam = [Vector3(4104, 0, 3151), Vector3(4012, 0, 2962)], fog = 0.003, above = 3.0},
+			{name = "subiaco_aerial", wait = 300, cam = [Vector3(-2500, 200, 600), Vector3(-3000, 20, 150)], fog = 0.0010},
+			{name = "optus_stadium", wait = 300, cam = [Vector3(2800, 180, 1100), Vector3(3317, 20, 580)], fog = 0.0010},
 			{name = "night_james_st", wait = 300, hour = 22.0, cam = [Vector3(-125, 0, 2), Vector3(60, 0, 100)], fog = 0.003, above = 5.0},
 			{name = "night_aerial", wait = 240, hour = 22.0, cam = [Vector3(-100, 260, -450), Vector3(350, 20, 900)], fog = 0.0008},
 		]

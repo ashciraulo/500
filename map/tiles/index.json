@@ -1,5 +1,245 @@
 {
  "tiles": {
+  "3_-11": {
+   "i": 3,
+   "j": -11,
+   "file": "3_-11.p5t",
+   "region": "victoria_park",
+   "hmin": 15.67,
+   "hmax": 45.32,
+   "bytes": 376831,
+   "traffic": "3_-11.p5r"
+  },
+  "4_-11": {
+   "i": 4,
+   "j": -11,
+   "file": "4_-11.p5t",
+   "region": "victoria_park",
+   "hmin": 10.66,
+   "hmax": 45.85,
+   "bytes": 337149,
+   "traffic": "4_-11.p5r"
+  },
+  "5_-11": {
+   "i": 5,
+   "j": -11,
+   "file": "5_-11.p5t",
+   "region": "victoria_park",
+   "hmin": 10.63,
+   "hmax": 43.92,
+   "bytes": 436482,
+   "traffic": "5_-11.p5r"
+  },
+  "6_-11": {
+   "i": 6,
+   "j": -11,
+   "file": "6_-11.p5t",
+   "region": "victoria_park",
+   "hmin": 13.73,
+   "hmax": 42.11,
+   "bytes": 522251,
+   "traffic": "6_-11.p5r"
+  },
+  "7_-11": {
+   "i": 7,
+   "j": -11,
+   "file": "7_-11.p5t",
+   "region": "victoria_park",
+   "hmin": 12.61,
+   "hmax": 43.85,
+   "bytes": 513783,
+   "traffic": "7_-11.p5r"
+  },
+  "8_-11": {
+   "i": 8,
+   "j": -11,
+   "file": "8_-11.p5t",
+   "region": "victoria_park",
+   "hmin": 21.07,
+   "hmax": 48.19,
+   "bytes": 517082,
+   "traffic": "8_-11.p5r"
+  },
+  "9_-11": {
+   "i": 9,
+   "j": -11,
+   "file": "9_-11.p5t",
+   "region": "victoria_park",
+   "hmin": 17.85,
+   "hmax": 45.43,
+   "bytes": 466117,
+   "traffic": "9_-11.p5r"
+  },
+  "10_-11": {
+   "i": 10,
+   "j": -11,
+   "file": "10_-11.p5t",
+   "region": "victoria_park",
+   "hmin": 17.58,
+   "hmax": 43.21,
+   "bytes": 451359,
+   "traffic": "10_-11.p5r"
+  },
+  "3_-10": {
+   "i": 3,
+   "j": -10,
+   "file": "3_-10.p5t",
+   "region": "victoria_park",
+   "hmin": 25.54,
+   "hmax": 47.05,
+   "bytes": 501789,
+   "traffic": "3_-10.p5r"
+  },
+  "4_-10": {
+   "i": 4,
+   "j": -10,
+   "file": "4_-10.p5t",
+   "region": "victoria_park",
+   "hmin": 16.88,
+   "hmax": 49.56,
+   "bytes": 467064,
+   "traffic": "4_-10.p5r"
+  },
+  "5_-10": {
+   "i": 5,
+   "j": -10,
+   "file": "5_-10.p5t",
+   "region": "victoria_park",
+   "hmin": 14.0,
+   "hmax": 48.74,
+   "bytes": 394134,
+   "traffic": "5_-10.p5r"
+  },
+  "6_-10": {
+   "i": 6,
+   "j": -10,
+   "file": "6_-10.p5t",
+   "region": "victoria_park",
+   "hmin": 13.38,
+   "hmax": 36.73,
+   "bytes": 283262,
+   "traffic": "6_-10.p5r"
+  },
+  "7_-10": {
+   "i": 7,
+   "j": -10,
+   "file": "7_-10.p5t",
+   "region": "victoria_park",
+   "hmin": 12.79,
+   "hmax": 43.69,
+   "bytes": 437483,
+   "traffic": "7_-10.p5r"
+  },
+  "8_-10": {
+   "i": 8,
+   "j": -10,
+   "file": "8_-10.p5t",
+   "region": "victoria_park",
+   "hmin": 20.25,
+   "hmax": 47.29,
+   "bytes": 465364,
+   "traffic": "8_-10.p5r"
+  },
+  "9_-10": {
+   "i": 9,
+   "j": -10,
+   "file": "9_-10.p5t",
+   "region": "victoria_park",
+   "hmin": 16.41,
+   "hmax": 40.35,
+   "bytes": 499413,
+   "traffic": "9_-10.p5r"
+  },
+  "10_-10": {
+   "i": 10,
+   "j": -10,
+   "file": "10_-10.p5t",
+   "region": "victoria_park",
+   "hmin": 14.23,
+   "hmax": 38.38,
+   "bytes": 608060,
+   "traffic": "10_-10.p5r"
+  },
+  "3_-9": {
+   "i": 3,
+   "j": -9,
+   "file": "3_-9.p5t",
+   "region": "victoria_park",
+   "hmin": 13.97,
+   "hmax": 41.53,
+   "bytes": 504658,
+   "traffic": "3_-9.p5r"
+  },
+  "4_-9": {
+   "i": 4,
+   "j": -9,
+   "file": "4_-9.p5t",
+   "region": "victoria_park",
+   "hmin": 15.47,
+   "hmax": 41.57,
+   "bytes": 557387,
+   "traffic": "4_-9.p5r"
+  },
+  "5_-9": {
+   "i": 5,
+   "j": -9,
+   "file": "5_-9.p5t",
+   "region": "victoria_park",
+   "hmin": 16.14,
+   "hmax": 47.53,
+   "bytes": 516927,
+   "traffic": "5_-9.p5r"
+  },
+  "6_-9": {
+   "i": 6,
+   "j": -9,
+   "file": "6_-9.p5t",
+   "region": "victoria_park",
+   "hmin": 15.88,
+   "hmax": 38.71,
+   "bytes": 431521,
+   "traffic": "6_-9.p5r"
+  },
+  "7_-9": {
+   "i": 7,
+   "j": -9,
+   "file": "7_-9.p5t",
+   "region": "victoria_park",
+   "hmin": 15.89,
+   "hmax": 45.97,
+   "bytes": 373319,
+   "traffic": "7_-9.p5r"
+  },
+  "8_-9": {
+   "i": 8,
+   "j": -9,
+   "file": "8_-9.p5t",
+   "region": "victoria_park",
+   "hmin": 20.19,
+   "hmax": 41.07,
+   "bytes": 548588,
+   "traffic": "8_-9.p5r"
+  },
+  "9_-9": {
+   "i": 9,
+   "j": -9,
+   "file": "9_-9.p5t",
+   "region": "victoria_park",
+   "hmin": 14.02,
+   "hmax": 36.56,
+   "bytes": 645595,
+   "traffic": "9_-9.p5r"
+  },
+  "10_-9": {
+   "i": 10,
+   "j": -9,
+   "file": "10_-9.p5t",
+   "region": "victoria_park",
+   "hmin": 12.84,
+   "hmax": 34.66,
+   "bytes": 545332,
+   "traffic": "10_-9.p5r"
+  },
   "-7_-8": {
    "i": -7,
    "j": -8,
@@ -119,6 +359,66 @@
    "hmax": 58.02,
    "bytes": 605017,
    "traffic": "4_-8.p5r"
+  },
+  "5_-8": {
+   "i": 5,
+   "j": -8,
+   "file": "5_-8.p5t",
+   "region": "victoria_park",
+   "hmin": 10.26,
+   "hmax": 43.34,
+   "bytes": 519041,
+   "traffic": "5_-8.p5r"
+  },
+  "6_-8": {
+   "i": 6,
+   "j": -8,
+   "file": "6_-8.p5t",
+   "region": "victoria_park",
+   "hmin": 11.65,
+   "hmax": 57.42,
+   "bytes": 527334,
+   "traffic": "6_-8.p5r"
+  },
+  "7_-8": {
+   "i": 7,
+   "j": -8,
+   "file": "7_-8.p5t",
+   "region": "victoria_park",
+   "hmin": 16.14,
+   "hmax": 43.81,
+   "bytes": 471251,
+   "traffic": "7_-8.p5r"
+  },
+  "8_-8": {
+   "i": 8,
+   "j": -8,
+   "file": "8_-8.p5t",
+   "region": "victoria_park",
+   "hmin": 16.32,
+   "hmax": 41.03,
+   "bytes": 514272,
+   "traffic": "8_-8.p5r"
+  },
+  "9_-8": {
+   "i": 9,
+   "j": -8,
+   "file": "9_-8.p5t",
+   "region": "victoria_park",
+   "hmin": 14.26,
+   "hmax": 32.45,
+   "bytes": 553890,
+   "traffic": "9_-8.p5r"
+  },
+  "10_-8": {
+   "i": 10,
+   "j": -8,
+   "file": "10_-8.p5t",
+   "region": "victoria_park",
+   "hmin": 11.64,
+   "hmax": 35.58,
+   "bytes": 621647,
+   "traffic": "10_-8.p5r"
   },
   "-7_-7": {
    "i": -7,
@@ -240,6 +540,66 @@
    "bytes": 513343,
    "traffic": "4_-7.p5r"
   },
+  "5_-7": {
+   "i": 5,
+   "j": -7,
+   "file": "5_-7.p5t",
+   "region": "victoria_park",
+   "hmin": 5.34,
+   "hmax": 23.57,
+   "bytes": 533655,
+   "traffic": "5_-7.p5r"
+  },
+  "6_-7": {
+   "i": 6,
+   "j": -7,
+   "file": "6_-7.p5t",
+   "region": "victoria_park",
+   "hmin": 6.09,
+   "hmax": 35.51,
+   "bytes": 479496,
+   "traffic": "6_-7.p5r"
+  },
+  "7_-7": {
+   "i": 7,
+   "j": -7,
+   "file": "7_-7.p5t",
+   "region": "victoria_park",
+   "hmin": 6.17,
+   "hmax": 57.78,
+   "bytes": 526437,
+   "traffic": "7_-7.p5r"
+  },
+  "8_-7": {
+   "i": 8,
+   "j": -7,
+   "file": "8_-7.p5t",
+   "region": "victoria_park",
+   "hmin": 17.49,
+   "hmax": 38.6,
+   "bytes": 596045,
+   "traffic": "8_-7.p5r"
+  },
+  "9_-7": {
+   "i": 9,
+   "j": -7,
+   "file": "9_-7.p5t",
+   "region": "victoria_park",
+   "hmin": 15.17,
+   "hmax": 35.78,
+   "bytes": 612002,
+   "traffic": "9_-7.p5r"
+  },
+  "10_-7": {
+   "i": 10,
+   "j": -7,
+   "file": "10_-7.p5t",
+   "region": "victoria_park",
+   "hmin": 12.44,
+   "hmax": 39.23,
+   "bytes": 510744,
+   "traffic": "10_-7.p5r"
+  },
   "-7_-6": {
    "i": -7,
    "j": -6,
@@ -359,6 +719,66 @@
    "hmax": 12.81,
    "bytes": 160509,
    "traffic": "4_-6.p5r"
+  },
+  "5_-6": {
+   "i": 5,
+   "j": -6,
+   "file": "5_-6.p5t",
+   "region": "victoria_park",
+   "hmin": -2.5,
+   "hmax": 33.84,
+   "bytes": 283618,
+   "traffic": "5_-6.p5r"
+  },
+  "6_-6": {
+   "i": 6,
+   "j": -6,
+   "file": "6_-6.p5t",
+   "region": "victoria_park",
+   "hmin": -0.03,
+   "hmax": 31.15,
+   "bytes": 629126,
+   "traffic": "6_-6.p5r"
+  },
+  "7_-6": {
+   "i": 7,
+   "j": -6,
+   "file": "7_-6.p5t",
+   "region": "victoria_park",
+   "hmin": 4.39,
+   "hmax": 39.24,
+   "bytes": 640860,
+   "traffic": "7_-6.p5r"
+  },
+  "8_-6": {
+   "i": 8,
+   "j": -6,
+   "file": "8_-6.p5t",
+   "region": "victoria_park",
+   "hmin": 8.73,
+   "hmax": 44.68,
+   "bytes": 555484,
+   "traffic": "8_-6.p5r"
+  },
+  "9_-6": {
+   "i": 9,
+   "j": -6,
+   "file": "9_-6.p5t",
+   "region": "victoria_park",
+   "hmin": 18.75,
+   "hmax": 40.52,
+   "bytes": 456113,
+   "traffic": "9_-6.p5r"
+  },
+  "10_-6": {
+   "i": 10,
+   "j": -6,
+   "file": "10_-6.p5t",
+   "region": "victoria_park",
+   "hmin": 16.28,
+   "hmax": 33.88,
+   "bytes": 469380,
+   "traffic": "10_-6.p5r"
   },
   "-7_-5": {
    "i": -7,
@@ -480,6 +900,66 @@
    "bytes": 255672,
    "traffic": "4_-5.p5r"
   },
+  "5_-5": {
+   "i": 5,
+   "j": -5,
+   "file": "5_-5.p5t",
+   "region": "victoria_park",
+   "hmin": -4.43,
+   "hmax": 14.78,
+   "bytes": 389685,
+   "traffic": "5_-5.p5r"
+  },
+  "6_-5": {
+   "i": 6,
+   "j": -5,
+   "file": "6_-5.p5t",
+   "region": "victoria_park",
+   "hmin": -4.0,
+   "hmax": 21.56,
+   "bytes": 398399,
+   "traffic": "6_-5.p5r"
+  },
+  "7_-5": {
+   "i": 7,
+   "j": -5,
+   "file": "7_-5.p5t",
+   "region": "victoria_park",
+   "hmin": 1.39,
+   "hmax": 24.33,
+   "bytes": 516337,
+   "traffic": "7_-5.p5r"
+  },
+  "8_-5": {
+   "i": 8,
+   "j": -5,
+   "file": "8_-5.p5t",
+   "region": "victoria_park",
+   "hmin": 1.39,
+   "hmax": 41.05,
+   "bytes": 493573,
+   "traffic": "8_-5.p5r"
+  },
+  "9_-5": {
+   "i": 9,
+   "j": -5,
+   "file": "9_-5.p5t",
+   "region": "victoria_park",
+   "hmin": 16.08,
+   "hmax": 36.34,
+   "bytes": 367524,
+   "traffic": "9_-5.p5r"
+  },
+  "10_-5": {
+   "i": 10,
+   "j": -5,
+   "file": "10_-5.p5t",
+   "region": "victoria_park",
+   "hmin": 16.36,
+   "hmax": 30.92,
+   "bytes": 469967,
+   "traffic": "10_-5.p5r"
+  },
   "-7_-4": {
    "i": -7,
    "j": -4,
@@ -599,6 +1079,66 @@
    "hmax": 97.93,
    "bytes": 654350,
    "traffic": "4_-4.p5r"
+  },
+  "5_-4": {
+   "i": 5,
+   "j": -4,
+   "file": "5_-4.p5t",
+   "region": "east_perth",
+   "hmin": -2.5,
+   "hmax": 21.91,
+   "bytes": 270297,
+   "traffic": "5_-4.p5r"
+  },
+  "6_-4": {
+   "i": 6,
+   "j": -4,
+   "file": "6_-4.p5t",
+   "region": "east_perth",
+   "hmin": -2.5,
+   "hmax": 8.8,
+   "bytes": 86987,
+   "traffic": "6_-4.p5r"
+  },
+  "7_-4": {
+   "i": 7,
+   "j": -4,
+   "file": "7_-4.p5t",
+   "region": "east_perth",
+   "hmin": -2.61,
+   "hmax": 80.38,
+   "bytes": 478943,
+   "traffic": "7_-4.p5r"
+  },
+  "8_-4": {
+   "i": 8,
+   "j": -4,
+   "file": "8_-4.p5t",
+   "region": "victoria_park",
+   "hmin": 0.59,
+   "hmax": 37.19,
+   "bytes": 639504,
+   "traffic": "8_-4.p5r"
+  },
+  "9_-4": {
+   "i": 9,
+   "j": -4,
+   "file": "9_-4.p5t",
+   "region": "victoria_park",
+   "hmin": 14.93,
+   "hmax": 46.01,
+   "bytes": 555069,
+   "traffic": "9_-4.p5r"
+  },
+  "10_-4": {
+   "i": 10,
+   "j": -4,
+   "file": "10_-4.p5t",
+   "region": "victoria_park",
+   "hmin": 13.96,
+   "hmax": 41.62,
+   "bytes": 504461,
+   "traffic": "10_-4.p5r"
   },
   "-7_-3": {
    "i": -7,
@@ -720,6 +1260,76 @@
    "bytes": 651296,
    "traffic": "4_-3.p5r"
   },
+  "5_-3": {
+   "i": 5,
+   "j": -3,
+   "file": "5_-3.p5t",
+   "region": "east_perth",
+   "hmin": -4.0,
+   "hmax": 27.36,
+   "bytes": 272813,
+   "traffic": "5_-3.p5r"
+  },
+  "6_-3": {
+   "i": 6,
+   "j": -3,
+   "file": "6_-3.p5t",
+   "region": "east_perth",
+   "hmin": -2.78,
+   "hmax": 9.97,
+   "bytes": 188901,
+   "traffic": "6_-3.p5r"
+  },
+  "7_-3": {
+   "i": 7,
+   "j": -3,
+   "file": "7_-3.p5t",
+   "region": "east_perth",
+   "hmin": -3.3,
+   "hmax": 112.23,
+   "bytes": 422718,
+   "traffic": "7_-3.p5r"
+  },
+  "-11_-2": {
+   "i": -11,
+   "j": -2,
+   "file": "-11_-2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 17.34,
+   "hmax": 49.07,
+   "bytes": 261897,
+   "traffic": "-11_-2.p5r"
+  },
+  "-10_-2": {
+   "i": -10,
+   "j": -2,
+   "file": "-10_-2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 14.46,
+   "hmax": 38.8,
+   "bytes": 360283,
+   "traffic": "-10_-2.p5r"
+  },
+  "-9_-2": {
+   "i": -9,
+   "j": -2,
+   "file": "-9_-2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 16.25,
+   "hmax": 41.51,
+   "bytes": 540192,
+   "traffic": "-9_-2.p5r"
+  },
+  "-8_-2": {
+   "i": -8,
+   "j": -2,
+   "file": "-8_-2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 20.5,
+   "hmax": 47.7,
+   "bytes": 659451,
+   "traffic": "-8_-2.p5r"
+  },
   "-7_-2": {
    "i": -7,
    "j": -2,
@@ -839,6 +1449,76 @@
    "hmax": 49.68,
    "bytes": 701547,
    "traffic": "4_-2.p5r"
+  },
+  "5_-2": {
+   "i": 5,
+   "j": -2,
+   "file": "5_-2.p5t",
+   "region": "east_perth",
+   "hmin": -4.0,
+   "hmax": 42.82,
+   "bytes": 310289,
+   "traffic": "5_-2.p5r"
+  },
+  "6_-2": {
+   "i": 6,
+   "j": -2,
+   "file": "6_-2.p5t",
+   "region": "east_perth",
+   "hmin": -4.0,
+   "hmax": 52.29,
+   "bytes": 449876,
+   "traffic": "6_-2.p5r"
+  },
+  "7_-2": {
+   "i": 7,
+   "j": -2,
+   "file": "7_-2.p5t",
+   "region": "east_perth",
+   "hmin": -3.3,
+   "hmax": 21.48,
+   "bytes": 606184,
+   "traffic": "7_-2.p5r"
+  },
+  "-11_-1": {
+   "i": -11,
+   "j": -1,
+   "file": "-11_-1.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 23.31,
+   "hmax": 48.08,
+   "bytes": 320315,
+   "traffic": "-11_-1.p5r"
+  },
+  "-10_-1": {
+   "i": -10,
+   "j": -1,
+   "file": "-10_-1.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 14.45,
+   "hmax": 42.17,
+   "bytes": 360226,
+   "traffic": "-10_-1.p5r"
+  },
+  "-9_-1": {
+   "i": -9,
+   "j": -1,
+   "file": "-9_-1.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 13.89,
+   "hmax": 36.8,
+   "bytes": 444958,
+   "traffic": "-9_-1.p5r"
+  },
+  "-8_-1": {
+   "i": -8,
+   "j": -1,
+   "file": "-8_-1.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 18.36,
+   "hmax": 53.04,
+   "bytes": 651194,
+   "traffic": "-8_-1.p5r"
   },
   "-7_-1": {
    "i": -7,
@@ -960,6 +1640,76 @@
    "bytes": 584711,
    "traffic": "4_-1.p5r"
   },
+  "5_-1": {
+   "i": 5,
+   "j": -1,
+   "file": "5_-1.p5t",
+   "region": "east_perth",
+   "hmin": -4.0,
+   "hmax": 29.76,
+   "bytes": 344267,
+   "traffic": "5_-1.p5r"
+  },
+  "6_-1": {
+   "i": 6,
+   "j": -1,
+   "file": "6_-1.p5t",
+   "region": "east_perth",
+   "hmin": -1.96,
+   "hmax": 20.63,
+   "bytes": 428573,
+   "traffic": "6_-1.p5r"
+  },
+  "7_-1": {
+   "i": 7,
+   "j": -1,
+   "file": "7_-1.p5t",
+   "region": "east_perth",
+   "hmin": -2.5,
+   "hmax": 30.29,
+   "bytes": 410548,
+   "traffic": "7_-1.p5r"
+  },
+  "-11_0": {
+   "i": -11,
+   "j": 0,
+   "file": "-11_0.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 22.84,
+   "hmax": 52.66,
+   "bytes": 411340,
+   "traffic": "-11_0.p5r"
+  },
+  "-10_0": {
+   "i": -10,
+   "j": 0,
+   "file": "-10_0.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 14.25,
+   "hmax": 39.83,
+   "bytes": 446410,
+   "traffic": "-10_0.p5r"
+  },
+  "-9_0": {
+   "i": -9,
+   "j": 0,
+   "file": "-9_0.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 10.72,
+   "hmax": 38.73,
+   "bytes": 531861,
+   "traffic": "-9_0.p5r"
+  },
+  "-8_0": {
+   "i": -8,
+   "j": 0,
+   "file": "-8_0.p5t",
+   "region": "leederville_subiaco",
+   "hmin": -1.0,
+   "hmax": 33.43,
+   "bytes": 642015,
+   "traffic": "-8_0.p5r"
+  },
   "-7_0": {
    "i": -7,
    "j": 0,
@@ -1080,6 +1830,76 @@
    "bytes": 518510,
    "traffic": "4_0.p5r"
   },
+  "5_0": {
+   "i": 5,
+   "j": 0,
+   "file": "5_0.p5t",
+   "region": "east_perth",
+   "hmin": -2.5,
+   "hmax": 15.55,
+   "bytes": 132665,
+   "traffic": "5_0.p5r"
+  },
+  "6_0": {
+   "i": 6,
+   "j": 0,
+   "file": "6_0.p5t",
+   "region": "east_perth",
+   "hmin": -1.71,
+   "hmax": 10.98,
+   "bytes": 175207,
+   "traffic": "6_0.p5r"
+  },
+  "7_0": {
+   "i": 7,
+   "j": 0,
+   "file": "7_0.p5t",
+   "region": "east_perth",
+   "hmin": -3.09,
+   "hmax": 17.11,
+   "bytes": 168274,
+   "traffic": "7_0.p5r"
+  },
+  "-11_1": {
+   "i": -11,
+   "j": 1,
+   "file": "-11_1.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 16.86,
+   "hmax": 48.16,
+   "bytes": 384355,
+   "traffic": "-11_1.p5r"
+  },
+  "-10_1": {
+   "i": -10,
+   "j": 1,
+   "file": "-10_1.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 13.95,
+   "hmax": 34.56,
+   "bytes": 553865,
+   "traffic": "-10_1.p5r"
+  },
+  "-9_1": {
+   "i": -9,
+   "j": 1,
+   "file": "-9_1.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 13.24,
+   "hmax": 38.31,
+   "bytes": 484369,
+   "traffic": "-9_1.p5r"
+  },
+  "-8_1": {
+   "i": -8,
+   "j": 1,
+   "file": "-8_1.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 12.68,
+   "hmax": 35.64,
+   "bytes": 463104,
+   "traffic": "-8_1.p5r"
+  },
   "-7_1": {
    "i": -7,
    "j": 1,
@@ -1199,6 +2019,306 @@
    "hmax": 34.17,
    "bytes": 605772,
    "traffic": "4_1.p5r"
+  },
+  "5_1": {
+   "i": 5,
+   "j": 1,
+   "file": "5_1.p5t",
+   "region": "east_perth",
+   "hmin": -2.5,
+   "hmax": 47.64,
+   "bytes": 335292,
+   "traffic": "5_1.p5r"
+  },
+  "6_1": {
+   "i": 6,
+   "j": 1,
+   "file": "6_1.p5t",
+   "region": "east_perth",
+   "hmin": -2.5,
+   "hmax": 12.76,
+   "bytes": 99557,
+   "traffic": "6_1.p5r"
+  },
+  "7_1": {
+   "i": 7,
+   "j": 1,
+   "file": "7_1.p5t",
+   "region": "east_perth",
+   "hmin": -2.5,
+   "hmax": 36.26,
+   "bytes": 136892,
+   "traffic": "7_1.p5r"
+  },
+  "-11_2": {
+   "i": -11,
+   "j": 2,
+   "file": "-11_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 12.68,
+   "hmax": 38.04,
+   "bytes": 422076,
+   "traffic": "-11_2.p5r"
+  },
+  "-10_2": {
+   "i": -10,
+   "j": 2,
+   "file": "-10_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 11.26,
+   "hmax": 31.63,
+   "bytes": 404379,
+   "traffic": "-10_2.p5r"
+  },
+  "-9_2": {
+   "i": -9,
+   "j": 2,
+   "file": "-9_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 14.34,
+   "hmax": 39.05,
+   "bytes": 355952,
+   "traffic": "-9_2.p5r"
+  },
+  "-8_2": {
+   "i": -8,
+   "j": 2,
+   "file": "-8_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 21.09,
+   "hmax": 48.32,
+   "bytes": 391840,
+   "traffic": "-8_2.p5r"
+  },
+  "-7_2": {
+   "i": -7,
+   "j": 2,
+   "file": "-7_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 17.99,
+   "hmax": 45.51,
+   "bytes": 393116,
+   "traffic": "-7_2.p5r"
+  },
+  "-6_2": {
+   "i": -6,
+   "j": 2,
+   "file": "-6_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.55,
+   "hmax": 47.13,
+   "bytes": 422302,
+   "traffic": "-6_2.p5r"
+  },
+  "-5_2": {
+   "i": -5,
+   "j": 2,
+   "file": "-5_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.55,
+   "hmax": 54.36,
+   "bytes": 392278,
+   "traffic": "-5_2.p5r"
+  },
+  "-4_2": {
+   "i": -4,
+   "j": 2,
+   "file": "-4_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.55,
+   "hmax": 56.0,
+   "bytes": 588335,
+   "traffic": "-4_2.p5r"
+  },
+  "-3_2": {
+   "i": -3,
+   "j": 2,
+   "file": "-3_2.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 16.94,
+   "hmax": 46.89,
+   "bytes": 510653,
+   "traffic": "-3_2.p5r"
+  },
+  "-11_3": {
+   "i": -11,
+   "j": 3,
+   "file": "-11_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 2.64,
+   "hmax": 36.98,
+   "bytes": 431918,
+   "traffic": "-11_3.p5r"
+  },
+  "-10_3": {
+   "i": -10,
+   "j": 3,
+   "file": "-10_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 1.21,
+   "hmax": 27.59,
+   "bytes": 356934,
+   "traffic": "-10_3.p5r"
+  },
+  "-9_3": {
+   "i": -9,
+   "j": 3,
+   "file": "-9_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 1.21,
+   "hmax": 26.25,
+   "bytes": 357467,
+   "traffic": "-9_3.p5r"
+  },
+  "-8_3": {
+   "i": -8,
+   "j": 3,
+   "file": "-8_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.58,
+   "hmax": 34.76,
+   "bytes": 379114,
+   "traffic": "-8_3.p5r"
+  },
+  "-7_3": {
+   "i": -7,
+   "j": 3,
+   "file": "-7_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 12.98,
+   "hmax": 39.48,
+   "bytes": 331890,
+   "traffic": "-7_3.p5r"
+  },
+  "-6_3": {
+   "i": -6,
+   "j": 3,
+   "file": "-6_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.55,
+   "hmax": 25.67,
+   "bytes": 83398,
+   "traffic": "-6_3.p5r"
+  },
+  "-5_3": {
+   "i": -5,
+   "j": 3,
+   "file": "-5_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.15,
+   "hmax": 24.4,
+   "bytes": 85222,
+   "traffic": "-5_3.p5r"
+  },
+  "-4_3": {
+   "i": -4,
+   "j": 3,
+   "file": "-4_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.55,
+   "hmax": 36.47,
+   "bytes": 324017,
+   "traffic": "-4_3.p5r"
+  },
+  "-3_3": {
+   "i": -3,
+   "j": 3,
+   "file": "-3_3.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 14.72,
+   "hmax": 49.1,
+   "bytes": 405972,
+   "traffic": "-3_3.p5r"
+  },
+  "-11_4": {
+   "i": -11,
+   "j": 4,
+   "file": "-11_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 2.64,
+   "hmax": 23.48,
+   "bytes": 238870,
+   "traffic": "-11_4.p5r"
+  },
+  "-10_4": {
+   "i": -10,
+   "j": 4,
+   "file": "-10_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 2.64,
+   "hmax": 5.21,
+   "bytes": 29570,
+   "traffic": "-10_4.p5r"
+  },
+  "-9_4": {
+   "i": -9,
+   "j": 4,
+   "file": "-9_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 2.71,
+   "hmax": 14.87,
+   "bytes": 58926,
+   "traffic": "-9_4.p5r"
+  },
+  "-8_4": {
+   "i": -8,
+   "j": 4,
+   "file": "-8_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 2.71,
+   "hmax": 26.96,
+   "bytes": 243526,
+   "traffic": "-8_4.p5r"
+  },
+  "-7_4": {
+   "i": -7,
+   "j": 4,
+   "file": "-7_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.82,
+   "hmax": 34.81,
+   "bytes": 414371,
+   "traffic": "-7_4.p5r"
+  },
+  "-6_4": {
+   "i": -6,
+   "j": 4,
+   "file": "-6_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.55,
+   "hmax": 34.35,
+   "bytes": 166362,
+   "traffic": "-6_4.p5r"
+  },
+  "-5_4": {
+   "i": -5,
+   "j": 4,
+   "file": "-5_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 9.55,
+   "hmax": 39.47,
+   "bytes": 434386,
+   "traffic": "-5_4.p5r"
+  },
+  "-4_4": {
+   "i": -4,
+   "j": 4,
+   "file": "-4_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 15.13,
+   "hmax": 42.13,
+   "bytes": 383630,
+   "traffic": "-4_4.p5r"
+  },
+  "-3_4": {
+   "i": -3,
+   "j": 4,
+   "file": "-3_4.p5t",
+   "region": "leederville_subiaco",
+   "hmin": 15.12,
+   "hmax": 50.96,
+   "bytes": 406570,
+   "traffic": "-3_4.p5r"
   }
  },
  "format": 1,
@@ -1262,17 +2382,57 @@
  ],
  "attribution": "Map data \u00a9 OpenStreetMap contributors (ODbL). Elevation: Mapzen Terrain Tiles (SRTM, Geoscience Australia and others).",
  "landmarks": {
+  "Burswood": [
+   4003.6,
+   1580.4
+  ],
+  "Carlisle": [
+   5764.2,
+   3235.3
+  ],
+  "Churchlands": [
+   -5881.3,
+   -2689.0
+  ],
   "Crawley": [
    -3432.9,
    3178.1
+  ],
+  "Daglish": [
+   -4314.2,
+   595.4
+  ],
+  "Dalkeith": [
+   -5100.5,
+   5514.9
   ],
   "East Perth": [
    2266.2,
    928.0
   ],
+  "East Victoria Park": [
+   4624.6,
+   4244.5
+  ],
+  "Floreat": [
+   -5669.2,
+   -748.6
+  ],
+  "Herdsman": [
+   -4721.0,
+   -2737.2
+  ],
   "Highgate": [
    1481.2,
    -700.9
+  ],
+  "Jolimont": [
+   -4199.7,
+   65.8
+  ],
+  "Karrakatta": [
+   -5087.3,
+   2438.0
   ],
   "Kensington": [
    2535.1,
@@ -1282,6 +2442,38 @@
    -2393.4,
    1801.7
   ],
+  "Lathlain": [
+   4729.0,
+   2278.6
+  ],
+  "Leederville": [
+   -1179.8,
+   -1429.8
+  ],
+  "Maylands": [
+   4219.8,
+   -1267.3
+  ],
+  "Menora": [
+   656.6,
+   -2820.8
+  ],
+  "Mount Hawthorn": [
+   -1992.8,
+   -2696.1
+  ],
+  "Mount Lawley": [
+   2161.1,
+   -1970.9
+  ],
+  "Nedlands": [
+   -4555.8,
+   3765.2
+  ],
+  "North Perth": [
+   263.4,
+   -1675.7
+  ],
   "Northbridge": [
    343.0,
    208.1
@@ -1289,6 +2481,10 @@
   "Perth Cultural Centre": [
    683.7,
    368.7
+  ],
+  "Rivervale": [
+   5749.8,
+   1873.3
   ],
   "Shenton Park": [
    -3780.7,
@@ -1301,6 +2497,10 @@
   "Subiaco": [
    -2825.8,
    39.8
+  ],
+  "Victoria Park": [
+   3925.7,
+   2926.0
   ],
   "Wembley": [
    -3698.3,
@@ -1350,6 +2550,17 @@
    "suburb": "Northbridge"
   },
   {
+   "id": "oxford_st",
+   "position": [
+    -1145.9,
+    19.32,
+    -1054.85
+   ],
+   "yaw": 1.5628,
+   "name": "Oxford Street",
+   "suburb": "Leederville"
+  },
+  {
    "id": "subiaco_markets",
    "position": [
     -2900.87,
@@ -1381,6 +2592,17 @@
    "yaw": 2.658,
    "name": "Beaufort Street",
    "suburb": "Highgate"
+  },
+  {
+   "id": "albany_hwy",
+   "position": [
+    4099.52,
+    23.55,
+    3142.32
+   ],
+   "yaw": 0.4511,
+   "name": "Albany Highway",
+   "suburb": "Victoria Park"
   }
  ],
  "workshops": [
@@ -1395,7 +2617,27 @@
    "name": "Carport",
    "kinds": [
     "parts",
-    "tuning"
+    "tuning",
+    "cars",
+    "restore"
+   ]
+  },
+  {
+   "id": "scarborough_beach_rd_yard",
+   "position": [
+    -251.27,
+    14.31,
+    -135.43
+   ],
+   "yaw": -0.3632,
+   "name": "Newcastle St car yard",
+   "kinds": [
+    "dealer"
+   ],
+   "color": [
+    0.55,
+    0.75,
+    1.0
    ]
   },
   {
@@ -1433,6 +2675,368 @@
     0.95,
     0.85,
     0.4
+   ]
+  }
+ ],
+ "badges": [
+  {
+   "id": "first_slice_01",
+   "region": "first_slice",
+   "position": [
+    -2780.39,
+    35.43,
+    444.22
+   ]
+  },
+  {
+   "id": "first_slice_02",
+   "region": "first_slice",
+   "position": [
+    2125.05,
+    17.04,
+    3854.58
+   ]
+  },
+  {
+   "id": "first_slice_03",
+   "region": "first_slice",
+   "position": [
+    2363.65,
+    19.14,
+    -834.32
+   ]
+  },
+  {
+   "id": "first_slice_04",
+   "region": "first_slice",
+   "position": [
+    -3255.52,
+    10.73,
+    3892.29
+   ]
+  },
+  {
+   "id": "first_slice_05",
+   "region": "first_slice",
+   "position": [
+    -447.74,
+    8.17,
+    2207.02
+   ]
+  },
+  {
+   "id": "first_slice_06",
+   "region": "first_slice",
+   "position": [
+    -230.18,
+    28.53,
+    -797.82
+   ]
+  },
+  {
+   "id": "first_slice_07",
+   "region": "first_slice",
+   "position": [
+    1796.08,
+    16.44,
+    1467.88
+   ]
+  },
+  {
+   "id": "first_slice_08",
+   "region": "first_slice",
+   "position": [
+    -953.1,
+    57.47,
+    638.17
+   ]
+  },
+  {
+   "id": "first_slice_09",
+   "region": "first_slice",
+   "position": [
+    -3097.89,
+    21.26,
+    1969.05
+   ]
+  },
+  {
+   "id": "first_slice_10",
+   "region": "first_slice",
+   "position": [
+    -1874.11,
+    48.56,
+    -873.96
+   ]
+  },
+  {
+   "id": "first_slice_11",
+   "region": "first_slice",
+   "position": [
+    -421.85,
+    4.3,
+    3741.98
+   ]
+  },
+  {
+   "id": "first_slice_12",
+   "region": "first_slice",
+   "position": [
+    755.47,
+    25.88,
+    269.76
+   ]
+  },
+  {
+   "id": "first_slice_13",
+   "region": "first_slice",
+   "position": [
+    941.56,
+    2.63,
+    3244.82
+   ]
+  },
+  {
+   "id": "first_slice_14",
+   "region": "first_slice",
+   "position": [
+    -1720.75,
+    59.68,
+    2267.0
+   ]
+  },
+  {
+   "id": "first_slice_15",
+   "region": "first_slice",
+   "position": [
+    581.96,
+    11.6,
+    1326.31
+   ]
+  },
+  {
+   "id": "first_slice_16",
+   "region": "first_slice",
+   "position": [
+    -3037.36,
+    32.06,
+    -934.84
+   ]
+  },
+  {
+   "id": "first_slice_17",
+   "region": "first_slice",
+   "position": [
+    2316.66,
+    -0.12,
+    2398.64
+   ]
+  },
+  {
+   "id": "first_slice_18",
+   "region": "first_slice",
+   "position": [
+    2491.03,
+    8.47,
+    268.14
+   ]
+  },
+  {
+   "id": "first_slice_19",
+   "region": "first_slice",
+   "position": [
+    1292.75,
+    24.47,
+    -652.8
+   ]
+  },
+  {
+   "id": "first_slice_20",
+   "region": "first_slice",
+   "position": [
+    -1767.31,
+    37.84,
+    89.5
+   ]
+  },
+  {
+   "id": "leederville_subiaco_01",
+   "region": "leederville_subiaco",
+   "position": [
+    -3726.55,
+    15.38,
+    -401.07
+   ]
+  },
+  {
+   "id": "leederville_subiaco_02",
+   "region": "leederville_subiaco",
+   "position": [
+    -1305.86,
+    22.25,
+    -2088.06
+   ]
+  },
+  {
+   "id": "leederville_subiaco_03",
+   "region": "leederville_subiaco",
+   "position": [
+    -5447.12,
+    9.61,
+    -2149.98
+   ]
+  },
+  {
+   "id": "leederville_subiaco_04",
+   "region": "leederville_subiaco",
+   "position": [
+    -5409.07,
+    27.97,
+    892.9
+   ]
+  },
+  {
+   "id": "leederville_subiaco_05",
+   "region": "leederville_subiaco",
+   "position": [
+    -3546.49,
+    13.02,
+    -2412.75
+   ]
+  },
+  {
+   "id": "leederville_subiaco_06",
+   "region": "leederville_subiaco",
+   "position": [
+    -5387.28,
+    40.98,
+    -491.23
+   ]
+  },
+  {
+   "id": "leederville_subiaco_07",
+   "region": "leederville_subiaco",
+   "position": [
+    -2465.21,
+    32.98,
+    -1172.42
+   ]
+  },
+  {
+   "id": "east_perth_01",
+   "region": "east_perth",
+   "position": [
+    3486.61,
+    6.06,
+    747.99
+   ]
+  },
+  {
+   "id": "east_perth_02",
+   "region": "east_perth",
+   "position": [
+    2667.73,
+    24.73,
+    -952.98
+   ]
+  },
+  {
+   "id": "east_perth_03",
+   "region": "east_perth",
+   "position": [
+    3998.9,
+    3.8,
+    -790.09
+   ]
+  },
+  {
+   "id": "east_perth_04",
+   "region": "east_perth",
+   "position": [
+    2509.39,
+    9.57,
+    1294.89
+   ]
+  },
+  {
+   "id": "east_perth_05",
+   "region": "east_perth",
+   "position": [
+    3838.44,
+    5.02,
+    1840.54
+   ]
+  },
+  {
+   "id": "east_perth_06",
+   "region": "east_perth",
+   "position": [
+    2541.51,
+    8.22,
+    267.68
+   ]
+  },
+  {
+   "id": "victoria_park_01",
+   "region": "victoria_park",
+   "position": [
+    3405.36,
+    11.18,
+    3042.75
+   ]
+  },
+  {
+   "id": "victoria_park_02",
+   "region": "victoria_park",
+   "position": [
+    5424.21,
+    25.46,
+    5251.14
+   ]
+  },
+  {
+   "id": "victoria_park_03",
+   "region": "victoria_park",
+   "position": [
+    2081.36,
+    30.12,
+    5272.67
+   ]
+  },
+  {
+   "id": "victoria_park_04",
+   "region": "victoria_park",
+   "position": [
+    5394.78,
+    15.48,
+    1604.43
+   ]
+  },
+  {
+   "id": "victoria_park_05",
+   "region": "victoria_park",
+   "position": [
+    3732.2,
+    17.95,
+    4963.76
+   ]
+  },
+  {
+   "id": "victoria_park_06",
+   "region": "victoria_park",
+   "position": [
+    5107.6,
+    16.93,
+    3289.37
+   ]
+  },
+  {
+   "id": "victoria_park_07",
+   "region": "victoria_park",
+   "position": [
+    4179.17,
+    10.67,
+    2045.0
    ]
   }
  ]

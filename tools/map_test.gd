@@ -43,7 +43,10 @@ func _process(_delta: float) -> bool:
 			var spots := {}
 			for s in _main.get_tree().get_nodes_in_group(&"workshop_spots"):
 				spots[s.spot_id] = s
-			_check(spots.size() == 3, "three workshop bays (%d)" % spots.size())
+			_check(spots.size() >= 4, "workshop bays are placed (%d)" % spots.size())
+			_check(spots.has("scarborough_beach_rd_yard") and spots.scarborough_beach_rd_yard.offers("dealer"), "there is a car yard")
+			var badges := _main.get_tree().get_nodes_in_group(&"collectibles").size()
+			_check(badges >= 20, "badges are hidden around the map (%d)" % badges)
 			_check(spots.has("home_carport") and _flat(spots.home_carport.global_position).distance_to(_flat(_spawn.origin)) < 1.0,
 				"the car starts in the carport bay")
 			_check(spots.has("fitzgerald_st_servo") and spots.fitzgerald_st_servo.offers("fuel"), "the servo sells fuel")

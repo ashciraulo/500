@@ -254,7 +254,7 @@ func _place_home() -> void:
 	add_child(_home)
 
 
-## Job sites and workshop bays (docs/HOOKS.md). They stay loaded everywhere so
+## Job sites, badges and workshop bays (docs/HOOKS.md). They stay loaded everywhere so
 ## jobs can be offered for places that aren't streamed in yet.
 func _place_markers() -> void:
 	for entry: Dictionary in index.get("job_sites", []):
@@ -267,6 +267,12 @@ func _place_markers() -> void:
 			site.kinds = PackedStringArray(entry.kinds)
 		site.transform = _placed_transform(entry)
 		add_child(site)
+	for entry: Dictionary in index.get("badges", []):
+		var badge := Collectible.new()
+		badge.name = "Badge_" + str(entry.id)
+		badge.badge_id = entry.id
+		badge.transform = _placed_transform(entry)
+		add_child(badge)
 	for entry: Dictionary in index.get("workshops", []):
 		var spot := WorkshopSpot.new()
 		spot.name = "Workshop_" + str(entry.id)

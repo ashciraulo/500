@@ -102,3 +102,65 @@ def place(spec: dict, proj: Projector, ways, home: HomeSite | None):
             if "heading_deg" not in spec:
                 yaw = road_yaw
     return e, n, False, yaw
+
+
+def _badge_candidates(ways, home: HomeSite | None):
+    """Out-of-the-way spots a car can reach: dead ends, laneways, car park
+    aisles and park roads. Yields (e, n, weight)."""
+    ends: dict[int, int] = {}
+    for w in ways:
+        if w.group != "road":
+            continue
+        for k, n in enumerate(w.nodes):
+            ends[int(n)] = ends.get(int(n), 0) + (1 if k in (0, len(w.nodes) - 1) else 2)
+    for w in ways:
+        if w.group != "road" or w.grade_separated:
+            continue
+        t = w.tags
+        if t.get("highway") in NO_SNAP or t.get("access") in ("private", "no"):
+            continue
+        for k in (0, len(w.nodes) - 1):
+            if ends.get(int(w.nodes[k])) == 1:
+                yield float(w.xy[k, 0]), float(w.xy[k, 1]), 2.0
+        if t.get("service") in ("alley", "parking_aisle") or t.get("highway") == "track":
+            mid = len(w.xy) // 2
+            yield float(w.xy[mid, 0]), float(w.xy[mid, 1]), 1.0
+
+
+def pick_badges(ways, hf_sample, region_keys: dict, quotas: dict, size: float,
+                home: HomeSite | None, seed_fn) -> list[dict]:
+    """`quotas[region]` badges per region, spread out over its tiles by
+    farthest-point sampling. Ids are "<region>_<n>", so growing the map never
+    moves a badge someone may already have found."""
+    cands = list(_badge_candidates(ways, home))
+    if home:
+        from shapely.geometry import Point
+        fp = home.footprint.buffer(20)
+        cands = [c for c in cands if not fp.contains(Point(c[0], c[1]))]
+    if not cands:
+        return []
+    pts = np.array([(c[0], c[1]) for c in cands])
+    wgt = np.array([c[2] for c in cands])
+    tile = [(int(np.floor(e / size)), int(np.floor(n / size))) for e, n in pts]
+    out = []
+    for region, quota in quotas.items():
+        keys = region_keys.get(region)
+        if not keys:
+            continue
+        mask = np.array([t in keys for t in tile])
+        idx = np.flatnonzero(mask)
+        if len(idx) == 0:
+            continue
+        rng = seed_fn("badges", region)
+        chosen = [int(idx[rng.integers(len(idx))])]
+        d = np.hypot(*(pts[idx] - pts[chosen[0]]).T)
+        while len(chosen) < min(quota, len(idx)):
+            k = int(np.argmax(d * wgt[idx] * rng.uniform(0.8, 1.0, len(idx))))
+            chosen.append(int(idx[k]))
+            d = np.minimum(d, np.hypot(*(pts[idx] - pts[idx[k]]).T))
+        for n, c in enumerate(chosen):
+            e, nn = pts[c]
+            out.append({"id": f"{region}_{n + 1:02d}", "region": region,
+                        "position": [round(float(e), 2), round(float(hf_sample(e, nn)) + 0.02, 2), round(float(-nn), 2)]})
+    return out
+
