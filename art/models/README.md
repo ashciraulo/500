@@ -179,6 +179,20 @@ Each is one mesh named after it plus empties marking where things happen.
 | `groyne_section`, `groyne_head` | `Cast_L`, `Cast_R`, `Water`; the head adds `Cast_End` | 6 m of granite rock armour with a crushed-limestone path on the crest, origin on the path's centre line at water level, running out along -Y. The head rounds off the seaward end with a navigation post. |
 | `shop_photo_lab`, `shop_tackle` | `Door`, `Counter` | Single-storey Lake Street shops, 5 m wide: parapet name, verandah on green posts over the footpath, windows either side of a recessed door, a shallow lit room behind the glass. Made-up names: LAKE ST PHOTO and BAIT AND TACKLE. Origin at the base of the building line. |
 
+## Home life
+
+`scripts/build_homelife.py` writes `props/home/`: the neighbourhood cat, its
+bowl, a watering can, and three plant cuttings to find around the city that
+grow at home. Each file holds named meshes that share one origin; show one at
+a time.
+
+| File | Nodes |
+| --- | --- |
+| `cat.glb` | A ginger tabby in four poses: `Pose_Sit`, `Pose_Loaf`, `Pose_Sleep` (curled, for the end of the bed) and `Pose_Walk`. `Head_<pose>` empties mark its head for looking at or patting. |
+| `cat_bowl.glb` | `CatBowl` and `Food` (hide it once the cat has eaten). |
+| `watering_can.glb` | `WateringCan`; `Spout` is where the water comes out. |
+| `kangaroo_paw.glb`, `geraldton_wax.glb`, `frangipani.glb` | `Stage_1` (a cutting: in a jar of water, or a frangipani stick in a pot), `Stage_2` (young) and `Stage_3` (grown and in flower). The cuttings come from Kings Park, a Fremantle nursery and a neglected verge. |
+
 ## Found parts
 
 `scripts/build_accessories.py` writes bolt-on extras to `cars/parts/`, origin
