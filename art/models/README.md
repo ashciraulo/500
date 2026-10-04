@@ -49,7 +49,10 @@ fuzzy dash mat, phone holder, and gaffer tape on the driver's seat bolster.
 | --- | --- |
 | `Body` | Shell, bumpers, lamps surrounds, badges, plates. Material `Paint` carries the faded paint texture; a respray sets a colour and drops the texture (`car_body.gd` `set_paint()`). |
 | `Glass` | Windscreen, rear and quarter glass (transparent). |
-| `Door_L`, `Door_R` | Origin on the hinge line at the front edge; open by rotating about local Y (left door: negative angle opens). Door glass is a child. |
+| `Door_L`, `Door_R` | Origin on the hinge line at the front edge; open by rotating about local Y (left door: negative angle opens). Door glass is a child. `Door_R` is the driver's (right-hand drive: the wheel is at +X, the nose toward -Z). |
+| `DoorOpen_L`, `DoorOpen_R` | Empties on each hinge in the door's fully open pose (65 degrees on the modern cars, 60 on the classics, either way round, sign already applied). To open a door, slerp its basis from its rest basis to `DoorOpen_*`'s; the position stays. Every car with doors has them, checked against the body by `check_car_clipping.py`. |
+| `Seat_L`, `Seat_R` | Hip points on the front seats, facing forward (-Z). `Seat_R` is the driver's. |
+| `Exit_L`, `Exit_R` | On the ground between the open door and the body, about 0.4 m clear of each, facing away from the car (-Z points out). Where to stand the player on getting out. |
 | `SteeringWheel` | Turns about its local Z (the column axis). |
 | `Interior` | Dash, seats, console, mats, headliner. |
 | `Lights_Head`, `Lights_Tail` | Lamp lenses; materials `LampHead` / `LampTail` are driven by `car_body.gd`. |
@@ -90,11 +93,11 @@ Same node contract as the modern cars, plus:
 | --- | --- |
 | `Hub_FL`, `Hub_FR`, `Hub_RL`, `Hub_RR` | Wheel hub centres (the classics' track and wheelbase differ from the modern car's). `CarController._fit_rig()` moves the wheel anchors to them, takes the tyre radius from their height and sets the ride height so the model's ground meets the road. |
 | `WheelStyle_<style>` | Empty naming the wheel style the car came with (`wheel_<style>_l/_r.glb`); Godot 4.3 drops glTF extras, so the `Body` extra `wheels` is only a copy. |
-| `Door_*` extras `hinge`, `open_sign` | `hinge` is `front` (F, L, R) or `rear` (Nuova, Sport, D, Giardiniera, the Abarths: rear-hinged "suicide" doors, origin on the rear shut line). Suicide doors open the other way: rotate by `open_sign * angle` about local Y (Door_L: `-1` front-hinged, `+1` rear-hinged). |
+| `Door_*` extras `hinge`, `open_sign` | `hinge` is `front` (F, L, R) or `rear` (Nuova, Sport, D, Giardiniera, the Abarths: rear-hinged "suicide" doors, origin on the rear shut line). Suicide doors open the other way: rotate by `open_sign * angle` about local Y (Door_L: `-1` front-hinged, `+1` rear-hinged). Godot 4.3 drops these extras, so the game reads `DoorOpen_*` instead. |
 | `Mount_Spotlights` | Centre of the front bumper, where period spotlights clamp (the modern cars have one too). |
 | `Mount_Roof` | Roof centre (top of the canopy frame on the Jolly). |
 
-The Jolly has no doors (no `Door_*` nodes) and no roof; its `Glass` is the low
+The Jolly has no doors (no `Door_*`, `DoorOpen_*` or `Exit_*` nodes, but it has `Seat_*`) and no roof; its `Glass` is the low
 windscreen and `Mount_Mirror` sits on the windscreen's top rail.
 
 Every car (modern and classic) also marks its trinket slots: `Mount_Mirror`

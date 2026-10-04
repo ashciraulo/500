@@ -639,3 +639,43 @@ def front_frame():
 
 def rear_frame():
     return lambda u, v: ((u, 5, v), (0, -1, 0))
+
+
+def door_markers(open_deg, hip_drop=0.62):
+    """Empties for getting in and out, next to the doors already built:
+
+      DoorOpen_L/R  at the door's hinge, turned to the fully open pose (the
+                    sign already applied: Godot drops glTF extras, so this is
+                    how the game knows which way a door swings)
+      Seat_L/R      the hip point on each front seat, facing forward
+      Exit_L/R      on the ground between the open door and the body (on the
+                    bisector, about 0.4 m clear of each), facing away
+                    from the car
+
+    Call after any ride-height shift. Cars without doors (the Jolly) get
+    seats only."""
+    cam = bpy.data.objects.get("Cam_Cockpit")
+    for side, sx in (("L", 1), ("R", -1)):
+        if cam:
+            C.empty("Seat_" + side, (sx * abs(cam.location.x), cam.location.y + 0.05,
+                                     cam.location.z - hip_drop), size=0.1)
+        d = bpy.data.objects.get("Door_" + side)
+        if d is None:
+            continue
+        sign = d.get("open_sign", -1 if side == "L" else 1)
+        e = C.empty("DoorOpen_" + side, tuple(d.location), size=0.1)
+        # C.turn_scene_z180() bakes the doors (their nodes stay unrotated)
+        # but premultiplies its half turn onto rotated empties, so add the
+        # half turn here to leave the open pose relative to the door's rest
+        e.rotation_euler = (0, 0, math.radians(open_deg * sign) + math.pi)
+        corners = [d.matrix_world @ Vector(c) for c in d.bound_box]
+        ys = [v.y for v in corners]
+        along = 1 if (min(ys) + max(ys)) / 2 > d.location.y else -1   # hinge to shut line
+        length = max(abs(y - d.location.y) for y in ys)
+        # on the bisector of the open door and the body, so there's room
+        # either side of a standing player
+        half = math.radians(open_deg / 2)
+        r = min(0.85, 0.8 * length)
+        ex = C.empty("Exit_" + side, (d.location.x + sx * r * math.sin(half),
+                                      d.location.y + along * r * math.cos(half), 0.0), size=0.1)
+        ex.rotation_euler.z = math.radians(-90 * sx)    # facing away from the car (-Z out)

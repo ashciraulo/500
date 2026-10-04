@@ -1020,6 +1020,7 @@ def jolly_bits(ref, g, M):
 
 # ------------------------------------------------------------------ interior
 
+DOOR_OPEN_DEG = 60
 DRIVER_X = -0.27     # right-hand drive: the driver sits at -X (Godot +X after the export turn)
 
 
@@ -1428,6 +1429,7 @@ def build(spec):
         for o in bpy.data.objects:
             if o.parent is None and not o.name.startswith(("Wheel_", "Hub_")):
                 o.location.z += ride
+    K.door_markers(DOOR_OPEN_DEG)
     return root
 
 

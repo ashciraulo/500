@@ -141,6 +141,8 @@ def build(spec):
         # hinge out at the skin and just ahead of the shut line, so the
         # frame up the A-pillar swings clear of the wing and the dash
         C.set_origin(door, (sx * HINGE_X, HINGE_Y, 0.6))
+        door["open_sign"] = -sx         # Door_L opens with a negative angle
+        door["hinge"] = "front"
         g = C.join(door_glass[sx]["panes"], "Door_%s_Glass" % side)
         g.parent = door
         g.matrix_parent_inverse = door.matrix_world.inverted()
@@ -180,10 +182,14 @@ def build(spec):
         for o in root_objs:
             if not o.name.startswith("Wheel_"):
                 o.location.z += ride
+    K.door_markers(DOOR_OPEN_DEG)
     return root_objs
 
 
-HINGE_X, HINGE_Y = 0.83, -0.87
+# The hinge sits a little ahead of the shut line so the top front corner of
+# the frame clears the A-pillar from the first degrees of the swing.
+HINGE_X, HINGE_Y = 0.83, -0.96
+DOOR_OPEN_DEG = 65
 
 
 def _cabin_bvh(objs):
