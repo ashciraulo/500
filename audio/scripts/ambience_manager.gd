@@ -1,9 +1,12 @@
 extends Node
 ## Ambience and weather sound: Audio.ambience.
 ##
-## - Zone beds: set_zone("kingspark") crossfades to amb_kingspark_day or
-##   amb_kingspark_night (whichever matches the time), and sprinkles that
-##   zone's one-shots (birds, dogs, trains...) around the listener in 3D.
+## - Zone beds: set_zone("kingspark") crossfades to that zone's bed for the
+##   weather and time, and sprinkles that zone's one-shots (birds, dogs,
+##   trains...) around the listener in 3D. In order of preference:
+##   amb_<zone>_rain (raining), amb_<zone>_dawn (05:00-07:00),
+##   amb_<zone>_late (01:00-05:00), then amb_<zone>_day / _night, skipping
+##   any that don't exist. A change of rain or time crossfades it again.
 ## - Weather: rain beds outside and on the roof (inside the car), wind,
 ##   thunder after lightning, cicadas on clear days.
 ##
@@ -14,6 +17,10 @@ extends Node
 const FADE_S := 4.0
 ## Rain on the roof sits under the radio and engine in the cabin mix (-8 dB).
 const ROOF_TRIM := 0.4
+## The wet bed comes in above RAIN_WET_ON and goes again below RAIN_WET_OFF
+## (hysteresis, so rain hovering around 0.25 doesn't flap between beds).
+const RAIN_WET_ON := 0.3
+const RAIN_WET_OFF := 0.2
 
 ## One-shots scattered over each zone's bed: [sound, when, min_gap_s, max_gap_s]
 ## where when is "day", "night" or "any". Names are variant sets in res://audio/amb.
@@ -73,6 +80,8 @@ var fabric_roof := false # 500C / classics: softer, drummier rain inside
 var _bed_a: AudioStreamPlayer
 var _bed_b: AudioStreamPlayer
 var _bed_name := ""
+var _bed_key := ""       # zone|wet|period the current bed was picked for
+var _wet := false        # rain bed wanted (see RAIN_WET_ON/OFF)
 var _layers := {}        # layer id -> AudioStreamPlayer
 var _sprinkle_timers := {}
 var _source: Node
@@ -145,14 +154,55 @@ func set_weather(rain_intensity: float, storm_amount: float, wind_amount := 0.2)
 	rain = clampf(rain_intensity, 0.0, 1.0)
 	storm = clampf(storm_amount, 0.0, 1.0)
 	wind = clampf(wind_amount, 0.0, 1.0)
+	_refresh_bed()
 
 
 func set_time_of_day(hours: float) -> void:
 	time_of_day = fposmod(hours, 24.0)
-	var night := time_of_day < 6.0 or time_of_day >= 19.0
-	if night != is_night:
-		is_night = night
+	is_night = time_of_day < 6.0 or time_of_day >= 19.0
+	_refresh_bed()
+
+
+## "dawn" (05:00-07:00), "late" (01:00-05:00), else "night" or "day".
+func bed_period() -> String:
+	if time_of_day >= 5.0 and time_of_day < 7.0:
+		return "dawn"
+	if time_of_day >= 1.0 and time_of_day < 5.0:
+		return "late"
+	return "night" if is_night else "day"
+
+
+func _update_wet() -> void:
+	if _wet and rain < RAIN_WET_OFF:
+		_wet = false
+	elif not _wet and rain > RAIN_WET_ON:
+		_wet = true
+
+
+## Re-picks the bed when the wet state (with hysteresis) or the time period
+## changed. Cheap when nothing changed, so it runs every frame.
+func _refresh_bed() -> void:
+	_update_wet()
+	var key := "%s|%s|%s" % [zone, _wet, bed_period()]
+	if key != _bed_key and _bed_key != "":
 		_update_bed()
+
+
+## The bed to play now: the most specific one that exists.
+func _pick_bed() -> String:
+	var base := "amb/amb_" + zone
+	var period := bed_period()
+	var tries: Array[String] = []
+	if _wet:
+		tries.append(base + "_rain")
+	if period == "dawn" or period == "late":
+		tries.append(base + "_" + period)
+	tries.append(base + ("_night" if is_night else "_day"))
+	tries.append(base)  # zones with one bed for everything (e.g. tunnel)
+	for t in tries:
+		if Audio.has(t):
+			return t
+	return ""
 
 
 ## Call when lightning flashes; thunder follows at the speed of sound.
@@ -179,6 +229,7 @@ func _poll_source() -> void:
 	if clock:
 		set_time_of_day(float(clock.time_of_day))
 	if weather or clock:
+		_refresh_bed()
 		return
 	# Otherwise a node in the "weather_source" group with the same fields.
 	if _source == null or not is_instance_valid(_source):
@@ -190,6 +241,7 @@ func _poll_source() -> void:
 		storm = clampf((rain - 0.55) / 0.35, 0.0, 1.0)
 	if "time_of_day" in _source:
 		set_time_of_day(float(_source.time_of_day))
+	_refresh_bed()
 
 
 func _on_weather_lightning(_strength: float, distance_m: float) -> void:
@@ -201,10 +253,10 @@ func _on_weather_lightning(_strength: float, distance_m: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _update_bed(instant := false) -> void:
-	var want := "amb/amb_%s_%s" % [zone, "night" if is_night else "day"]
-	if not Audio.has(want):
-		want = "amb/amb_" + zone  # zones with one bed for both (e.g. tunnel)
-	if want == _bed_name or not Audio.has(want):
+	_update_wet()
+	_bed_key = "%s|%s|%s" % [zone, _wet, bed_period()]
+	var want := _pick_bed()
+	if want == "" or want == _bed_name:
 		return
 	var s := Audio.stream(want, true)
 	if s == null:

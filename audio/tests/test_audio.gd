@@ -48,6 +48,7 @@ func _ready() -> void:
 	await _test_hooks(audio)
 	await _test_traffic(audio)
 	await _test_footsteps(audio)
+	_test_programme(audio)
 	print("%d failure(s)" % failures)
 	quit(1 if failures else 0)
 
@@ -212,6 +213,20 @@ func _test_ambience(audio: Node) -> void:
 	for i in 20:
 		await process_frame
 	check(amb._bed_name.begins_with("amb/amb_kingspark") or not audio.has("amb/amb_kingspark_day"), "Kings Park bed: " + amb._bed_name)
+	# Bed variants: rain (with hysteresis), late night, dawn, back to day.
+	if audio.has("amb/amb_kingspark_rain"):
+		amb.set_time_of_day(12.0)
+		check(amb._bed_name == "amb/amb_kingspark_rain", "rain bed when wet: " + amb._bed_name)
+		amb.set_weather(0.25, 0.0)
+		check(amb._bed_name == "amb/amb_kingspark_rain", "rain bed held at 0.25 (hysteresis)")
+		amb.set_weather(0.0, 0.0)
+		check(amb._bed_name == "amb/amb_kingspark_day", "day bed when dry: " + amb._bed_name)
+		amb.set_time_of_day(3.0)
+		check(amb._bed_name == "amb/amb_kingspark_late", "late bed at 03:00: " + amb._bed_name)
+		amb.set_time_of_day(5.5)
+		check(amb._bed_name == "amb/amb_kingspark_dawn", "dawn bed at 05:30: " + amb._bed_name)
+		amb.set_time_of_day(12.0)
+		amb.set_weather(0.8, 1.0)
 	amb.lightning(500.0)
 	audio.set_player_inside(false)
 	check(true, "weather and lightning without errors")
@@ -310,6 +325,10 @@ func _test_hooks(audio: Node) -> void:
 			"oddity/odd_river_lights_loop", "oddity/odd_river_lights_shimmer", "oddity/odd_midnight_station_found",
 			"traffic/traffic_train_alongside_loop", "music/mus_sting_race_win"]:
 		check(audio.has(n), "event sound " + n)
+	# The mystery arc's cues (docs/oddity.md, "Mystery arc").
+	for n in ["oddity/odd_clue", "oddity/odd_clue_01", "oddity/odd_clue_04", "oddity/odd_clue_07", "oddity/odd_shed_knock", "oddity/odd_key_found",
+			"oddity/odd_shed_unlock", "oddity/odd_shed_interior_loop", "oddity/odd_mystery_bed_loop"]:
+		check(audio.has(n), "mystery sound " + n)
 	# ...and the gameplay hooks pick them up (scripts/world/train_race.gd, oddities.gd).
 	var race: Node = load("res://scripts/world/train_race.gd").new()
 	race.set_process(false)
@@ -432,3 +451,30 @@ func _test_footsteps(audio: Node) -> void:
 		check(found.has(s), "townhouse has %s floors" % s)
 	home.queue_free()
 	await process_frame
+
+
+func _test_programme(audio: Node) -> void:
+	print("radio programme")
+	var Radio := load("res://audio/scripts/radio.gd")
+	check(Radio.block_at(7.0) == "morning" and Radio.block_at(12.0) == "day" and Radio.block_at(17.5) == "evening"
+			and Radio.block_at(23.0) == "night" and Radio.block_at(0.5) == "night" and Radio.block_at(3.0) == "late",
+			"programme blocks by hour")
+	var radio: Node = audio.radio
+	for id in ["cinquecento", "nottefm"]:
+		check(Array(audio.names_in("music")).filter(func(n): return n.get_file().begins_with("mus_ident_" + id)).size() >= 3,
+				"%s has idents" % id)
+		for block in ["morning", "day", "evening", "night", "late"]:
+			var b: Dictionary = radio._broadcast_for(id, block)
+			var songs: Array = b.tracks.filter(func(n): return not n.get_file().begins_with("mus_ident_"))
+			check(songs.size() >= 3, "%s plays %d songs in the %s block" % [id, songs.size(), block])
+			check(b.tracks.size() > songs.size(), "%s %s has idents between songs" % [id, block])
+			var p: Dictionary = radio._programme(id).get("blocks", {})
+			var fits := songs.all(func(n): return not p.has(n.get_file()) or block in p[n.get_file()])
+			check(fits, "%s %s only plays songs tagged for it" % [id, block])
+	# The broadcast moves on while nobody listens, and keeps its place.
+	var st: Dictionary = radio._catch_up("cinquecento").duplicate()
+	radio._clock += st.length + 1.0
+	var st2: Dictionary = radio._catch_up("cinquecento")
+	check(st2.item != st.item or st2.index != st.index, "the station moved on while away")
+	check(radio._clock - st2.started < st2.length, "and is somewhere inside the current item")
+	check(audio.has("music/mus_radio_pips"), "time pips exist")

@@ -1,0 +1,34 @@
+{
+  "titles": {
+    "mus_nottefm_01": "Lucciole",
+    "mus_nottefm_02": "Nebbia",
+    "mus_nottefm_03": "Fari lontani",
+    "mus_nottefm_04": "Luna piena",
+    "mus_nottefm_05": "Velluto",
+    "mus_nottefm_06": "Lungomare",
+    "mus_nottefm_07": "Eco del porto",
+    "mus_nottefm_08": "Notturno blu",
+    "mus_nottefm_09": "Isola",
+    "mus_nottefm_10": "Neon lento",
+    "mus_nottefm_11": "Ninna nanna",
+    "mus_nottefm_12": "Pioggia fine",
+    "mus_nottefm_13": "Le tre di notte",
+    "mus_nottefm_14": "Ore piccole"
+  },
+  "blocks": {
+    "mus_nottefm_01": ["morning", "night", "late"],
+    "mus_nottefm_02": ["night", "late"],
+    "mus_nottefm_03": ["day", "evening", "night"],
+    "mus_nottefm_04": ["morning", "day", "late"],
+    "mus_nottefm_05": ["day", "evening", "night"],
+    "mus_nottefm_06": ["day", "evening", "night"],
+    "mus_nottefm_07": ["day", "evening", "night"],
+    "mus_nottefm_08": ["night", "late"],
+    "mus_nottefm_09": ["morning", "day", "evening"],
+    "mus_nottefm_10": ["evening", "night"],
+    "mus_nottefm_11": ["morning", "late"],
+    "mus_nottefm_12": ["evening", "night"],
+    "mus_nottefm_13": ["night", "late"],
+    "mus_nottefm_14": ["morning", "late"]
+  }
+}

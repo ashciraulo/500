@@ -56,7 +56,7 @@ Exhaust upgrades are their own sets: `fire12sport`, `fire12straight`.
 | `car/` | Doors, horns, indicators, wipers, radio clicks, windows, roof, cargo... | [car](docs/car.md) |
 | `tyre/`, `impact/` | Rolling on each surface, skids, splashes, road features, crashes, street objects | [tyre](docs/tyre.md), [impact](docs/impact.md) |
 | `weather/` | Rain outside and on the roof, thunder, wind, cicadas, drips | [weather](docs/weather.md) |
-| `amb/` | Perth ambience beds by zone, day and night, and wildlife one-shots | [amb](docs/amb.md) |
+| `amb/` | Perth ambience beds by zone (day, night, rain, late night and dawn) and wildlife one-shots | [amb](docs/amb.md) |
 | `oddity/` | Night oddities: the midnight station, static whispers, river lights | [oddity](docs/oddity.md) |
 | `home/`, `garage/` | The townhouse and garage/servo/car-wash activities | [home](docs/home.md), [garage](docs/garage.md) |
 | `ui/` | Menu, jobs, checkpoints, stingers | [ui](docs/ui.md) |
@@ -140,7 +140,12 @@ start swapping in your own recordings, regenerate only what you need.
   `volume_music` and `volume_radio` (0..1, sliders in the pause menu's
   Sound section, next to an "Open My Music folder" button).
 - **`Audio.radio`** (`radio.gd`): Radio Cinquecento, Notte FM, My Music and
-  (after midnight only) an unlisted station. Keys: `.` / `,` change station,
+  (after midnight only) an unlisted station. The two built-in stations run
+  like real broadcasts: each keeps its place while you listen elsewhere,
+  plays the songs its `music/programme_<station>.json` tags for the time of
+  day (morning, day, evening, night, late), drops one of its idents
+  (`mus_ident_<station>_NN`) after every two songs, and plays the time pips
+  before the next song at 6:00, 12:00 and 18:00. Keys: `.` / `,` change station,
   `/` on/off, `M` next track, `N` next playlist.
 - **`Audio.ambience`** (`ambience_manager.gd`): `set_zone("kingspark")` for
   the map; weather and time come from the `Weather` and `GameClock`

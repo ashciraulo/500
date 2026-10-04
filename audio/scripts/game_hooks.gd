@@ -230,8 +230,12 @@ func _find_nodes() -> void:
 			_home = h
 			h.door_toggled.connect(_on_home_door)
 			h.slept.connect(_on_slept)
+			# The shed opening is the mystery's big moment: lock, door and a held drone.
 			h.shed_unlocked.connect(func() -> void:
-				Audio.play_at("home/home_odd_door_creak", _home_pos(), -2.0))
+				if Audio.has("oddity/odd_shed_unlock"):
+					Audio.play_2d("oddity/odd_shed_unlock", "SFX")
+				else:
+					Audio.play_at("home/home_odd_door_creak", _home_pos(), -2.0))
 	if not is_instance_valid(traffic):
 		var tm := scene_root.find_child("Traffic", true, false)
 		if tm and tm.has_signal("vehicle_spawned"):

@@ -263,12 +263,18 @@ def circ_limit(x, target_lufs=-24.0, ceiling_db=-2.0, iters=3):
     return y
 
 
-def save_loop(name, x, norm="amb"):
+def save_loop(name, x, norm="amb", **enc):
     check_seam(x, name)
-    if norm == "amb":
-        x = circ_limit(x)
+    if norm == "amb" or norm.startswith("lufs:"):
+        x = circ_limit(x, -24.0 if norm == "amb" else float(norm.split(":")[1]))
         check_seam(x, name + " (limited)")
-    S.save(name, x, norm=norm)
+    S.save(name, x, norm=norm, **enc)
+
+
+# Leaner encodes for the bed variants and mystery loops (they're long and have
+# little above 12-16 kHz), to keep the repository small.
+LEAN_WET = dict(quality=0, rate=32000)
+LEAN = dict(quality=0, rate=24000)
 
 
 # --------------------------------------------------------------------------
@@ -1145,6 +1151,548 @@ def carmeet():
     save_loop("amb/amb_carmeet", B.x)
 
 
+# ---- free-roam variants: rain, late night (01-05), dawn (05-07) --------------
+# Same rules as the beds above (stereo seamless loops, -24 LUFS). The rain
+# beds are the zone as it sounds when it is wet, NOT the rain itself (the
+# weather layers play that): tyre spray, gutters, drips, fewer birds and
+# people, muffled traffic.
+
+def wet_pass(dur, seed, speed=14.0, dist=12.0, kind="car", level=1.0):
+    """A vehicle passing on a wet road, mono: the tyre spray hiss dominates
+    (a broad 'shhhh' with a fizzy texture that trails behind the car), the
+    engine muffled underneath it."""
+    n = secs(dur)
+    t = S.t_axis(n)
+    x = speed * (t - dur / 2)
+    # the spray hangs behind the car: receding side decays more slowly
+    xe = np.where(x > 0, x * 0.6, x)
+    g = (dist / np.sqrt(dist ** 2 + xe ** 2)) ** 1.2
+    lo, hi = (500, 7000) if kind in ("truck", "bus") else (800, 9000)
+    spray = S.bp(S.noise(n, seed), lo, hi, 2) + 0.5 * S.bp(S.noise(n, seed + 1), 2500, 6000, 2)
+    spray *= 1 + 0.35 * S.smooth_noise(n, 30, seed + 2, periodic=False)
+    spray /= np.sqrt(np.mean(spray ** 2)) + 1e-12
+    eng = car_pass(dur, seed + 5, speed, dist, kind)
+    eng = S.lp(eng, 700, 2) / (np.sqrt(np.mean(eng ** 2)) + 1e-12)
+    y = spray * g * (1.5 if kind in ("truck", "bus") else 1.0) + eng * 0.35
+    y = y * 0.5 + S.lp(y, 1800, 1) * 0.5 * (1 - g) + S.lp(y, 7000, 1) * 0.5 * g
+    return S.fade(y, 0.3, 0.4) * level
+
+
+def wet_hiss(n, seed, lo=1200, hi=7000):
+    """The steady 'shhh' of a wet city: distant tyres on wet roads."""
+    sw = 1 + 0.35 * S.smooth_noise(n, 0.07, seed)
+    return np.stack([S.circ_bp(S.pink(n, seed + 1 + c), lo, hi, 2) * sw for c in range(2)], axis=1)
+
+
+def drip_points(n, seed, points=8, rate=(0.5, 3.0), f=(1600, 4200), metal=False, skip=0.3):
+    """Water dripping off eaves, awnings and leaves (circular, mono): each
+    drip point drips at its own rough period with its own pitch; a drop is
+    a tiny rising 'plink' (or a tinny tick on metal)."""
+    r = np.random.default_rng(seed)
+    y = np.zeros(n)
+    k = secs(0.15)
+    tk = S.t_axis(k)
+    for _ in range(points):
+        per = r.uniform(*rate)
+        f0 = r.uniform(*f)
+        amp = r.uniform(0.25, 1.0)
+        tt = r.uniform(0, per)
+        while tt < n / SR:
+            if r.random() > skip:
+                ff = f0 * r.uniform(0.95, 1.05) * (1 + 0.5 * (1 - np.exp(-tk / 0.006)))
+                s = np.sin(2 * np.pi * np.cumsum(ff) / SR) * np.exp(-tk / r.uniform(0.012, 0.03))
+                if metal:
+                    s = 0.5 * s + sum(a * np.sin(2 * np.pi * f0 * m * tk + m) * np.exp(-tk / d)
+                                      for m, a, d in ((1.0, 0.8, 0.07), (2.71, 0.4, 0.04), (5.3, 0.2, 0.02)))
+                s[: secs(0.002)] *= np.linspace(0, 1, secs(0.002))
+                s += 0.2 * S.bp(r.standard_normal(k), 2000, 9000, 1) * np.exp(-tk / 0.002)
+                S.place(y, s * amp * r.uniform(0.6, 1.0), int(tt * SR), wrap=True)
+            tt += per * r.uniform(0.8, 1.25)
+    return y
+
+
+def gutter(n, seed, size=1.0):
+    """A gutter or downpipe running with rainwater (circular, mono): a
+    hollow trickle with bubbly gurgles, ringing a little in the pipe."""
+    r = np.random.default_rng(seed)
+    flow = S.circ_bp(S.noise(n, seed), 300, 3500, 2)
+    flow *= 1 + 0.6 * S.smooth_noise(n, 9, seed + 1)
+    bub = np.zeros(n)
+    k = secs(0.05)
+    tk = S.t_axis(k)
+    for at in r.integers(0, n, int(28 * n / SR)):
+        f0 = r.uniform(500, 1600) / size
+        s = np.sin(2 * np.pi * np.cumsum(f0 * (1 + 0.8 * tk / 0.05)) / SR) * np.exp(-tk / r.uniform(0.006, 0.018))
+        S.place(bub, s * r.uniform(0.2, 1.0), int(at), wrap=True)
+    pipe = lambda f: 0.3 + sum(np.exp(-((f - fc / size) / 60) ** 2) for fc in (330, 690, 1040))
+    y = flow / (np.std(flow) + 1e-9) * 0.5 + bub / (np.std(bub) + 1e-9)
+    return S.circ_filter(y, S.circ_response(n, pipe))
+
+
+def fridge_hum(n, seed, level=1.0):
+    """The city at 3 am as a fridge-like hum: 50 Hz mains harmonics from
+    substations and plant rooms, over a very low rumble. Stereo."""
+    t = S.t_axis(n)
+    out = []
+    for c in range(2):
+        sw = 1 + 0.25 * S.smooth_noise(n, 0.05, seed + c)
+        hum = sum(a * np.sin(2 * np.pi * periodic_tone(n, f * (1 + 0.001 * c)) * t + c + f / 50)
+                  for f, a in ((50, 0.4), (100, 1.0), (150, 0.35), (200, 0.2), (300, 0.08)))
+        rum = S.circ_bp(S.brown(n, seed + 10 + c), 25, 140, 2)
+        out.append(hum / np.std(hum) * 0.4 * sw + rum / np.std(rum))
+    return np.stack(out, axis=1) * level
+
+
+def pool_pump(n, seed):
+    """A neighbour's pool pump running behind a fence (mono, circular):
+    2-pole motor hum and the whoosh of water through the filter."""
+    t = S.t_axis(n)
+    hum = sum(a * np.sin(2 * np.pi * periodic_tone(n, f) * t) for f, a in ((48.3, 0.5), (100, 1.0), (144.9, 0.3), (200, 0.2)))
+    wh = S.circ_bp(S.noise(n, seed), 200, 900, 2)
+    return S.circ_lp(hum / np.std(hum) * 0.6 + wh / np.std(wh), 700, 2)
+
+
+def street_sweeper(dur, seed):
+    """Council street sweeper creeping past in the small hours (mono):
+    diesel idle-ish engine, whirring gutter brooms, a pass-by envelope."""
+    n = secs(dur)
+    t = S.t_axis(n)
+    r = np.random.default_rng(seed)
+    f = r.uniform(26, 30)
+    eng = sum(np.sin(2 * np.pi * f * h * t + h) / h for h in range(1, 10))
+    eng = S.lp(eng * (1 + 0.3 * S.lp(S.noise(n, seed), 25)), 700, 2)
+    brush = S.bp(S.noise(n, seed + 1), 400, 4000, 2) * (1 + 0.5 * np.sin(2 * np.pi * 7.5 * t))
+    env = np.exp(-((t - dur / 2) / (dur / 3.2)) ** 2)
+    y = (eng / np.std(eng) * 0.7 + brush / np.std(brush) * 0.5) * env
+    return S.fade(y, 0.5, 0.5)
+
+
+def halyard_tinks(n, seed, clusters=10):
+    """Halyards tapping aluminium masts in the boat harbour (circular, mono):
+    little gust-driven clusters of dull metallic tinks."""
+    r = np.random.default_rng(seed)
+    y = np.zeros(n)
+    k = secs(0.5)
+    tk = S.t_axis(k)
+    masts = [r.uniform(1500, 2800) for _ in range(4)]
+    for _ in range(clusters):
+        at = r.uniform(0, n / SR)
+        f0 = masts[int(r.integers(len(masts)))]
+        for j in range(int(r.integers(2, 6))):
+            s = sum(a * np.sin(2 * np.pi * f0 * m * tk + m) * np.exp(-tk / d)
+                    for m, a, d in ((1.0, 1.0, 0.18), (2.32, 0.4, 0.08), (4.1, 0.2, 0.04)))
+            s[: secs(0.003)] *= np.linspace(0, 1, secs(0.003))
+            S.place(y, s * r.uniform(0.3, 1.0) * 0.8 ** j, secs(at), wrap=True)
+            at += r.uniform(0.25, 0.9)
+    return y
+
+
+def twitter(seed):
+    """A small honeyeater/silvereye-ish twitter for the dawn chorus (mono):
+    a run of quick high chirps sweeping down or up."""
+    r = np.random.default_rng(seed)
+    out = []
+    for _ in range(int(r.integers(3, 10))):
+        L = r.uniform(0.03, 0.09)
+        n = secs(L)
+        t = S.t_axis(n)
+        f0, f1 = r.uniform(3500, 7000), r.uniform(2800, 6500)
+        f = f0 + (f1 - f0) * (t / L) ** r.uniform(0.5, 2)
+        f *= 1 + 0.04 * np.sin(2 * np.pi * r.uniform(60, 120) * t)
+        y = np.sin(2 * np.pi * np.cumsum(f) / SR) + 0.15 * np.sin(4 * np.pi * np.cumsum(f) / SR)
+        out.append(y * np.hanning(n))
+        out.append(np.zeros(secs(r.uniform(0.03, 0.14))))
+    return np.concatenate(out)
+
+
+def rowing_pass(dur, seed, rate_spm=30):
+    """A rowing eight out on the Swan at first light (mono): the catch
+    splashes and the oars clunking in their gates, stroke after stroke,
+    passing by across the water."""
+    r = np.random.default_rng(seed)
+    n = secs(dur)
+    y = np.zeros(n)
+    per = 60 / rate_spm
+    tt = 0.3
+    k = secs(0.4)
+    tk = S.t_axis(k)
+    while tt < dur - 0.5:
+        for o in range(8):  # eight blades, not quite together
+            sp = S.bp(r.standard_normal(k), 500, 4000, 2) * np.exp(-tk / 0.06)
+            pl = np.sin(2 * np.pi * r.uniform(150, 220) * tk) * np.exp(-tk / 0.03)
+            S.place(y, (sp + 0.6 * pl) * r.uniform(0.5, 1.0) * 0.4, secs(tt + r.normal(0, 0.02)))
+        clunk = np.sin(2 * np.pi * r.uniform(500, 650) * tk) * np.exp(-tk / 0.015)
+        S.place(y, clunk * 0.3, secs(tt + per * 0.45))
+        wash = S.bp(r.standard_normal(secs(0.8)), 300, 2500, 2) * np.hanning(secs(0.8)) * 0.15
+        S.place(y, wash, secs(tt + 0.1))
+        tt += per * r.uniform(0.97, 1.03)
+    t = S.t_axis(n)
+    return y * np.exp(-((t - dur / 2) / (dur / 3.5)) ** 2)
+
+
+def dawn_crickets(dur, seed):
+    """Crickets from the night recording, thinned out (dawn: the last few)."""
+    x = texture(src("crickets_sub", True), dur, seed, chunk=17, region=(22.5, 82))
+    return S.circ_bp(x, 2500, 9000, 1)
+
+
+# rain ------------------------------------------------------------------------
+
+@builder("amb_northbridge_rain")
+def northbridge_rain():
+    dur = 90
+    B = Bed(dur, 2101)
+    n = B.n
+    leak = env_window(n, 40, 5, 0.5, 1.0) * 0.4
+    B.add(np.stack([club_bass(n, 124, 21011, leak), club_bass(n, 124, 21011, leak * 0.7)], axis=1), -38)
+    B.add(S.circ_lp(texture(src("bar_wa", True), dur, 21012, chunk=14), 2200), -39)  # under the awnings
+    B.add(S.circ_lp(texture(src("traffic_night", True), dur, 21013, chunk=20), 1600), -37)
+    B.add(wet_hiss(n, 21014), -34)
+    B.add(city_hum(n, 21015, 40, 250), -42)
+    g = gutter(n, 21016)
+    B.add(np.stack([g, 0.35 * np.roll(g, secs(0.02))], axis=1), -38)
+    B.add(np.stack([drip_points(n, 21017, 10), drip_points(n, 21018, 10)], axis=1), -39)
+    for k, at in enumerate(B.times(6, 0.9)):
+        y = wet_pass(8.0, 21100 + k, speed=10, dist=9, kind="truck" if k == 3 else "car")
+        B.put(pass_stereo(y, k % 2 == 0), at, -15)
+    B.put(S.pan(S.lp(siren(11.0, 21019, "wail", 0.95), 2500), 0.5), secs(60), -30)
+    save_loop("amb/amb_northbridge_rain", B.x, **LEAN_WET)
+
+
+@builder("amb_cbd_rain")
+def cbd_rain():
+    dur = 90
+    B = Bed(dur, 2102)
+    n = B.n
+    B.add(S.circ_lp(texture(src("traffic_peak", True), dur, 21021, chunk=18, avoid_peaks_db=9), 2000), -31)
+    B.add(wet_hiss(n, 21022), -30)
+    B.add(city_hum(n, 21023, 40, 350), -38)
+    g = gutter(n, 21024, 0.8)
+    B.add(np.stack([0.3 * g, g], axis=1), -41)
+    B.add(np.stack([drip_points(n, 21025, 7), drip_points(n, 21026, 7)], axis=1), -42)
+    for k, at in enumerate(B.times(2, 0.6)):
+        y = wet_pass(10.0, 21200 + k, speed=8, dist=9, kind="bus")
+        B.put(pass_stereo(y, k % 2 == 1), at, -11)
+    for k, at in enumerate(B.times(8, 0.9)):
+        y = wet_pass(7.0, 21210 + k, speed=13, dist=8 + 6 * B.r.uniform())
+        B.put(pass_stereo(y, k % 2 == 0), at, -14)
+    # the crossing still tocks; one walk phase (fewer people press it)
+    near = ped_sequence(n, 1.0, walk_at=[48.0], beep_at=[41.0], seed=21)
+    B.put(S.pan(near, -0.45), 0, -9)
+    save_loop("amb/amb_cbd_rain", B.x, **LEAN_WET)
+
+
+@builder("amb_kingspark_rain")
+def kingspark_rain():
+    dur = 96
+    B = Bed(dur, 2103)
+    n = B.n
+    # the gums dripping everywhere, near and far
+    near = np.stack([drip_points(n, 21031, 12, (0.7, 3.5)), drip_points(n, 21032, 12, (0.7, 3.5))], axis=1)
+    B.add(near, -33)
+    far = np.stack([S.circ_lp(drip_points(n, 21033 + c, 30, (0.6, 2.5), (1200, 3500)), 3000) for c in range(2)], axis=1)
+    B.add(far, -40)
+    tr = gutter(n, 21035, 1.4)  # a trickle running off down the path
+    B.add(np.stack([S.circ_lp(tr, 1800), 0.5 * S.circ_lp(np.roll(tr, secs(3)), 1800)], axis=1), -43)
+    B.add(gum_wind(n, 21036, gust_rate=0.04, crisp=0.15), -43)
+    B.add(wet_hiss(n, 21037, 1000, 5000), -42)  # the roads below
+    B.add(city_hum(n, 21038, 30, 200), -44)
+    B.scatter(bird_pools(), 2, gain_db=(-24, -20), dist=(0.6, 0.85))
+    B.scatter(raven_pool(), 1, gain_db=(-24, -22), dist=(0.75, 0.9), room=2.0)
+    for k, at in enumerate(B.times(2, 0.7)):
+        y = wet_pass(9.0, 21300 + k, speed=12, dist=35)
+        B.put(pass_stereo(S.lp(y, 4000), k % 2 == 0), at, -24)
+    save_loop("amb/amb_kingspark_rain", B.x, **LEAN_WET)
+
+
+@builder("amb_river_rain")
+def river_rain():
+    dur = 100
+    B = Bed(dur, 2104)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 21041, chunk=20), -29)
+    B.add(wet_hiss(n, 21042, 900, 5000), -34)  # wet traffic across the water
+    B.add(city_hum(n, 21043, 30, 220), -40)
+    B.add(np.stack([drip_points(n, 21044, 5, metal=True), drip_points(n, 21045, 5, metal=True)], axis=1), -44)
+    for k, at in enumerate(B.times(4, 0.8)):
+        y = wet_pass(10.0, 21400 + k, speed=22, dist=60)
+        B.put(pass_stereo(S.lp(y, 2500), k % 2 == 1), at, -24)
+    B.scatter(gull_pool(), 2, gain_db=(-26, -22), dist=(0.6, 0.85))
+    save_loop("amb/amb_river_rain", B.x, **LEAN_WET)
+
+
+@builder("amb_suburbs_rain")
+def suburbs_rain():
+    dur = 110
+    B = Bed(dur, 2105)
+    n = B.n
+    g1, g2 = gutter(n, 21051), gutter(n, 21052, 1.3)
+    B.add(np.stack([g1, 0.4 * g1], axis=1) + np.stack([0.25 * g2, 0.7 * g2], axis=1), -33)
+    B.add(np.stack([drip_points(n, 21053, 12, (0.6, 3.5)), drip_points(n, 21054, 12, (0.6, 3.5))], axis=1), -35)
+    B.add(wet_hiss(n, 21055, 900, 5000), -41)
+    B.add(city_hum(n, 21056, 30, 200), -42)
+    for k, at in enumerate(B.times(3, 0.8)):
+        y = wet_pass(8.0, 21500 + k, speed=11, dist=12)
+        B.put(pass_stereo(y, k % 2 == 1), at, -16)
+    B.scatter(dog_pool(), 1, gain_db=(-26, -24), dist=(0.75, 0.9), room=2.0)
+    B.scatter(raven_pool(), 1, gain_db=(-26, -24), dist=(0.75, 0.9), room=2.0)
+    save_loop("amb/amb_suburbs_rain", B.x, **LEAN_WET)
+
+
+@builder("amb_freeway_rain")
+def freeway_rain():
+    dur = 80
+    B = Bed(dur, 2106)
+    n = B.n
+    B.add(S.circ_lp(texture(src("freeway", True), dur, 21061, chunk=16, avoid_peaks_db=8), 2200), -31)
+    B.add(wet_hiss(n, 21062, 700, 8000), -27)
+    B.add(city_hum(n, 21063, 30, 500), -33)
+    for k, at in enumerate(B.times(16, 0.9)):
+        kind = "truck" if k % 5 == 0 else "car"
+        y = wet_pass(6.0 if kind == "car" else 8.0, 21600 + k, speed=B.r.uniform(24, 29),
+                     dist=B.r.uniform(12, 30), kind=kind)
+        B.put(pass_stereo(y, k % 2 == 0), at, -16 if kind == "car" else -12)
+    save_loop("amb/amb_freeway_rain", B.x, **LEAN_WET)
+
+
+@builder("amb_fremantle_rain")
+def fremantle_rain():
+    dur = 110
+    B = Bed(dur, 2107)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 21071, chunk=20), -30)
+    B.add(city_hum(n, 21072, 25, 160), -35)
+    # drips off container and shed roofs onto steel
+    B.add(np.stack([drip_points(n, 21073, 9, (0.6, 3.0), (900, 2200), metal=True),
+                    drip_points(n, 21074, 9, (0.6, 3.0), (900, 2200), metal=True)], axis=1), -37)
+    g = gutter(n, 21075, 0.7)
+    B.add(np.stack([0.5 * g, g], axis=1), -41)
+    B.add(wet_hiss(n, 21076, 900, 5000), -41)
+    B.put(distant(ship_horn(4.0, 21077, 70), 0.95, -0.5, 1, room=4.0), secs(55), -22)
+    for k, at in enumerate(B.times(2, 0.8)):
+        B.put(distant(metal_clank(21078 + k, 1.2), 0.9, B.r.uniform(-0.8, 0.8), k, room=3.0), at, -28)
+    save_loop("amb/amb_fremantle_rain", B.x, **LEAN_WET)
+
+
+@builder("amb_beach_rain")
+def beach_rain():
+    dur = 100
+    B = Bed(dur, 2108)
+    n = B.n
+    B.add(S.circ_lp(texture(src("beach_day", True), dur, 21081, chunk=25), 5000), -26)  # rougher grey surf
+    B.add(gum_wind(n, 21082, gust_rate=0.06, crisp=0.0), -35)
+    B.add(wet_hiss(n, 21083, 900, 5000), -43)
+    B.add(np.stack([drip_points(n, 21084, 4), drip_points(n, 21085, 4)], axis=1), -45)
+    for k, at in enumerate(B.times(2, 0.7)):
+        y = wet_pass(9.0, 21800 + k, speed=17, dist=40)
+        B.put(pass_stereo(S.lp(y, 3500), k % 2 == 0), at, -24)
+    B.scatter(gull_pool(), 1, gain_db=(-26, -24), dist=(0.6, 0.8))
+    save_loop("amb/amb_beach_rain", B.x, **LEAN_WET)
+
+
+# late night (01:00-05:00) ----------------------------------------------------
+
+@builder("amb_northbridge_late")
+def northbridge_late():
+    dur = 96
+    B = Bed(dur, 2201)
+    n = B.n
+    B.add(fridge_hum(n, 22011), -34)
+    B.add(np.stack([ac_unit(n, 22012, 12.5, level=1.0), ac_unit(n, 22013, 15.0, level=0.5, rattle=0.15)], axis=1), -41)
+    B.add(S.circ_lp(texture(src("traffic_night", True), dur, 22014, chunk=20), 1400), -42)
+    sign = bridge_hum(n, 22015)  # a neon sign left buzzing
+    B.add(np.stack([0.3 * sign, sign], axis=1), -50)
+    B.put(distant(street_sweeper(22.0, 22016), 0.55, -0.3, 1, room=1.6), secs(20), -18)
+    B.put(distant(metal_clank(22017, 0.5), 0.75, 0.6, 2, room=1.8), secs(62), -30)  # a bin lid
+    y = car_pass(7.0, 22018, speed=11, dist=12)
+    B.put(pass_stereo(S.lp(y, 3000)), secs(80), -21)
+    B.put(S.pan(siren(11.0, 22019, "wail", 0.98), -0.6), secs(48), -35)
+    save_loop("amb/amb_northbridge_late", B.x, norm="lufs:-27", **LEAN)
+
+
+@builder("amb_cbd_late")
+def cbd_late():
+    dur = 100
+    B = Bed(dur, 2202)
+    n = B.n
+    B.add(fridge_hum(n, 22021), -33)
+    B.add(np.stack([ac_unit(n, 22022, 13.5, level=1.0), ac_unit(n, 22023, 17.2, level=0.6)], axis=1), -41)
+    B.add(np.stack([ac_unit(n, 22024, 9.0, level=0.3), ac_unit(n, 22025, 11.0, level=0.8)], axis=1)[:, ::-1], -46)
+    loc = ped_sequence(n, 1.0, seed=22)
+    B.put(fold(distant(loc, 0.55, 0.35, 6, room=1.4), n), 0, -27)
+    B.put(distant(street_sweeper(24.0, 22026), 0.7, 0.4, 3, room=2.0), secs(55), -22)
+    y = car_pass(8.0, 22027, speed=15, dist=30)
+    B.put(pass_stereo(S.lp(y, 2500), True), secs(15), -23)
+    B.put(distant(metal_clank(22028, 0.6), 0.85, -0.7, 4, room=2.5), secs(88), -31)
+    save_loop("amb/amb_cbd_late", B.x, norm="lufs:-27", **LEAN)
+
+
+@builder("amb_kingspark_late")
+def kingspark_late():
+    dur = 120
+    B = Bed(dur, 2203)
+    n = B.n
+    B.add(S.circ_lp(texture(src("crickets_sub", True), dur, 22031, chunk=17, region=(22.5, 82)), 7000), -37)
+    B.add(gum_wind(n, 22032, gust_rate=0.02, crisp=0.3), -50)
+    B.add(fridge_hum(n, 22033), -40)
+    owl = src("boobook1")
+    ev = find_events(owl, 350, 1200, thresh_db=12, min_len=0.25, max_len=2.0, gap=0.25)
+    calls = [S.lp(cut(owl, a, b), 1600, 3) for a, b, _ in ev]
+    tt = secs(64)
+    for j in range(min(len(calls), 4)):
+        B.put(distant(calls[(j + 3) % len(calls)], 0.85, -0.5, j, room=2.4), tt, -16)
+        tt += secs(B.r.uniform(1.8, 2.6))
+    B.scatter(dog_pool(), 1, gain_db=(-29, -27), dist=(0.9, 0.95), room=2.5)
+    y = car_pass(9.0, 22034, speed=13, dist=45)
+    B.put(pass_stereo(S.lp(y, 1800)), secs(25), -28)
+    save_loop("amb/amb_kingspark_late", B.x, norm="lufs:-27", **LEAN)
+
+
+@builder("amb_river_late")
+def river_late():
+    dur = 110
+    B = Bed(dur, 2204)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 22041, chunk=20), -32)
+    hum = bridge_hum(n, 22042)
+    B.add(np.stack([hum, np.roll(hum, secs(0.013))], axis=1), -43)
+    B.add(fridge_hum(n, 22043), -40)
+    B.add(S.circ_bp(texture(src("crickets_sub", True), dur, 22044, chunk=17, region=(22.5, 82)), 2500, 8000), -49)
+    y = car_pass(10.0, 22045, speed=22, dist=70)
+    B.put(pass_stereo(S.lp(y, 1600), True), secs(70), -27)
+    B.put(distant(halyard_tinks(secs(6), 22046, 2), 0.8, 0.6, 5, room=2.0), secs(30), -30)  # a mooring
+    save_loop("amb/amb_river_late", B.x, norm="lufs:-27", **LEAN)
+
+
+@builder("amb_suburbs_late")
+def suburbs_late():
+    dur = 120
+    B = Bed(dur, 2205)
+    n = B.n
+    B.add(S.circ_lp(texture(src("crickets_sub", True), dur, 22051, chunk=17, region=(22.5, 82)), 7000), -35)
+    B.add(fridge_hum(n, 22052), -41)
+    pp = pool_pump(n, 22053)
+    B.add(np.stack([0.4 * pp, pp], axis=1), -45)
+    B.scatter(dog_pool(), 1, gain_db=(-27, -25), dist=(0.85, 0.95), room=2.2)
+    y = car_pass(8.0, 22054, speed=11, dist=20)
+    B.put(pass_stereo(S.lp(y, 2200)), secs(90), -24)
+    B.put(S.pan(siren(11.0, 22055, "wail", 0.99), 0.7), secs(35), -36)
+    save_loop("amb/amb_suburbs_late", B.x, norm="lufs:-27", **LEAN)
+
+
+@builder("amb_freeway_late")
+def freeway_late():
+    dur = 100
+    B = Bed(dur, 2206)
+    n = B.n
+    B.add(texture(src("highway_wa", True), dur, 22061, chunk=20, avoid_peaks_db=6), -36)
+    B.add(fridge_hum(n, 22062), -37)
+    for k, at in enumerate(B.times(3, 0.8)):
+        kind = "truck" if k == 1 else "car"
+        y = car_pass(9.0, 22063 + k, speed=B.r.uniform(27, 30), dist=B.r.uniform(20, 35), kind=kind)
+        B.put(pass_stereo(y, k % 2 == 1), at, -15 if kind == "truck" else -18)
+    save_loop("amb/amb_freeway_late", B.x, norm="lufs:-27", **LEAN)
+
+
+@builder("amb_fremantle_late")
+def fremantle_late():
+    dur = 110
+    B = Bed(dur, 2207)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 22071, chunk=20), -31)
+    B.add(city_hum(n, 22072, 25, 140), -37)
+    B.add(np.stack([ac_unit(n, 22073, 8.0, level=1.0), ac_unit(n, 22074, 6.5, level=1.0)], axis=1), -45)
+    ht = halyard_tinks(n, 22075, 9)
+    B.add(fold(distant(ht, 0.6, 0.3, 7, room=1.8), n), -36)
+    B.put(distant(metal_clank(22076, 1.4), 0.92, -0.7, 2, room=3.0), secs(75), -29)
+    save_loop("amb/amb_fremantle_late", B.x, norm="lufs:-27", **LEAN)
+
+
+@builder("amb_beach_late")
+def beach_late():
+    dur = 110
+    B = Bed(dur, 2208)
+    n = B.n
+    B.add(texture(src("beach_night", True), dur, 22081, chunk=25), -27)
+    B.add(gum_wind(n, 22082, gust_rate=0.03, crisp=0.0), -46)
+    B.add(fridge_hum(n, 22083), -46)
+    y = car_pass(10.0, 22084, speed=17, dist=60)
+    B.put(pass_stereo(S.lp(y, 1500)), secs(40), -29)
+    save_loop("amb/amb_beach_late", B.x, norm="lufs:-27", **LEAN)
+
+
+# dawn (05:00-07:00): the magpies' carolling is the Perth dawn ----------------
+
+@builder("amb_kingspark_dawn")
+def kingspark_dawn():
+    dur = 100
+    B = Bed(dur, 2301)
+    n = B.n
+    B.add(texture(src("walyunga", True), dur, 23011, chunk=24, avoid_peaks_db=8), -36)
+    B.add(dawn_crickets(dur, 23012), -44)
+    B.add(gum_wind(n, 23013, gust_rate=0.04, crisp=0.6), -40)
+    B.add(city_hum(n, 23014, 30, 200), -45)
+    B.scatter(bird_pools(), 20, gain_db=(-15, -4), dist=(0.15, 0.75))  # carolling all round
+    B.scatter([twitter(23100 + i) for i in range(8)], 12, gain_db=(-24, -13), dist=(0.2, 0.6))
+    kk = [cut(src("kook_kp"), secs(a), secs(a + L)) for a, L in ((16, 9), (22, 8), (2, 6))]
+    B.put(distant(kk[0], 0.5, 0.5, 1), secs(22), -8)  # the family greeting the sun
+    B.put(distant(kk[1], 0.75, -0.6, 2), secs(70), -13)
+    rv = snips("raven_db", 300, 3000, thresh_db=14, min_len=0.8, max_len=4, best=True, n=4)
+    B.put(distant(rv[0], 0.8, -0.8, 4), secs(48), -18)
+    save_loop("amb/amb_kingspark_dawn", B.x, **LEAN_WET)
+
+
+@builder("amb_suburbs_dawn")
+def suburbs_dawn():
+    dur = 110
+    B = Bed(dur, 2302)
+    n = B.n
+    B.add(dawn_crickets(dur, 23021), -43)
+    B.add(S.circ_lp(texture(src("traffic_night", True), dur, 23022, chunk=20), 1600), -41)
+    B.add(gum_wind(n, 23023, gust_rate=0.04, crisp=0.6), -43)
+    B.add(city_hum(n, 23024, 30, 200), -44)
+    # the retic comes on at dawn a couple of yards over
+    sp = texture(src("sprinkler", True), dur, 23025, chunk=9.0, xf=0.3)
+    B.add(S.circ_lp(sp, 4000) * env_window(n, 15, 40, 2, 2)[:, None], -42)
+    B.scatter(bird_pools(), 16, gain_db=(-17, -5), dist=(0.2, 0.8))
+    wg = snips("wagtail1", 2000, 8000, thresh_db=14, min_len=0.6, max_len=3.0, gap=0.35)
+    B.scatter(wg, 4, gain_db=(-20, -13), dist=(0.25, 0.55))
+    B.scatter([twitter(23200 + i) for i in range(8)], 8, gain_db=(-25, -15), dist=(0.25, 0.6))
+    B.scatter(raven_pool(), 2, gain_db=(-22, -17), dist=(0.6, 0.85))
+    B.scatter(dog_pool(), 1, gain_db=(-26, -24), dist=(0.8, 0.9), room=2.0)
+    y = car_pass(7.0, 23026, speed=10, dist=14)  # someone off to an early shift
+    B.put(pass_stereo(y), secs(80), -20)
+    save_loop("amb/amb_suburbs_dawn", B.x, **LEAN_WET)
+
+
+@builder("amb_river_dawn")
+def river_dawn():
+    dur = 100
+    B = Bed(dur, 2303)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 23031, chunk=20), -30)
+    B.add(gum_wind(n, 23032, gust_rate=0.04, crisp=0.2), -42)
+    B.add(city_hum(n, 23033, 35, 250), -41)
+    B.scatter(bird_pools(), 10, gain_db=(-19, -8), dist=(0.3, 0.8))
+    B.scatter(gull_pool(), 4, gain_db=(-20, -13), dist=(0.3, 0.75))
+    B.scatter([twitter(23300 + i) for i in range(6)], 4, gain_db=(-26, -18), dist=(0.4, 0.7))
+    B.put(distant(rowing_pass(26.0, 23034), 0.55, 0.2, 3, room=2.0), secs(30), -17)
+    save_loop("amb/amb_river_dawn", B.x, **LEAN_WET)
+
+
+@builder("amb_beach_dawn")
+def beach_dawn():
+    dur = 100
+    B = Bed(dur, 2304)
+    n = B.n
+    B.add(texture(src("beach_night", True), dur, 23041, chunk=25), -26)  # calm morning sea
+    B.add(gum_wind(n, 23042, gust_rate=0.04, crisp=0.0), -40)
+    B.scatter(gull_pool(), 5, gain_db=(-20, -11), dist=(0.2, 0.7))
+    B.scatter(bird_pools(), 5, gain_db=(-24, -15), dist=(0.55, 0.85))  # in the dunes behind
+    B.scatter([twitter(23400 + i) for i in range(4)], 3, gain_db=(-27, -20), dist=(0.5, 0.75))
+    save_loop("amb/amb_beach_dawn", B.x, **LEAN_WET)
+
+
 # ---- one-shots ---------------------------------------------------------------
 
 def oneshot(name, y, hp_hz=120):
@@ -1582,6 +2130,354 @@ def midnight_station_found():
     m = radio / (np.abs(radio).max() + 1e-9) * 0.7 + ch / (np.abs(ch).max() + 1e-9) * sw * 0.8 + 0.2 * bell
     m = S.reverb(m, size_s=3.0, damp_hz=4000, wet=0.3, seed=9705)
     S.save("oddity/odd_midnight_station_found", S.fade(m, 0.05, 1.0), norm="lufs:-20")
+
+
+# ---- the mystery arc: clues, the key, the shed --------------------------------
+# Same rules as the oddities above: quiet, soft attacks (>= 10 ms on anything
+# tonal), nothing jumpy. The midnight station's falling interval (E D C G)
+# is the arc's motif and turns up in the key, the shed and nowhere else.
+
+INTERVAL_NOTES = [(0.0, 659.3), (0.45, 587.3), (0.9, 523.3), (1.6, 392.0)]  # as interval_signal()
+
+
+def tine(f, dur, seed, kind="musicbox", attack=0.012):
+    """One soft struck-metal note, mono. musicbox: comb tine (bright, short
+    upper partials); celesta: hammered steel bar over a resonator (rounder,
+    longer). The attack is softened so nothing clicks."""
+    n = secs(dur)
+    t = S.t_axis(n)
+    r = np.random.default_rng(seed)
+    parts = {"musicbox": ((1, 1.0, 1.1), (2.0, 0.3, 0.5), (5.4, 0.12, 0.12), (8.9, 0.05, 0.06)),
+             "celesta": ((1, 1.0, 1.4), (2.0, 0.22, 0.6), (3.98, 0.12, 0.25), (6.1, 0.04, 0.1))}[kind]
+    y = sum(a * np.sin(2 * np.pi * f * m * t + r.uniform(0, 6)) * np.exp(-t / d) for m, a, d in parts)
+    y *= np.clip(t / attack, 0, 1) ** 2
+    return S.fade(y, 0, min(0.2, dur / 4))
+
+
+def tape_warble(x, seed, wow=0.004, flutter=0.0012):
+    """Old cassette playback: slow wow and fast flutter as a time-warp."""
+    n = len(x)
+    t = S.t_axis(n)
+    r = np.random.default_rng(seed)
+    sp = 1 + wow * np.sin(2 * np.pi * 0.7 * t + r.uniform(0, 6)) + flutter * np.sin(2 * np.pi * 6.3 * t) \
+        + 0.5 * wow * S.smooth_noise(n, 1.5, seed, periodic=False)
+    idx = np.clip(np.cumsum(sp) - sp[0], 0, n - 1)
+    if x.ndim == 2:
+        return np.stack([np.interp(idx, np.arange(n), x[:, c]) for c in range(2)], axis=1)
+    return np.interp(idx, np.arange(n), x)
+
+
+def tape_hiss(n, seed, circular=False):
+    f = S.circ_bp if circular else S.bp
+    return np.stack([f(S.noise(n, seed + c), 1800, 11000, 1) for c in range(2)], axis=1)
+
+
+def motif(kind, seed, transpose=1.0, gap=1.0):
+    """The station's falling interval on a tine instrument (mono)."""
+    y = np.zeros(secs(INTERVAL_NOTES[-1][0] * gap + 2.0))
+    for i, (at, f) in enumerate(INTERVAL_NOTES):
+        S.place(y, tine(f * transpose, 1.8, seed + i, kind) * (0.85 if i < 3 else 1.0), secs(at * gap))
+    return y
+
+
+def soft_swell(n, rise, fall_at, fall):
+    t = S.t_axis(n)
+    return np.clip(t / rise, 0, 1) ** 2 * np.exp(-np.maximum(t - fall_at, 0) / fall)
+
+
+@builder("odd_clue")
+def clues():
+    # 01: a detuned music-box note under tape warble
+    n = secs(2.6)
+    a = tine(659.3, 2.6, 9801, attack=0.015)
+    b = tine(659.3 * 2 ** (-18 / 1200), 2.6, 9802, attack=0.02)  # a second tine 18 cents flat
+    y = np.stack([a + 0.6 * b, 0.6 * a + b], axis=1)
+    y = tape_warble(y, 9803) + tape_hiss(n, 9804) * 0.012
+    y = S.reverb(y.mean(axis=1), size_s=1.8, damp_hz=4000, wet=0.3, seed=9805) * 0.5 + y * 0.5
+    S.save("oddity/odd_clue_01", S.fade(S.lp(y, 7000), 0.01, 0.5), norm="lufs:-26", quality=3)
+    # 02: a breath of static with a far chime inside it
+    n = secs(2.4)
+    t = S.t_axis(n)
+    st = S.lp(radio_static(n, 9811, crackle=0.25), 3400, 3) * np.sin(np.pi * np.clip(t / 2.3, 0, 1)) ** 2
+    chime = np.zeros(n)
+    S.place(chime, tine(1318.5, 1.6, 9812, "celesta", attack=0.02), secs(0.75))
+    y = S.stereo(st, 0.7) * 0.5 + distant(chime, 0.8, 0.35, 9813, room=2.0)[:n] * 0.9
+    S.save("oddity/odd_clue_02", S.fade(y, 0.02, 0.3), norm="lufs:-26", quality=3)
+    # 03: a low glassy swell (glass-harmonica-ish, slowly beating)
+    n = secs(2.8)
+    t = S.t_axis(n)
+    env = np.sin(np.pi * np.clip(t / 2.7, 0, 1)) ** 2
+    out = np.zeros((n, 2))
+    for c in range(2):
+        for m, a in ((1, 1.0), (2, 0.3), (3, 0.12), (4.02, 0.05)):
+            f = 233.1 * m * (1 + (0.0035 if c else -0.0035))
+            out[:, c] += a * np.sin(2 * np.pi * f * t + m + c)
+    y = out * env[:, None]
+    y = np.stack([S.reverb(y[:, c], size_s=2.5, damp_hz=5000, wet=0.4, seed=9821 + c).mean(axis=1) for c in range(2)], axis=1)
+    S.save("oddity/odd_clue_03", S.fade(y, 0.02, 0.3), norm="lufs:-26", quality=3)
+    # 04: a reversed piano note, blooming back out of its own reverb
+    n = secs(2.0)
+    t = S.t_axis(n)
+    f0 = 293.7
+    pno = sum(np.sin(2 * np.pi * f0 * h * np.sqrt(1 + 0.0004 * h * h) * t + h) / h ** 1.2 * np.exp(-t / (2.2 / h ** 0.7))
+              for h in range(1, 11))
+    pno[: secs(0.004)] *= np.linspace(0, 1, secs(0.004))
+    pno = S.reverb(pno, size_s=2.2, damp_hz=4500, wet=0.45, seed=9831)
+    rev = S.fade(pno[::-1].copy(), 0.0, 0.07)
+    rev = np.concatenate([rev, np.zeros((secs(0.8), 2))])
+    y = S.reverb(rev.mean(axis=1), size_s=1.6, damp_hz=4000, wet=0.3, seed=9832) * 0.6 + rev * 0.4
+    S.save("oddity/odd_clue_04", S.fade(S.lp(y, 6000), 0.05, 0.4), norm="lufs:-26", quality=3)
+
+
+@builder("odd_clue_more")
+def clues_more():
+    """Clues 05-07, so each of the seven midnight-station clues can have its
+    own cue (odd_clue_0N for clue N), getting a shade closer to the station
+    each time."""
+    # 05: the station's first two notes on a music box, half-heard through tape
+    n = secs(2.8)
+    y = np.zeros(n)
+    for at, (k, f) in zip((0.2, 0.75), enumerate((659.3, 587.3))):
+        S.place(y, tine(f, 1.8, 9841 + k, attack=0.02), secs(at))
+    y = tape_warble(np.stack([y, y], axis=1), 9843, wow=0.006) + tape_hiss(n, 9844) * 0.01
+    y = S.reverb(y.mean(axis=1), size_s=2.0, damp_hz=3500, wet=0.35, seed=9845) * 0.5 + y * 0.5
+    S.save("oddity/odd_clue_05", S.fade(S.lp(y, 6000), 0.02, 0.5), norm="lufs:-26", quality=3)
+    # 06: a low bowed note that won't settle on its pitch, with a faint tick of a clock
+    n = secs(3.0)
+    t = S.t_axis(n)
+    f = 110.0 * (1 + 0.006 * np.sin(2 * np.pi * 0.45 * t))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    bow = sum(np.sin(h * ph) / h ** 1.3 for h in range(1, 9)) * (1 + 0.05 * S.smooth_noise(n, 6.0, 9851, periodic=False))
+    bow = S.lp(bow, 1800, 2) * np.sin(np.pi * np.clip(t / 2.9, 0, 1)) ** 2
+    ticks = np.zeros(n)
+    for at in np.arange(0.4, 2.8, 0.5):
+        k = secs(0.015)
+        S.place(ticks, S.bp(S.noise(k, int(at * 100)), 2000, 6000, 1) * np.exp(-S.t_axis(k) / 0.003), secs(at))
+    y = S.reverb(bow + 0.25 * ticks, size_s=2.2, damp_hz=4000, wet=0.35, seed=9852)
+    S.save("oddity/odd_clue_06", S.fade(y, 0.05, 0.4), norm="lufs:-26", quality=3)
+    # 07: the last clue before the key: the station's whole falling tune, very
+    # faint, from a radio in another room, swallowed by static at the end
+    m = motif("musicbox", 9861, 1.0, 0.7)
+    n = len(m)
+    t = S.t_axis(n)
+    st = S.lp(radio_static(n, 9862, crackle=0.3), 3400, 3) * np.clip((t - 1.2) / 1.5, 0, 1) * 0.12
+    sig = S.bp(m, 300, 3000, 2)
+    sig *= np.clip(1.6 - t / 1.8, 0, 1)
+    y = distant(sig / (np.abs(sig).max() + 1e-9) + st, 0.55, -0.2, 9863, room=1.8)
+    S.save("oddity/odd_clue_07", S.fade(y, 0.02, 0.6), norm="lufs:-26", quality=3)
+
+
+@builder("odd_shed_knock")
+def shed_knock():
+    """Knocking back from inside the locked shed, late at night: knuckles on
+    corrugated iron (a dull bong with a little sheet rattle), three slow, a
+    pause, two more. Heard from the courtyard, so muffled and a touch roomy.
+    Mono for a positional player at the shed door."""
+    r = np.random.default_rng(9701)
+    n = secs(6.0)
+    y = np.zeros(n)
+    for at in (0.3, 1.05, 1.8, 3.9, 4.55):
+        a = 1.0 + 0.15 * r.standard_normal()
+        knock = _modal(1.2, [(r.uniform(85, 95), 0.25, 1.0), (r.uniform(145, 160), 0.18, 0.7),
+                             (r.uniform(225, 245), 0.12, 0.5), (r.uniform(370, 400), 0.08, 0.35),
+                             (r.uniform(690, 740), 0.05, 0.2), (r.uniform(1150, 1300), 0.03, 0.12)],
+                       9702 + int(at * 10), attack=0.003)
+        thud = S.lp(S.noise(secs(0.05), 9720 + int(at * 10)), 400, 2) * np.exp(-S.t_axis(secs(0.05)) / 0.01)
+        rattle = S.bp(S.noise(secs(0.25), 9740 + int(at * 10)), 1500, 4500, 1) * np.exp(-S.t_axis(secs(0.25)) / 0.05)
+        S.place(y, a * knock, secs(at))
+        S.place(y, a * 0.8 * thud, secs(at))
+        S.place(y, a * 0.05 * rattle, secs(at + 0.01))
+    y = S.lp(y, 2500, 2)
+    y = S.reverb(y, size_s=1.0, damp_hz=2500, wet=0.25, seed=9760).mean(axis=1)
+    S.save("oddity/odd_shed_knock", S.fade(y, 0.0, 0.6), norm="lufs:-24", quality=3)
+
+
+@builder("odd_key_found")
+def key_found():
+    """Finding the shed key late in the game: the midnight station's falling
+    interval on a celesta, a soft choir closing over it, a small key glint."""
+    dur = 6.5
+    n = secs(dur)
+    t = S.t_axis(n)
+    cel = np.zeros(n)
+    m = motif("celesta", 9901, 1.0, 1.1)
+    m += 0.25 * motif("celesta", 9911, 2.0, 1.1)  # a soft octave above
+    S.place(cel, m, secs(0.3))
+    ch = choir_drone(n, 9902, chord=(110.0, 164.8, 220.0, 261.6), vowel="u").mean(axis=1)
+    ch = ch / (np.abs(ch).max() + 1e-9) * soft_swell(n, 3.2, 4.6, 0.8)
+    # the glint: a tiny bright ring as the key catches the light, twice
+    gl = np.zeros(n)
+    for at, a, f in ((2.7, 1.0, 5200), (2.83, 0.5, 6100)):
+        k = secs(0.6)
+        tk = S.t_axis(k)
+        g = sum(b * np.sin(2 * np.pi * f * mm * tk) * np.exp(-tk / d) for mm, b, d in ((1, 1, 0.25), (1.52, 0.5, 0.12), (2.13, 0.3, 0.06)))
+        g *= np.clip(tk / 0.008, 0, 1)
+        S.place(gl, g * a, secs(at))
+    y = cel / (np.abs(cel).max() + 1e-9) * 0.7 + ch * 0.55 + gl * 0.12
+    st = S.reverb(y, size_s=3.0, damp_hz=4500, wet=0.35, seed=9903)
+    S.save("oddity/odd_key_found", S.fade(st, 0.03, 0.9), norm="lufs:-20", quality=3)
+
+
+def _modal(dur, modes, seed, attack=0.001):
+    n = secs(dur)
+    t = S.t_axis(n)
+    r = np.random.default_rng(seed)
+    y = sum(a * np.sin(2 * np.pi * f * t + r.uniform(0, 6)) * np.exp(-t / d) for f, d, a in modes)
+    y[: secs(attack)] *= np.linspace(0, 1, secs(attack))
+    return y
+
+
+def _stick_slip(dur, rate_fn, res, seed, jitter=0.3):
+    """Creaks and scrapes (as gen_home.stick_slip): one pulse per slip at
+    rate_fn(t), rung through resonances [(f, q, gain)]."""
+    n = secs(dur)
+    t = S.t_axis(n)
+    p = np.diff(np.floor(np.cumsum(rate_fn(t) / SR)), prepend=0)
+    p *= 1 + jitter * np.random.default_rng(seed).standard_normal(n)
+    return sum(S.resonator(p, f, q) * g for f, q, g in res)
+
+
+@builder("odd_shed_unlock")
+def shed_unlock():
+    """The shed being unlocked: a stiff old padlock and the key grinding
+    round, the shackle letting go, the hasp dropping against the tin, the
+    corrugated-iron door scraping open on its dry runner, and as it opens a
+    low held drone with the station's interval half-heard inside it, ending
+    on still air. Foley in the same dry small-room style as home_odd_door_creak."""
+    dur = 11.0
+    n = secs(dur)
+    t = S.t_axis(n)
+    r = np.random.default_rng(9950)
+    fol = np.zeros(n)
+    # key in: a gritty slide over the pins, the pins ticking up
+    k = secs(0.4)
+    slide = S.bp(S.noise(k, 9951), 2000, 7000, 2) * np.hanning(k) * 0.12
+    S.place(fol, slide, secs(0.15))
+    for i in range(5):
+        S.place(fol, _modal(0.04, [(r.uniform(3200, 4800), 0.005, 0.25)], 9952 + i, 0.0008), secs(0.2 + i * 0.06))
+    # the stiff turn: rust grinding, catching, giving
+    turn = _stick_slip(1.0, lambda x: 45 - 30 * x + 15 * np.sin(2 * np.pi * 2.3 * x),
+                       [(1300, 8, 1.0), (2700, 10, 0.5), (620, 6, 0.4)], 9960, 0.5)
+    turn *= np.hanning(len(turn)) ** 0.5 * 0.5
+    S.place(fol, turn, secs(0.75))
+    for at in (0.95, 1.35):
+        S.place(fol, _modal(0.05, [(r.uniform(2200, 3000), 0.008, 0.2)], int(at * 100), 0.001), secs(at))
+    # the shackle lets go
+    clack = _modal(0.3, [(1850, 0.04, 0.6), (3100, 0.02, 0.35), (720, 0.06, 0.5)], 9961, 0.004)
+    clack += S.bp(S.noise(secs(0.3), 9962), 1000, 6000, 1) * S.env_exp(secs(0.3), 0.004, 0.002) * 0.3
+    S.place(fol, clack * 0.3, secs(1.8))
+    # padlock off, hasp swings down on its pin and knocks the tin, bouncing
+    sq = _stick_slip(0.35, lambda x: 120 + 200 * x, [(1700, 9, 1.0), (3400, 11, 0.4)], 9963)
+    S.place(fol, sq * np.hanning(len(sq)) * 0.08, secs(2.35))
+    tin = [(140, 0.35, 1.0), (233, 0.3, 0.8), (391, 0.22, 0.6), (612, 0.16, 0.45), (884, 0.12, 0.3), (1270, 0.08, 0.2)]
+    for j, (at, a) in enumerate(((2.72, 1.0), (2.83, 0.45), (2.91, 0.22), (2.96, 0.1))):
+        hit = _modal(0.8, [(f * r.uniform(0.98, 1.02), d, g) for f, d, g in tin], 9970 + j, 0.004)
+        hit += S.bp(S.noise(secs(0.8), 9980 + j), 1500, 7000, 1) * S.env_exp(secs(0.8), 0.003, 0.002) * 0.4
+        S.place(fol, hit * a * 0.18, secs(at))
+    # the door: unsticks with a jerk, then scrapes along its dry runner
+    dd = 3.9
+    dn = secs(dd)
+    tt = S.t_axis(dn)
+    speed = np.clip(tt / 0.25, 0, 1) * (0.55 + 0.45 * np.clip((tt - 0.6) / 0.8, 0, 1)) * np.clip((dd - tt) / 0.6, 0, 1)
+    speed *= 1 + 0.25 * S.smooth_noise(dn, 3.0, 9990, periodic=False)
+    speed = np.clip(speed, 0, None)
+    scr = _stick_slip(dd, lambda x: 25 + 140 * np.interp(x, tt, speed),
+                      [(900, 6, 1.0), (2100, 9, 0.6), (3500, 12, 0.3), (480, 5, 0.4)], 9991, 0.4)
+    scr *= np.interp(S.t_axis(len(scr)), tt, speed)
+    grit = S.bp(S.noise(dn, 9992), 1500, 6000, 2) * speed * (1 + 0.5 * S.smooth_noise(dn, 12, 9993, periodic=False))
+    sheet = sum(S.resonator(S.noise(dn, 9994 + i), f, 12) for i, f in enumerate((95, 160, 240)))
+    sheet *= speed * (1 + 0.6 * np.sin(2 * np.pi * 4.2 * tt))  # the tin warbling as it flexes
+    door = scr / (np.abs(scr).max() + 1e-9) * 0.35 + grit / (np.abs(grit).max() + 1e-9) * 0.12 \
+        + S.lp(sheet, 400) / (np.abs(sheet).max() + 1e-9) * 0.22
+    S.place(fol, door, secs(3.5))
+    stop = S.lp(S.noise(secs(0.8), 9995), 300, 2) * S.env_exp(secs(0.8), 0.03, 0.004) * 0.6
+    stop += _modal(0.8, [(f * 0.9, d, g * 0.5) for f, d, g in tin[:4]], 9996, 0.004)
+    S.place(fol, stop * 0.22, secs(3.5 + dd - 0.05))
+    fol = S.reverb(fol, size_s=0.6, damp_hz=4500, wet=0.25, predelay_s=0.004, seed=9997)
+    fol = np.stack([fol[:, 0] * 1.0, fol[:, 1] * 0.85], axis=1)
+    # the drone opening up inside, with the interval half-heard in it
+    dr = choir_drone(n, 9998, chord=(49.0, 73.4, 98.0, 103.8), vowel="o")
+    dr = np.stack([S.lp(dr[:, c], 900, 2) for c in range(2)], axis=1)
+    sub = S.lp(S.brown(n, 9999), 70, 2)
+    env = np.clip((t - 4.0) / 3.0, 0, 1) ** 2 * np.exp(-np.maximum(t - 8.6, 0) / 0.8)
+    drone = (dr / (np.abs(dr).max() + 1e-9) + S.stereo(sub / (np.abs(sub).max() + 1e-9)) * 0.3) * env[:, None]
+    ghost = np.zeros(n)
+    S.place(ghost, rate(interval_signal(9940), 0.5), secs(5.6))  # an octave down, slow
+    ghost = S.lp(radio_fx(ghost, 9941, 0.5), 1600, 2)
+    ghost = S.reverb(ghost, size_s=3.5, damp_hz=1800, wet=0.7, seed=9942)
+    air = np.stack([S.bp(S.noise(n, 9943 + c), 300, 3000, 1) for c in range(2)], axis=1)
+    y = fol * 1.0 + drone * 0.26 + ghost / (np.abs(ghost).max() + 1e-9) * 0.07 + air * 0.004
+    S.save("oddity/odd_shed_unlock", S.fade(y, 0.01, 1.2), norm="lufs:-20", quality=3)
+
+
+@builder("odd_shed_interior_loop")
+def shed_interior():
+    """Inside the open shed: close tin-roof ticks, dust settling, a faint
+    electrical hum from nowhere, and once a loop the faintest edge of the
+    midnight station's static. Stereo, 40 s seamless."""
+    dur = 40
+    B = Bed(dur, 9960)
+    n = B.n
+    t = S.t_axis(n)
+    room = np.stack([S.circ_lp(S.brown(n, 99601 + c), 120, 2) for c in range(2)], axis=1)
+    B.add(room, -40)
+    B.add(np.stack([S.circ_bp(S.noise(n, 99603 + c), 300, 4000, 1) for c in range(2)], axis=1), -52)
+    # a hum from nowhere: mains harmonics, slowly wandering across the room
+    hum = sum(a * np.sin(2 * np.pi * periodic_tone(n, f) * t + f) for f, a in ((50, 0.5), (100, 1.0), (150, 0.4), (250, 0.12)))
+    hum *= 1 + 0.3 * S.smooth_noise(n, 0.08, 99605)
+    p = 0.35 * np.sin(2 * np.pi * periodic_tone(n, 1 / 40) * t)
+    B.add(np.stack([hum * np.cos((p + 1) * np.pi / 4), hum * np.sin((p + 1) * np.pi / 4)], axis=1), -42)
+    # tin roof ticking as it cools/warms, close overhead, some in little runs
+    for k, at in enumerate(B.times(11, 0.9)):
+        tt = at
+        for j in range(int(B.r.integers(1, 4))):
+            f = B.r.uniform(700, 1800)
+            tk = _modal(0.25, [(f, 0.03, 1.0), (f * 2.3, 0.02, 0.5), (f * 3.9, 0.01, 0.2)], 99610 + k * 5 + j, 0.0015)
+            B.put(distant(tk, B.r.uniform(0.1, 0.35), B.r.uniform(-0.7, 0.7), k, room=0.6), tt, B.r.uniform(-24, -16))
+            tt += secs(B.r.uniform(0.15, 0.6))
+    # dust: very fine grains sifting down now and then
+    dust = np.zeros((n, 2))
+    dens = 4 + 10 * np.clip(S.smooth_noise(n, 0.1, 99606), 0, None)
+    for c in range(2):
+        g = (B.r.random(n) < dens / SR) * B.r.standard_normal(n)
+        dust[:, c] = S.circ_bp(g, 3000, 12000, 1)
+    B.add(dust, -50)
+    # the faintest edge of the station's static, once a loop
+    st = radio_static(n, 99607, crackle=0.3, circular=True)
+    st = S.circ_lp(st, 3000) * env_window(n, 24, 7, 3.0, 3.0)
+    B.add(S.stereo(st, 0.6), -54)
+    save_loop("oddity/odd_shed_interior_loop", B.x, norm="lufs:-26", **LEAN)
+
+
+@builder("odd_mystery_bed_loop")
+def mystery_bed():
+    """A very quiet underscore for mystery moments: two slow detuned pads
+    trading places over the minute, with tape hiss and wow. No melody."""
+    dur = 60
+    n = secs(dur)
+    t = S.t_axis(n)
+    chords = ((73.4, 110.0, 174.6, 261.6), (58.3, 87.3, 146.8, 220.0))  # Dm7 / Bbmaj7, low
+    envs = (0.5 + 0.5 * np.cos(2 * np.pi * periodic_tone(n, 1 / 60) * t),)
+    envs = (envs[0], 1 - envs[0])
+    r = np.random.default_rng(9970)
+    out = np.zeros((n, 2))
+    fm = periodic_tone(n, 0.45)
+    for chord, env in zip(chords, envs):
+        for f in chord:
+            for c in range(2):
+                for cents in (-9, 0, 8):
+                    ff = periodic_tone(n, f * 2 ** ((cents + (3 if c else -3)) / 1200))
+                    beta = 0.0025 * ff / fm  # tape wow
+                    ph = 2 * np.pi * ff * t + beta * np.sin(2 * np.pi * fm * t) + r.uniform(0, 6)
+                    saw = sum(np.sin(h * ph) / h for h in range(1, 9))
+                    out[:, c] += saw * env
+    out = np.stack([S.circ_lp(out[:, c], 700, 2) for c in range(2)], axis=1)
+    out *= (1 + 0.15 * S.smooth_noise(n, 0.05, 9971))[:, None]
+    pads = S.reverb(out.mean(axis=1), size_s=4.0, damp_hz=2500, wet=0.5, circular=True, seed=9972)
+    pads = pads * 0.6 + out * 0.4
+    hiss = tape_hiss(n, 9973, circular=True)
+    x = pads / np.sqrt(np.mean(pads ** 2)) * db(-24) + hiss * db(-46) / np.sqrt(np.mean(hiss ** 2)) * 1.0
+    save_loop("oddity/odd_mystery_bed_loop", x, norm="lufs:-28", **LEAN)
 
 
 def pan_const(x, p):

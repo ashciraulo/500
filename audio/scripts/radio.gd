@@ -55,7 +55,11 @@ var _outside_trim := 0.0
 var _duck_db := 0.0
 var _duck_tween: Tween
 var _clock := 0.0                # broadcast clock for the built-in stations
-var _broadcast := {}             # station id -> {"tracks": [...], "lengths": [...]}
+var _broadcast := {}             # station+block -> {"tracks": [...], "lengths": [...], "block": ...}
+var _on_air := {}                # station id -> where its broadcast is: key, index, started, item, length
+var _programmes := {}            # station id -> parsed programme_<id>.json
+var _last_pips := -1
+var _pips_playing := false
 var _current_title := ""
 var _current_artist := ""
 
@@ -152,6 +156,7 @@ func toggle_power() -> void:
 func _tune(index: int, with_static := true) -> void:
 	station_index = index
 	_player.stop()
+	_pips_playing = false
 	if with_static:
 		Audio.play_2d("car/car_radio_station_change", "Cabin")
 		var s := Audio.stream("car/car_radio_tuning_sweep")
@@ -211,23 +216,71 @@ func _apply_volume() -> void:
 # Built-in stations: a continuous broadcast you tune into
 # ---------------------------------------------------------------------------
 
-func _broadcast_for(id: String) -> Dictionary:
-	var key := id + ("_storm" if storm else "")
+## Time-of-day programme blocks (game hours). Each station's
+## audio/music/programme_<id>.json tags its tracks with the blocks they suit.
+const BLOCKS := [["late", 1.0], ["morning", 5.0], ["day", 10.0], ["evening", 16.0], ["night", 20.0]]
+## An ident between songs every this many songs.
+const IDENT_EVERY := 2
+## Game hours with the time pips before the next song.
+const PIP_HOURS := [6, 12, 18]
+
+
+static func block_at(hours: float) -> String:
+	var h := fposmod(hours, 24.0)
+	var block: String = BLOCKS[BLOCKS.size() - 1][0]  # 20:00-01:00 wraps
+	for b in BLOCKS:
+		if h >= float(b[1]):
+			block = b[0]
+	return block
+
+
+func _hours() -> float:
+	var clock := get_node_or_null("/root/GameClock")
+	return float(clock.get("time_of_day")) if clock else 12.0
+
+
+func _programme(id: String) -> Dictionary:
+	if not _programmes.has(id):
+		var p := {}
+		var path := "res://audio/music/programme_%s.json" % id
+		if FileAccess.file_exists(path):
+			var data = JSON.parse_string(FileAccess.get_file_as_string(path))
+			if data is Dictionary:
+				p = data
+		_programmes[id] = p
+	return _programmes[id]
+
+
+## The station's running order for this block: its tracks that suit the
+## block, in a fixed shuffled order, with an ident after every IDENT_EVERY
+## songs (and the storm arrangements mixed in during storms).
+func _broadcast_for(id: String, block := "") -> Dictionary:
+	if block == "":
+		block = block_at(_hours())
+	var key := "%s_%s%s" % [id, block, "_storm" if storm else ""]
 	if _broadcast.has(key):
 		return _broadcast[key]
 	var prefix: String = ""
 	for s in stations:
 		if s.id == id:
 			prefix = s.prefix
+	var blocks: Dictionary = _programme(id).get("blocks", {})
+	var all := []
 	var tracks := []
 	for n in Audio.names_in("music"):
-		if n.get_file().begins_with(prefix):
-			tracks.append(n)
+		var f := n.get_file()
+		if f.begins_with(prefix):
+			all.append(n)
+			# Untagged tracks play in every block.
+			if not blocks.has(f) or block in blocks[f]:
+				tracks.append(n)
+	if tracks.size() < 3:
+		tracks = all
 	if storm:
 		for n in Audio.names_in("music"):
 			if n.get_file().begins_with("mus_storm_"):
 				tracks.append(n)
-	# A fixed shuffled running order per station, like a playlist on air.
+	# A fixed shuffled running order per station and block, like a playlist on air.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(key)
 	for i in range(tracks.size() - 1, 0, -1):
@@ -235,38 +288,85 @@ func _broadcast_for(id: String) -> Dictionary:
 		var t = tracks[i]
 		tracks[i] = tracks[j]
 		tracks[j] = t
+	var idents := []
+	for n in Audio.names_in("music"):
+		if n.get_file().begins_with("mus_ident_" + id):
+			idents.append(n)
+	var items := []
+	for i in tracks.size():
+		items.append(tracks[i])
+		if not idents.is_empty() and (i + 1) % IDENT_EVERY == 0:
+			items.append(idents[(i / IDENT_EVERY + rng.randi()) % idents.size()])
 	var lengths := []
-	for t in tracks:
-		var s := Audio.stream(t)
-		lengths.append(s.get_length() if s else 0.0)
-	var b := {"tracks": tracks, "lengths": lengths}
+	for t in items:
+		var st := Audio.stream(t)
+		lengths.append(st.get_length() if st else 0.0)
+	var b := {"tracks": items, "lengths": lengths, "block": block}
 	_broadcast[key] = b
 	return b
 
 
+## Tune into the broadcast where it is now. Each station keeps its own place:
+## songs carry on while you listen elsewhere, so coming back lands mid-song,
+## and when the programme block changes the station moves to the new block's
+## running order after the song that was on.
 func _play_broadcast(id: String) -> void:
-	var b := _broadcast_for(id)
-	var total := 0.0
-	for l in b.lengths:
-		total += l
-	if total <= 0.0:
+	var st := _catch_up(id)
+	if st.is_empty():
 		return
-	# Where is the broadcast now? Each station is offset so they don't line up.
-	var t := fmod(_clock + float(absi(hash(id)) % 997), total)
-	for i in b.tracks.size():
-		if t < b.lengths[i]:
-			_player.stream = Audio.stream(b.tracks[i])
-			_player.volume_db = volume_db + _outside_trim + _duck_db
-			_player.play(t)
-			_announce(id, b.tracks[i])
-			return
-		t -= b.lengths[i]
+	_player.stream = Audio.stream(st.item)
+	_player.volume_db = volume_db + _outside_trim + _duck_db
+	_player.play(clampf(_clock - st.started, 0.0, maxf(st.length - 0.05, 0.0)))
+	_announce(id, st.item)
+
+
+## Where the station's broadcast is at _clock: {block, index, item, started, length}.
+func _catch_up(id: String) -> Dictionary:
+	var b := _broadcast_for(id)
+	var n: int = b.tracks.size()
+	if n == 0:
+		return {}
+	var st: Dictionary = _on_air.get(id, {})
+	if st.is_empty():
+		# First listen: somewhere into the running order, different per station.
+		var total := 0.0
+		for l in b.lengths:
+			total += l
+		var t := fmod(float(absi(hash(id)) % 997), maxf(total, 1.0))
+		var i := 0
+		while i < n - 1 and t >= b.lengths[i]:
+			t -= b.lengths[i]
+			i += 1
+		st = {"block": b.block, "index": i, "item": b.tracks[i], "started": _clock - t,
+				"length": maxf(b.lengths[i], 0.5)}
+	var guard := 0
+	while _clock - st.started >= st.length and guard < 256:
+		guard += 1
+		st.started += st.length
+		if st.block != b.block:
+			st.block = b.block
+			st.index = 0
+		else:
+			st.index = (int(st.index) + 1) % n
+		st.index = int(st.index) % n
+		st.item = b.tracks[st.index]
+		st.length = maxf(b.lengths[st.index], 0.5)
+	_on_air[id] = st
+	return st
 
 
 func _announce(id: String, track_name: String) -> void:
-	# Built-in tracks are named mus_<station>_NN; show something friendlier.
 	var file := track_name.get_file()
-	_current_title = file.trim_prefix("mus_").replace("_", " ").capitalize()
+	if file.begins_with("mus_ident_") or file.begins_with("mus_radio_pips"):
+		# Between songs: the dash shows the station name.
+		_current_title = ""
+		for s in stations:
+			if s.id == id:
+				_current_title = s.name
+	else:
+		# Built-in tracks are named mus_<station>_NN; show their title if they have one.
+		var titles: Dictionary = _programme(id).get("titles", {})
+		_current_title = titles.get(file, file.trim_prefix("mus_").replace("_", " ").capitalize())
 	_current_artist = ""
 	now_playing.emit(id, _current_title, _current_artist)
 
@@ -278,6 +378,25 @@ func _on_finished() -> void:
 	elif id == MIDNIGHT_ID:
 		_start_station()
 	elif id != "":
+		var st: Dictionary = _on_air.get(id, {})
+		if _pips_playing:
+			# The next song starts after the pips.
+			_pips_playing = false
+			if not st.is_empty():
+				st.started = _clock
+		elif not st.is_empty():
+			st.started = minf(st.started, _clock - st.length)  # this song is over
+			_catch_up(id)
+			# The time signal on the hour, before the next song.
+			var hour := int(_hours())
+			if hour in PIP_HOURS and hour != _last_pips and Audio.has("music/mus_radio_pips"):
+				_last_pips = hour
+				_pips_playing = true
+				_player.stream = Audio.stream("music/mus_radio_pips")
+				_player.volume_db = volume_db + _outside_trim + _duck_db
+				_player.play()
+				_announce(id, "mus_radio_pips")
+				return
 		_play_broadcast(id)
 
 

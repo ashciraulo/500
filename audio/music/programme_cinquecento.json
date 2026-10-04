@@ -1,0 +1,36 @@
+{
+  "titles": {
+    "mus_cinquecento_01": "Passeggiata",
+    "mus_cinquecento_02": "Spiaggia",
+    "mus_cinquecento_03": "Autostrada",
+    "mus_cinquecento_04": "Valzer del Molo",
+    "mus_cinquecento_05": "Ballata",
+    "mus_cinquecento_06": "Alba",
+    "mus_cinquecento_07": "Colazione",
+    "mus_cinquecento_08": "Polvere",
+    "mus_cinquecento_09": "Bar Sport",
+    "mus_cinquecento_10": "Riviera",
+    "mus_cinquecento_11": "Onda",
+    "mus_cinquecento_12": "Barocco",
+    "mus_cinquecento_13": "Tramonto",
+    "mus_cinquecento_14": "Pomeriggio",
+    "mus_cinquecento_15": "Crepuscolo"
+  },
+  "blocks": {
+    "mus_cinquecento_01": ["morning", "day"],
+    "mus_cinquecento_02": ["day", "evening", "night", "late"],
+    "mus_cinquecento_03": ["day", "evening"],
+    "mus_cinquecento_04": ["morning", "day", "evening"],
+    "mus_cinquecento_05": ["evening", "night", "late"],
+    "mus_cinquecento_06": ["morning", "night", "late"],
+    "mus_cinquecento_07": ["morning", "day"],
+    "mus_cinquecento_08": ["day", "evening"],
+    "mus_cinquecento_09": ["day", "evening", "night"],
+    "mus_cinquecento_10": ["day", "evening"],
+    "mus_cinquecento_11": ["morning", "day"],
+    "mus_cinquecento_12": ["day", "evening"],
+    "mus_cinquecento_13": ["evening", "night", "late"],
+    "mus_cinquecento_14": ["day", "evening"],
+    "mus_cinquecento_15": ["evening", "night", "late"]
+  }
+}

@@ -281,8 +281,10 @@ def normalise(x: np.ndarray, mode: str) -> np.ndarray:
     return y
 
 
-def save(rel_path: str, x: np.ndarray, norm: str = "peak", quality: int = 6) -> Path:
+def save(rel_path: str, x: np.ndarray, norm: str = "peak", quality: int = 6, rate: int | None = None) -> Path:
     """Write audio/<rel_path>.ogg (and a WAV master when AUDIO_MASTERS=1).
+    quality is the Vorbis -q; rate resamples the OGG (e.g. 24000 for tape-dull
+    music that has nothing above 10 kHz) to keep the repository small.
 
     rel_path is relative to audio/, without extension, e.g.
     "car/car_horn_modern_tap" -> audio/car/car_horn_modern_tap.ogg
@@ -297,6 +299,7 @@ def save(rel_path: str, x: np.ndarray, norm: str = "peak", quality: int = 6) -> 
         sf.write(tmp.name, y.astype(np.float32), SR, subtype="FLOAT")
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", tmp.name,
+             *(["-ar", str(rate)] if rate else []),
              "-c:a", "libvorbis", "-q:a", str(quality), "-map_metadata", "-1",
              "-fflags", "+bitexact", "-flags:a", "+bitexact", str(out)],
             check=True,

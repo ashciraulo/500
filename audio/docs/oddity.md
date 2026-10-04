@@ -27,6 +27,13 @@ through the same radio chain if you want words.
 | odd_follower_engine_loop | yes (40 s, mono, -24 LUFS) | A car keeping its distance behind you in Kings Park: small four-cylinder at ~2200 rpm, throttle easing on and off, tyre roar, far off through trees | P2 | synth |
 | odd_river_lights_shimmer | no (7 s, stereo, -30 LUFS) | The river lights coming on: a faint glassy shimmer of high, slowly beating partials swelling and dissolving | P2 | synth |
 | odd_midnight_station_found | no (7 s, stereo, -20 LUFS) | Discovery sting for finding the midnight station: its falling interval signal surfacing out of static, then a soft choir cluster and a glassy bell | P2 | synth |
+| odd_clue_01..04 | no (2.4-2.8 s, stereo, -26 LUFS) | Tiny 'you noticed something' cues, a variant set (`oddity/odd_clue` picks one): 01 a detuned music-box note under tape warble, 02 a breath of static with a far chime inside it, 03 a low glassy swell, slowly beating, 04 a reversed piano note blooming back out of its reverb | P2 | synth |
+| odd_clue_05..07 | no (2.8-5 s, stereo, -26 LUFS) | More clue cues, each a shade closer to the midnight station: 05 the station's first two notes on a music box through tape, 06 a low bowed note that won't settle, with a faint clock tick, 07 the station's whole falling tune, faint, from a radio in another room, swallowed by static | P2 | synth |
+| odd_shed_knock | no (6 s, mono, -24 LUFS) | Knocking back from inside the locked shed: knuckles on corrugated iron, three slow, a pause, two more; muffled, heard from the courtyard. Play at the shed door | P2 | synth |
+| odd_key_found | no (6.5 s, stereo, -20 LUFS) | Finding the shed key: the midnight station's falling interval (E D C G) on a celesta, a soft choir closing over it, a tiny glint as the key catches the light | P2 | synth |
+| odd_shed_unlock | no (11 s, stereo, -20 LUFS) | The shed unlocked: key grating into a stiff old padlock and grinding round, the shackle letting go, the hasp dropping and bouncing on the tin, the corrugated-iron door scraping open on its dry runner (the sheet warbling as it flexes) and bumping its stop; as it opens a low held drone swells with the station's interval half-heard inside it, then still air | P2 | synth |
+| odd_shed_interior_loop | yes (40 s, stereo, -26 LUFS) | Inside the open shed: close tin-roof ticks (some in little runs), dust sifting, a faint mains hum from nowhere that drifts across the room, and once a loop the faintest edge of the midnight station's static | P2 | synth |
+| odd_mystery_bed_loop | yes (60 s, stereo, -28 LUFS) | A very quiet underscore for mystery moments: two slow detuned pads (Dm7, Bbmaj7, low) trading places over the minute, with tape wow and hiss. No melody | P2 | synth |
 
 ## Hooking the night oddities in
 
@@ -54,3 +61,34 @@ For the loops, `Audio.stream(name, true)` returns the stream with looping on.
   `traffic/traffic_train_alongside_loop` on the train, and play
   `Audio.sting("race_win")` when the player beats it.
 
+
+## Mystery arc
+
+For the mystery thread (the oddities, the midnight station, the locked
+storage shed whose key turns up late). What to play where; the game code
+that triggers these lives with that thread.
+
+- **A clue noticed** (the player inspects or photographs something that
+  matters): for the seven midnight-station clues, play clue N's own cue,
+  `Audio.play_2d("oddity/odd_clue_0N", "SFX")`. They grow closer to the
+  station from 01 to 07, so the last clue before the shed key quotes its
+  whole tune. For anything else, `oddity/odd_clue` picks one of them at
+  random. Short and quiet, so they can sit over driving, the radio or the home.
+- **Knocking in the shed** (late at night, while it's still locked):
+  `Audio.play_at("oddity/odd_shed_knock", <shed door>)`.
+- **The key found**: play `oddity/odd_key_found` once with
+  `Audio.play_2d("oddity/odd_key_found", "Music")`. It quotes the midnight
+  station's interval, so it links the key to the station.
+- **The shed unlocked** (`HomeBase.shed_unlocked`): `game_hooks.gd` plays
+  `oddity/odd_shed_unlock` 2D on the SFX bus (stereo, with a drone, so not
+  at the door). Time the door's opening animation to start ~3.5 s in and
+  finish ~7.4 s in.
+- **Inside the shed**: once the door is open, loop
+  `oddity/odd_shed_interior_loop` (`Audio.stream(name, true)`) on an
+  `AudioStreamPlayer` on the `Ambience` bus while the player is inside,
+  fading it in over ~2 s as `odd_shed_unlock` ends (~9 s) and out over ~2 s
+  on leaving. Lower or pause the zone bed while inside.
+- **Mystery moments** (reading notes, the station after a clue, cutscenes):
+  fade `oddity/odd_mystery_bed_loop` in over 4-6 s on the `Music` bus and out
+  the same way; duck or stop the radio and music under it. It has no
+  melody, so it can run under dialogue and other cues.

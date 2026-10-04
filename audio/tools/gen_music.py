@@ -53,12 +53,24 @@ TRACKS = {
 }
 
 
+# Tracks encoded leaner to keep the repository small: the tape chain rolls
+# everything off around 10 kHz, so 24 kHz Vorbis q2 loses nothing audible.
+LEAN: dict = {}
+LEAN_ENC = dict(quality=2, rate=24000)
+
+
 def _register():
-    try:
-        import music_tracks_more as tmore  # noqa: F401
-        TRACKS.update(tmore.TRACKS)
-    except ImportError:
-        pass
+    import importlib
+    # Radio Cinquecento's and Notte FM's wider rotations live in their own modules.
+    for mod in ("music_tracks_more", "music_tracks_cinq", "music_tracks_notte", "music_tracks_idents"):
+        try:
+            tracks = importlib.import_module(mod).TRACKS
+            TRACKS.update(tracks)
+            if mod != "music_tracks_more":
+                LEAN.update(tracks)
+        except ModuleNotFoundError as e:
+            if e.name != mod:
+                raise
 
 
 def main(argv):
@@ -82,7 +94,7 @@ def main(argv):
             y, loop = spec[0], spec[1]
             norm = spec[2] if len(spec) > 2 else "music"
             mc.analyse(name, y, loop)
-            sfxlib.save(f"music/{name}", y, norm=norm)
+            sfxlib.save(f"music/{name}", y, norm=norm, **(LEAN_ENC if key in LEAN else {}))
         print(f"  ({time.time() - t0:.0f}s)", file=sys.stderr)
 
 

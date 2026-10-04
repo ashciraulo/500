@@ -5,6 +5,13 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 `build/sources/` (see [CREDITS.md](../CREDITS.md); keys below), plus synthesis.
 48 kHz OGG Vorbis q6.
 
+- **Bed variants** (`amb_<place>_<rain|late|dawn>`): the same zones wet
+  (`_rain`: the place as it sounds when wet, not the rain, which the weather
+  layers play), from 01:00 to 05:00 (`_late`: emptier and stiller than
+  night, and 3 dB quieter at -27 LUFS), and from 05:00 to 07:00 (`_dawn`, Kings Park, suburbs, river and
+  beach only). `ambience_manager.gd` prefers rain (rain above 0.3, until it
+  drops below 0.2), then dawn, then late, then day/night, skipping any file
+  that doesn't exist, and crossfades whenever rain or the time changes it.
 - **Beds** (`amb_<place>_<day|night>`): stereo, 60-120 s seamless loops, no
   fades, -24 LUFS. Each is layered in numpy: a woven base texture (random
   chunks of a recording joined with equal-power crossfades, tail crossfaded
@@ -35,6 +42,26 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | amb_beach_night | yes (110 s) | Beach at night: waves, light wind | P3 | beach_night (+ synth wind) |
 | amb_fremantle_day | yes (110 s) | Fremantle port by day: water slapping the wharf, gulls, ship horns, container clanks, crane hydraulics, a freight train grinding out of the port with its crossing bell | P3 | laps_horn, freo_train (+ synth gulls, horns, clanks, hydraulics) |
 | amb_fremantle_night | yes (110 s) | Port at night: lapping, low machinery hum, generator thrum, a far ship horn, distant clanks, a far crossing bell | P3 | lapping (+ synth) |
+| amb_northbridge_rain | yes (90 s) | Northbridge when it's wet: tyre spray hiss from passing cars and a truck, a gutter running, drips off the awnings, chatter and the club muffled under cover, wet-city hiss, one far siren | P2 | bar_wa, traffic_night (+ synth spray, gutter, drips, club) |
+| amb_cbd_rain | yes (90 s) | CBD wet: muffled main-road traffic under a wet 'shhh', buses and cars spraying past, the crossing still tocking (one walk phase, fewer people), a downpipe, drips | P2 | traffic_peak (+ synth) |
+| amb_kingspark_rain | yes (96 s) | Kings Park wet: the gums dripping near and far, a trickle down the path, still wet leaves, two far magpies and a raven, the roads below hissing, two far wet cars | P2 | mag_kp2, mag_dl, raven_db, raven_yell (+ synth drips, trickle, hiss) |
+| amb_river_rain | yes (100 s) | River wet: lapping, wet traffic hissing across the water, drips on the jetty rails, far cars on the bridge, a couple of far gulls | P2 | lapping (+ synth) |
+| amb_suburbs_rain | yes (110 s) | Suburbs wet: two gutters/downpipes running, drips off eaves and trees, a few cars spraying past slowly, one far dog, one far raven | P2 | dogs_far, dog_far2, raven_db, raven_yell (+ synth) |
+| amb_freeway_rain | yes (80 s) | Freeway wet: muffled freeway roar under a strong spray hiss, cars and trucks throwing spray as they pass | P2 | freeway (+ synth spray) |
+| amb_fremantle_rain | yes (110 s) | Port wet: lapping, machinery hum, drips ticking on containers and shed roofs, a gutter, a far ship horn and clanks | P3 | lapping (+ synth) |
+| amb_beach_rain | yes (100 s) | Beach wet: rougher grey surf, wind, a far car spraying past on the coast road, drips off the shelter, one gull | P3 | beach_day (+ synth) |
+| amb_northbridge_late | yes (96 s) | Northbridge 01:00-05:00, everyone gone: fridge-like city hum, air-con units, a neon sign buzzing, a street sweeper creeping past, a bin lid far off, one taxi, a very far siren | P2 | traffic_night (+ synth) |
+| amb_cbd_late | yes (100 s) | CBD 01:00-05:00: city hum, air-con units, a crossing tocking for nobody, a sweeper far off, one far car, one far clank | P2 | synth only |
+| amb_kingspark_late | yes (120 s) | Kings Park 01:00-05:00: thinner crickets, the air dead still, the city hum below, a boobook once, a far dog, one lone car | P2 | crickets_sub, boobook1, dogs_far, dog_far2 (+ synth) |
+| amb_river_late | yes (110 s) | River 01:00-05:00: quiet lapping, bridge light buzz, city hum, faint crickets, one far car on the bridge, a mooring tinking once | P2 | lapping, crickets_sub (+ synth) |
+| amb_suburbs_late | yes (120 s) | Suburbs 01:00-05:00: crickets, a fridge-like hum, a neighbour's pool pump behind the fence, one far dog, one car, a very far siren | P2 | crickets_sub, dogs_far, dog_far2 (+ synth) |
+| amb_freeway_late | yes (100 s) | Freeway 01:00-05:00: near-empty highway, hum, three passes (one truck) | P2 | highway_wa (+ synth) |
+| amb_fremantle_late | yes (110 s) | Port 01:00-05:00: lapping, low hum, generators, halyards tinking on masts in the boat harbour, one far clank | P3 | lapping (+ synth) |
+| amb_beach_late | yes (110 s) | Beach 01:00-05:00: waves, barely any wind, a far hum from town, one far car | P3 | beach_night (+ synth) |
+| amb_kingspark_dawn | yes (100 s) | Kings Park 05:00-07:00: the magpies carolling all round (the Perth dawn), small birds twittering, the kookaburra family greeting the sun, a raven, the last crickets, light breeze | P2 | mag_kp2, mag_dl, kook_kp, raven_db, walyunga, crickets_sub (+ synth twitter, wind) |
+| amb_suburbs_dawn | yes (110 s) | Suburbs 05:00-07:00: magpies carolling, wagtails, small birds, ravens, the retic coming on a couple of yards over, the last crickets, early traffic waking, one car off to an early shift | P2 | mag_kp2, mag_dl, wagtail1, raven_db, raven_yell, sprinkler, traffic_night, crickets_sub, dogs_far, dog_far2 (+ synth) |
+| amb_river_dawn | yes (100 s) | River 05:00-07:00: still water lapping, magpies on the foreshore, gulls, a rowing eight passing out on the Swan (catch splashes, oars in the gates) | P2 | lapping, mag_kp2, mag_dl (+ synth gulls, rowing) |
+| amb_beach_dawn | yes (100 s) | Beach 05:00-07:00: a calm morning sea, gulls, magpies in the dunes behind, a light breeze | P3 | beach_night, mag_kp2, mag_dl (+ synth gulls) |
 | amb_tunnel | yes (60 s) | Northbridge tunnel: low drone, jet fans, light hum, reverberant car passes | P3 | synth only |
 | amb_carmeet | yes (90 s) | Night car meet: idling engines (V8 burble, four, a rough six), chatter, a muffled car stereo, occasional revs | P2 | bar_wa (+ synth idles, stereo, revs) |
 | amb_bird_raven_01..03 | no | Australian raven, the long mournful falling 'aah-aah-aaaah' | P1 | raven_db |
