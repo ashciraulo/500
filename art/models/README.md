@@ -159,6 +159,26 @@ Every car (modern and classic) also marks its trinket slots: `Mount_Mirror`
 (under the rear-view mirror), `Mount_Dash` (passenger side of the dash top),
 `Mount_Shelf` (parcel shelf) and `Mount_Gear` (gear knob centre).
 
+## Field gear and places
+
+For bird-watching and fishing (the field journal design). `scripts/build_field.py`
+(`lib/field.py`) writes the hand props to `props/field/<name>.glb`, and
+`scripts/build_field_places.py` (`lib/field_places.py`) writes the places to
+`props/field/places/<name>.glb`. Front toward -Y in Blender (+Z in Godot).
+Each is one mesh named after it plus empties marking where things happen.
+
+| Prop | Sockets | Notes |
+| --- | --- | --- |
+| `binoculars` | `Eyepiece`, `Objective` | 7x50 porro prisms in army-green enamel; the starter pair has an M scratched through the paint on the right-hand cover. |
+| `camera` | `Lens`, `Viewfinder` | A 1970s manual 35 mm SLR, 50 mm lens. |
+| `film_roll` | | 35 mm canister, leader out. |
+| `fishing_rod` | `Tip`, `Reel`, `Grip` | 2.1 m spin rod lying along -Y from the butt (origin), resting on an Alvey sidecast reel. The line hangs from `Tip`. |
+| `esky`, `tackle_box` | `Lid` (a mesh) | `Lid`'s origin is its hinge along the back top edge; open by rotating about local X. The esky has an ice tray inside. |
+| `jetty_bay`, `jetty_end` | `Cast_L`, `Cast_R`, `Water`; the end adds `Ladder`, `Lamp` | 3 m bays of a jarrah jetty, origin at the deck top's landward end, running out along -Y; chain bays 3 m apart. Water is 1.3 m below the deck. The end bay has pylons both ends, a ladder and a lamp post (material `FP_JettyLamp` to light at night). |
+| `jetty_bench` | | Jarrah bench on galvanised legs, along the jetty. |
+| `groyne_section`, `groyne_head` | `Cast_L`, `Cast_R`, `Water`; the head adds `Cast_End` | 6 m of granite rock armour with a crushed-limestone path on the crest, origin on the path's centre line at water level, running out along -Y. The head rounds off the seaward end with a navigation post. |
+| `shop_photo_lab`, `shop_tackle` | `Door`, `Counter` | Single-storey Lake Street shops, 5 m wide: parapet name, verandah on green posts over the footpath, windows either side of a recessed door, a shallow lit room behind the glass. Made-up names: LAKE ST PHOTO and BAIT AND TACKLE. Origin at the base of the building line. |
+
 ## Found parts
 
 `scripts/build_accessories.py` writes bolt-on extras to `cars/parts/`, origin
