@@ -105,6 +105,37 @@ def sofa(color="sofa", w=2.0, d=0.9):
     return parts
 
 
+def sectional(long=4.0, short=2.0, d=0.92, color="sofa"):
+    """L-shaped couch. The corner sits at the origin: the long run goes +Y
+    with its back on the +X side, the short run goes -X with its back on the
+    -Y side, so both face into the -X/+Y quarter."""
+    c = M(color)
+    b = 0.22
+    parts = [bx((-d, 0, 0.08), (0, long, 0.42), c), bx((-short, 0, 0.08), (-d, d, 0.42), c),
+             bx((-b, 0, 0.42), (0, long, 0.85), c), bx((-short, 0, 0.42), (-b, b, 0.85), c),
+             bx((-d, long - 0.18, 0.42), (-b, long, 0.62), c), bx((-short, b, 0.42), (-short + 0.18, d, 0.62), c)]
+    # seat cushions: the long run includes the corner seat
+    run = long - 0.18 - b
+    n = max(2, int(round(run / 0.8)))
+    for i in range(n):
+        y0 = b + i * run / n
+        parts.append(bx((-d + 0.02, y0 + 0.01, 0.42), (-b - 0.01, y0 + run / n - 0.01, 0.52), c))
+    run = short - 0.18 - d
+    n = max(1, int(round(run / 0.8)))
+    for i in range(n):
+        x0 = -short + 0.18 + i * run / n
+        parts.append(bx((x0 + 0.01, b + 0.01, 0.42), (x0 + run / n - 0.01, d - 0.02, 0.52), c))
+    # back cushions leaning on the backs
+    for y, col in ((0.75, "rust"), (long * 0.5, "mustard"), (long - 0.6, "cream")):
+        parts.append(bx((-b - 0.13, y - 0.21, 0.5), (-b - 0.01, y + 0.21, 0.82), M(col)))
+    parts.append(bx((-short + 0.4, b + 0.01, 0.5), (-short + 0.82, b + 0.13, 0.82), M("teal")))
+    parts.append(bx((-d - 0.01, long - 0.75, 0.2), (-b - 0.05, long - 0.3, 0.53), M("throw")))
+    for x, y in ((-0.08, 0.08), (-0.08, long - 0.08), (-d + 0.08, long - 0.08), (-short + 0.08, 0.08),
+                 (-short + 0.08, d - 0.08), (-d + 0.08, d - 0.08)):
+        parts.append(bx((x - 0.03, y - 0.03, 0), (x + 0.03, y + 0.03, 0.08), M("wood_dark")))
+    return parts
+
+
 def _cushion(pos, mat):
     o = bx((-0.2, -0.07, -0.18), (0.2, 0.07, 0.18), mat)
     o.rotation_euler = (math.radians(-12), 0, 0)
@@ -217,8 +248,22 @@ def record_crate():
     return parts
 
 
-def tv_unit():
-    return [bx((-0.6, -0.2, 0), (0.6, 0.2, 0.45), M("oak"))]
+def tv_unit(w=1.2):
+    parts = [bx((-w / 2, -0.2, 0.08), (w / 2, 0.2, 0.45), M("oak"))]
+    for sx in (-1, 1):
+        parts.append(bx((sx * (w / 2 - 0.05) - 0.02, -0.15, 0), (sx * (w / 2 - 0.05) + 0.02, 0.15, 0.08), M("wood_dark")))
+    # two drawer fronts and a gap for the console
+    for x0 in (-w / 2 + 0.04, w / 6):
+        parts.append(bx((x0, -0.205, 0.12), (x0 + w / 3 - 0.08, -0.2, 0.41), M("wood_light")))
+    return parts
+
+
+def tv(diag_in=65):
+    """Wall-mounted 16:9 flat screen, back on the wall, facing -Y."""
+    d = diag_in * 0.0254
+    w, h = d * 16 / math.hypot(16, 9), d * 9 / math.hypot(16, 9)
+    return [bx((-w / 2 - 0.01, -0.045, 0), (w / 2 + 0.01, 0, h + 0.02), M("black")),
+            bx((-w / 2 + 0.005, -0.05, 0.015), (w / 2 - 0.005, -0.045, h + 0.005), M("screen"))]
 
 
 # ------------------------------------------------------------------ plants
@@ -522,15 +567,18 @@ def photo_frames(n=7, seed=3, w=1.6, h=0.9):
     return parts
 
 
-def curtains(w, h, gap=0.4):
-    """Two drapes either side of a window, hanging from a rod; faces -Y."""
-    side = (w - gap) / 2 + 0.2
-    parts = [cyl(0.012, w + 0.4, (0, 0, h), M("brass"), 5, axis="X")]
+def curtains(w, h, drape=0.38):
+    """Two drapes pulled open either side of an opening `w` wide, hanging
+    from a rod; faces -Y. Each drape covers only the wall beside the opening
+    (overlapping its edge by 5 cm), so doors under it swing clear."""
+    parts = [cyl(0.012, w + 2 * drape, (0, 0, h), M("brass"), 5, axis="X")]
     for sx in (-1, 1):
-        x0 = sx * (w / 2 + 0.2) - (side if sx > 0 else 0)
+        inner, outer = w / 2 - 0.05, w / 2 - 0.05 + drape
         for k in range(4):
-            xs = x0 + k * side / 4
-            parts.append(bx((xs, -0.03 - (k % 2) * 0.03, 0.05), (xs + side / 4, 0.0 - (k % 2) * 0.03, h - 0.02), M("curtain")))
+            a = inner + (outer - inner) * k / 4
+            b = inner + (outer - inner) * (k + 1) / 4
+            x0, x1 = (a, b) if sx > 0 else (-b, -a)
+            parts.append(bx((x0, -0.03 - (k % 2) * 0.03, 0.05), (x1, 0.0 - (k % 2) * 0.03, h - 0.02), M("curtain")))
     return parts
 
 

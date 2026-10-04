@@ -17,6 +17,9 @@ signal slept(day: int)
 signal shed_unlocked
 
 const DOOR_OPEN_ANGLE := deg_to_rad(100.0)
+## Doors that swing the other way (clockwise seen from above), so they open
+## into the room. Keep in step with OPEN_CLOCKWISE in build_shenton.py.
+const OPEN_CLOCKWISE := [&"Door_French_R", &"Door_Balcony_R"]
 const SLIDE_DISTANCE := 1.05
 const WAKE_HOUR := 7.0
 
@@ -74,7 +77,8 @@ func toggle_door(door_name: StringName) -> bool:
 		if door.slide:
 			target = target.translated_local(Vector3(SLIDE_DISTANCE, 0, 0))
 		else:
-			target = target * Transform3D(Basis(Vector3.UP, DOOR_OPEN_ANGLE), Vector3.ZERO)
+			var angle := -DOOR_OPEN_ANGLE if door_name in OPEN_CLOCKWISE else DOOR_OPEN_ANGLE
+			target = target * Transform3D(Basis(Vector3.UP, angle), Vector3.ZERO)
 	var tween := create_tween()
 	tween.tween_property(node, "transform", target, 0.6).set_trans(Tween.TRANS_SINE)
 	door_toggled.emit(door_name, door.open)

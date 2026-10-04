@@ -124,23 +124,57 @@ def ext_wall(axis, at, a0, a1, z0, z1, outward, M, openings=(), outer="render"):
     A.wall(axis, at + outward * inner, a0, a1, z0, z1, 0.03, M[outer], "House-col", openings, side=outward)
 
 
-def door(name, axis, hinge, length, z0, height, mat, sign=1, knob=True, glass=None):
+# Doors that open clockwise seen from above (HomeBase swings every other door
+# anticlockwise); keep in step with OPEN_CLOCKWISE in scripts/world/home_base.gd.
+OPEN_CLOCKWISE = ("Door_French_R", "Door_Balcony_R")
+
+
+def _french_parts(length, height, M):
+    """Glazed French door leaf: white stiles and rails, glass in a grid of
+    glazing bars, built along +x from the hinge."""
+    t, s, rail = 0.045, 0.07, 0.18
+    parts = [C.box_minmax("stile", (0, -t / 2, 0), (s, t / 2, height), M["trim"]),
+             C.box_minmax("stile", (length - s, -t / 2, 0), (length, t / 2, height), M["trim"]),
+             C.box_minmax("rail", (s, -t / 2, 0), (length - s, t / 2, rail), M["trim"]),
+             C.box_minmax("rail", (s, -t / 2, height - s), (length - s, t / 2, height), M["trim"]),
+             C.box_minmax("glass", (s, -0.004, rail), (length - s, 0.004, height - s), M["glass"])]
+    rows = 5
+    for i in range(1, rows):
+        z = rail + (height - s - rail) * i / rows
+        parts.append(C.box_minmax("bar", (s, -0.012, z - 0.012), (length - s, 0.012, z + 0.012), M["trim"]))
+    mid = length / 2
+    parts.append(C.box_minmax("bar", (mid - 0.012, -0.012, rail), (mid + 0.012, 0.012, height - s), M["trim"]))
+    return parts
+
+
+def door(name, axis, hinge, length, z0, height, mat, sign=1, knob=True, glass=None, french=None):
     """Door leaf with its origin on the hinge. axis: the wall's run ('x' or
-    'y'); the leaf extends `sign` along it from the hinge."""
+    'y'); the leaf extends `sign` along it from the hinge. french: the house
+    materials, to build a glazed French door leaf instead of a plain one."""
     t = 0.04
     if axis == "x":
         lo, hi = (0, -t / 2, 0), (length, t / 2, height)
     else:
         lo, hi = (-t / 2, 0, 0), (t / 2, length, height)
-    parts = [C.box_minmax(name, lo, hi, mat)]
+    if french:
+        assert axis == "x", "French doors are only built in x walls"
+        parts = _french_parts(length, height, french)
+        parts[0].name = name
+    else:
+        parts = [C.box_minmax(name, lo, hi, mat)]
     if glass:
+        # two tall, narrow leadlight panes side by side, raised panels below
         g0, g1 = glass
-        if axis == "x":
-            parts.append(C.box_minmax("g", (length * 0.25, -t / 2 - 0.005, g0), (length * 0.75, t / 2 + 0.005, g1),
-                                      C.mat("DoorGlass", "#c7b98a", rough=0.2, emit="#f2c27a", emit_strength=0.3)))
-        else:
-            parts.append(C.box_minmax("g", (-t / 2 - 0.005, length * 0.25, g0), (t / 2 + 0.005, length * 0.75, g1),
-                                      C.mat("DoorGlass", "#c7b98a", rough=0.2, emit="#f2c27a", emit_strength=0.3)))
+        lead = C.mat("DoorGlass", "#8a6a3e", rough=0.2, emit="#e0a860", emit_strength=0.12)
+        for c in (0.31, 0.69):
+            lo, hi = (length * c - 0.075, -t / 2 - 0.005, g0), (length * c + 0.075, t / 2 + 0.005, g1)
+            if axis == "y":
+                lo, hi = (lo[1], lo[0], lo[2]), (hi[1], hi[0], hi[2])
+            parts.append(C.box_minmax("g", lo, hi, lead))
+            lo, hi = (length * c - 0.11, -t / 2 - 0.008, 0.2), (length * c + 0.11, t / 2 + 0.008, 0.85)
+            if axis == "y":
+                lo, hi = (lo[1], lo[0], lo[2]), (hi[1], hi[0], hi[2])
+            parts.append(C.box_minmax("panel", lo, hi, mat))
     if knob:
         k = length - 0.07
         for s in (-1, 1):
@@ -184,15 +218,31 @@ def house(M):
     A.block((0, -1.6, FZ1 - 0.01), (W, -EXT, FZ1), M["tiles"], "House-col")
 
     # front wall (y = 0, street at -Y)
-    front_g = [(0.45, 1.35, FZ0, 2.65), (1.42, 1.72, FZ0 + 0.9, 2.65), (2.2, 4.9, FZ0, 2.5)]
-    front_u = [(0.6, 1.6, FZ1 + 0.8, FZ1 + 2.2), (2.2, 4.9, FZ1, FZ1 + 2.35)]
+    # Ground (street side, left to right): the black front door with a leaded
+    # sidelight and a three-pane transom over both, then French doors between
+    # two narrow fixed sidelights. Upstairs: the balcony French doors on the
+    # left over the front door, a wide window on the right.
+    front_g = [(0.45, 1.72, FZ0, 2.65), (2.2, 4.9, FZ0, 2.45)]
+    front_u = [(0.55, 1.85, FZ1, FZ1 + 2.45), (2.6, 4.6, FZ1 + 0.45, FZ1 + 2.25)]
     ext_wall("x", 0, -PARTY, W + PARTY, 0, EAVE, -1, M, front_g + front_u)
-    frame_opening("x", -0.1, 0.45, 1.35, 2.25, 2.65, M, "House", transom=None)
-    frame_opening("x", -0.1, 1.42, 1.72, FZ0 + 0.9, 2.65, M, "House")
-    frame_opening("x", -0.1, 2.2, 4.9, FZ0, 2.5, M, "House", bars=3, transom=2.1)
-    frame_opening("x", -0.1, 0.6, 1.6, FZ1 + 0.8, FZ1 + 2.2, M, "House", bars=1)
-    frame_opening("x", -0.1, 2.2, 4.9, FZ1, FZ1 + 2.35, M, "House", bars=3, transom=FZ1 + 2.0)
-    doors.append(door("Door_Front", "x", (0.47, -0.1), 0.86, FZ0, 2.08, M["front_door"], glass=(1.1, 1.9)))
+    frame_opening("x", -0.1, 0.45, 1.72, 2.25, 2.65, M, "House", bars=2)                  # transom
+    frame_opening("x", -0.1, 1.37, 1.72, FZ0, 2.25, M, "House", transom=FZ0 + 0.95)      # sidelight
+    A.block((1.42, -0.13, FZ0), (1.67, -0.07, FZ0 + 0.93), M["trim"], "House-col")       # sidelight panel
+    A.block((1.35, -0.2, FZ0), (1.42, 0.0, 2.25), M["trim"], "House-col")                # jamb between
+    frame_opening("x", -0.1, 2.2, 2.75, FZ0, 2.45, M, "House", bars=0, transom=1.25)     # fixed sidelights
+    frame_opening("x", -0.1, 4.35, 4.9, FZ0, 2.45, M, "House", bars=0, transom=1.25)
+    A.block((2.75, -0.2, 2.35), (4.35, 0.0, 2.45), M["trim"], "House-col")                # head over the leaves
+    A.block((2.75, -0.2, FZ0), (4.35, 0.0, FZ0 + 0.02), M["trim"], "House-col")           # sill
+    doors.append(door("Door_Front", "x", (0.47, -0.1), 0.86, FZ0, 2.08, M["front_door"], glass=(1.0, 1.95)))
+    doors.append(door("Door_French_L", "x", (2.77, -0.08), 0.79, FZ0 + 0.02, 2.17, None, french=M))
+    doors.append(door("Door_French_R", "x", (4.33, -0.08), 0.79, FZ0 + 0.02, 2.17, None, sign=-1, french=M))
+    # balcony doors and the bedroom window
+    frame_opening("x", -0.1, 0.55, 1.85, FZ1 + 2.15, FZ1 + 2.45, M, "House", bars=1)      # transom
+    A.block((0.55, -0.2, FZ1), (1.85, 0.0, FZ1 + 0.02), M["trim"], "House-col")
+    A.block((0.55, -0.2, FZ1 + 2.1), (1.85, 0.0, FZ1 + 2.15), M["trim"], "House-col")
+    doors.append(door("Door_Balcony_L", "x", (0.57, -0.08), 0.63, FZ1 + 0.02, 2.08, None, french=M))
+    doors.append(door("Door_Balcony_R", "x", (1.83, -0.08), 0.63, FZ1 + 0.02, 2.08, None, sign=-1, french=M))
+    frame_opening("x", -0.1, 2.6, 4.6, FZ1 + 0.45, FZ1 + 2.25, M, "House", bars=1, transom=FZ1 + 1.75)
 
     # rear wall (y = D, courtyard at +Y)
     rear_g = [(0.5, 2.0, FZ0 + 0.9, 2.5), (2.6, 4.8, FZ0, 2.45)]
@@ -217,22 +267,25 @@ def house(M):
         A.wall("y", x, -EXT, D + EXT, 0, EAVE, PARTY, M["paint"], "House-col", side=s)
 
     # fireplace on the lounge's x=0 wall
-    A.block((0, 2.2, FZ0), (0.35, 3.6, CZ0), M["paint"], "House-col")
-    A.block((0.30, 2.55, FZ0), (0.36, 3.25, FZ0 + 0.85), M["firebox"], "House")
-    A.block((0.0, 2.1, FZ0 + 1.1), (0.45, 3.7, FZ0 + 1.16), M["trim"], "House-col")    # mantel
-    A.block((0.35, 2.4, FZ0), (0.75, 3.4, FZ0 + 0.03), M["tiles"], "House-col")         # hearth
+    # toward the street end, leaving the wall beside it for the TV
+    A.block((0, 1.75, FZ0), (0.35, 3.05, CZ0), M["paint"], "House-col")
+    A.block((0.30, 2.05, FZ0), (0.36, 2.75, FZ0 + 0.85), M["firebox"], "House")
+    A.block((0.0, 1.65, FZ0 + 1.1), (0.45, 3.15, FZ0 + 1.16), M["trim"], "House-col")  # mantel
+    A.block((0.35, 1.9, FZ0), (0.75, 2.9, FZ0 + 0.03), M["tiles"], "House-col")         # hearth
 
     # ---- ground floor partitions (0.1 thick)
     t = 0.1
     A.wall("x", 5.0, 0, 1.0, FZ0, CZ0, t, M["paint"], "House-col")                    # storage front
     A.wall("x", 5.0, 2.1, W, FZ0, CZ0, t, M["paint"], "House-col")                    # laundry/WC front
-    A.wall("y", 1.0, 5.0, 6.6, FZ0, CZ0, t, M["paint"], "House-col", [(5.6, 6.35, FZ0, 2.2)])
-    A.wall("y", 2.1, 5.0, 6.6, FZ0, CZ0, t, M["paint"], "House-col", [(5.6, 6.4, FZ0, 2.2)])
+    A.wall("y", 1.0, 5.0, 6.6, FZ0, CZ0, t, M["paint"], "House-col", [(5.7, 6.45, FZ0, 2.2)])
+    A.wall("y", 2.1, 5.0, 6.6, FZ0, CZ0, t, M["paint"], "House-col", [(5.72, 6.5, FZ0, 2.2)])
     A.wall("y", 3.6, 5.0, 6.6, FZ0, CZ0, t, M["paint"], "House-col", [(5.7, 6.4, FZ0, 2.2)])
     A.wall("x", 6.6, 2.1, W, FZ0, CZ0, t, M["paint"], "House-col")                    # behind the kitchen run
     A.wall("x", 6.6, 0, 1.0, FZ0, 1.9, t, M["paint"], "House-col")                    # storage back (under stair)
-    doors.append(door("Door_Storage", "y", (1.0, 5.62), 0.72, FZ0, 2.04, M["door"]))
-    doors.append(door("Door_Laundry", "y", (2.1, 6.38), 0.76, FZ0, 2.04, M["door"], sign=-1))
+    # the storage door opens out into the hall (the cupboard is too small to
+    # swing into); the laundry door opposite opens into the laundry
+    doors.append(door("Door_Storage", "y", (1.0, 6.44), 0.72, FZ0, 2.04, M["door"], sign=-1))
+    doors.append(door("Door_Laundry", "y", (2.1, 6.49), 0.76, FZ0, 2.04, M["door"], sign=-1))
     doors.append(door("Door_Toilet", "y", (3.6, 5.72), 0.66, FZ0, 2.04, M["door"]))
 
     # stairs: carpeted, rising from y=8.8 (bottom) to y=5.0 (top) along x=0
@@ -259,7 +312,7 @@ def house(M):
         A.block(lo, hi, M["walltile"], "House", uv=0.6)
     doors.append(door("Door_Bed1", "x", (0.92, 3.9), 0.78, FZ1, 2.04, M["door"]))
     doors.append(door("Door_Bath_Bed", "x", (3.18, 3.9), 0.76, FZ1, 2.04, M["door"], sign=-1))
-    doors.append(door("Door_Bath_Landing", "y", (2.1, 4.07), 0.76, FZ1, 2.04, M["door"]))
+    doors.append(door("Door_Bath_Landing", "y", (2.1, 4.83), 0.76, FZ1, 2.04, M["door"], sign=-1))
     doors.append(door("Door_WC_Up", "y", (2.1, 7.73), 0.66, FZ1, 2.04, M["door"], sign=-1))
     doors.append(door("Door_Bed2", "x", (1.17, 8.0), 0.76, FZ1, 2.04, M["door"]))
 
@@ -273,8 +326,8 @@ def house(M):
     for x in (-PARTY / 2, W + PARTY / 2):
         A.gable_end(x, -EXT, D + EXT, EAVE, zr, PARTY, M["render"], "House_Roof")
     # chimney over the fireplace, poking through the front roof slope
-    A.block((-0.1, 2.3, EAVE), (0.55, 3.5, zr + 0.4), M["render"], "House_Roof")
-    for y in (2.6, 3.2):
+    A.block((-0.1, 1.85, EAVE), (0.55, 2.95, zr + 0.4), M["render"], "House_Roof")
+    for y in (2.13, 2.67):
         A.block((0.1, y - 0.12, zr + 0.4), (0.34, y + 0.12, zr + 0.75), F.M("terracotta"), "House_Roof")
     # fascia and gutters
     A.block((-PARTY, -EXT - 0.4, EAVE - 0.15), (W + PARTY, -EXT - 0.3, EAVE + 0.05), M["trim"], "House_Roof")
@@ -303,17 +356,17 @@ def house(M):
         it("porch_light", F.wall_light(), (x, -EXT - 0.03, 2.1), 0)
 
     # markers
-    marker("Spawn_Player", (2.6, 2.0, FZ1), 180)          # beside the bed, facing the room
+    marker("Spawn_Player", (2.3, 2.0, FZ1), 180)          # beside the bed, facing the room
     marker("Spawn_Front", (0.9, -2.2, 0.05), 0)
     marker("Spawn_Courtyard", (3.0, 13.2, 0.05), 180)
-    marker("Bed", (2.25, 1.9, FZ1), 90)                   # walk here to sleep
+    marker("Bed", (3.15, 2.05, FZ1), -90)                   # walk here to sleep
     lights = {
-        "Light_Lounge": (2.6, 2.6, CZ0 - 0.7), "Light_Lounge_Lamp": (4.9, 4.4, FZ0 + 1.55),
+        "Light_Lounge": (2.6, 2.6, CZ0 - 0.7), "Light_Lounge_Lamp": (4.75, 0.5, FZ0 + 1.55),
         "Light_Kitchen": (3.8, 7.6, CZ0 - 0.3), "Light_Bar": (3.7, 8.5, CZ0 - 0.75),
         "Light_Living": (2.7, 10.4, CZ0 - 0.3), "Light_Laundry": (2.85, 5.8, CZ0 - 0.2),
         "Light_WC": (4.5, 5.8, CZ0 - 0.2), "Light_Storage": (0.5, 5.8, 1.6),
         "Light_Stairs": (1.5, 6.5, CZ1 - 0.3), "Light_Bed1": (2.7, 1.9, CZ1 - 0.3),
-        "Light_Bed1_Lamp": (0.3, 0.85, FZ1 + 0.75), "Light_Bath": (3.7, 5.2, CZ1 - 0.2),
+        "Light_Bed1_Lamp": (W - 0.3, 1.0, FZ1 + 0.75), "Light_Bath": (3.7, 5.2, CZ1 - 0.2),
         "Light_WC_Up": (3.7, 7.3, CZ1 - 0.2), "Light_Bed2": (2.7, 10.0, CZ1 - 0.3),
         "Light_Bed2_Desk": (2.4, 11.5, FZ1 + 1.1), "Light_Porch": (0.9, -0.6, 2.2),
         "Light_Courtyard": (2.7, 14.5, 2.3),
@@ -344,30 +397,35 @@ def interior(M):
     out = []
     z0, z1 = FZ0, FZ1
     # lounge
-    out.append(it("Sofa-col", F.sofa("sofa", 2.1), (4.15, 2.9, z0), -90))
-    out.append(it("CoffeeTable", F.coffee_table(1.0, 0.55), (2.5, 2.9, z0), 90))
-    out.append(it("Rug_Lounge", F.rug(2.6, 1.8, "rug_red"), (2.5, 2.9, z0), 90))
-    out.append(it("Armchair-col", F.armchair("mustard"), (1.25, 1.05, z0), 135))
-    out.append(it("FloorLamp", F.floor_lamp(), (4.9, 4.45, z0)))
-    out.append(it("Bookshelf-col", F.bookshelf(0.9, 1.9, 0.32, 1), (5.22, 1.0, z0), -90))
-    out.append(it("RecordPlayer", F.record_player_unit(), (3.4, 4.72, z0)))
-    out.append(it("RecordCrate", F.record_crate(), (4.25, 4.7, z0)))
+    # fireplace and a 65" TV on the x=0 wall; a big L-shaped couch runs along
+    # the opposite wall from the back wall and turns across the room level
+    # with the fireplace. The walk from the front door to the hall stays
+    # clear along the TV side, and the French doors open onto the floor
+    # in front of the couch's back.
+    out.append(it("Sofa-col", F.sectional(4.05, 2.05), (W, 0.9, z0)))
+    out.append(it("TV_Unit-col", F.tv_unit(1.6), (0.21, 4.1, z0), 90))
+    out.append(it("TV_Screen", F.tv(65), (0.0, 4.1, z0 + 0.72), 90))
+    out.append(it("CoffeeTable", F.coffee_table(1.0, 0.55), (3.4, 3.05, z0), 90))
+    out.append(it("Rug_Lounge", F.rug(2.6, 1.8, "rug_red"), (3.4, 2.95, z0), 90))
+    out.append(it("FloorLamp", F.floor_lamp(), (4.75, 0.5, z0)))
+    out.append(it("Bookshelf-col", F.bookshelf(0.8, 1.9, 0.32, 1), (5.22, 0.46, z0), -90))
+    out.append(it("RecordPlayer", F.record_player_unit(), (3.3, 4.72, z0)))
+    out.append(it("RecordCrate", F.record_crate(), (4.1, 4.74, z0)))
     out.append(it("Gallery", F.photo_frames(7, 3, 1.6, 0.9), (3.5, 4.94, z0 + 1.05)))
-    out.append(it("Plant_Monstera", F.plant("monstera", 1), (4.95, 0.45, z0)))
-    out.append(it("Plant_Fiddle", F.plant("fiddle", 2), (0.5, 4.45, z0)))
-    out.append(it("Plant_Snake", F.plant("snake", 3), (1.95, 0.35, z0)))
+    out.append(it("Plant_Fiddle", F.plant("fiddle", 2), (2.45, 4.6, z0)))
+    out.append(it("Plant_Snake", F.plant("snake", 3), (1.95, 0.3, z0)))
     out.append(it("Plant_Hanging", F.hanging_plant(0.7, 4), (4.55, 0.7, CZ0)))
     out.append(it("Coats", F.shoe_rack_and_coats(), (0.18, 1.1, z0), 90))
     out.append(it("Pendant_Lounge", F.pendant(0.6), (2.6, 2.6, CZ0)))
     out.append(it("Curtains_Lounge", F.curtains(2.7, 2.45), (3.55, 0.08, z0)))
     # candles and an old photo on the mantel; one frame lies face down
-    for i, y in enumerate((2.3, 2.45, 3.4)):
+    for i, y in enumerate((1.8, 1.95, 2.95)):
         out.append(it("candle", [F.cyl(0.03, 0.12 + i * 0.04, (0, 0, 0.06 + i * 0.02), F.M("cream"), 6)],
                       (0.22, y, z0 + 1.16)))
-    out.append(it("Photo_FaceDown", [F.bx((-0.1, -0.13, 0), (0.1, 0.13, 0.015), F.M("frame"))], (2.3, 2.75, z0 + 0.42), 20))
+    out.append(it("Photo_FaceDown", [F.bx((-0.1, -0.13, 0), (0.1, 0.13, 0.015), F.M("frame"))], (3.35, 2.9, z0 + 0.42), 20))
     out.append(it("Throw_Basket", [F.cyl(0.22, 0.35, (0, 0, 0.175), F.M("wood_light"), 10),
                                    C.sphere("f", 0.2, (0, 0, 0.33), F.M("throw"), segs=8, rings=4, scale=(1, 1, 0.5))],
-                  (4.85, 1.75, z0)))
+                  (4.2, 2.0, z0)))
 
     # kitchen: U shape, fridge by the hall, bar facing the rear living
     out.append(it("Kitchen_Back-col", F.kitchen_run(2.5, top=M["granite"], with_cooktop=True, oven=True, upper=True),
@@ -390,40 +448,42 @@ def interior(M):
     out.append(it("Washer-col", F.washing_machine(), (2.5, 5.35, z0), 180))
     out.append(it("Trough-col", F.laundry_trough(), (3.15, 5.35, z0), 180))
     out.append(it("Toilet_Down-col", F.toilet(), (5.1, 5.8, z0), -90))
-    out.append(it("Storage_Boxes", F.boxes(2, 4), (0.45, 5.35, z0)))
-    out.append(it("Storage_Boxes2", F.boxes(7, 2), (0.5, 6.1, z0)))
-    out.append(it("Vacuum", F.vacuum(), (0.75, 5.9, z0), 90))
+    out.append(it("Storage_Boxes", F.boxes(2, 4), (0.3, 5.28, z0)))
+    out.append(it("Storage_Boxes2", F.boxes(7, 2), (0.3, 6.2, z0)))
+    out.append(it("Vacuum", F.vacuum(), (0.82, 5.25, z0)))
     # something small and old at the back of the storage: a biscuit tin
     out.append(it("Storage_Tin", [F.cyl(0.11, 0.09, (0, 0, 0.045), F.M("teal"), 10),
-                                  F.cyl(0.115, 0.015, (0, 0, 0.095), F.M("brass"), 10)], (0.25, 6.45, z0)))
+                                  F.cyl(0.115, 0.015, (0, 0, 0.095), F.M("brass"), 10)], (0.22, 5.85, z0)))
     # rear living
-    out.append(it("Dining-col", F.dining_table(1.4, 0.8), (3.4, 10.5, z0)))
-    for (x, y, r) in ((2.9, 10.0, 0), (3.9, 10.0, 0), (2.9, 11.0, 180), (3.9, 11.0, 180)):
+    # dining table under the kitchen window, leaving a clear run from the
+    # hall and the bar to the sliding door
+    out.append(it("Dining-col", F.dining_table(1.4, 0.8), (1.4, 10.6, z0), 90))
+    for (x, y, r) in ((0.72, 10.25, 90), (0.72, 10.95, 90), (2.08, 10.25, -90), (2.08, 10.95, -90)):
         out.append(it("Chair", F.chair(), (x, y, z0), r))
-    out.append(it("Armchair2-col", F.armchair("teal"), (0.9, 10.9, z0), 210))
-    out.append(it("Rug_Living", F.rug(2.0, 1.4, "rug_blue"), (3.4, 10.5, z0)))
+    out.append(it("Armchair2-col", F.armchair("teal"), (4.55, 11.3, z0), -45))
+    out.append(it("Rug_Living", F.rug(2.0, 1.4, "rug_blue"), (1.4, 10.6, z0), 90))
     out.append(it("AC_Living", F.split_ac(), (W - 0.01, 10.5, 2.5), -90))
     out.append(it("Intercom", F.intercom(), (W - 0.01, 11.6, z0 + 1.35), -90))
-    out.append(it("Plant_Palm", F.plant("palm", 7), (4.95, 11.55, z0)))
-    out.append(it("Plant_Fern", F.plant("fern", 8), (1.55, 11.5, z0)))
-    out.append(it("Bookshelf2-col", F.bookshelf(0.8, 1.2, 0.3, 9), (0.17, 9.9, z0), 90))
-    out.append(it("TableLamp", F.table_lamp(), (0.17, 9.6, z0 + 1.2)))
+    out.append(it("Bookshelf2-col", F.bookshelf(0.8, 1.2, 0.3, 9), (5.23, 10.2, z0), -90))
+    out.append(it("TableLamp", F.table_lamp(), (5.23, 9.95, z0 + 1.2)))
 
     # main bedroom (front)
-    out.append(it("Bed-col", F.bed(1.53, 2.03), (1.06, 1.9, z1), 90))
-    for y in (0.6, 3.2):
-        out.append(it("Bedside-col", F.bedside_table(), (0.25, y, z1), 90))
-    out.append(it("BedLamp", F.table_lamp(), (0.25, 0.6, z1 + 0.55)))
+    # bed against the x=W wall, a full-length built-in robe on the x=0 wall
+    # (it starts clear of the balcony door's swing)
+    out.append(it("Bed-col", F.bed(1.53, 2.03), (W - 1.06, 2.05, z1), -90))
+    for y in (1.0, 3.1):
+        out.append(it("Bedside-col", F.bedside_table(), (W - 0.25, y, z1), -90))
+    out.append(it("BedLamp", F.table_lamp(), (W - 0.25, 1.0, z1 + 0.55)))
     out.append(it("Books_Bedside", [F.bx((-0.1, -0.08, 0), (0.1, 0.08, 0.05), F.M("book1")),
-                                    F.bx((-0.09, -0.07, 0.05), (0.08, 0.07, 0.09), F.M("book3"))], (0.25, 3.2, z1 + 0.55)))
-    out.append(it("Robes-col", F.robe_doors(2.0, 2.3, 0.6), (3.35, 3.55, z1)))
-    out.append(it("Armchair3-col", F.armchair("rust"), (4.7, 0.9, z1), 200))
-    out.append(it("FloorLamp2", F.floor_lamp(), (5.1, 1.7, z1)))
-    out.append(it("Plant_Fiddle2", F.plant("fiddle", 11), (2.0, 0.4, z1)))
-    out.append(it("Curtains_Bed1", F.curtains(2.7, 2.4), (3.55, 0.08, z1)))
-    out.append(it("Rug_Bed1", F.rug(2.0, 1.6, "rug_cream", "rug_red"), (2.4, 1.9, z1)))
+                                    F.bx((-0.09, -0.07, 0.05), (0.08, 0.07, 0.09), F.M("book3"))], (W - 0.25, 3.1, z1 + 0.55)))
+    out.append(it("Robes-col", F.robe_doors(3.1, CZ1 - FZ1 - 0.04, 0.62), (0.31, 0.72, z1), 90))
+    out.append(it("Armchair3-col", F.armchair("rust"), (2.95, 0.75, z1), 180))
+    out.append(it("FloorLamp2", F.floor_lamp(), (3.7, 0.5, z1)))
+    out.append(it("Plant_Fiddle2", F.plant("fiddle", 11), (2.25, 0.4, z1)))
+    out.append(it("Curtains_Bed1", F.curtains(2.0, 2.4), (3.6, 0.08, z1)))
+    out.append(it("Rug_Bed1", F.rug(2.0, 1.6, "rug_cream", "rug_red"), (3.2, 2.05, z1)))
     # balcony plants
-    out.append(it("Balcony_Pot1", F.plant("succulent", 12, 2.0), (0.4, -1.3, z1)))
+    out.append(it("Balcony_Pot1", F.plant("succulent", 12, 2.0), (2.3, -1.3, z1)))
     out.append(it("Balcony_Pot2", F.plant("palm", 13, 0.8), (5.0, -1.3, z1)))
 
     # bathroom, toilet
@@ -439,9 +499,9 @@ def interior(M):
     out.append(it("Desk_Chair", F.chair("black"), (2.5, 11.05, z1), 180))
     out.append(it("Laptop", F.laptop(), (2.4, 11.6, z1 + 0.75), 180))
     out.append(it("Corkboard", F.corkboard(1.4, 0.9), (0.02, 10.2, z1 + 1.0), 90))
-    out.append(it("DayBed-col", F.bed(1.0, 2.0, "throw"), (W - 0.55, 9.3, z1), -90))
+    out.append(it("DayBed-col", F.bed(1.0, 2.0, "throw"), (W - 0.6, 10.1, z1), 180))
     out.append(it("Boxes_Bed2", F.boxes(11, 3), (0.45, 8.5, z1)))
-    out.append(it("Plant_Bed2", F.plant("monstera", 15, 0.8), (4.95, 11.55, z1)))
+    out.append(it("Plant_Bed2", F.plant("monstera", 15, 0.7), (0.62, 11.38, z1)))
     out.append(it("Curtains_Bed2", F.curtains(2.0, 2.2), (2.5, D - 0.08, z1), 180))
     out.append(it("DeskLamp", F.table_lamp(), (3.0, 11.65, z1 + 0.75)))
     return out
@@ -511,7 +571,9 @@ def site(M):
     gate15.location = (0.5, -3.15, 0.45)
     for x0, x1, s in ((-5.8, -PARTY, 13), (W + PARTY, 11.2, 17)):
         A.block((x0, -3.05, -0.02), (x1, -1.6, 0.02), M["mulch"], b)
-        front_fence(x0, x1, x0 + 0.6, M, ends=(s != 17, s != 13))
+        gate = front_fence(x0, x1, x0 + 0.6, M, ends=(s != 17, s != 13))
+        gate.name = "Site_Gate_%d" % s      # neighbours' gates stay shut
+        gate.location = (x0 + 0.6, -3.15, 0.45)
         it("Shrub", F.shrub(0.5, s), ((x0 + x1) / 2 + 1, -2.4, 0))
     # street trees on the lane
     it("StreetTree1", F.street_tree(6.5, 2, bare=True), (-3.0, -6.5, 0))
@@ -658,12 +720,18 @@ def render(prefix):
     hide = [o for o in bpy.data.objects if o.name.startswith(("House_Roof", "Site", "House_Guard"))]
     for o in hide:
         o.hide_render = True
-    C.camera_look((4.6, 4.6, 1.6), (1.0, 1.5, 0.9), lens=18)
+    C.camera_look((4.3, 4.3, 1.5), (0.3, 2.6, 1.0), lens=18)
     C.render("%s_lounge.png" % prefix)
+    C.camera_look((1.2, 4.8, 1.6), (4.2, 1.0, 0.7), lens=18)
+    C.render("%s_lounge_front.png" % prefix)
     C.camera_look((1.6, 11.6, 1.6), (4.3, 7.2, 1.0), lens=18)
     C.render("%s_kitchen.png" % prefix)
-    C.camera_look((5.0, 2.7, FZ1 + 1.6), (0.8, 1.6, FZ1 + 0.6), lens=18)
+    C.camera_look((3.6, 6.9, 1.6), (2.4, 12.0, 1.1), lens=18)
+    C.render("%s_rear_living.png" % prefix)
+    C.camera_look((1.0, 3.6, FZ1 + 1.6), (5.0, 1.5, FZ1 + 0.6), lens=18)
     C.render("%s_bedroom.png" % prefix)
+    C.camera_look((4.4, 3.6, FZ1 + 1.6), (0.3, 1.4, FZ1 + 1.1), lens=18)
+    C.render("%s_bedroom_front.png" % prefix)
     C.camera_look((4.9, 8.4, FZ1 + 1.6), (0.5, 11.0, FZ1 + 0.9), lens=18)
     C.render("%s_study.png" % prefix)
     for o in hide:
