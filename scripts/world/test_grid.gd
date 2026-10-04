@@ -86,6 +86,11 @@ func _ready() -> void:
 	_site("scarborough_beach", "Scarborough Beach", "Scarborough", Vector3(-18, 0, 32))
 	_site("guildford_antiques", "James Street antiques", "Guildford", Vector3(-135, 0, -315))
 
+	# Placeholder workshops: your carport at home, a spray shop and a servo.
+	_workshop("home_carport", "Carport", ["parts", "tuning"], Vector3(-7, 0, 4))
+	_workshop("spray_shop", "Osborne Park Smash & Spray", ["paint"], Vector3(66, 0, -36), Color(1.0, 0.6, 0.35))
+	_workshop("fitzgerald_st_servo", "Fitzgerald St servo", ["fuel", "wash"], Vector3(12, 0, 4), Color(0.95, 0.85, 0.4))
+
 	# Placeholder town block for scale, silhouettes and fog depth.
 	var colours := [Color(0.78, 0.72, 0.62), Color(0.6, 0.62, 0.66), Color(0.82, 0.8, 0.76), Color(0.55, 0.45, 0.4)]
 	for gx in 6:
@@ -98,6 +103,16 @@ func _ready() -> void:
 	for i in 7:
 		_road(Vector3(-315 + i * 30, 0, -225), Vector2(8, 190), 0.0, asphalt)
 		_road(Vector3(-225, 0, -315 + i * 30), Vector2(190, 8), 0.0, asphalt)
+
+
+func _workshop(id: String, title: String, kinds: PackedStringArray, pos: Vector3, color := Color(0.6, 0.85, 0.8)) -> void:
+	var spot := WorkshopSpot.new()
+	spot.spot_id = id
+	spot.display_name = title
+	spot.kinds = kinds
+	spot.color = color
+	spot.position = pos
+	add_child(spot)
 
 
 func _site(id: String, title: String, suburb: String, pos: Vector3) -> void:

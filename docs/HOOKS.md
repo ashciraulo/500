@@ -120,8 +120,8 @@ Registering after the save was read applies your section immediately.
 Run the game with `-- --no-save` to skip saving and loading entirely.
 
 Already saved: `clock` (time, day), `weather` (state, wetness), `car`
-(position, heading, parts, odometer), `wallet`, `discoveries`,
-`progression` (stats, tier, unlocked cars), `jobs` (offers, active job, trial
+(position, heading, parts, tuning, paint, fuel, dirt, odometer), `wallet`, `discoveries`,
+`progression` (stats, tier, unlocked cars), `garage` (parts you own), `jobs` (offers, active job, trial
 records).
 
 ## Money (autoload `Wallet`) and discoveries (autoload `Discoveries`)
@@ -144,3 +144,31 @@ records).
   night drives). Tiers and their challenges live in
   `data/progression/tiers.json`; each challenge names a stat and a target.
   Signals: `stat_changed`, `challenge_completed`, `tier_completed`.
+
+## Workshops (autoload `Garage`, `WorkshopSpot` markers)
+
+- `WorkshopSpot` (group `workshop_spots`) is a painted bay where the player
+  stops and presses F / A. `kinds` says what it offers: `parts`, `tuning`,
+  `paint`, `fuel`, `wash`. The map should place one at the townhouse carport (parts and
+  tuning) and spray shops for paint; the test grid has placeholders.
+- `Garage.owned` is every part bought; refitting an owned part is free.
+  `buy_and_fit(part, car)`, `respray(car, index)`, `PAINTS`. Fitting and
+  respraying advance the clock (`FIT_HOURS`, `RESPRAY_HOURS`).
+- `car.set_tuning({key: value})` applies `CarTuning.OPTIONS` (tyre pressure,
+  ride height, springs, dampers, anti-roll, final drive); options need the
+  right part fitted and are ignored otherwise. `car.set_paint(color)` calls
+  `set_paint` on the car's `Body` node, so any car model with that method
+  can be resprayed.
+
+## Fuel and dirt (on the car)
+
+- `car.fuel_litres` / `tank_litres` (35), `fuel_fraction()`, `refuel(litres)`.
+  Signals `fuel_low` (under 12%) and `fuel_empty` (engine cuts out). The
+  engine sputters on the last half litre; audio can read
+  `telemetry.engine_running` and `fuel_fraction`.
+- `car.dirt` 0..1 builds up with distance, faster on gravel and grass and in
+  the wet. The car body can read it for a dirt overlay (models thread).
+  Deliveries in a clean car (dirt under 0.2) earn a small tip.
+- `Garage.fuel_price()` follows a weekly Perth-style cycle (day 1 is a
+  Monday, Tuesday is cheapest); `buy_fuel(car, litres)`, `wash(car)`,
+  `roadside_assist(car)` (also on the phone when the tank is empty).

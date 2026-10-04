@@ -31,6 +31,10 @@ signal headlights_changed(on: bool)
 ## A part was installed (or a slot went back to stock). The car body listens
 ## to swap visuals such as wheels and exhausts.
 signal parts_changed(slot: StringName, part: CarPart)
+## Fuel dropped below LOW_FUEL_FRACTION of the tank.
+signal fuel_low
+## The tank ran dry; the engine cuts out until someone brings fuel.
+signal fuel_empty
 
 enum Transmission { MANUAL, AUTOMATIC }
 
@@ -147,6 +151,21 @@ var wet_penalty_multiplier := 1.0
 var parts := {}
 ## Distance driven, km.
 var odometer_km := 0.0
+## Fuel tank (the 2013 Pop's is 35 L) and what's in it.
+@export var tank_litres := 35.0
+var fuel_litres := 35.0
+## Gameplay scale on real-world consumption, so servo stops come round
+## every few hours of play rather than once a week.
+@export var fuel_use_scale := 2.0
+const LOW_FUEL_FRACTION := 0.12
+## How dirty the car is, 0 (fresh from the car wash) to 1 (filthy).
+var dirt := 0.35
+## Dirt gained per km by surface; rain on a wet road adds more.
+const DIRT_PER_KM := {&"asphalt": 0.004, &"concrete": 0.004, &"gravel": 0.05, &"grass": 0.03, &"dirt": 0.06, &"sand": 0.05}
+## Garage tuning values by CarTuning option key.
+var tuning := {}
+## Respray colour; alpha 0 means the original paint.
+var paint_color := Color(0, 0, 0, 0)
 
 ## Stock values captured on _ready, so parts always stack from stock.
 var _stock := {}
@@ -203,6 +222,10 @@ func _physics_process(delta: float) -> void:
 	if player_controlled:
 		_read_player_input(delta)
 	_update_transmission_logic(delta)
+	if fuel_litres <= 0.0:
+		throttle = 0.0
+	elif fuel_litres < 0.6 and fmod(Time.get_ticks_msec() / 1000.0, 1.3) < 0.35:
+		throttle *= 0.2  # Sputtering on the last of the tank.
 	_update_steering(delta)
 
 	var up := global_basis.y
@@ -315,7 +338,10 @@ func _physics_process(delta: float) -> void:
 		surface_changed.emit(surface)
 	_last_velocity = linear_velocity
 	if grounded_wheels > 0:
-		odometer_km += absf(forward_speed) * delta / 1000.0
+		var km := absf(forward_speed) * delta / 1000.0
+		odometer_km += km
+		var rate: float = DIRT_PER_KM.get(surface, 0.01) + Weather.wetness * 0.02
+		dirt = minf(1.0, dirt + km * rate)
 
 
 func _process(delta: float) -> void:
@@ -359,6 +385,10 @@ func get_telemetry() -> Dictionary:
 		"wetness": Weather.wetness,
 		"is_player_inside": is_player_inside,
 		"odometer_km": odometer_km,
+		"fuel_litres": fuel_litres,
+		"fuel_fraction": fuel_fraction(),
+		"engine_running": fuel_litres > 0.0,
+		"dirt": dirt,
 	}
 
 
@@ -448,6 +478,22 @@ func install_part_ids(ids: PackedStringArray) -> void:
 			install_part(part)
 
 
+## Apply garage tuning (CarTuning option key -> value). Replaces the old setup.
+func set_tuning(values: Dictionary) -> void:
+	tuning = values.duplicate()
+	_rebuild_stats()
+
+
+## Respray the body. The paint is kept with the car and saved.
+func set_paint(color: Color) -> void:
+	paint_color = Color(color, 1.0)
+	_apply_paint()
+
+
+func has_custom_paint() -> bool:
+	return paint_color.a > 0.0
+
+
 func save_state() -> Dictionary:
 	return {
 		"position": SaveGame.vec3_to_array(global_position),
@@ -455,6 +501,10 @@ func save_state() -> Dictionary:
 		"parts": Array(get_part_ids()),
 		"odometer_km": odometer_km,
 		"automatic": transmission == Transmission.AUTOMATIC,
+		"tuning": tuning,
+		"fuel_litres": fuel_litres,
+		"dirt": dirt,
+		"paint": paint_color.to_html() if has_custom_paint() else "",
 	}
 
 
@@ -469,6 +519,12 @@ func load_state(data: Dictionary) -> void:
 		remove_part(slot)
 	install_part_ids(PackedStringArray(data.get("parts", [])))
 	odometer_km = float(data.get("odometer_km", 0.0))
+	set_tuning(data.get("tuning", {}))
+	fuel_litres = clampf(float(data.get("fuel_litres", tank_litres)), 0.0, tank_litres)
+	dirt = clampf(float(data.get("dirt", dirt)), 0.0, 1.0)
+	var paint: String = data.get("paint", "")
+	if paint != "":
+		set_paint(Color.html(paint))
 
 
 ## Headline numbers for menus and the garage.
@@ -503,8 +559,11 @@ func _rebuild_stats() -> void:
 		"damper_mult": "damper_strength", "anti_roll_mult": "anti_roll_strength",
 		"drag_mult": "drag_coefficient",
 	}
+	var modifier_sets: Array[Dictionary] = []
 	for part in parts.values():
-		var m: Dictionary = part.modifiers
+		modifier_sets.append(part.modifiers)
+	modifier_sets.append(CarTuning.to_modifiers(tuning, get_part_ids()))
+	for m in modifier_sets:
 		torque_multiplier *= m.get("torque_mult", 1.0)
 		wet_penalty_multiplier *= m.get("wet_penalty_mult", 1.0)
 		for key in multipliers:
@@ -520,6 +579,14 @@ func _rebuild_stats() -> void:
 		lateral_stiffness = clampf(lateral_stiffness + m.get("lateral_stiffness_add", 0.0), 0.1, 1.0)
 		if m.has("gear_ratios"):
 			gear_ratios = PackedFloat32Array(m.gear_ratios)
+
+
+func _apply_paint() -> void:
+	if not has_custom_paint():
+		return
+	var body := get_node_or_null("Body")
+	if body and body.has_method("set_paint"):
+		body.set_paint(paint_color)
 
 
 func _read_player_input(delta: float) -> void:
@@ -634,9 +701,35 @@ func _update_engine(delta: float) -> float:
 		rpm = move_toward(rpm, free_target, rate * delta)
 	rpm = clampf(rpm, idle_rpm * 0.9, limiter_rpm + 100.0)
 	engine_load = clampf(torque / (102.0 * torque_multiplier), -1.0, 1.0)
+	_burn_fuel(maxf(torque, 0.0) * rpm * TAU / 60.0 / 1000.0, delta)
 	if not engaged:
 		return 0.0
 	return torque * ratio * drivetrain_efficiency
+
+
+## Roughly 0.8 L/h at idle plus 0.4 L per kWh delivered: about 6-7 L/100 km
+## at a steady 60, more when you lean on it.
+func _burn_fuel(power_kw: float, delta: float) -> void:
+	if fuel_litres <= 0.0:
+		return
+	var before := fuel_litres
+	fuel_litres = maxf(0.0, fuel_litres - (0.8 + power_kw * 0.4) / 3600.0 * fuel_use_scale * delta)
+	var low := tank_litres * LOW_FUEL_FRACTION
+	if before >= low and fuel_litres < low:
+		fuel_low.emit()
+	if fuel_litres <= 0.0:
+		fuel_empty.emit()
+
+
+## Add fuel; returns the litres that actually fit.
+func refuel(litres: float) -> float:
+	var added := clampf(litres, 0.0, tank_litres - fuel_litres)
+	fuel_litres += added
+	return added
+
+
+func fuel_fraction() -> float:
+	return fuel_litres / tank_litres
 
 
 func _torque_at(at_rpm: float) -> float:

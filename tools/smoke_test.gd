@@ -203,6 +203,81 @@ func _run_step() -> bool:
 			elif _frame > 2000:
 				_check(false, "time trial finished")
 				_next()
+		11:  # Workshop: buy, fit, tune and respray, then save and load it all.
+			var garage := root.get_node("Garage")
+			var wallet := root.get_node("Wallet")
+			var catalogue := load("res://scripts/vehicle/parts_catalogue.gd")
+			var workshop := _main.get_node("Workshop")
+			var spots := _main.get_tree().get_nodes_in_group(&"workshop_spots")
+			_check(spots.size() >= 2, "the test grid has workshop bays (%d)" % spots.size())
+			workshop.open(spots[0])
+			_check(workshop.is_open() and paused, "the workshop opens and pauses the game")
+			workshop.close()
+			_check(not paused, "closing the workshop unpauses")
+			_teleport(spots[0].global_position)
+			var remap = catalogue.get_part(&"engine_ecu_remap")
+			wallet.earn(10000)
+			var money: int = wallet.balance
+			var power: float = _car.get_stats().power_kw
+			_check(garage.buy_and_fit(remap, _car), "buying and fitting the remap works")
+			_check(wallet.balance == money - remap.price, "the remap costs $%d" % remap.price)
+			_check(_car.get_stats().power_kw > power, "the remap adds power")
+			_car.install_part(catalogue.get_part(&"engine_stock"))
+			_check(garage.buy_and_fit(remap, _car) and wallet.balance == money - remap.price,
+				"refitting an owned part is free")
+			var final_drive: float = _car.final_drive
+			_car.set_tuning({"final_drive_mult": 1.1})
+			_check(is_equal_approx(_car.final_drive, final_drive), "final drive tuning needs a gearbox part")
+			_car.set_tuning({})
+			garage.buy_and_fit(catalogue.get_part(&"gearbox_short_final"), _car)
+			var geared: float = _car.final_drive
+			_car.set_tuning({"final_drive_mult": 1.1, "tyre_pressure": -1.0})
+			_check(_car.final_drive > geared * 1.05, "final drive tuning works once it's unlocked")
+			_check(garage.respray(_car, 4), "a respray works")
+			var save := root.get_node("SaveGame")
+			var test_path := "user://smoke_workshop.json"
+			save.save_to(test_path)
+			_car.set_tuning({})
+			_car.paint_color = Color(0, 0, 0, 0)
+			garage.owned = PackedStringArray()
+			save.load_from(test_path)
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
+			_check(garage.owned.has("engine_ecu_remap"), "owned parts are saved")
+			_check(is_equal_approx(float(_car.tuning.get("final_drive_mult", 0.0)), 1.1), "tuning is saved")
+			_check(_car.has_custom_paint(), "paint is saved")
+			_next()
+		12:  # Fuel, the servo, running dry, roadside assist and the car wash.
+			var garage := root.get_node("Garage")
+			var wallet := root.get_node("Wallet")
+			if _frame == 1:
+				_check(_car.fuel_litres < _car.tank_litres, "driving burns fuel (%.2f L left)" % _car.fuel_litres)
+				_check(_car.dirt > 0.0, "the car gets dirty")
+				var money: int = wallet.balance
+				var added: float = garage.buy_fuel(_car)
+				_check(is_equal_approx(_car.fuel_litres, _car.tank_litres), "filling up fills the tank")
+				_check(wallet.balance == money - garage.fuel_cost(added), "fuel costs money ($%d)" % (money - wallet.balance))
+				_check(garage.wash(_car) and _car.dirt == 0.0, "the car wash cleans the car")
+				_car.fuel_litres = 0.0
+				_car.set_transmission(1)
+				Input.action_press("accelerate")
+			elif _frame == 240:
+				Input.action_release("accelerate")
+				_check(_car.speed_kmh() < 3.0, "an empty tank won't go (%.1f km/h)" % _car.speed_kmh())
+				garage.roadside_assist(_car)
+				_check(_car.fuel_litres > 4.0, "roadside assist brings fuel")
+				_check(root.get_node("SaveGame").save_to("user://smoke_fuel.json"), "saves with fuel")
+				var litres: float = _car.fuel_litres
+				_car.fuel_litres = 30.0
+				root.get_node("SaveGame").load_from("user://smoke_fuel.json")
+				DirAccess.remove_absolute(ProjectSettings.globalize_path("user://smoke_fuel.json"))
+				_check(is_equal_approx(_car.fuel_litres, litres), "fuel level is saved")
+				var spots := _main.get_tree().get_nodes_in_group(&"workshop_spots")
+				var servo = null
+				for spot in spots:
+					if spot.offers("fuel"):
+						servo = spot
+				_check(servo != null and servo.offers("wash"), "the test grid has a servo with a car wash")
+				_next()
 		_:
 			Input.action_release("accelerate")
 			Input.action_release("brake")

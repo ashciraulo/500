@@ -9,6 +9,7 @@ var _jobs_list: VBoxContainer
 var _progress_list: VBoxContainer
 var _stats_label: Label
 var _close: Button
+var _roadside: Button
 
 
 func _ready() -> void:
@@ -44,6 +45,9 @@ func _set_open(open: bool) -> void:
 	get_tree().paused = open
 	if open:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		var car := get_tree().get_first_node_in_group(&"player_car") as CarController
+		if car and car.fuel_litres < 1.0:
+			_tabs.current_tab = 2  # Straight to roadside assist.
 		_refresh()
 		_close.grab_focus()
 
@@ -95,6 +99,15 @@ func _build() -> void:
 	_stats_label = Label.new()
 	_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stats_tab.add_child(_stats_label)
+	_roadside = Button.new()
+	_roadside.text = "Call roadside assist ($%d, brings %d L)" % [Garage.ROADSIDE_PRICE, Garage.ROADSIDE_LITRES]
+	_roadside.visible = false
+	_roadside.pressed.connect(func() -> void:
+		var car := get_tree().get_first_node_in_group(&"player_car") as CarController
+		if car:
+			Garage.roadside_assist(car)
+		_refresh())
+	stats_tab.add_child(_roadside)
 
 
 func _scroll_tab(title: String) -> VBoxContainer:
@@ -187,9 +200,13 @@ func _refresh_stats() -> void:
 		lines.append("")
 		lines.append("2013 Fiat 500 Pop, %.0f km on the clock" % car.odometer_km)
 		lines.append("%.0f kW, %.0f Nm, %.0f kg" % [stats.power_kw, stats.torque_nm, stats.mass_kg])
+		lines.append("Fuel %.1f of %d L, unleaded $%.2f today (%s)" % [
+			car.fuel_litres, roundi(car.tank_litres), Garage.fuel_price(), Garage.weekday()])
 		for part in car.parts.values():
 			lines.append("  %s" % part.display_name)
 	_stats_label.text = "\n".join(lines)
+	if _roadside:
+		_roadside.visible = car != null and car.fuel_litres < 1.0
 
 
 func _text(parent: Control, text: String, size := 15, color := Color.WHITE) -> void:

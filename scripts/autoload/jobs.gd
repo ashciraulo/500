@@ -232,7 +232,9 @@ func _finish_delivery() -> void:
 	var pay := float(job.pay) * (1.0 - clampf(job.damage, 0.0, 100.0) / 100.0)
 	var quick: bool = job.elapsed <= job.par_seconds
 	var bonus := roundi(job.pay * 0.25) if quick else 0
-	var total := roundi(pay) + bonus
+	# Customers notice a clean car.
+	var tip := roundi(job.pay * 0.05) if _car and _car.dirt < 0.2 else 0
+	var total := roundi(pay) + bonus + tip
 	Wallet.earn(total, "delivery")
 	Progression.add_stat("deliveries")
 	if GameClock.is_night():
@@ -246,6 +248,8 @@ func _finish_delivery() -> void:
 	var summary := "Delivered %s in %s. $%d" % [job.cargo, _clock(job.elapsed), total]
 	if bonus > 0:
 		summary += " (includes $%d for being quick)" % bonus
+	if tip > 0:
+		summary += ", plus a $%d tip for the clean car" % tip
 	if job.damage >= 0.5:
 		summary += ", %d%% off for damage" % roundi(job.damage)
 	job_completed.emit(job, total, summary + ".")

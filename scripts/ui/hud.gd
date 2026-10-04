@@ -8,7 +8,8 @@ const HELP := """W/S or triggers: throttle / brake    A/D or stick: steer    Spa
 E/Q or bumpers: gear up / down    G / Select: manual <-> auto    C / Y: camera
 L: headlights    R / D-pad down: reset car    Mouse click: look around (interior)
 F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
-F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)"""
+F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)
+F / A: use a workshop, servo or spray shop when parked in its bay"""
 
 var _car: CarController
 var _speed: Label
@@ -18,6 +19,8 @@ var _help: Label
 var _rev_bar: ColorRect
 var _rev_back: ColorRect
 var _objective: Label
+var _fuel_bar: ColorRect
+var _fuel_label: Label
 var _toast: Label
 var _toast_queue: PackedStringArray = []
 var _toast_time := 0.0
@@ -43,6 +46,17 @@ func _ready() -> void:
 	_rev_bar = ColorRect.new()
 	_rev_bar.size = Vector2(0, 10)
 	_rev_back.add_child(_rev_bar)
+	_fuel_label = _label(root, 13, Vector2(-220, -136))
+	_fuel_label.text = "FUEL"
+	var fuel_back := ColorRect.new()
+	fuel_back.color = Color(0, 0, 0, 0.45)
+	fuel_back.size = Vector2(150, 6)
+	fuel_back.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	fuel_back.position = Vector2(-170, -128)
+	root.add_child(fuel_back)
+	_fuel_bar = ColorRect.new()
+	_fuel_bar.size = Vector2(150, 6)
+	fuel_back.add_child(_fuel_bar)
 	_status = _label(root, 16, Vector2.ZERO)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_status.offset_left = -520
@@ -92,6 +106,10 @@ func _ready() -> void:
 		toast("Challenge done: %s" % challenge.title))
 	Progression.tier_completed.connect(func(_index: int, tier: Dictionary) -> void:
 		toast("Tier complete: %s! New jobs pay better now." % tier.title))
+	if _car:
+		_car.fuel_low.connect(func() -> void: toast("Fuel's getting low. Time to find a servo."))
+		_car.fuel_empty.connect(func() -> void:
+			toast("Out of fuel. Call roadside assist from your phone (Tab / X)."))
 
 
 ## Show a message for a few seconds. Messages queue up.
@@ -122,6 +140,11 @@ func _process(delta: float) -> void:
 	var rev := clampf((_car.rpm - 0.0) / _car.limiter_rpm, 0.0, 1.0)
 	_rev_bar.size.x = 200.0 * rev
 	_rev_bar.color = Color(0.95, 0.3, 0.2) if _car.rpm > _car.redline_rpm else Color(0.95, 0.85, 0.5)
+	var fuel := _car.fuel_fraction()
+	_fuel_bar.size.x = 150.0 * fuel
+	var low := fuel < CarController.LOW_FUEL_FRACTION
+	_fuel_bar.color = Color(0.95, 0.3, 0.2) if low else Color(0.85, 0.85, 0.8)
+	_fuel_label.modulate.a = 0.4 + 0.6 * absf(sin(Time.get_ticks_msec() / 300.0)) if low else 1.0
 	var lock := " [locked]"
 	_status.text = "$%d  |  Day %d  |  %s  |  %s%s  |  %s%s" % [
 		Wallet.balance, GameClock.day,
