@@ -1458,6 +1458,132 @@ def lane_idle():
     save_loop("oddity/odd_lane_idle_loop", x, norm="amb")
 
 
+@builder("odd_lane_idle_cutout")
+def lane_idle_cutout():
+    """The lane 500 cutting out just before you reach it: the same lumpy idle
+    as odd_lane_idle_loop (crossfade into this), sagging, missing, one last
+    cough, then the hot exhaust ticking as it cools in the quiet."""
+    dur = 9.0
+    n = secs(dur)
+    r = np.random.default_rng(9451)
+    t = S.t_axis(n)
+    # firing rate: steady idle, then the revs sag away over ~2 s from 1.4 s
+    rpm = np.where(t < 1.4, 880.0, 880.0 * np.exp(-(t - 1.4) / 0.9))
+    rpm *= 1 + 0.03 * S.smooth_noise(n, 0.5, 9452, periodic=False)
+    ph = np.cumsum(rpm / 60) / SR
+    idx = np.flatnonzero(np.diff(np.floor(ph)) > 0) + 1
+    pk = secs(0.06)
+    tk = S.t_axis(pk)
+    eng = np.zeros(n)
+    for at in idx:
+        tt = at / SR
+        if rpm[at] < 260:
+            break
+        if tt > 1.6 and r.random() < 0.25:
+            continue  # missing as it dies
+        a = (1 + 0.18 * r.standard_normal()) * min(1.0, rpm[at] / 700)
+        pop = (np.sin(2 * np.pi * r.uniform(55, 75) * tk) * np.exp(-tk / 0.014)
+               + 0.5 * r.standard_normal(pk) * np.exp(-tk / 0.004))
+        S.place(eng, pop * a, at)
+    last = idx[idx < n][-1] / SR if len(idx) else 3.0
+    # one last cough after the stop, then a shudder of the engine on its mounts
+    cough = S.lp(S.noise(secs(0.18), 9453), 500, 2) * np.exp(-S.t_axis(secs(0.18)) / 0.05)
+    S.place(eng, 1.3 * cough, secs(last + 0.35))
+    shud = np.sin(2 * np.pi * 9 * S.t_axis(secs(0.6))) * np.exp(-S.t_axis(secs(0.6)) / 0.15)
+    S.place(eng, 0.6 * S.lp(shud * S.noise(secs(0.6), 9454), 200, 2), secs(last + 0.45))
+    eng = S.lp(eng, 420, 2)
+    eng += 0.15 * S.bp(S.noise(n, 9455), 800, 4000, 1) * np.abs(S.lp(eng, 30, 1)) * 4
+    eng = S.lp(eng, 900, 2)
+    # cooling exhaust ticks, sparse and slowing
+    ticks = np.zeros(n)
+    at = last + 1.3
+    gap = 0.35
+    while at < dur - 0.4:
+        k = secs(0.02)
+        tick = S.bp(S.noise(k, int(at * 1000)), 2500, 6000, 1) * np.exp(-S.t_axis(k) / 0.003)
+        S.place(ticks, tick * r.uniform(0.5, 1.0), secs(at))
+        gap *= r.uniform(1.1, 1.45)
+        at += gap + r.uniform(0, 0.2)
+    y = eng / np.sqrt(np.mean(eng[: secs(1.4)] ** 2)) * db(-26) + ticks * db(-30)
+    st = S.reverb(y, size_s=1.6, damp_hz=1800, wet=0.45, seed=9403)
+    night = np.stack([S.bp(S.noise(n, 9404 + c), 1500, 6000, 1) for c in range(2)], axis=1)
+    x = pan_const(st + night * db(-47), 0.15)
+    # match the idle loop's level (-24 LUFS) over the steady first 1.4 s
+    import pyloudnorm
+    head = np.concatenate([x[: secs(1.4)]] * 2)
+    x *= db(-24 - pyloudnorm.Meter(SR).integrated_loudness(head))
+    S.save("oddity/odd_lane_idle_cutout", S.fade(x, 0.02, 0.8), norm="none")
+
+
+@builder("odd_follower_engine_loop")
+def follower_engine():
+    """A car keeping its distance behind you in Kings Park at night: a small
+    four-cylinder at a steady ~2200 rpm, throttle easing on and off as it
+    matches your speed, tyres on the road, all far off through the trees.
+    Mono, for a positional player kept 60-120 m behind the car."""
+    dur = 40
+    n = secs(dur)
+    t = S.t_axis(n)
+    eng = engine_idle(n, 9501, rpm=2200, cyl=4, rough=0.08, muffler=380, wobble=0.06)
+    eng = eng / np.sqrt(np.mean(eng ** 2))
+    # throttle: slow swells that loop (periods divide the loop length)
+    thr = 0.6 + 0.25 * np.sin(2 * np.pi * t / 20 + 0.7) + 0.15 * np.sin(2 * np.pi * t / 8 + 2.1)
+    road = S.circ_bp(S.pink(n, 9502), 90, 700, 2)
+    road = road / np.sqrt(np.mean(road ** 2))
+    y = eng * thr * db(-4) + road * db(-10)
+    y = S.circ_lp(y, 700, 2)
+    y = S.reverb(y, size_s=2.2, damp_hz=1400, wet=0.5, circular=True, seed=9503).mean(axis=1)
+    save_loop("oddity/odd_follower_engine_loop", y, norm="amb")
+
+
+@builder("odd_river_lights_shimmer")
+def river_lights_shimmer():
+    """The lights on the river appearing: a faint glassy shimmer of high,
+    slowly beating partials that swells and dissolves. Play once over
+    odd_river_lights_loop when they come on."""
+    dur = 7.0
+    n = secs(dur)
+    t = S.t_axis(n)
+    r = np.random.default_rng(9601)
+    out = np.zeros((n, 2))
+    for k, f in enumerate((1318.5, 1975.5, 2637.0, 3135.9, 3951.1)):
+        for c in range(2):
+            ff = f * (1 + r.uniform(-0.004, 0.004))
+            am = 0.5 + 0.5 * np.sin(2 * np.pi * r.uniform(2.5, 6.0) * t + r.uniform(0, 6))
+            out[:, c] += np.sin(2 * np.pi * ff * t + r.uniform(0, 6)) * am / (k + 1.5)
+    env = np.clip(t / 2.5, 0, 1) ** 2 * np.exp(-np.maximum(t - 2.8, 0) / 1.3)
+    air = np.stack([S.bp(S.noise(n, 9602 + c), 5000, 11000, 1) for c in range(2)], axis=1) * 0.08
+    y = (out + air) * env[:, None]
+    y = np.stack([S.reverb(y[:, c], size_s=3.5, damp_hz=6000, wet=0.55, seed=9603 + c).mean(axis=1)
+                  for c in range(2)], axis=1)
+    S.save("oddity/odd_river_lights_shimmer", S.fade(y, 0.05, 1.0), norm="lufs:-30")
+
+
+@builder("odd_midnight_station_found")
+def midnight_station_found():
+    """Finding the midnight station: its falling music-box interval signal
+    surfacing out of static, then the soft choir cluster and glassy bell of
+    odd_discovery_sting closing over it. Plays once on the radio's Music bus."""
+    dur = 7.0
+    n = secs(dur)
+    t = S.t_axis(n)
+    y = np.zeros(n)
+    S.place(y, interval_signal(9701) * 0.6, secs(0.6))
+    sig = radio_fx(y, 9702, 0.35)
+    st = radio_static(n, 9703, crackle=0.6) * 0.25
+    st *= np.clip(1.2 - t / 4.0, 0.05, 1)  # the static clears as the signal locks
+    radio = S.lp(sig + st, 3800, 4)
+    ch = choir_drone(n, 9704, chord=(130.8, 155.6, 196.0, 261.6), vowel="u").mean(axis=1)
+    sw = np.clip((t - 2.6) / 2.0, 0, 1) ** 2 * np.exp(-np.maximum(t - 5.0, 0) / 0.9)
+    bell = np.zeros(n)
+    for m, a in ((1, 1), (2.76, 0.4), (5.4, 0.2)):
+        bell += (a * np.sin(2 * np.pi * 523.3 * m * t) * np.exp(-np.maximum(t - 4.4, 0) / (1.4 / m))
+                 * np.clip((t - 4.4) / 0.03, 0, 1))
+    m = radio / (np.abs(radio).max() + 1e-9) * 0.7 + ch / (np.abs(ch).max() + 1e-9) * sw * 0.8 + 0.2 * bell
+    m = S.reverb(m, size_s=3.0, damp_hz=4000, wet=0.3, seed=9705)
+    S.save("oddity/odd_midnight_station_found", S.fade(m, 0.05, 1.0), norm="lufs:-20")
+
+
 def pan_const(x, p):
     a = (p + 1) * np.pi / 4
     return np.stack([x[:, 0] * np.cos(a) * np.sqrt(2), x[:, 1] * np.sin(a) * np.sqrt(2)], axis=1)

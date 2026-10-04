@@ -24,6 +24,7 @@ only. The game fakes a gearbox for AI cars from their speed.
 | `traffic_bus_air_brake` | no | air brake release when a bus stops |
 | `traffic_bus_doors` | no | bus doors folding open |
 | `traffic_train_running` | yes | train at speed beside the line; pitched by speed |
+| `traffic_train_alongside_loop` | yes (9 s, mono) | racing a train: the train at ~100 km/h from a car keeping pace a few metres off. Inverter whine, motor hum, steel roll, wind buffeting off the carriage, the nearest car's four axles clacking over rail joints, the odd pantograph spark. Pitch it with the train's speed (`pitch_scale = speed / 100 km/h`) and fade with the gap |
 | `traffic_train_horn` | no | two-tone warning at level crossings, high then low, from one recorded air horn |
 
 Crossing bells and pedestrian beeps come from `amb/` (`amb_crossing_bells_loop`,

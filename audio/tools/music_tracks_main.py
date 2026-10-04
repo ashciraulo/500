@@ -364,6 +364,35 @@ def sting_new_car():
                           {"lead": 0.35, "keys": 0.3, "gtr": 0.2, "drums": 0.2, "bass": 0.03}, fade_out=2.0, length=8.0)
 
 
+def sting_race_win():
+    """Beating the train: a quick climbing run on vibes and muted trumpet over
+    a brushed 'chugga-chugga' shuffle that pulls up on a bright chord, with a
+    two-note whistle call (high-low, like the level-crossing horn) on top."""
+    s = _sting_song("mus_sting_race_win", 305, bpm=132)
+    s.chords(0, ["Cmaj9:2 D13:2", "Gmaj9"])
+    vib = s.part("vibes", 11, "lead", vol=110, pan=-0.1, ht=0.004, hv=4)
+    tp = s.part("mtrumpet", 59, "lead", vol=90, pan=0.15, ht=0.006, hv=3, expr=True)
+    whi = s.part("whistle", 78, "lead", vol=84, pan=0.25, ht=0.006, hv=3, expr=True)
+    org = s.part("organ", 16, "keys", vol=78, pan=-0.25)
+    bas = s.part("bass", 32, "bass", vol=110)
+    dr = s.part("dr", 40, "drums", drum=True, vol=100)
+    vib.melody(0, "d5/.5 e5/.5 g5/.5 b5/.5 a5/.5 b5/.5 d6/1 | b5/4", vel=82)
+    tp.melody(0, "r/2 f#4/.5 a4/.5 c5/1 | b4/4", vel=70)
+    whi.melody(1, "r/.5 b5/1 g5/2.5", vel=64)
+    org.chord(0, mc.voicing(mc.Chord("Cmaj9"), 55, 74, 4), 1.9, 50)
+    org.chord(2, mc.voicing(mc.Chord("D13"), 55, 74, 4), 1.9, 52)
+    org.chord(4, mc.voicing(mc.Chord("Gmaj9"), 55, 76, 5), 4, 56)
+    bas.melody(0, "c2/1 c2/1 d2/1 d2/1 | g1/4", vel=86, stacc=0.6)
+    for k in range(16):  # train shuffle on the brushes: accent on each beat
+        dr.note(k * 0.25, pt.BR_TAP, 0.1, 58 if k % 4 == 0 else (46 if k % 2 == 0 else 36))
+    dr.note(0, pt.KICK, 0.3, 60)
+    dr.note(2, pt.KICK, 0.3, 58)
+    dr.note(4, pt.KICK, 0.3, 70)
+    dr.note(4, pt.CRASH, 3, 52)
+    return _sting_produce(s, {"lead": 0, "keys": -4, "bass": -5, "drums": -5},
+                          {"lead": 0.35, "keys": 0.3, "drums": 0.25, "bass": 0.04}, fade_out=1.4, length=5.5)
+
+
 # --------------------------------------------------------------------------
 # Midnight theme: the main theme's intro + A, slowed to 80 %, warped and
 # partly reversed. 20 source bars -> 62.5 s seamless loop (76.8 BPM).

@@ -305,6 +305,27 @@ func _test_hooks(audio: Node) -> void:
 		if not audio.has(n) and not audio._variants.has(n):
 			missing.append(n)
 	check(missing.is_empty(), "hook sounds exist %s" % [missing])
+	# Sounds the driving thread's oddity and train-race events use (docs/oddity.md).
+	for n in ["oddity/odd_lane_idle_loop", "oddity/odd_lane_idle_cutout", "oddity/odd_follower_engine_loop",
+			"oddity/odd_river_lights_loop", "oddity/odd_river_lights_shimmer", "oddity/odd_midnight_station_found",
+			"traffic/traffic_train_alongside_loop", "music/mus_sting_race_win"]:
+		check(audio.has(n), "event sound " + n)
+	# ...and the gameplay hooks pick them up (scripts/world/train_race.gd, oddities.gd).
+	var race: Node = load("res://scripts/world/train_race.gd").new()
+	race.set_process(false)
+	root.add_child(race)
+	race._start_sound(null)
+	var al: AudioStreamPlayer3D = race._alongside
+	check(al != null and al.stream != null and al.stream.loop, "train race plays the alongside loop")
+	race.free()
+	var odd: Node = load("res://scripts/world/oddities.gd").new()
+	odd.set_process(false)
+	root.add_child(odd)  # freed again before its deferred map setup runs
+	for n in ["oddity/odd_follower_engine_loop", "oddity/odd_lane_idle_loop", "oddity/odd_river_lights_loop"]:
+		var p: AudioStreamPlayer3D = odd._loop_player(n)
+		check(p.stream != null and p.stream.loop and p.autoplay, "oddities loop " + n)
+		p.free()
+	odd.free()
 
 
 func _test_traffic(audio: Node) -> void:

@@ -23,3 +23,34 @@ through the same radio chain if you want words.
 | odd_river_lights_loop | yes (60 s, stereo, -24 LUFS) | Low hum under the river lights with a slow, choir-like drone (detuned voices through 'oh' formants, breathing swells), sub rumble, a trace of static | P2 | synth |
 | odd_discovery_sting | no (4.5 s, stereo, -20 LUFS) | Short eerie stinger: soft choir cluster swelling up, a glassy bell, dissolving into static | P2 | synth |
 | odd_lane_idle_loop | yes (40 s, stereo, -24 LUFS) | A classic 500 idling at the end of the lane: a lumpy 499 cc parallel twin (~880 rpm, one firing per revolution, the odd missed beat), slightly detuned against itself, heard from a distance at night | P2 | synth |
+| odd_lane_idle_cutout | no (9 s, stereo, idle at -24 LUFS like the loop) | The lane 500 cutting out before you reach it: the same idle, revs sagging and missing, a last cough and shudder, then the exhaust ticking as it cools | P2 | synth |
+| odd_follower_engine_loop | yes (40 s, mono, -24 LUFS) | A car keeping its distance behind you in Kings Park: small four-cylinder at ~2200 rpm, throttle easing on and off, tyre roar, far off through trees | P2 | synth |
+| odd_river_lights_shimmer | no (7 s, stereo, -30 LUFS) | The river lights coming on: a faint glassy shimmer of high, slowly beating partials swelling and dissolving | P2 | synth |
+| odd_midnight_station_found | no (7 s, stereo, -20 LUFS) | Discovery sting for finding the midnight station: its falling interval signal surfacing out of static, then a soft choir cluster and a glassy bell | P2 | synth |
+
+## Hooking the night oddities in
+
+These are for the driving thread's oddity events. Each line says what to play
+and where. All of them are quiet on purpose: the player should half-notice them.
+For the loops, `Audio.stream(name, true)` returns the stream with looping on.
+
+- **The lane 500** (end of Little Shenton Lane, after dark): loop
+  `oddity/odd_lane_idle_loop` on an `AudioStreamPlayer3D` at the car
+  (bus `Ambience`, `unit_size` ~8). When the player gets within ~25 m, start
+  `oddity/odd_lane_idle_cutout` at the same spot and fade the loop out over
+  0.5 s; hide the car once the cut-out has finished (9 s).
+- **The Kings Park follower**: loop `oddity/odd_follower_engine_loop` on an
+  `AudioStreamPlayer3D` kept 60-120 m behind the player's car on the road
+  (bus `Vehicles`). Fade it in over ~4 s, nudge `pitch_scale` 0.9-1.15 with
+  the player's speed, and fade it out when the player stops or looks back.
+- **The river lights**: loop `oddity/odd_river_lights_loop` at the lights (bus
+  `Ambience`); play `oddity/odd_river_lights_shimmer` once at the same spot
+  when they appear.
+- **The midnight station**: `Audio.radio` already plays it after midnight.
+  The first time the player hears it, play `oddity/odd_midnight_station_found`
+  with `Audio.play_2d("oddity/odd_midnight_station_found", "Music")` and record
+  the discovery. The generic `odd_discovery_sting` fits the other oddities.
+- **Train racing** (in docs/traffic.md and docs/music.md): loop
+  `traffic/traffic_train_alongside_loop` on the train, and play
+  `Audio.sting("race_win")` when the player beats it.
+

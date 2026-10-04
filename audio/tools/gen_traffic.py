@@ -146,8 +146,52 @@ def train_loop(seconds=4.0) -> np.ndarray:
     return x
 
 
+def train_alongside_loop(seconds=9.0) -> np.ndarray:
+    """Racing a Transperth train: the train at ~100 km/h heard from a car
+    keeping pace a few metres away. Closer and fuller than train_loop: the
+    inverter's whine sweeping a little, traction-motor hum, the roll of steel
+    on steel, wind buffeting off the carriage side, and the nearest car's
+    four axles clacking over rail joints ("da-dum ... da-dum"), with the odd
+    pantograph spark. Periodic so it loops; the game pitches it with the
+    train's speed and fades it with the gap."""
+    n = secs(seconds)
+    t = t_axis(n)
+    r = np.random.default_rng(60)
+
+    def ftone(f):
+        return round(f * seconds) / seconds
+
+    def rms1(y):
+        return y / np.sqrt(np.mean(y ** 2))
+
+    x = 0.30 * rms1(S.circ_bp(S.pink(n, 61), 90, 2200))             # rolling roar
+    x += 0.05 * rms1(S.circ_bp(noise(n, 62), 2800, 8000))           # rail hiss
+    buffet = 0.6 + 0.4 * np.sin(2 * np.pi * ftone(0.9) * t) * np.sin(2 * np.pi * ftone(2.3) * t + 1.0)
+    x += 0.25 * rms1(S.circ_lp(S.brown(n, 63), 120, 2)) * buffet    # wind off the carriage
+    # inverter whine with a slow, small sweep, and motor hum harmonics
+    sweep = np.sin(2 * np.pi * t / seconds)
+    for k, (f, a) in enumerate(((1150, 0.05), (2300, 0.02), (3450, 0.01))):
+        x += a * np.sin(2 * np.pi * ftone(f) * t + 12.0 * (k + 1) * sweep)
+    for h, a in ((1, 0.08), (2, 0.05), (3, 0.03), (5, 0.015)):
+        x += a * np.sin(2 * np.pi * ftone(165 * h) * t)
+    # rail joints every 0.9 s under the nearest car's axles (bogies 17 m apart)
+    clack = rms1(lp(noise(secs(0.08), 64), 3000)) * env_exp(secs(0.08), 0.008)
+    thud = rms1(lp(noise(secs(0.08), 65), 250)) * env_exp(secs(0.08), 0.02)
+    for start in np.arange(0.0, seconds, 0.9):
+        for off, a in ((0.0, 1.0), (0.09, 0.85), (0.61, 0.7), (0.70, 0.6)):
+            j = 1 + 0.15 * r.standard_normal()
+            S.place(x, a * j * (1.1 * clack + 1.0 * thud), int((start + off) * SR), wrap=True)
+    # the odd pantograph spark, far up on the roof
+    for at in (2.37, 6.81):
+        k = secs(0.04)
+        sp = bp(noise(k, int(at * 100)), 3000, 9000) * env_exp(k, 0.006)
+        S.place(x, 0.2 * rms1(sp) * env_exp(k, 0.006), int(at * SR), wrap=True)
+    return x
+
+
 def render_trains():
     S.save(f"{OUT}/traffic_train_running", train_loop(), "peak")
+    S.save(f"{OUT}/traffic_train_alongside_loop", train_alongside_loop(), "peak")
     # Train horn: the two-tone warning sounded at level crossings, high then
     # low (~372 then ~311 Hz), both from one recorded air horn with its own
     # attack and let-go.

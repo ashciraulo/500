@@ -447,7 +447,7 @@ func set_mission_intensity(amount: float) -> void:
 		_mission.set_sync_stream_volume(1, linear_to_db(clampf(amount, 0.0001, 1.0)))
 
 
-## Short stinger over whatever is playing: "complete", "failed", "tier_unlock", "new_car".
+## Short stinger over whatever is playing: "complete", "failed", "tier_unlock", "new_car", "race_win".
 func sting(which: String) -> void:
 	play_2d("music/mus_sting_" + which, "Music")
 
