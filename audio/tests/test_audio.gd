@@ -331,5 +331,19 @@ func _test_traffic(audio: Node) -> void:
 			if h and h.stream and h.stream.resource_path.contains("traffic_horn"):
 				horns += 1
 		check(horns == ta.manager.vehicles.size() and horns > 0, "traffic horns swapped (%d)" % horns)
+	# The real map: zones and the townhouse.
+	var amb: Node = audio.ambience
+	check(amb.zone_at(Vector3(0, 0, 0)) == "northbridge", "Little Shenton Lane is Northbridge")
+	check(amb.zone_at(Vector3(-1900, 0, 1700)) == "kingspark", "Kings Park zone")
+	check(amb.zone_at(Vector3(300, 0, 2450)) == "river", "Perth Water is the river")
+	check(amb.zone_at(Vector3(-3500, 0, -1200)) == "suburbs", "Wembley is suburbs")
+	if main.find_child("PerthMap", true, false):
+		await create_timer(1.2).timeout
+		check(audio.hooks._home != null, "hooks found the townhouse")
+		if audio.hooks._home:
+			var doors: Array = audio.hooks._home.door_names()
+			if not doors.is_empty():
+				audio.hooks._home.toggle_door(doors[0])  # plays the door sound
+		check(amb.zone == amb.zone_at(audio.listener().global_position), "ambience zone follows the camera (%s)" % amb.zone)
 	main.queue_free()
 	await process_frame

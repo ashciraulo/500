@@ -31,6 +31,9 @@ var _phone_open := false
 var _workshop_open := false
 var _room_tone: AudioStreamPlayer
 var traffic: Node            # traffic_audio.gd, once the city's TrafficManager turns up
+var _map: Node               # the Perth map streamer, when the real map is loaded
+var _home: Node
+var _zone_timer := 0.0
 var _look_timer := 0.0
 
 
@@ -92,6 +95,7 @@ func _process(delta: float) -> void:
 		return
 	_update_job_music()
 	_update_car()
+	_update_zone(delta)
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +220,18 @@ func _find_nodes() -> void:
 		_phone = scene_root.find_child("Phone", true, false)
 	if not is_instance_valid(_workshop):
 		_workshop = scene_root.find_child("Workshop", true, false)
+	if not is_instance_valid(_map):
+		var m := scene_root.find_child("PerthMap", true, false)
+		if m and m.has_method("get_home"):
+			_map = m
+	if is_instance_valid(_map) and not is_instance_valid(_home):
+		var h: Node = _map.get_home()
+		if h and h.has_signal("door_toggled"):
+			_home = h
+			h.door_toggled.connect(_on_home_door)
+			h.slept.connect(_on_slept)
+			h.shed_unlocked.connect(func() -> void:
+				Audio.play_at("home/home_odd_door_creak", _home_pos(), -2.0))
 	if not is_instance_valid(traffic):
 		var tm := scene_root.find_child("Traffic", true, false)
 		if tm and tm.has_signal("vehicle_spawned"):
@@ -283,6 +299,41 @@ func _wash_sounds() -> void:
 		if brushes and brushes.playing:
 			brushes.stop()
 		Audio.play_at("garage/garage_wash_drips", pos, -4.0))
+
+
+# ---------------------------------------------------------------------------
+# The map and the townhouse
+# ---------------------------------------------------------------------------
+
+## On the real map the ambience follows where you are (city, Kings Park, the
+## river...). On the test grid it stays as it is.
+func _update_zone(delta: float) -> void:
+	if not is_instance_valid(_map):
+		return
+	_zone_timer -= delta
+	if _zone_timer > 0.0:
+		return
+	_zone_timer = 1.0
+	var ear: Node3D = Audio.listener()
+	if ear:
+		Audio.ambience.set_zone(Audio.ambience.zone_at(ear.global_position))
+
+
+func _home_pos() -> Vector3:
+	return (_home as Node3D).global_position if _home is Node3D else Vector3.ZERO
+
+
+func _on_home_door(door_name: StringName, open: bool) -> void:
+	var door := (_home as Node).find_child(String(door_name), true, false) as Node3D
+	var pos := door.global_position if door else _home_pos()
+	var kind := "front" if String(door_name).contains("Front") else "internal"
+	Audio.play_at("home/home_%s_door_%s" % [kind, "open" if open else "close"], pos, -2.0)
+
+
+func _on_slept(_day: int) -> void:
+	Audio.play_at("home/home_bed_get_in", _home_pos(), -4.0)
+	get_tree().create_timer(1.2).timeout.connect(func() -> void:
+		Audio.play_2d("home/home_day_ends", "Music", -2.0))
 
 
 # ---------------------------------------------------------------------------

@@ -111,6 +111,11 @@ start swapping in your own recordings, regenerate only what you need.
   the radio until the last 30% of the par time, then the mission tension
   loop fades in and builds; time trials play the time-trial loop with
   countdown ticks before each medal time. The radio dips under both.
+- **The map and the townhouse**: on the Perth map the ambience bed follows
+  the camera through Northbridge, the CBD, Kings Park, the river and the
+  suburbs (rough areas in `ZONE_AREAS` in `ambience_manager.gd`, until the map
+  carries real zones). The townhouse's doors, going to bed (with the "day
+  ends" sting) and the shed being unlocked have their sounds.
 - **Traffic** (`traffic_audio.gd`, made by `Audio.hooks` when the city's
   TrafficManager appears): pooled engine voices on the nearest cars (4),
   utes and vans (2) and buses (2), our horns on every vehicle, the bus air

@@ -46,6 +46,20 @@ const SPRINKLES := {
 }
 
 var zone := "cbd"
+
+## Rough areas of the Perth map slice (map/, world metres, x east and z
+## south, origin at Little Shenton Lane), as [zone, centre_x, centre_z,
+## radius]. The tightest match wins; anywhere else is "suburbs". zone_at()
+## reads these; Audio.hooks calls it as the player moves.
+const ZONE_AREAS := [
+	["northbridge", 350.0, 150.0, 650.0],
+	["cbd", 450.0, 950.0, 650.0],
+	["kingspark", -1700.0, 1700.0, 950.0],
+	["river", 300.0, 2450.0, 800.0],
+	["river", -700.0, 2650.0, 650.0],
+	["river", 1500.0, 2300.0, 700.0],
+	["river", 2500.0, 1700.0, 600.0],
+]
 var rain := 0.0          # 0..1
 var storm := 0.0         # 0..1
 var wind := 0.2          # 0..1
@@ -103,6 +117,18 @@ func _layer(id: String, sound: String, bus: String) -> void:
 # ---------------------------------------------------------------------------
 # Inputs
 # ---------------------------------------------------------------------------
+
+## Which ambience zone a world position is in (see ZONE_AREAS).
+static func zone_at(pos: Vector3) -> String:
+	var best := "suburbs"
+	var best_r := 1.0
+	for area in ZONE_AREAS:
+		var r := Vector2(pos.x - area[1], pos.z - area[2]).length() / float(area[3])
+		if r < best_r:
+			best_r = r
+			best = area[0]
+	return best
+
 
 func set_zone(new_zone: String) -> void:
 	if new_zone == zone:
