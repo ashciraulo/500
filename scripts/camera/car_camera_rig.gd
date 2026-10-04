@@ -13,12 +13,12 @@ enum Mode { CHASE, INTERIOR }
 @export var mode := Mode.CHASE
 
 @export_group("Chase")
-@export var chase_distance := 4.6
+@export var chase_distance := 4.3
 @export var chase_height := 1.55
 @export var look_height := 0.75
 @export var look_ahead := 1.5
 ## How fast the camera swings round behind the car.
-@export var yaw_follow := 3.5
+@export var yaw_follow := 6.0
 @export var position_follow := 9.0
 @export var fov_slow := 68.0
 @export var fov_fast := 80.0
@@ -100,7 +100,16 @@ func _update_chase(delta: float) -> void:
 	var speed_t := clampf(speed / 33.0, 0.0, 1.0)
 	var distance := chase_distance + speed_t * 1.0
 	var orbit := Basis(Vector3.UP, _yaw + _look_yaw) * Basis(Vector3.RIGHT, -_look_pitch)
-	var desired := car_pos + orbit * Vector3(0.0, chase_height, distance)
+	# Under a low roof (carport, car park), drop the camera and pull it in so
+	# it stays below the ceiling instead of filming the roof.
+	var height := chase_height
+	_ray_query.from = car_pos + Vector3.UP * 0.9
+	_ray_query.to = car_pos + Vector3.UP * (chase_height + 0.8)
+	var ceiling := get_world_3d().direct_space_state.intersect_ray(_ray_query)
+	if not ceiling.is_empty():
+		height = clampf(ceiling.position.y - car_pos.y - 0.45, look_height, chase_height)
+		distance *= lerpf(0.75, 1.0, (height - look_height) / maxf(chase_height - look_height, 0.01))
+	var desired := car_pos + orbit * Vector3(0.0, height, distance)
 	var target := car_pos + Vector3.UP * look_height + (-_car.global_basis.z) * look_ahead
 
 	# Keep the camera out of walls.

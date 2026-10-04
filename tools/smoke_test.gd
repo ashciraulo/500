@@ -343,6 +343,37 @@ func _run_step() -> bool:
 				_check(garage.lifetime_km(_car) >= 42.0, "lifetime km adds up every car")
 				garage.switch_car("pop_12", _car)
 				_next()
+		14:  # Hidden badges, mileage rewards and named trials per car class.
+			var progression := root.get_node("Progression")
+			var jobs := root.get_node("Jobs")
+			if _frame == 1:
+				var badges := _main.get_tree().get_nodes_in_group(&"collectibles")
+				_check(badges.size() >= 5, "the test grid hides 500 badges (%d)" % badges.size())
+				_mark.badges = progression.get_stat("badges")
+				_mark.places = progression.get_stat("discoveries")
+				_teleport(badges[0].global_position)
+			elif _frame == 30:
+				_check(progression.get_stat("badges") == _mark.badges + 1, "driving through a badge collects it")
+				_check(progression.get_stat("discoveries") == _mark.places, "badges don't count as places")
+				_car.odometer_km += 30.0
+				progression.check()
+				_check(progression.rewards.has("trinket_fluffy_dice"), "25 km earns the fluffy dice")
+				_check(jobs.trials().size() >= 6, "named time trials load (%d)" % jobs.trials().size())
+				jobs.refresh_offers()
+				var trial: Dictionary = {}
+				for job in jobs.offers:
+					if job.type == "trial":
+						trial = job
+				_check(not trial.is_empty() and trial.trial_id.ends_with("@t0"), "the Pop races in its own class")
+				var pop_gold: float = trial.medal_times.gold
+				root.get_node("Garage").switch_car("lounge_14", _car)
+				jobs.refresh_offers()
+				for job in jobs.offers:
+					if job.type == "trial" and job.title == trial.title:
+						_check(job.trial_id.ends_with("@t1") and job.medal_times.gold < pop_gold,
+							"quicker cars get tighter medal times")
+				root.get_node("Garage").switch_car("pop_12", _car)
+				_next()
 		_:
 			Input.action_release("accelerate")
 			Input.action_release("brake")

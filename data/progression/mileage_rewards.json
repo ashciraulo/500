@@ -1,0 +1,15 @@
+{
+	"_comment": "Small rewards for lifetime kilometres across every car, so cruising with no goal still moves something forward. `kind` tells the models thread how to show it: trinket (dash), livery, interior, garage (decoration at home).",
+	"rewards": [
+		{"km": 25, "id": "trinket_fluffy_dice", "title": "Fluffy dice", "kind": "trinket"},
+		{"km": 100, "id": "trinket_nodding_dog", "title": "A nodding dog for the parcel shelf", "kind": "trinket"},
+		{"km": 250, "id": "garage_road_map", "title": "A framed street directory for the garage wall", "kind": "garage"},
+		{"km": 500, "id": "livery_racing_stripes", "title": "Twin racing stripes", "kind": "livery"},
+		{"km": 750, "id": "trinket_hula_girl", "title": "A dashboard hula girl", "kind": "trinket"},
+		{"km": 1000, "id": "interior_wooden_knob", "title": "A wooden gear knob", "kind": "interior"},
+		{"km": 1500, "id": "trinket_bobblehead", "title": "A bobblehead of a quokka", "kind": "trinket"},
+		{"km": 2000, "id": "livery_checkered_roof", "title": "A chequered roof", "kind": "livery"},
+		{"km": 3000, "id": "garage_neon_sign", "title": "A neon 500 sign for the garage", "kind": "garage"},
+		{"km": 5000, "id": "livery_gold_scorpion", "title": "A gold scorpion livery", "kind": "livery"}
+	]
+}

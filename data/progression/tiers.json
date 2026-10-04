@@ -27,7 +27,7 @@
 				{"id": "t2_deliveries", "title": "Regulars", "description": "Finish 25 deliveries.", "stat": "deliveries", "target": 25},
 				{"id": "t2_car", "title": "Something with more go", "description": "Drive 160 km in a Lounge or TwinAir.", "stat": "km_tier_car", "target": 160},
 				{"id": "t2_silver", "title": "Quick little thing", "description": "Earn silver or better in 3 time trials.", "stat": "trials_silver", "target": 3},
-				{"id": "t2_fragile", "title": "Handle with care", "description": "Deliver 4 fragile loads without a scratch.", "stat": "fragile_perfect", "target": 4},
+				{"id": "t2_badges", "title": "Magpie", "description": "Find 3 of the hidden 500 badges.", "stat": "badges", "target": 3},
 				{"id": "t2_suburbs", "title": "Getting around", "description": "Deliver to 8 different suburbs.", "stat": "suburbs_delivered", "target": 8},
 				{"id": "t2_discover", "title": "Local knowledge", "description": "Discover 20 places.", "stat": "discoveries", "target": 20},
 				{"id": "t2_upgrades", "title": "Making it yours", "description": "Have 2 upgrades fitted to the car you drive.", "stat": "upgrades_fitted", "target": 2}
@@ -60,7 +60,7 @@
 				{"id": "t4_car", "title": "Hot hatch", "description": "Drive 320 km in a 595 or the new 500e.", "stat": "km_tier_car", "target": 320},
 				{"id": "t4_gold", "title": "Clean sweep", "description": "Earn gold in 4 time trials.", "stat": "trials_gold", "target": 4},
 				{"id": "t4_storm", "title": "Storm chaser", "description": "Finish 4 deliveries in a storm.", "stat": "storm_deliveries", "target": 4},
-				{"id": "t4_discover", "title": "Perth by heart", "description": "Discover 45 places.", "stat": "discoveries", "target": 45},
+				{"id": "t4_badges", "title": "Treasure hunter", "description": "Find 20 of the hidden 500 badges.", "stat": "badges", "target": 20},
 				{"id": "t4_suburbs", "title": "Every postcode", "description": "Deliver to 20 different suburbs.", "stat": "suburbs_delivered", "target": 20},
 				{"id": "t4_upgrades", "title": "Fully sorted", "description": "Have 4 upgrades fitted to the car you drive.", "stat": "upgrades_fitted", "target": 4}
 			]
@@ -78,7 +78,7 @@
 				{"id": "t5_discover", "title": "Nowhere left", "description": "Discover 58 places.", "stat": "discoveries", "target": 58},
 				{"id": "t5_suburbs", "title": "Everywhere, twice", "description": "Deliver to 22 different suburbs.", "stat": "suburbs_delivered", "target": 22},
 				{"id": "t5_cars", "title": "The collection", "description": "Own 5 cars.", "stat": "cars_owned", "target": 5},
-				{"id": "t5_fragile", "title": "Steady hands", "description": "Deliver 22 fragile loads without a scratch.", "stat": "fragile_perfect", "target": 22}
+				{"id": "t5_badges", "title": "Every nook", "description": "Find 45 of the hidden 500 badges.", "stat": "badges", "target": 45}
 			]
 		}
 	]

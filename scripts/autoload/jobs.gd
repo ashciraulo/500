@@ -28,6 +28,12 @@ const MEDALS := ["gold", "silver", "bronze"]
 ## Average speeds (km/h, over road distance) for each medal.
 const MEDAL_SPEEDS := {"gold": 62.0, "silver": 52.0, "bronze": 42.0}
 const MEDAL_REWARDS := {"gold": 220, "silver": 120, "bronze": 60}
+const TRIALS_PATH := "res://data/progression/trials.json"
+## Medal pace per car class: quicker cars have to be quicker. Each class keeps
+## its own records, so every trial can be medalled once per class.
+const CLASS_PACE := {"classic": 0.7, "t0": 1.0, "t1": 1.07, "t2": 1.16, "t3": 1.22, "t4": 1.28}
+const CLASS_NAMES := {"classic": "classics", "t0": "tier 1 cars", "t1": "tier 2 cars",
+	"t2": "tier 3 cars", "t3": "tier 4 cars", "t4": "tier 5 cars"}
 ## Delivery pay: base plus per road km, before the tier's pay multiplier.
 ## tools/pacing_model.py reads these; re-run it after changing them.
 const DELIVERY_BASE_PAY := 55.0
@@ -63,6 +69,7 @@ var _rng := RandomNumberGenerator.new()
 var _car: CarController
 var _discover_timer := 0.0
 var _next_id := 1
+var _trials: Array = []
 
 
 func _ready() -> void:
@@ -204,8 +211,8 @@ func describe(job: Dictionary) -> String:
 			site(job.dropoff).label() if site(job.dropoff) else job.dropoff, job.km, job.pay, fragile, weather]
 	var record: Dictionary = trial_records.get(job.trial_id, {})
 	var best := "  Best %s (%s)" % [_clock(record.best), record.medal] if record.has("best") else ""
-	return "%s: %d checkpoints, %.1f km. Gold %s, silver %s, bronze %s.%s" % [
-		job.title, job.route.size() - 1, job.km, _clock(job.medal_times.gold),
+	return "%s (%s): %d checkpoints, %.1f km. Gold %s, silver %s, bronze %s.%s" % [
+		job.title, CLASS_NAMES.get(job.get("class", "t0"), "any car"), job.route.size() - 1, job.km, _clock(job.medal_times.gold),
 		_clock(job.medal_times.silver), _clock(job.medal_times.bronze), best]
 
 
@@ -342,27 +349,48 @@ func _make_delivery(all_sites: Array[JobSite]) -> Dictionary:
 	}
 
 
-func _make_trial(all_sites: Array[JobSite]) -> Dictionary:
-	var pool := all_sites.filter(func(s: JobSite) -> bool: return s.kinds.has("trial"))
-	if pool.size() < 3:
+func _make_trial(_all_sites: Array[JobSite]) -> Dictionary:
+	var pool := trials().filter(func(t: Dictionary) -> bool:
+		for id in t.route:
+			if site(id) == null:
+				return false
+		return t.route.size() >= 2)
+	if pool.is_empty():
 		return {}
-	pool.shuffle()
-	var count := mini(pool.size(), _rng.randi_range(4, 6))
-	var route: Array = []
+	var trial: Dictionary = pool[_rng.randi() % pool.size()]
+	var route: Array = trial.route
 	var km := 0.0
-	for i in count:
-		route.append(pool[i].site_id)
-		if i > 0:
-			km += pool[i - 1].global_position.distance_to(pool[i].global_position) * ROAD_FACTOR / 1000.0
+	for i in range(1, route.size()):
+		km += site(route[i - 1]).global_position.distance_to(site(route[i]).global_position) * ROAD_FACTOR / 1000.0
+	var car_class := current_class()
+	var pace: float = CLASS_PACE.get(car_class, 1.0)
 	var times := {}
 	for m in MEDALS:
-		times[m] = km / MEDAL_SPEEDS[m] * 3600.0
+		times[m] = km / (MEDAL_SPEEDS[m] * pace) * 3600.0
 	return {
 		"id": _new_id(), "type": "trial",
-		"trial_id": "-".join(route),
-		"title": "The %s run" % site(route[0]).display_name,
+		"trial_id": "%s@%s" % [trial.id, car_class], "class": car_class,
+		"title": trial.title,
 		"route": route, "km": km, "medal_times": times,
 	}
+
+
+## Named trials from data/progression/trials.json.
+func trials() -> Array:
+	if _trials.is_empty():
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(TRIALS_PATH))
+		if parsed is Dictionary:
+			_trials = parsed.get("trials", [])
+	return _trials
+
+
+## The class the player's car races in: "classic" or "t0" to "t4" by tier.
+func current_class() -> String:
+	var car := get_tree().get_first_node_in_group(&"player_car") as CarController
+	var info := CarCatalogue.get_car(car.car_id if car else CarCatalogue.STARTER)
+	if info.get("ladder", "") == "classic":
+		return "classic"
+	return "t%d" % int(info.get("tier", 0))
 
 
 func _place_beacon() -> void:

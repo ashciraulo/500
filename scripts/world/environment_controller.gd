@@ -19,7 +19,10 @@ extends Node
 
 # Sky palettes: [top, horizon] for night, twilight and day, plus an overcast tint.
 const NIGHT_TOP := Color(0.01, 0.015, 0.04)
-const NIGHT_HORIZON := Color(0.04, 0.05, 0.1)
+const NIGHT_HORIZON := Color(0.1, 0.09, 0.13)
+# Night ambient: moonlight plus the city's sodium glow bouncing off the cloud,
+# so streets stay readable without headlights.
+const NIGHT_FILL := Color(0.3, 0.33, 0.44)
 const DUSK_TOP := Color(0.18, 0.2, 0.42)
 const DUSK_HORIZON := Color(0.95, 0.5, 0.3)
 const DAY_TOP := Color(0.24, 0.48, 0.85)
@@ -71,7 +74,7 @@ func _update(delta: float) -> void:
 	# Moon: roughly opposite the sun, never quite below the horizon.
 	var moon_dir := Vector3(-sun_dir.x, maxf(0.35, -sun_dir.y), -sun_dir.z + 0.3).normalized()
 	_moon.global_basis = Basis.looking_at(-moon_dir, Vector3.UP)
-	_moon.light_energy = (1.0 - daylight) * 0.1 * (1.0 - 0.6 * overcast)
+	_moon.light_energy = (1.0 - daylight) * 0.3 * (1.0 - 0.5 * overcast)
 	_moon.visible = _moon.light_energy > 0.01
 
 	# Sky.
@@ -100,9 +103,10 @@ func _update(delta: float) -> void:
 
 	# Flat ambient colour rather than sky radiance: cheap, very PS1, and it
 	# follows the time of day instantly.
-	_environment.ambient_light_color = top.lerp(horizon, 0.5) + flash_color
-	_environment.ambient_light_energy = lerpf(0.6, 0.9, daylight) * lerpf(1.0, 0.75, overcast) + _flash
-	_environment.tonemap_exposure = lerpf(1.1, 0.95, daylight)
+	var palette := top.lerp(horizon, 0.5)
+	_environment.ambient_light_color = palette.lerp(NIGHT_FILL, (1.0 - daylight) * 0.85) + flash_color
+	_environment.ambient_light_energy = lerpf(0.6, 0.9, daylight) * lerpf(1.0, 0.8, overcast) + _flash
+	_environment.tonemap_exposure = lerpf(1.25, 0.95, daylight)
 
 	# Rain follows whichever camera is active.
 	if _rain:

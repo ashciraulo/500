@@ -100,18 +100,25 @@ script = ExtResource("9_car_sounds")
 [node name="HeadlightL" type="SpotLight3D" parent="Headlights"]
 transform = Transform3D(1, 0, 0, 0, 0.996195, 0.0871557, 0, -0.0871557, 0.996195, -0.62, 0.235, -1.74)
 light_color = Color(1, 0.95, 0.82, 1)
-light_energy = 6.0
-spot_range = 45.0
-spot_angle = 28.0
-spot_attenuation = 0.6
+light_energy = 14.0
+spot_range = 70.0
+spot_angle = 36.0
+spot_attenuation = 0.35
 
 [node name="HeadlightR" type="SpotLight3D" parent="Headlights"]
 transform = Transform3D(1, 0, 0, 0, 0.996195, 0.0871557, 0, -0.0871557, 0.996195, 0.62, 0.235, -1.74)
 light_color = Color(1, 0.95, 0.82, 1)
-light_energy = 6.0
-spot_range = 45.0
-spot_angle = 28.0
-spot_attenuation = 0.6
+light_energy = 14.0
+spot_range = 70.0
+spot_angle = 36.0
+spot_attenuation = 0.35
+
+[node name="CabinGlow" type="OmniLight3D" parent="Headlights"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.42, -0.3)
+light_color = Color(1, 0.82, 0.62, 1)
+light_energy = 0.35
+omni_range = 0.75
+omni_attenuation = 1.4
 
 [node name="BrakeLights" type="Node3D" parent="."]
 visible = false

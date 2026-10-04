@@ -199,7 +199,12 @@ func _refresh_stats() -> void:
 	var lines := PackedStringArray()
 	lines.append("Money: $%s   (earned $%s all up)" % [_number(Wallet.balance), _number(Wallet.total_earned)])
 	lines.append("Day %d, %s" % [GameClock.day, GameClock.time_string()])
-	lines.append("Places discovered: %d" % Discoveries.all().size())
+	lines.append("Places discovered: %d" % Progression.get_stat("discoveries"))
+	lines.append("500 badges found: %d of %d" % [Collectible.found_count(), Collectible.TOTAL])
+	lines.append("Driven in all: %s km" % _number(Progression.get_stat("km_driven")))
+	var next := Progression.next_mileage_reward()
+	if not next.is_empty():
+		lines.append("Next mileage reward at %s km: %s" % [_number(next.km), next.title])
 	lines.append("Deliveries: %d" % Progression.get_stat("deliveries"))
 	if car:
 		var stats := car.get_stats()

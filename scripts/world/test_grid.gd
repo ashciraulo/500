@@ -92,6 +92,19 @@ func _ready() -> void:
 	_workshop("spray_shop", "Osborne Park Smash & Spray", ["paint"], Vector3(66, 0, -36), Color(1.0, 0.6, 0.35))
 	_workshop("fitzgerald_st_servo", "Fitzgerald St servo", ["fuel", "wash"], Vector3(12, 0, 4), Color(0.95, 0.85, 0.4))
 
+	# A few hidden 500 badges (the map hides 60).
+	var badges := {
+		"carpark_corner": Vector3(-28, 0, -20), "hill_top": hill_top + Vector3(4, 0, 4),
+		"oval_infield": Vector3(150, 0, -100), "gravel_pit": Vector3(-30, 0, 40),
+		"behind_servo": Vector3(16, 0, 14), "town_alley": Vector3(-255, 0, -240),
+		"far_corner": Vector3(-310, 0, -310), "grass_verge": Vector3(28, 0, 40),
+	}
+	for id in badges:
+		var badge := Collectible.new()
+		badge.badge_id = id
+		badge.position = badges[id]
+		add_child(badge)
+
 	# Placeholder town block for scale, silhouettes and fog depth.
 	var colours := [Color(0.78, 0.72, 0.62), Color(0.6, 0.62, 0.66), Color(0.82, 0.8, 0.76), Color(0.55, 0.45, 0.4)]
 	for gx in 6:

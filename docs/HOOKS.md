@@ -156,6 +156,23 @@ records).
   tier takes; run it after changing tiers, car prices or delivery pay.
 - Deliveries taken in light rain pay 25% more and in a storm 50% more.
   Signals: `stat_changed`, `challenge_completed`, `tier_completed`.
+- Time trials are named routes in `data/progression/trials.json` (site ids
+  from the job markers). Times are kept per car class, so each trial has a
+  separate best for classics and every tier (`Jobs.CLASS_PACE` sets the par).
+- Badges are `Collectible` nodes (group `collectibles`) with a `badge_id`.
+  The map should scatter `Collectible.TOTAL` (60) of them around Perth; the
+  test grid places 8. Found ones count towards the `badges` stat.
+- Mileage rewards (`data/progression/mileage_rewards.json`) unlock as
+  lifetime km grows; `Progression.rewards` lists the unlocked ids and the
+  `reward_unlocked(reward)` signal fires for each new one.
+
+## Night lighting
+
+- `EnvironmentController` keeps nights readable with a moonlit ambient fill
+  (`NIGHT_FILL`). Anything that glows at night joins the `night_lights` group.
+- The car's `Headlights` node holds both headlight spots and a dim
+  `CabinGlow` for the in-car view. `CarBody` lightens the exported `Glass`
+  material at runtime (`glass_alpha`, `glass_tint`).
 
 ## Cars (data/cars/cars.json, `CarCatalogue`, `Garage`)
 

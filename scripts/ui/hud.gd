@@ -111,6 +111,11 @@ func _ready() -> void:
 			names.append(car.name)
 		var cars := " The car yard has the %s for you." % " and ".join(names) if not names.is_empty() else ""
 		toast("Tier complete: %s! Jobs pay better now.%s" % [tier.title, cars]))
+	Progression.reward_unlocked.connect(func(reward: Dictionary) -> void:
+		toast("%d km driven: %s" % [int(reward.km), reward.title]))
+	Discoveries.discovered.connect(func(id: String) -> void:
+		if id.begins_with("badge/"):
+			toast("Found a 500 badge (%d of %d)" % [Collectible.found_count(), Collectible.TOTAL]))
 	if _car:
 		_car.fuel_low.connect(func() -> void: toast("Fuel's getting low. Time to find a servo."))
 		_car.fuel_empty.connect(func() -> void:

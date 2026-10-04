@@ -115,6 +115,13 @@ const RPM_PER_RAD_S := 60.0 / TAU
 @export var steer_falloff_kmh := 110.0
 ## Steering wheel speed, radians of road-wheel angle per second.
 @export var steer_rate := 2.2
+## How hard full steering input pushes the front tyres at speed: 1.0 caps the
+## lock just past the grip limit, so a full keyboard or stick input turns the
+## car as tightly as the tyres allow instead of ploughing straight on. 0 turns
+## the cap off (pure lock table).
+@export_range(0.0, 1.0) var steer_assist := 1.0
+## Steering angle past the grip limit that the assist still allows.
+@export var steer_assist_margin := 1.0
 
 # --- Driver inputs, 0..1 (steer -1..1). Set by the player or by AI. ---
 var throttle_input := 0.0
@@ -181,6 +188,7 @@ var _stock := {}
 ## The scene's own values (the Pop), so switching cars starts clean.
 var _scene_defaults := {}
 var _peak_torque := 102.0
+var _wheelbase := 2.3
 ## CarController values a car spec may set (data/cars/cars.json).
 const SPEC_KEYS := [
 	"mass", "idle_rpm", "redline_rpm", "limiter_rpm", "torque_curve", "gear_ratios",
@@ -239,6 +247,7 @@ func _ready() -> void:
 			"surface": DEFAULT_SURFACE,
 		})
 	_update_lights()
+	_wheelbase = absf(_wheels[0].anchor.position.z - _wheels[2].anchor.position.z)
 
 
 func _physics_process(delta: float) -> void:
@@ -332,7 +341,13 @@ func _physics_process(delta: float) -> void:
 		var demand := Vector2(lateral, longitudinal)
 		var slip := 0.0
 		if demand.length() > max_force and max_force > 0.0:
-			slip = clampf(demand.length() / max_force - 1.0, 0.0, 1.0)
+			# How far the tyre is past its limit: sideways by slip angle, and
+			# lengthways by how much more drive or braking it was asked for.
+			var slip_angle := absf(v_lat) / maxf(absf(v_long), 2.0)
+			var over := demand.length() / max_force - 1.0
+			slip = clampf(maxf((slip_angle - 0.06) / 0.18, absf(longitudinal) / max_force - 1.0), 0.0, 1.0)
+			if absf(v_long) < 2.0:
+				slip = maxf(slip, clampf(over * 0.2, 0.0, 1.0))
 			demand = demand.normalized() * max_force
 		worst_slip = maxf(worst_slip, slip)
 		apply_force(right * demand.x + forward * demand.y, offset)
@@ -705,7 +720,18 @@ func _read_player_input(delta: float) -> void:
 func _update_steering(delta: float) -> void:
 	var speed_factor := clampf(speed_kmh() / steer_falloff_kmh, 0.0, 1.0)
 	var lock := deg_to_rad(lerpf(max_steer_deg, high_speed_steer_deg, speed_factor))
-	steer_angle = move_toward(steer_angle, steer_input * lock, steer_rate * delta)
+	if steer_assist > 0.0:
+		# The road-wheel angle that asks for the tyres' full grip at this speed.
+		var v := maxf(absf(forward_speed), 1.0)
+		var grip_lock := atan(_wheelbase * tire_grip * 9.81 / (v * v)) * steer_assist_margin
+		# In a slide, hand back the full lock so you can catch it.
+		var sideways := absf(linear_velocity.dot(global_basis.x))
+		var slide := clampf((atan2(sideways, v) - 0.08) / 0.15, 0.0, 1.0)
+		lock = lerpf(lock, minf(lock, grip_lock), steer_assist * (1.0 - slide))
+	var target := steer_input * lock
+	# Turn in briskly; come back to centre faster still, like a self-centring rack.
+	var rate := steer_rate * (1.6 if absf(target) < absf(steer_angle) else 1.0)
+	steer_angle = move_toward(steer_angle, target, rate * delta)
 
 
 func _update_transmission_logic(delta: float) -> void:

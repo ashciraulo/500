@@ -127,7 +127,7 @@ script = ExtResource("6_cam")
 car_path = NodePath("../Car")
 
 [node name="Camera3D" type="Camera3D" parent="LoFi/SubViewport/World/CameraRig"]
-far = 1500.0
+far = 4000.0
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("7_hud")

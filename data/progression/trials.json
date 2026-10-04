@@ -1,0 +1,13 @@
+{
+	"_comment": "Named time trials. Each route is a list of JobSite ids (start, checkpoints, finish). These point at the test grid's placeholder sites for now; the map thread should re-point them at the real roads. Medal times come from the route length and the car class (see Jobs.CLASS_PACE), so every class gets its own bronze, silver and gold.",
+	"trials": [
+		{"id": "kings_park_loop", "title": "Kings Park loop", "route": ["little_shenton_lane", "kings_park_lookout", "northbridge_piazza"]},
+		{"id": "mounts_bay_dusk", "title": "Mounts Bay Road at dusk", "route": ["northbridge_piazza", "oxford_st", "subiaco_markets"]},
+		{"id": "canning_hwy", "title": "Canning Highway to Fremantle", "route": ["subiaco_markets", "fremantle_markets"]},
+		{"id": "coast_road", "title": "The coast road", "route": ["cottesloe_surf_club", "oxford_st", "scarborough_beach"]},
+		{"id": "beaufort_sprint", "title": "Beaufort Street sprint", "route": ["beaufort_st", "albany_hwy"]},
+		{"id": "swan_valley", "title": "Out to the Swan Valley", "route": ["albany_hwy", "guildford_antiques", "beaufort_st"]},
+		{"id": "freeway_onramp", "title": "Freeway on-ramp", "route": ["oxford_st", "cottesloe_surf_club"]},
+		{"id": "northbridge_night", "title": "Northbridge night loop", "route": ["little_shenton_lane", "northbridge_piazza", "oxford_st", "little_shenton_lane"]}
+	]
+}

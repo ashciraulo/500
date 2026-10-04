@@ -33,10 +33,12 @@ RAIN_RATE = 0.2          # deliveries taken in light rain (+25%)
 STORM_RATE = 0.06        # deliveries taken in a storm (+50%)
 CLEAN_RATE = 0.4         # deliveries in a clean car (5% tip)
 TRIAL_MIN = 8.0          # one trial attempt including getting to the start
-TRIAL_COUNT = 20         # named trials on the map
+TRIAL_COUNT = 20         # named trials on the map (per car class)
 PLACES = 60              # discoverable places on the map
 PLACE_HALF_LIFE_H = 10.0 # hours to find half of the places
 SUBURBS = 24             # suburbs with drop-offs
+BADGES = 60              # hidden 500 badges
+BADGE_HALF_LIFE_H = 25.0 # hours to stumble on half of them
 PARTS_SHARE = 0.25       # share of income spent on parts, paint, washes
 AVG_PART_PRICE = 600     # what a typical upgrade costs
 FUEL_PER_KM = 0.27       # dollars of fuel per km (7 L/100 km x2 scale, $1.90/L)
@@ -69,7 +71,7 @@ def main():
         "deliveries", "night_deliveries", "rain_deliveries", "storm_deliveries",
         "fragile_perfect", "km_driven", "km_tier_car", "earned", "trials_medalled",
         "trials_silver", "trials_gold", "discoveries", "suburbs_delivered",
-        "upgrades_fitted", "cars_owned", "washes"]}
+        "upgrades_fitted", "cars_owned", "washes", "badges"]}
     stats["cars_owned"] = 1
     money = 400.0
     tier = 0
@@ -105,6 +107,7 @@ def main():
         stats["km_tier_car"] += km if car_tier == tier else 0.0
         stats["earned"] += pay + trial_pay
         stats["discoveries"] = PLACES * (1 - 0.5 ** (hour / PLACE_HALF_LIFE_H))
+        stats["badges"] = BADGES * (1 - 0.5 ** (hour / BADGE_HALF_LIFE_H))
         stats["suburbs_delivered"] = SUBURBS * (1 - (1 - 1 / SUBURBS) ** stats["deliveries"])
         stats["washes"] += step * 0.25
         money += (pay + trial_pay) * (1 - PARTS_SHARE) - km * FUEL_PER_KM

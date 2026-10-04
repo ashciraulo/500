@@ -13,6 +13,10 @@ extends Node3D
 @export var head_glow := 2.5
 @export var tail_glow := 0.6
 @export var brake_glow := 2.0
+## Window opacity. The exported glass is quite dark; keep it light so the
+## interior view can see out, day or night.
+@export var glass_alpha := 0.14
+@export var glass_tint := Color(0.62, 0.72, 0.76)
 
 var _materials := {}
 var _steering_wheel: Node3D
@@ -22,6 +26,7 @@ var _brake_lights: Node3D
 
 func _ready() -> void:
 	_materials = PS1Model.apply(self)
+	_clear_glass()
 	var wheels := get_parent().get_node_or_null("Wheels")
 	if wheels:
 		PS1Model.apply(wheels)
@@ -51,6 +56,16 @@ func set_paint(color: Color, keep_wear := false) -> void:
 	paint.set_shader_parameter("albedo_color", color)
 	if not keep_wear:
 		paint.set_shader_parameter("albedo_texture", null)
+
+
+func _clear_glass() -> void:
+	var glass := _materials.get("Glass") as BaseMaterial3D
+	if glass == null:
+		return
+	glass.albedo_color = Color(glass_tint, glass_alpha)
+	glass.roughness = 0.1
+	glass.metallic_specular = 0.3
+	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 
 func _glow(material_name: String, color: Color, energy: float) -> void:
