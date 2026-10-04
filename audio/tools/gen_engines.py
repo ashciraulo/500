@@ -7,9 +7,9 @@ Output layout (audio/engine/<set>/):
     eng_<set>_onload_<rpm>.ogg    accelerating, under load (seamless loop)
     eng_<set>_offload_<rpm>.ogg   lifting off / overrun     (seamless loop)
     eng_<set>_startup.ogg / _shutdown.ogg / _limiter.ogg     one-shots
-<set> is a family (fire12, fire14, twinair, tjet, classic, classicabarth,
+<set> is a family (fire12, fire14, twinair, tjet, classic, classicflat, classicabarth,
 electric, abarthe) optionally followed by an exhaust variant: fire12sport,
-fire12straight, ... The game reads the RPM points straight from the file
+fire12straight, classicmegaphone, ... The game reads the RPM points straight from the file
 names, so loops can be added, removed or replaced freely. For the electric
 sets the number is road speed in km/h instead of RPM.
 
@@ -47,8 +47,9 @@ def save_set(folder: str, items: dict[str, np.ndarray], gain: float | None = Non
     the gain given (so exhaust variants keep their level relative to stock)."""
     if gain is None:
         gain = set_gain(items)
+    enc = LEAN_ENC if folder in LEAN else {}
     for name, x in items.items():
-        S.save(f"engine/{folder}/{name}", x * gain, norm="none")
+        S.save(f"engine/{folder}/{name}", x * gain, norm="none", **enc)
 
 
 def set_gain(items: dict[str, np.ndarray]) -> float:
@@ -56,7 +57,21 @@ def set_gain(items: dict[str, np.ndarray]) -> float:
 
 
 # Exhaust variants are louder than stock by this much.
-VARIANT_DB = {"stock": 0.0, "sport": 3.0, "straight": 6.0}
+VARIANT_DB = {"stock": 0.0, "sport": 3.0, "straight": 6.0, "megaphone": 4.5}
+# Exhaust variants each family comes in. The classics also take the found
+# Abarth megaphone (part exhaust_abarth_classic).
+VARIANTS = {"classic": ("stock", "sport", "straight", "megaphone"),
+            "classicflat": ("stock", "megaphone"),
+            "classicabarth": ("stock", "sport", "straight", "megaphone")}
+# Lean encode for the sets added or re-rendered after the first batch (their content stops
+# at the engine's 7 kHz air roll-off, so 32 kHz loses nothing).
+LEAN = {"classicmegaphone", "classicflat", "classicflatmegaphone", "classicabarth",
+        "classicabarthsport", "classicabarthstraight", "classicabarthmegaphone"}
+LEAN_ENC = dict(quality=4, rate=32000)
+# Families levelled against another set rather than to their own peak, so
+# the classics sit together: (reference set, dB above its 2500 rpm on-load
+# loop). Peaks above -1 dBTP are soft-limited.
+LEVEL_FROM = {"classicflat": ("classic", 0.0), "classicabarth": ("classic", 3.0)}
 
 
 # --------------------------------------------------------------------------
@@ -415,6 +430,19 @@ def render_abarthe():
     save_set("abarthe", items)
 
 
+def _rms(x: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(np.square(x))))
+
+
+def _ceiling(x: np.ndarray) -> np.ndarray:
+    """Soft-clip anything above -1 dBFS (a megaphone's peaks are its bark)."""
+    k = PEAK * 0.7
+    over = np.abs(x) > k
+    y = x.copy()
+    y[over] = np.sign(x[over]) * (k + (PEAK - k) * np.tanh((np.abs(x[over]) - k) / (PEAK - k)))
+    return y
+
+
 def _ref(items):
     """Reference loop for matching variant levels: the mid-range on-load loop."""
     keys = sorted(k for k in items if "_onload_" in k)
@@ -427,14 +455,23 @@ def main(argv):
         if wanted and fam not in wanted:
             continue
         sets = {}
-        for var in ("stock", "sport", "straight"):
+        for var in VARIANTS.get(fam, ("stock", "sport", "straight")):
             name = fam if var == "stock" else fam + var
             print(f"[{name}]", file=sys.stderr)
             items = render_family(name, E.variant(e, var))
             g = 10 ** (VARIANT_DB[var] / 20)
             sets[name] = {k: v / (np.std(_ref(items)) + 1e-12) * g for k, v in items.items()}
-        gain = min(set_gain(v) for v in sets.values())
+        # One gain for the family, from its original three sets, so adding a
+        # variant never changes the files already there; a louder new
+        # variant is soft-limited to the same -1 dBTP ceiling instead.
+        gain = min(set_gain(v) for k, v in sets.items() if not k.endswith("megaphone"))
+        if fam in LEVEL_FROM:
+            ref, db = LEVEL_FROM[fam]
+            want = _rms(S.load(S.AUDIO_ROOT / f"engine/{ref}/eng_{ref}_onload_2500.ogg")) * 10 ** (db / 20)
+            gain = want / _rms(sets[fam][f"eng_{fam}_onload_2500"])
         for name, items in sets.items():
+            if name.endswith("megaphone") or fam in LEVEL_FROM:
+                items = {k: _ceiling(v * gain) / gain for k, v in items.items()}
             save_set(name, items, gain)
     if not wanted or "electric" in wanted:
         print("[electric]", file=sys.stderr)

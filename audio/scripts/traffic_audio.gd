@@ -21,6 +21,10 @@ const HEAR_RADIUS := 90.0
 ## Rough gearing for AI engines: km/h at which each gear tops out.
 const GEAR_TOPS := [18.0, 34.0, 52.0, 72.0, 200.0]
 const CAR_HORNS := ["traffic/traffic_horn_car_01", "traffic/traffic_horn_car_02", "traffic/traffic_horn_car_03"]
+## Emergency vehicle type -> its siren loop (police wail and yelp, ambulance
+## wail, fire truck's lower wail with a growl).
+const SIRENS := {&"police": "traffic/traffic_siren_police_loop",
+	&"ambulance": "traffic/traffic_siren_ambulance_loop", &"fire": "traffic/traffic_siren_fire_loop"}
 
 var manager: Node
 var hear_radius := HEAR_RADIUS
@@ -30,6 +34,16 @@ var _assign_timer := 0.0
 var _trains := {}            # train root -> AudioStreamPlayer3D
 var _bells := {}             # crossing position (Vector3) -> AudioStreamPlayer3D
 var _bus_moving := {}        # vehicle id -> bool
+## Footsteps on the nearest pedestrians, and crowd walla where they gather.
+const STEP_VOICES := 4
+const STEP_RADIUS := 25.0
+const STEP_KINDS := ["traffic/traffic_steps_shoes_loop", "traffic/traffic_steps_heels_loop",
+	"traffic/traffic_steps_thongs_loop"]
+const CROWD_RADIUS := 45.0
+var _steps: Array = []       # {"player": AudioStreamPlayer3D, "ped": TrafficPedestrian or null}
+var _crowd: AudioStreamPlayer3D
+var _crowd_small: AudioStreamPlayer3D
+var _ped_timer := 0.0
 
 
 func setup(traffic_manager: Node) -> void:
@@ -57,6 +71,75 @@ func setup(traffic_manager: Node) -> void:
 	# Vehicles that spawned before we got here.
 	for v in manager.vehicles:
 		_dress_vehicle(v.body, v.type)
+	# Trains at stations and ferries leaving the jetty (traffic phase 8 on).
+	if manager.has_signal("train_arrived"):
+		manager.train_arrived.connect(_on_train_arrived)
+	if manager.has_signal("train_departed"):
+		manager.train_departed.connect(_on_train_departed)
+	var boats = manager.get("boats")
+	if boats is Object and boats.has_signal("ferry_departed"):
+		boats.ferry_departed.connect(_on_ferry_departed)
+	for i in STEP_VOICES:
+		var p := _new_3d("Steps%d" % i, 3.0, STEP_RADIUS * 1.2, -8.0)
+		_steps.append({"player": p, "ped": null})
+	_crowd = _new_3d("CrowdBusy", 8.0, 120.0, -4.0)
+	_crowd.stream = Audio.stream("traffic/traffic_crowd_busy_loop", true)
+	_crowd_small = _new_3d("CrowdSmall", 4.0, 60.0, -6.0)
+	_crowd_small.stream = Audio.stream("traffic/traffic_crowd_small_loop", true)
+
+
+func _new_3d(node_name: String, unit: float, max_d: float, db: float) -> AudioStreamPlayer3D:
+	var p := AudioStreamPlayer3D.new()
+	p.name = node_name
+	p.bus = &"Vehicles"
+	p.unit_size = unit
+	p.max_distance = max_d
+	p.volume_db = db
+	add_child(p)
+	return p
+
+
+func _on_train_arrived(pos: Vector3) -> void:
+	# The tail of the arrival (brakes, the stop and the air) as it stops,
+	# then the doors.
+	var a := Audio.play_at("traffic/traffic_train_arrive", pos, -2.0, "SFX", 0.0)
+	if a:
+		a.seek(6.0)
+	Audio.play_at("traffic/traffic_train_doors", pos, -4.0, "SFX", 0.0)
+
+
+func _on_train_departed(pos: Vector3) -> void:
+	Audio.play_at("traffic/traffic_train_depart", pos, -2.0, "SFX", 0.0)
+
+
+func _on_ferry_departed(pos: Vector3) -> void:
+	# The wake reaches the shore a little after the ferry pulls away.
+	get_tree().create_timer(6.0).timeout.connect(func() -> void:
+		Audio.play_at("traffic/traffic_ferry_wake_loop", pos, -6.0, "SFX", 0.0))
+
+
+func _dress_bike(body: Node3D, is_bike: bool) -> void:
+	var audio := body.get_node_or_null("Audio") as Node3D
+	if audio == null:
+		return
+	var fw := audio.get_node_or_null("Freewheel") as AudioStreamPlayer3D
+	if not is_bike:
+		if fw:
+			fw.stop()
+		return
+	if fw == null:
+		if not Audio.has("traffic/traffic_bike_freewheel_loop"):
+			return
+		fw = AudioStreamPlayer3D.new()
+		fw.name = "Freewheel"
+		fw.stream = Audio.stream("traffic/traffic_bike_freewheel_loop", true)
+		fw.bus = &"Vehicles"
+		fw.unit_size = 3.0
+		fw.max_distance = 30.0
+		fw.volume_db = -10.0
+		fw.pitch_scale = randf_range(0.85, 1.15)
+		audio.add_child(fw)
+	fw.play(randf() * fw.stream.get_length())
 
 
 func _kind(type: StringName) -> StringName:
@@ -67,8 +150,16 @@ func _on_vehicle_spawned(body: Node3D, type: StringName) -> void:
 	_dress_vehicle(body, type)
 
 
-## Our horns in place of the placeholder (the manager plays it when it toots).
+## Our horns and sirens in place of the placeholders (the manager plays
+## them), and a freewheel ticking on bikes.
 func _dress_vehicle(body: Node3D, type: StringName) -> void:
+	var siren := body.get_node_or_null("Audio/Siren") as AudioStreamPlayer3D
+	if siren and SIRENS.has(type) and Audio.has(SIRENS[type]):
+		var was_playing := siren.playing
+		siren.stream = Audio.stream(SIRENS[type], true)
+		if was_playing:
+			siren.play(randf() * siren.stream.get_length())
+	_dress_bike(body, type == &"bike")
 	var horn := body.get_node_or_null("Audio/Horn") as AudioStreamPlayer3D
 	if horn == null:
 		return
@@ -91,6 +182,81 @@ func _process(delta: float) -> void:
 			if voice.v != null:
 				_drive_voice(voice, kind)
 	_update_trains()
+	_ped_timer -= delta
+	if _ped_timer <= 0.0:
+		_ped_timer = 0.5
+		_assign_people(manager.get("pedestrians"))
+	_drive_steps()
+
+
+## Footsteps on the few nearest walking pedestrians; crowd walla at the
+## middle of wherever people are gathered (busy for 8+, small for 3+).
+func _assign_people(peds) -> void:
+	var ear: Node3D = Audio.listener()
+	if not peds is Array or ear == null:
+		return
+	var here := ear.global_position
+	var near: Array = []
+	var crowd_sum := Vector3.ZERO
+	var crowd_n := 0
+	for ped in peds:
+		if not ped is Object:
+			continue
+		var pos = ped.get("position")
+		if not pos is Vector3:
+			continue
+		var d: float = here.distance_to(pos)
+		if d < STEP_RADIUS and float(ped.get("speed") if ped.get("speed") != null else 0.0) > 0.3:
+			near.append([d, ped])
+		if d < CROWD_RADIUS:
+			crowd_sum += pos
+			crowd_n += 1
+	near.sort_custom(func(a, b) -> bool: return a[0] < b[0])
+	var wanted: Array = near.slice(0, STEP_VOICES).map(func(e): return e[1])
+	for voice in _steps:
+		if voice.ped != null and not wanted.has(voice.ped):
+			voice.ped = null
+			voice.player.stop()
+	for ped in wanted:
+		var taken := false
+		for voice in _steps:
+			if voice.ped == ped:
+				taken = true
+		if taken:
+			continue
+		for voice in _steps:
+			if voice.ped == null:
+				voice.ped = ped
+				var kind: String = STEP_KINDS[hash(ped.get_instance_id()) % STEP_KINDS.size()]
+				voice.player.stream = Audio.stream(kind, true)
+				if voice.player.stream:
+					voice.player.play(randf() * 4.0)
+				break
+	_set_crowd(_crowd, crowd_n >= 8, crowd_sum / maxf(crowd_n, 1))
+	_set_crowd(_crowd_small, crowd_n >= 3 and crowd_n < 8, crowd_sum / maxf(crowd_n, 1))
+
+
+func _set_crowd(p: AudioStreamPlayer3D, on: bool, at: Vector3) -> void:
+	if p.stream == null:
+		return
+	if on:
+		p.global_position = at + Vector3(0, 1.5, 0)
+		if not p.playing:
+			p.play(randf() * p.stream.get_length())
+	elif p.playing:
+		p.stop()
+
+
+func _drive_steps() -> void:
+	for voice in _steps:
+		var ped = voice.ped
+		if ped == null:
+			continue
+		var pos = ped.get("position")
+		if pos is Vector3:
+			voice.player.global_position = pos + Vector3(0, 0.1, 0)
+		var speed = ped.get("speed")
+		voice.player.pitch_scale = clampf(float(speed if speed != null else 1.4) / 1.4, 0.6, 1.6)
 
 
 ## Hand each kind's voices to the nearest vehicles of that kind.

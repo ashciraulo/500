@@ -10,6 +10,10 @@ extends Node
 ## - Weather: rain beds outside and on the roof (inside the car), wind,
 ##   thunder after lightning, cicadas on clear days.
 ##
+## - Places: close-up detail for a point of interest (a beach, a lookout,
+##   bush, Elizabeth Quay, the river bank, a car park) over the zone bed,
+##   fading in as the listener comes within its radius. See update_places().
+##
 ## Weather and time come from the Weather and GameClock autoloads (rain,
 ## wind, lightning signal, time_of_day). Without them (tests, other scenes)
 ## they can be pushed in with set_weather() / set_time_of_day().
@@ -55,6 +59,26 @@ const SPRINKLES := {
 }
 
 var zone := "cbd"
+
+## Place layers (res://audio/amb/place/place_<type>_loop, _night_loop after
+## dark). Places come from the map's points of interest (add_map_pois(), fed
+## MapStreamer.get_pois() by Audio.hooks), from nodes in the "poi" group with
+## meta "poi_type" (and optionally "radius", metres), or from add_place().
+const PLACE_TYPES := ["beach", "lookout", "bush", "quay", "riverside", "carpark"]
+const PLACE_RADIUS := 120.0
+## Full volume inside this fraction of the radius, fading out to the edge.
+const PLACE_FULL := 0.35
+var _places: Array = []        # [type, Vector3, radius, night_only]
+## Map POIs whose sound isn't given by their kind alone (map thread's ids).
+const POI_PLACES := {
+	"landmark_bell_tower": "quay", "landmark_elizabeth_quay_bridge": "quay",
+	"quiet_point_fraser": "riverside", "quiet_mill_point_foreshore": "riverside",
+	"quiet_matagarup_car_park": "riverside", "landmark_matagarup_bridge": "riverside",
+	"quiet_lake_monger": "riverside", "landmark_state_war_memorial": "lookout",
+}
+var _place_amount := {}        # type -> 0..1 wanted now
+var _place_players := {}       # type -> AudioStreamPlayer
+var _place_night := {}         # type -> whether the night loop is loaded
 
 ## Rough areas of the Perth map slice (map/, world metres, x east and z
 ## south, origin at Little Shenton Lane), as [zone, centre_x, centre_z,
@@ -104,6 +128,108 @@ func _ready() -> void:
 	_layer("wind", "weather/weather_wind_bed", "Weather")
 	_layer("cicadas", "weather/weather_cicadas", "Ambience")
 	call_deferred("_update_bed", true)
+
+
+## Register a place that isn't a node. night_only places (servos and
+## drive-throughs as empty car parks) are silent by day.
+func add_place(type: String, pos: Vector3, radius := PLACE_RADIUS, night_only := false) -> void:
+	_places.append([type, pos, radius, night_only])
+
+
+## The map's points of interest ({id, kind, suburb, p, at, ...}, from
+## MapStreamer.get_pois()) as place layers: beaches, lookouts (Kings Park ones
+## with the bush under the wind), the quay and the river by id, quiet spots
+## as car parks, servos and drive-throughs as car parks at night.
+func add_map_pois(pois: Array) -> void:
+	for poi in pois:
+		if not poi is Dictionary or not poi.has("at"):
+			continue
+		var id := String(poi.get("id", ""))
+		var kind := String(poi.get("kind", ""))
+		var at: Vector3 = poi["at"]
+		var stop: Vector3 = poi.get("p", at)
+		var kings_park := String(poi.get("suburb", "")) == "Kings Park" or id == "landmark_state_war_memorial"
+		if POI_PLACES.has(id):
+			add_place(POI_PLACES[id], at)
+		elif kind == "beach":
+			add_place("beach", at, 150.0)
+		elif kind == "lookout":
+			add_place("lookout", at)
+		if kings_park and kind in ["lookout", "landmark"]:
+			add_place("bush", at)
+		if kind == "quiet_spot":
+			add_place("carpark", stop, 60.0)
+		elif kind == "servo" or kind == "drive_thru":
+			add_place("carpark", stop, 60.0, true)
+
+
+func clear_places() -> void:
+	_places.clear()
+
+
+## How much of each place type is heard at pos (0..1), from the "poi" nodes
+## and the added places. Audio.hooks calls this once a second.
+func update_places(pos: Vector3) -> void:
+	var want := {}
+	var all: Array = []
+	for p in _places:
+		if not (p[3] and not is_night):
+			all.append(p)
+	if is_inside_tree():
+		for n in get_tree().get_nodes_in_group("poi"):
+			if n is Node3D and n.has_meta("poi_type"):
+				all.append([String(n.get_meta("poi_type")), (n as Node3D).global_position,
+						float(n.get_meta("radius", PLACE_RADIUS)), false])
+	for p in all:
+		var type: String = p[0]
+		if not PLACE_TYPES.has(type):
+			continue
+		var r: float = maxf(p[2], 1.0)
+		var d := Vector2(pos.x - p[1].x, pos.z - p[1].z).length()
+		var a := 1.0 - smoothstep(r * PLACE_FULL, r, d)
+		want[type] = maxf(want.get(type, 0.0), a)
+	_place_amount = want
+
+
+func place_sound(type: String) -> String:
+	var night := "amb/place/place_%s_night_loop" % type
+	var day := "amb/place/place_%s_loop" % type
+	if is_night and Audio.has(night):
+		return night
+	return day if Audio.has(day) else (night if Audio.has(night) else "")
+
+
+func _update_place_layers(delta: float) -> void:
+	for type in PLACE_TYPES:
+		var amount: float = _place_amount.get(type, 0.0)
+		var p: AudioStreamPlayer = _place_players.get(type)
+		if p == null:
+			if amount <= 0.0:
+				continue
+			p = _new_player("Ambience")
+			_place_players[type] = p
+		var sound := place_sound(type)
+		if sound == "":
+			continue
+		if p.stream == null or _place_night.get(type, false) != (sound.ends_with("_night_loop")):
+			# Swap day/night while it's quiet, or with a short dip if it isn't.
+			if p.playing and db_to_linear(p.volume_db) > 0.05:
+				amount = 0.0
+			else:
+				p.stop()
+				p.stream = Audio.stream(sound, true)
+				_place_night[type] = sound.ends_with("_night_loop")
+		var cur := db_to_linear(p.volume_db) if p.playing else 0.0
+		var v := lerpf(cur, amount, 1.0 - exp(-delta / 1.5))
+		if v < 0.002 and amount < 0.002:
+			if p.playing:
+				p.stop()
+			continue
+		if not p.playing and p.stream:
+			p.volume_db = -60.0
+			p.play(randf() * p.stream.get_length())
+			v = 0.001
+		p.volume_db = linear_to_db(maxf(v, 0.001))
 
 
 func _new_player(bus: String) -> AudioStreamPlayer:
@@ -299,6 +425,7 @@ func _process(delta: float) -> void:
 		radio.storm = storm > 0.5
 		radio.after_midnight = time_of_day < 3.0
 	_sprinkle(delta)
+	_update_place_layers(delta)
 
 
 func _set_layer(id: String, amount: float, delta: float) -> void:

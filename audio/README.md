@@ -51,12 +51,12 @@ Exhaust upgrades are their own sets: `fire12sport`, `fire12straight`.
 
 | Folder | What | Docs |
 | --- | --- | --- |
-| `engine/` | 8 engine families (Fire 1.2, 1.4 16v, TwinAir, T-Jet, classic twin, classic Abarth, electric, Abarth 500e generator), each petrol one with sport and straight-through exhausts, plus extras (gear clunks, turbo, blow-off, backfires, gearbox whine, carb gulp) | [engine](docs/engine.md) |
+| `engine/` | 9 engine families (Fire 1.2, 1.4 16v, TwinAir, T-Jet, classic twin, Giardiniera flat twin, classic Abarth, electric, Abarth 500e generator), each petrol one with sport and straight-through exhausts (the classics also with the Abarth megaphone), plus extras (gear clunks, turbo, blow-off, backfires, gearbox whine, carb gulp) | [engine](docs/engine.md) |
 | `engine/sedan`, `diesel`, `busdiesel`, `traffic/` | Other traffic: car, ute/van and bus engines, horns, bus air brake, trains | [traffic](docs/traffic.md) |
 | `car/` | Doors, horns, indicators, wipers, radio clicks, windows, roof, cargo... | [car](docs/car.md) |
 | `tyre/`, `impact/` | Rolling on each surface, skids, splashes, road features, crashes, street objects | [tyre](docs/tyre.md), [impact](docs/impact.md) |
 | `weather/` | Rain outside and on the roof, thunder, wind, cicadas, drips | [weather](docs/weather.md) |
-| `amb/` | Perth ambience beds by zone (day, night, rain, late night and dawn) and wildlife one-shots | [amb](docs/amb.md) |
+| `amb/` | Perth ambience beds by zone (day, night, rain, late night and dawn), place layers for points of interest (beach, lookout, bush, Elizabeth Quay, river bank, car park; day and night) and wildlife one-shots | [amb](docs/amb.md) |
 | `oddity/` | Night oddities: the midnight station, static whispers, river lights | [oddity](docs/oddity.md) |
 | `home/`, `garage/` | The townhouse and garage/servo/car-wash activities | [home](docs/home.md), [garage](docs/garage.md) |
 | `ui/` | Menu, jobs, checkpoints, stingers | [ui](docs/ui.md) |
@@ -102,7 +102,8 @@ start swapping in your own recordings, regenerate only what you need.
 - **`EngineAudio`**, **`TyreAudio`**, **`CarSounds`**: nodes under the car's
   `Audio` node. They read `get_telemetry()` and the car's signals
   (docs/HOOKS.md). The engine set follows the fitted parts: a sport or twin
-  exhaust gives `<family>sport`, the Abarth quad gives `<family>straight`, and
+  exhaust gives `<family>sport`, the Abarth quad gives `<family>straight`, the
+  classics' found Abarth megaphone gives `<family>megaphone`, and
   the 1.4 and T-Jet swaps change the family (`ENGINE_PARTS` and
   `EXHAUST_PARTS` in `engine_audio.gd`). The engine cuts out when the tank
   runs dry and starts again after fuel goes in.
@@ -119,7 +120,9 @@ start swapping in your own recordings, regenerate only what you need.
 - **The map and the townhouse**: on the Perth map the ambience bed follows
   the camera through Northbridge, the CBD, Kings Park, the river and the
   suburbs (rough areas in `ZONE_AREAS` in `ambience_manager.gd`, until the map
-  carries real zones). The townhouse's doors, going to bed (with the "day
+  carries real zones). Near one of the map's points of interest (a beach,
+  a lookout, the quay, the river bank, a quiet car park, a servo at night)
+  its place layer fades in over the bed. The townhouse's doors, going to bed (with the "day
   ends" sting) and the shed being unlocked have their sounds.
 - **Footsteps** (`footsteps.gd`, `FootstepAudio`): add one as a child of
   whatever walks (the player on foot) and it plays a step every stride for

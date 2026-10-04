@@ -416,6 +416,18 @@ def variant(e: Engine, kind: str) -> Engine:
                        drive=e.drive * 2.4, rasp_band=(700, 6500),
                        pipe_fb=tuple(min(0.78, f * 1.45) for f in e.pipe_fb),
                        overrun_pops=max(e.overrun_pops * 2, 0.6), lowcut_hz=e.lowcut_hz * 0.75)
+    if kind == "megaphone":
+        # The found Abarth classic exhaust: a short pipe into an open
+        # megaphone. The tinny classic note gets its bass back and a hard,
+        # barking edge; loud, crackly on the overrun.
+        return replace(e, name=e.name + "_megaphone", muffler_hz=e.muffler_hz * 2.4,
+                       muffler_order=1, chamber_hz=e.chamber_hz * 0.62,
+                       chamber_db=e.chamber_db + 4, rasp=e.rasp * 3.0, drive=e.drive * 1.9,
+                       rasp_band=(600, 5200), body=e.body * 1.5, sharp=e.sharp * 1.3,
+                       pipe_ms=(e.pipe_ms[0] * 0.8, e.pipe_ms[1] * 1.6),
+                       pipe_fb=tuple(min(0.72, f * 1.4) for f in e.pipe_fb),
+                       tin=e.tin * 0.7, overrun_pops=max(e.overrun_pops * 1.6, 0.55),
+                       lowcut_hz=e.lowcut_hz * 0.5)
     raise ValueError(kind)
 
 
@@ -457,15 +469,29 @@ FAMILIES: dict[str, Engine] = {
                       misfire_off=0.10, rasp=0.10, rasp_band=(1200, 5500), mech=0.32,
                       block_modes=(1500, 2700, 4100), intake=0.06, whine=0.0,
                       fan=0.22, fan_blades=9, tin=0.22, level_curve=0.7, drive=1.6),
-    # Classic Abarth 595/695: the same clatter but rorty and angry.
+    # Giardiniera: the same twin laid flat under the load floor, with its
+    # own long exhaust and a side-mounted blower. Rounder and boomier: the
+    # floor pan drums, the clatter is muffled, the fan is a softer whoosh.
+    "classicflat": Engine("classicflat", 2, 780, 4800, pipe_ms=(9.4, 5.6), pipe_fb=(0.46, 0.34),
+                          muffler_hz=620, muffler_order=2, chamber_hz=210, chamber_db=7,
+                          lowcut_hz=70, pulse_ms=0.55, cyl_gain_spread=0.12,
+                          cyl_time_spread=0.045, jitter_on=0.10, jitter_off=0.42,
+                          misfire_off=0.09, rasp=0.06, rasp_band=(900, 4200), mech=0.18,
+                          block_modes=(1100, 2050, 3300), intake=0.05, whine=0.0,
+                          fan=0.14, fan_blades=14, tin=0.20,
+                          tin_modes=(310, 690, 1180, 1900), body=1.5, sharp=0.45,
+                          air_hz=5500, level_curve=0.7, drive=1.4),
+    # Classic Abarth 595/695: the same twin, bored out and tuned, through an
+    # open Abarth silencer: less clatter, a hard, angry rasp that cuts through.
     "classicabarth": Engine("classicabarth", 2, 900, 6500, pipe_ms=(7.5, 4.2),
-                            pipe_fb=(0.55, 0.42), muffler_hz=1900, muffler_order=1,
-                            chamber_hz=260, chamber_db=5, lowcut_hz=75, pulse_ms=0.4,
+                            pipe_fb=(0.58, 0.45), muffler_hz=2700, muffler_order=1,
+                            chamber_hz=300, chamber_db=4, lowcut_hz=70, pulse_ms=0.32,
                             cyl_gain_spread=0.12, cyl_time_spread=0.04, jitter_on=0.10,
-                            jitter_off=0.5, misfire_off=0.12, rasp=0.30,
-                            rasp_band=(800, 6500), mech=0.24, block_modes=(1500, 2700, 4100),
-                            intake=0.14, intake_band=(800, 3000), whine=0.0, fan=0.15,
-                            tin=0.12, overrun_pops=0.5, level_curve=0.85, drive=2.8),
+                            jitter_off=0.5, misfire_off=0.12, rasp=0.42,
+                            rasp_band=(1100, 6500), mech=0.16, block_modes=(1500, 2700, 4100),
+                            intake=0.22, intake_band=(900, 3400), whine=0.0, fan=0.10,
+                            tin=0.06, overrun_pops=0.5, body=0.8, sharp=0.95,
+                            level_curve=0.9, drive=3.2),
 }
 
 # Plan table names, for the docs.
@@ -474,6 +500,7 @@ FAMILY_INFO = {
     "fire14": ("1.4 16v", "Lounge, Sport", "P2"),
     "twinair": ("TwinAir 0.9", "TwinAir", "P2"),
     "tjet": ("T-Jet 1.4 turbo", "Abarth 500, 595, 695", "P2"),
-    "classic": ("Classic twin, air-cooled", "Nuova, Sport, D, F, L, R, Giardiniera, Jolly", "P2"),
+    "classic": ("Classic twin, air-cooled", "Nuova, Sport, D, F, L, R, Jolly", "P2"),
+    "classicflat": ("Classic flat twin, air-cooled", "Giardiniera", "P2"),
     "classicabarth": ("Classic Abarth", "Abarth 595 and 695 classics", "P3"),
 }

@@ -32,6 +32,7 @@ var _workshop_open := false
 var _room_tone: AudioStreamPlayer
 var traffic: Node            # traffic_audio.gd, once the city's TrafficManager turns up
 var _map: Node               # the Perth map streamer, when the real map is loaded
+var _pois_loaded := false    # its points of interest handed to the place ambience
 var _home: Node
 var _zone_timer := 0.0
 var _look_timer := 0.0
@@ -224,6 +225,7 @@ func _find_nodes() -> void:
 		var m := scene_root.find_child("PerthMap", true, false)
 		if m and m.has_method("get_home"):
 			_map = m
+			_pois_loaded = false
 	if is_instance_valid(_map) and not is_instance_valid(_home):
 		var h: Node = _map.get_home()
 		if h and h.has_signal("door_toggled"):
@@ -318,9 +320,17 @@ func _update_zone(delta: float) -> void:
 	if _zone_timer > 0.0:
 		return
 	_zone_timer = 1.0
+	# Points of interest for the place ambience, once the map's index is in.
+	if not _pois_loaded and _map.has_method("get_pois"):
+		var pois: Array = _map.get_pois()
+		if not pois.is_empty():
+			Audio.ambience.clear_places()
+			Audio.ambience.add_map_pois(pois)
+			_pois_loaded = true
 	var ear: Node3D = Audio.listener()
 	if ear:
 		Audio.ambience.set_zone(Audio.ambience.zone_at(ear.global_position))
+		Audio.ambience.update_places(ear.global_position)
 
 
 func _home_pos() -> Vector3:

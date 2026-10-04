@@ -204,15 +204,361 @@ def render_trains():
     S.save(f"{OUT}/traffic_train_horn", np.concatenate([hi, np.zeros(secs(0.08)), lo]), "peak")
 
 
-def main():
+# --------------------------------------------------------------------------
+# City life: emergency sirens, cyclists, roadworks, wildlife
+# --------------------------------------------------------------------------
+
+def _periodic_phase(f: np.ndarray) -> np.ndarray:
+    """Phase of a frequency curve, nudged so it wraps exactly over the loop."""
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    cycles = round(ph[-1] / (2 * np.pi))
+    return ph * (cycles * 2 * np.pi) / ph[-1]
+
+
+def siren_loop(kind: str, seconds=8.0) -> np.ndarray:
+    """A WA emergency vehicle's electronic siren, close up (mono, loops):
+    a square-ish tone through the roof speaker's horn. police: wail then
+    yelp; ambulance: a steady wail; fire: a lower, slower wail with a
+    rotary growl under it."""
+    n = secs(seconds)
+    t = t_axis(n)
+    if kind == "police":
+        half = seconds / 2
+        wph = (t / (half / 1)) % 1.0  # one wail in the first half
+        wail = 620 + 780 * np.sin(np.pi / 2 * np.where(wph < 0.55, wph / 0.55, 1 - (wph - 0.55) / 0.45))
+        yph = (t / (half / 12)) % 1.0  # twelve yelps in the second half
+        yelp = 650 + 820 * np.sin(np.minimum(yph / 0.85, 1.0) * np.pi / 2)
+        mix = 0.5 - 0.5 * np.cos(np.clip((t - half) / 0.08, 0, 1) * np.pi)
+        mix *= 0.5 + 0.5 * np.cos(np.clip((t - seconds + 0.08) / 0.08, 0, 1) * np.pi)
+        f = wail * (1 - mix) + yelp * mix
+    elif kind == "ambulance":
+        ph = (t / (seconds / 2)) % 1.0
+        f = 600 + 800 * np.sin(np.pi / 2 * np.where(ph < 0.5, ph / 0.5, 1 - (ph - 0.5) / 0.5))
+    else:  # fire
+        ph = (t / seconds) % 1.0
+        f = 420 + 680 * np.sin(np.pi / 2 * np.where(ph < 0.6, ph / 0.6, 1 - (ph - 0.6) / 0.4))
+    ph = _periodic_phase(f)
+    x = np.tanh(3.0 * np.sin(ph)) + 0.3 * np.sin(2 * ph)
+    x = S.circ_bp(x, 350, 5000, 2)
+    # the horn speaker's resonances
+    x = S.circ_filter(x, S.circ_response(n, lambda fr: 1 + 2.5 * np.exp(-((fr - 1700) / 500) ** 2)
+                                         + 1.2 * np.exp(-((fr - 950) / 300) ** 2)))
+    if kind == "fire":
+        k = max(1, round(36 * seconds))
+        growl = np.sin(2 * np.pi * (k / seconds) * t)
+        x = x * (1 + 0.25 * growl) + 0.15 * S.circ_bp(S.pink(n, 61), 60, 300)
+    return x
+
+
+def bike_freewheel_loop(seconds=4.0) -> np.ndarray:
+    """A bike coasting past: the freewheel's pawls ticking (about 24 a
+    second at 25 km/h), tyre hum on the bitumen and a little chain rattle
+    (mono, loops; the game pitches it with speed)."""
+    n = secs(seconds)
+    r = np.random.default_rng(62)
+    x = np.zeros(n)
+    k = secs(0.012)
+    tk = t_axis(k)
+    rate = round(24 * seconds) / seconds
+    for i in range(int(rate * seconds)):
+        f = r.uniform(5200, 6800)
+        click = np.sin(2 * np.pi * f * tk) * np.exp(-tk / 0.0015) * r.uniform(0.6, 1.0)
+        S.place(x, click, int((i / rate + r.normal(0, 0.0015)) * SR) % n, wrap=True)
+    hum = S.circ_bp(S.pink(n, 63), 180, 900)
+    hum *= 1 + 0.15 * np.sin(2 * np.pi * round(3.2 * seconds) / seconds * t_axis(n))  # wheel turning
+    rattle = S.circ_bp(noise(n, 64), 2500, 6000) * (S.smooth_noise(n, 9, 65) > 0.6)
+    return x * 0.5 + hum / np.std(hum) * 0.12 + rattle / (np.std(rattle) + 1e-12) * 0.03
+
+
+def roadworks_loop(seconds=40.0, night=False) -> np.ndarray:
+    """Roadworks, heard from the road (mono, loops). Day: a generator, a
+    plate compactor thumping on and off, shovels scraping, the works ute
+    reversing with its beeper. Night: the generator and the light tower."""
+    n = secs(seconds)
+    t = t_axis(n)
+    r = np.random.default_rng(70 if not night else 71)
+    k = round(50 * seconds)  # 3000 rpm generator: 50 Hz firing
+    gen = sum(a * np.sin(2 * np.pi * (k * m / seconds) * t + m) for m, a in ((1, 1.0), (2, 0.6), (3, 0.3), (4, 0.15)))
+    gen = gen * 0.3 + 0.2 * S.circ_bp(S.pink(n, 72), 200, 2000)
+    x = gen * (0.6 if night else 0.35)
+    if not night:
+        # plate compactor: ~ 90 Hz thumps, runs of 6-10 s
+        comp = np.zeros(n)
+        for a, L in ((2.0, 8.0), (21.0, 7.0)):
+            seg = t_axis(secs(L))
+            hz = 11.0
+            env = (np.sin(2 * np.pi * hz * seg) > 0.6) * 1.0
+            body = S.lp(r.standard_normal(secs(L)), 300) * env
+            engine = 0.4 * np.sin(2 * np.pi * 63 * seg) * (1 + 0.5 * np.sin(2 * np.pi * hz * seg))
+            seg_x = (body / (np.std(body) + 1e-12) * 0.8 + engine) * np.minimum(1, np.minimum(seg / 0.5, (L - seg) / 0.5))
+            S.place(comp, seg_x, secs(a), wrap=True)
+        x += comp * 0.7
+        # shovel scrapes into gravel
+        for a in r.uniform(0, seconds, 7):
+            L = secs(r.uniform(0.5, 0.9))
+            sc = S.bp(r.standard_normal(L), 1200, 6000, 2) * np.hanning(L)
+            crunch = S.bp(r.standard_normal(L), 200, 1200, 2) * (r.random(L) < 0.02) * 4
+            S.place(x, (sc + crunch) * 0.5, secs(a), wrap=True)
+        # reversing beeper, 1 kHz, 1 per second for 6 s
+        bk = secs(0.5)
+        beep = np.sin(2 * np.pi * 1030 * t_axis(bk)) * (t_axis(bk) < 0.5)
+        beep = fade(beep, 0.005, 0.005)
+        for i in range(6):
+            S.place(x, beep * 0.35, secs(31.0 + i * 1.0), wrap=True)
+    else:
+        # the light tower's ballast buzz
+        k2 = round(100 * seconds)
+        x += 0.12 * np.tanh(3 * np.sin(2 * np.pi * (k2 / seconds) * t))
+    return x
+
+
+def ibis_grunt(seed: int) -> np.ndarray:
+    """Australian white ibis: a short, hoarse, guttural honking grunt or two
+    (mono). Synthesised: no CC0 recording of the species was found."""
+    r = np.random.default_rng(seed)
+    out = []
+    for _ in range(int(r.integers(1, 4))):
+        L = r.uniform(0.18, 0.35)
+        n = secs(L)
+        t = t_axis(n)
+        f0 = r.uniform(150, 210) * (1 - 0.15 * t / L)
+        ph = 2 * np.pi * np.cumsum(f0) / SR
+        pulse = (np.sin(ph) > 0.7) * 1.0 + 0.3 * r.standard_normal(n)  # rough, pulsed
+        y = S.resonator(pulse, 650, 3.0) + 0.7 * S.resonator(pulse, 1250, 4.0) + 0.3 * S.resonator(pulse, 2400, 5.0)
+        y *= S.env_adsr(n, 0.015, 0.04, 0.8, L * 0.4)
+        out.append(y)
+        out.append(np.zeros(secs(r.uniform(0.08, 0.25))))
+    return np.concatenate(out)
+
+
+def wings_takeoff(seed: int, big: bool) -> np.ndarray:
+    """A bird taking off: quick wingbeats slowing as it climbs (mono)."""
+    r = np.random.default_rng(seed)
+    dur = 1.6 if big else 1.1
+    n = secs(dur)
+    y = np.zeros(n)
+    tt = 0.0
+    rate = (5.5 if big else 8.5)
+    k = 0
+    while tt < dur - 0.2:
+        L = secs(0.09 if big else 0.06)
+        beat = S.bp(r.standard_normal(L), 250 if big else 500, 3500 if big else 6000, 2) * np.hanning(L)
+        S.place(y, beat * (1.0 - 0.6 * tt / dur), secs(tt))
+        k += 1
+        tt += 1 / (rate * (1 - 0.35 * tt / dur)) * r.uniform(0.95, 1.05)
+    return fade(y, 0.0, 0.2)
+
+
+def roo_thump(seed: int) -> np.ndarray:
+    """A kangaroo's hop landing on grass: a soft, heavy thud with a swish
+    of grass (mono)."""
+    r = np.random.default_rng(seed)
+    n = secs(0.35)
+    t = t_axis(n)
+    thud = np.sin(2 * np.pi * r.uniform(55, 75) * t * (1 - 0.3 * t)) * np.exp(-t / 0.05)
+    knock = S.lp(r.standard_normal(n), 600) * np.exp(-t / 0.015)
+    grass = S.bp(r.standard_normal(n), 2000, 7000, 2) * np.exp(-t / 0.06) * 0.25
+    return fade(thud + 0.6 * knock + grass, 0.001, 0.05)
+
+
+def render_city():
+    for kind in ("police", "ambulance", "fire"):
+        S.save(f"{OUT}/traffic_siren_{kind}_loop", siren_loop(kind), "peak", quality=4)
+    S.save(f"{OUT}/traffic_bike_freewheel_loop", bike_freewheel_loop(), "peak", quality=4)
+    S.save(f"{OUT}/traffic_roadworks_day_loop", roadworks_loop(), "lufs:-24", quality=2, rate=32000)
+    S.save(f"{OUT}/traffic_roadworks_night_loop", roadworks_loop(20.0, night=True), "lufs:-30", quality=2, rate=32000)
+    for i in range(3):
+        S.save(f"{OUT}/traffic_ibis_grunt_0{i + 1}", ibis_grunt(80 + i), "peak", quality=4)
+    for i in range(2):
+        S.save(f"{OUT}/traffic_wings_takeoff_0{i + 1}", wings_takeoff(90 + i, big=i == 1), "peak", quality=4)
+    for i in range(3):
+        S.save(f"{OUT}/traffic_roo_thump_0{i + 1}", roo_thump(95 + i), "peak", quality=4)
+
+
+# --------------------------------------------------------------------------
+# People, trains at stations, Swan River ferries
+# --------------------------------------------------------------------------
+
+def _loop_mono(x: np.ndarray, xf=0.5) -> np.ndarray:
+    return S.make_loop(x, xf)
+
+
+def crowd_loop(kind: str, seconds: float) -> np.ndarray:
+    """Wordless crowd walla from CC0 bar/pub recordings, taken outdoors
+    (mono, loops): the room's reverb rolled off, a touch of street air.
+    small: a few people talking as they walk or wait (from the quieter
+    bar recording); busy: a Northbridge footpath on a Friday night."""
+    import gen_amb as A
+    if kind == "small":
+        x = A.texture(A.src("bar_wa", True), seconds, 101, chunk=7, avoid_peaks_db=6).mean(axis=1)
+        x = S.circ_bp(x, 220, 5000, 2)
+    else:
+        x = (A.texture(A.src("pub_crowd", True), seconds, 102, chunk=9).mean(axis=1)
+             + 0.6 * A.texture(A.src("bar_wa", True), seconds, 103, chunk=9).mean(axis=1))
+        x = S.circ_bp(x, 160, 6000, 2)
+    # outdoors: tame the low-mid room build-up a little
+    x = S.circ_filter(x, S.circ_response(len(x), lambda f: 1 - 0.4 * np.exp(-((f - 350) / 200) ** 2)))
+    return x
+
+
+def steps_loop(kind: str, seconds=4.0) -> np.ndarray:
+    """One person walking along a concrete footpath at ~1.9 steps/s (mono,
+    loops). shoes: rubber soles, a soft scuff-tap; heels: sharp clicks;
+    thongs: the Australian summer flip-flop slap."""
+    r = np.random.default_rng({"shoes": 110, "heels": 111, "thongs": 112}[kind])
+    n = secs(seconds)
+    y = np.zeros(n)
+    rate = round(1.9 * seconds) / seconds
+    for i in range(int(rate * seconds)):
+        k = secs(0.18)
+        tk = t_axis(k)
+        g = r.uniform(0.75, 1.0) * (1.0 if i % 2 else 0.85)  # a slight limp-free L/R difference
+        if kind == "shoes":
+            st = (np.sin(2 * np.pi * r.uniform(90, 120) * tk) * np.exp(-tk / 0.012) * 0.6
+                  + bp(noise(k, 113 + i), 900, 6000) * np.exp(-tk / 0.025) * 0.5)
+            scuff = bp(noise(k, 130 + i), 2000, 8000) * np.exp(-((tk - 0.09) / 0.03) ** 2) * 0.15
+            st = st + scuff
+        elif kind == "heels":
+            heel = np.sin(2 * np.pi * r.uniform(2400, 2900) * tk) * np.exp(-tk / 0.006)
+            heel += bp(noise(k, 113 + i), 2500, 9000) * np.exp(-tk / 0.004) * 1.2
+            toe = np.roll(bp(noise(k, 150 + i), 800, 5000) * np.exp(-tk / 0.01) * 0.3, secs(0.07))
+            st = heel + toe
+        else:
+            slap = bp(noise(k, 113 + i), 600, 5000) * np.exp(-tk / 0.008)
+            flap = np.roll(bp(noise(k, 170 + i), 400, 3500) * np.exp(-tk / 0.006) * 0.8, secs(r.uniform(0.09, 0.12)))
+            st = slap + flap
+        S.place(y, fade(st, 0.0005, 0.02) * g, secs(i / rate + r.normal(0, 0.008)) % n, wrap=True)
+    return y
+
+
+def train_station(kind: str) -> np.ndarray:
+    """A Transperth train at a station platform (mono).
+    arrive: inverter whine falling, brakes squealing at the end, a final
+    clunk and the air hiss; doors: the door chime, the doors sliding
+    open, a pause, the chime again and the doors closing with a thump;
+    depart: the inverter whine climbing through its steps, rolling off."""
+    import gen_amb as A
+    r = np.random.default_rng({"arrive": 120, "doors": 121, "depart": 122}[kind])
+    if kind == "doors":
+        n = secs(9.0)
+        y = np.zeros(n)
+        def chime():
+            c = np.zeros(secs(0.9))
+            for j, f in enumerate((880.0, 698.5, 880.0)):
+                L = secs(0.25)
+                tk = t_axis(L)
+                tone = (np.sin(2 * np.pi * f * tk) + 0.25 * np.sin(4 * np.pi * f * tk)) * np.exp(-tk / 0.12)
+                S.place(c, fade(tone, 0.003, 0.05), secs(j * 0.28))
+            return c
+        def slide(L, seed):
+            tk = t_axis(secs(L))
+            hiss = bp(noise(len(tk), seed), 1500, 7000) * np.hanning(len(tk)) * 0.4
+            rumble = bp(noise(len(tk), seed + 1), 120, 700) * np.hanning(len(tk))
+            motor = np.sin(2 * np.pi * 180 * tk) * np.hanning(len(tk)) * 0.15
+            return rumble + hiss + motor
+        S.place(y, chime() * 0.5, 0)
+        S.place(y, slide(1.4, 123), secs(0.9))
+        S.place(y, chime() * 0.5, secs(5.6))
+        S.place(y, slide(1.3, 125), secs(6.5))
+        th = np.sin(2 * np.pi * 85 * t_axis(secs(0.2))) * env_exp(secs(0.2), 0.04)
+        S.place(y, th * 1.2, secs(7.75))
+        return y
+    dur = 9.0
+    n = secs(dur)
+    t = t_axis(n)
+    v = np.clip(1 - t / 7.2, 0, 1) if kind == "arrive" else np.clip(t / 8.0, 0, 1) ** 0.8
+    # inverter whine: rises in steps as the drive changes mode
+    f0 = 80 + 900 * v
+    if kind == "depart":
+        f0 = 80 + 900 * (np.floor(v * 4) / 4 * 0.6 + v * 0.4)
+    whine = sum(np.sin(2 * np.pi * np.cumsum(f0 * h) / SR) / h ** 1.3 for h in (1, 2, 3))
+    whine *= (0.2 + 0.8 * np.clip(v * 2, 0, 1)) * (0.6 if kind == "arrive" else 1.0)
+    roll = lp(bp(noise(n, 126), 120, 1500), 1000) * v ** 1.5 * 1.4
+    y = whine * 0.7 + roll
+    if kind == "arrive":
+        sq_env = np.clip((t - 4.0) / 1.0, 0, 1) * np.clip((7.3 - t) / 0.3, 0, 1)
+        sq = np.sin(2 * np.pi * np.cumsum(np.full(n, 2950.0) * (1 + 0.012 * S.smooth_noise(n, 4, 127, periodic=False))) / SR)
+        y += sq * sq_env * 0.12
+        clunk = np.sin(2 * np.pi * 60 * t_axis(secs(0.3))) * env_exp(secs(0.3), 0.06)
+        S.place(y, clunk * 0.8, secs(7.3))
+        hiss = bp(noise(secs(1.4), 128), 1500, 8000) * env_exp(secs(1.4), 0.5) * 0.5
+        S.place(y, hiss, secs(7.6))
+    else:
+        y = y * np.clip(1.2 - np.clip((t - 6.5) / 2.5, 0, 1), 0, 1)  # rolling away
+    return fade(y, 0.3, 0.6)
+
+
+def ferry_engine_loop(seconds=8.0, cruise=True) -> np.ndarray:
+    """A Transperth ferry (a small diesel passenger ferry) across the water
+    (mono, loops): the diesel's thrum, the recorded small-ferry engine
+    under it, and at cruise the hull pushing through the chop."""
+    import gen_amb as A
+    n = secs(seconds)
+    t = t_axis(n)
+    rpm = 1500 if cruise else 700
+    fire = round(rpm / 60 * 3 * seconds) / seconds  # six-cylinder: 3 firings a turn
+    pulses = sum(np.sin(2 * np.pi * fire * h * t + h) / h for h in (1, 2, 3, 4))
+    pulses *= 1 + 0.2 * np.sin(2 * np.pi * round(rpm / 120 * seconds) / seconds * t)
+    diesel = S.circ_lp(np.tanh(1.5 * pulses), 900, 2)
+    rec = A.texture(A.src("ferry", True), seconds, 140, chunk=6).mean(axis=1)
+    rec = S.circ_lp(rec, 1500, 2)
+    y = diesel / np.std(diesel) * 0.8 + rec / np.std(rec) * 0.4
+    if cruise:
+        wash = S.circ_lp(S.circ_bp(S.pink(n, 141), 250, 3000), 2000) * (1 + 0.4 * S.smooth_noise(n, 0.6, 142))
+        y += wash / np.std(wash) * 0.2
+    return y
+
+
+def ferry_horn() -> np.ndarray:
+    """The ferry's horn: one short and one longer blast, a small vessel's
+    higher, brassier note than a ship's."""
+    import gen_amb as A
+    a = A.ship_horn(0.6, 1, f0=180.0)
+    b = A.ship_horn(1.6, 2, f0=180.0)
+    return fade(np.concatenate([a, np.zeros(secs(0.35)), b]), 0.0, 0.2)
+
+
+def ferry_wake_loop(seconds=10.0) -> np.ndarray:
+    """A ferry's wake reaching the shore or the jetty (mono, loops): a
+    run of small waves breaking and slapping, then settling."""
+    import gen_amb as A
+    n = secs(seconds)
+    x = A.texture(A.src("lapping", True), seconds, 150, chunk=5).mean(axis=1)
+    x = x * (1 + 0.8 * np.clip(S.smooth_noise(n, 0.5, 151), 0, None))
+    sl = A.pontoon_slaps(n, 152, 14).mean(axis=1)
+    return x / np.std(x) + sl / (np.std(sl) + 1e-12) * 0.5
+
+
+def render_people():
+    S.save(f"{OUT}/traffic_crowd_small_loop", crowd_loop("small", 20.0), "lufs:-24", quality=2, rate=32000)
+    S.save(f"{OUT}/traffic_crowd_busy_loop", crowd_loop("busy", 30.0), "lufs:-22", quality=2, rate=32000)
+    for kind in ("shoes", "heels", "thongs"):
+        S.save(f"{OUT}/traffic_steps_{kind}_loop", steps_loop(kind), "peak", quality=3)
+    for kind in ("arrive", "doors", "depart"):
+        S.save(f"{OUT}/traffic_train_{kind}", train_station(kind), "peak", quality=3)
+    S.save(f"{OUT}/traffic_ferry_engine_loop", ferry_engine_loop(), "peak", quality=3, rate=32000)
+    S.save(f"{OUT}/traffic_ferry_idle_loop", ferry_engine_loop(6.0, cruise=False), "peak", quality=3, rate=32000)
+    S.save(f"{OUT}/traffic_ferry_horn", ferry_horn(), "peak", quality=3)
+    S.save(f"{OUT}/traffic_ferry_wake_loop", ferry_wake_loop(), "lufs:-26", quality=2, rate=32000)
+
+
+def main(argv=()):
+    if "city" in argv:
+        render_city()
+        return
+    if "people" in argv:
+        render_people()
+        return
     try:
         render_horns()
     except C.MissingHornSource as e:
         print(f"skipping the traffic horns, keeping the committed ones: {e}")
     render_bus()
     render_trains()
+    render_city()
+    render_people()
     render_engines()
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

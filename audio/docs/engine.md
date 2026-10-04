@@ -23,7 +23,17 @@ cycles with the filters run round the loop, so they join without a seam.
 Each folder holds `eng_<set>_onload_<rpm>` and `eng_<set>_offload_<rpm>` loops
 (about 3 s, seamless) plus `_startup`, `_shutdown` and `_limiter` one-shots.
 Petrol families also come as `<set>sport` and `<set>straight` (+3 dB and +6 dB,
-freer silencer, more rasp, overrun pops).
+freer silencer, more rasp, overrun pops). The classics also come as
+`<set>megaphone` (+4.5 dB): the barn-find Abarth megaphone exhaust
+(`exhaust_abarth_classic`), which gives the tinny classic note its bass back
+and a hard bark, with overrun crackle. The flat twin has only stock and
+megaphone sets.
+
+The classic sets are levelled together rather than each to its own peak: the
+flat twin sits level with the upright twin, and the classic Abarth 3 dB above
+it (`LEVEL_FROM` in `gen_engines.py`). Sets added or re-rendered since the
+first batch are encoded at q4 and 32 kHz, which loses nothing above the
+engines' 7 kHz air roll-off.
 
 | Set | Family | Used by | Loop RPM points | Priority |
 |---|---|---|---|---|
@@ -31,8 +41,9 @@ freer silencer, more rasp, overrun pops).
 | `fire14` | 1.4 16v | Lounge, Sport | 800, 1500, 2500, 3500, 4500, 5500, 6800 | P2 |
 | `twinair` | TwinAir 0.9 | TwinAir | 900, 1500, 2500, 3500, 4500, 5500, 6000 | P2 |
 | `tjet` | T-Jet 1.4 turbo | Abarth 500, 595, 695 | 850, 1500, 2500, 3500, 4500, 5500, 6500 | P2 |
-| `classic` | Classic twin, air-cooled | Nuova, Sport, D, F, L, R, Giardiniera, Jolly | 800, 1500, 2500, 3500, 4500, 5000 | P2 |
-| `classicabarth` | Classic Abarth | Abarth 595 and 695 classics | 900, 1500, 2500, 3500, 4500, 5500, 6500 | P3 |
+| `classic` | Classic twin, air-cooled: rattly, sewing-machine clatter, fan whirr, tinny exhaust, little bass | Nuova, Sport, D, F, L, R, Jolly | 800, 1500, 2500, 3500, 4500, 5000 | P2 |
+| `classicflat` | Classic flat twin, air-cooled: the same engine laid flat under the Giardiniera's load floor, with a longer exhaust and a side blower. Rounder and boomier, the clatter muffled by the floor | Giardiniera | 780, 1500, 2500, 3500, 4500, 4800 | P2 |
+| `classicabarth` | Classic Abarth: the twin bored out and tuned, through an open Abarth silencer. Less clatter, a hard, angry rasp | Abarth 595 SS (695 SS uses `classicabarthsport`) | 900, 1500, 2500, 3500, 4500, 5500, 6500 | P3 |
 | `electric` | Electric | 500e (both) | speeds 0, 20, 40, 60, 80, 100, 130 km/h | P2 |
 | `abarthe` | Abarth 500e sound generator | Abarth 500e | as T-Jet, played through a small external speaker | P3 |
 

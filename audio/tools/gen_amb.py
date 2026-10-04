@@ -2487,6 +2487,360 @@ def pan_const(x, p):
 
 # --------------------------------------------------------------------------
 
+# ---- place ambience: layers for points of interest -----------------------
+# Close-up detail for a place, played on top of the zone bed while the
+# player is near it (the game fades it with distance; see audio/docs/amb.md).
+# Stereo seamless loops, 45-60 s, -26 LUFS; `place_<type>_loop` by day and
+# `place_<type>_night_loop` after dark.
+
+PLACE_ENC = dict(quality=0, rate=32000)
+
+
+def place_save(name, x):
+    save_loop(f"amb/place/{name}", x, norm="lufs:-26", **PLACE_ENC)
+
+
+def ear_wind(n, seed, gust_rate=0.09, level=1.0):
+    """Wind on an exposed hilltop, as it sounds in your ears: a low, buffeting
+    roar that swells with each gust, and a whistle through grass and railings."""
+    gust = 0.45 + 0.55 * np.clip(0.5 + 0.6 * S.smooth_noise(n, gust_rate, seed), 0, 1.2)
+    chans = []
+    for c in range(2):
+        g = np.roll(gust, secs(0.6) * c)
+        buffet = 1 + 0.5 * S.smooth_noise(n, 6.0, seed + 5 + c)
+        roar = S.circ_bp(S.brown(n, seed + 10 + c), 30, 380, 2) * buffet
+        roar /= np.std(roar) + 1e-12
+        air = S.circ_bp(S.noise(n, seed + 20 + c), 500, 5000, 1)
+        air /= np.std(air) + 1e-12
+        whistle = S.circ_bp(S.noise(n, seed + 30 + c), 1700, 2100, 4)
+        whistle /= np.std(whistle) + 1e-12
+        chans.append(roar * g ** 2 + air * 0.35 * g ** 2.5 + whistle * 0.12 * np.clip(g - 0.6, 0, None) * 3)
+    return np.stack(chans, axis=1) * level
+
+
+def pontoon_slaps(n, seed, count=40):
+    """Water slapping the hollow floats of a pontoon and the quay wall
+    (stereo, circular): a short wet knock with a hollow body, in little runs."""
+    r = np.random.default_rng(seed)
+    y = np.zeros((n, 2))
+    k = secs(0.35)
+    tk = S.t_axis(k)
+    for _ in range(count):
+        at = r.uniform(0, n / SR)
+        p = r.uniform(-0.8, 0.8)
+        for j in range(int(r.integers(1, 4))):
+            body = np.sin(2 * np.pi * r.uniform(140, 260) * tk) * np.exp(-tk / r.uniform(0.03, 0.06))
+            splash = S.bp(r.standard_normal(k), 600, 4500, 2) * np.exp(-tk / 0.04)
+            gurgle = S.bp(r.standard_normal(k), 250, 900, 2) * np.exp(-tk / 0.12) * 0.4
+            s = S.fade(body * 0.8 + splash * 0.5 + gurgle, 0.004, 0.05) * r.uniform(0.3, 1.0)
+            S.place(y, S.pan(s, p), secs(at), wrap=True)
+            at += r.uniform(0.18, 0.6)
+    return y
+
+
+def bell(f0, dur, seed):
+    """A church bell (mono): the classic minor-third bell partials (hum,
+    prime, tierce, quint, nominal...) decaying at their own rates."""
+    r = np.random.default_rng(seed)
+    n = secs(dur)
+    t = S.t_axis(n)
+    parts = ((0.5, 0.5, 3.5), (1.0, 0.8, 2.2), (1.19, 0.6, 1.6), (1.5, 0.35, 1.3),
+             (2.0, 0.7, 1.2), (2.51, 0.25, 0.8), (3.0, 0.2, 0.6), (4.07, 0.12, 0.4))
+    y = sum(a * np.sin(2 * np.pi * f0 * m * (1 + r.normal(0, 0.002)) * t + r.uniform(0, 6))
+            * np.exp(-t / d) for m, a, d in parts)
+    strike = S.bp(r.standard_normal(n), 1500, 6000, 2) * np.exp(-t / 0.01) * 0.3
+    return S.fade(y + strike, 0.002, 0.3)
+
+
+def swan_bells(dur, seed, rows=6):
+    """The Swan Bells (the copper-and-glass bell tower by the quay) change
+    ringing, heard across the water: rounds on 12 bells, then a few changes,
+    each row a little uneven as real ringers are."""
+    r = np.random.default_rng(seed)
+    n = secs(dur)
+    y = np.zeros(n)
+    scale = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19][::-1]  # treble first
+    tones = [bell(330 * 2 ** (s / 12) / 2, 3.0, seed + i) for i, s in enumerate(scale)]
+    order = list(range(12))
+    tt = 0.5
+    for row in range(rows):
+        for b in order:
+            if tt > dur - 3.2:
+                break
+            S.place(y, tones[b] * r.uniform(0.6, 1.0), secs(tt + r.normal(0, 0.015)))
+            tt += 0.21
+        tt += 0.21  # handstroke gap
+        if row >= 1:  # plain changes: swap pairs, alternating
+            start = row % 2
+            for i in range(start, 11, 2):
+                order[i], order[i + 1] = order[i + 1], order[i]
+    return y
+
+
+def fluoro_buzz(n, seed, tubes=3):
+    """Car park lighting at night (stereo, circular): old fluorescent tubes'
+    100 Hz ballast buzz, each tube its own level and side, one of them
+    flickering with little ticks."""
+    r = np.random.default_rng(seed)
+    t = S.t_axis(n)
+    out = np.zeros((n, 2))
+    for i in range(tubes):
+        f = periodic_tone(n, 100 * (1 + 0.0005 * i))
+        buzz = np.tanh(2.5 * np.sin(2 * np.pi * f * t + i)) + 0.3 * np.sin(4 * np.pi * f * t + 2 * i)
+        buzz = S.circ_bp(buzz, 90, 1400, 2)
+        y = buzz / np.std(buzz) * 0.5
+        if i == 0:  # the dodgy one
+            flick = np.ones(n)
+            for _ in range(5):
+                a = int(r.integers(n))
+                L = secs(r.uniform(0.15, 0.6))
+                idx = (a + np.arange(L)) % n
+                flick[idx] = (r.random(L) > 0.5).astype(float) * 0.7 + 0.3
+            flick = S.circ_lp(flick, 300, 1)
+            y = y * flick
+            for _ in range(8):
+                tick = S.bp(r.standard_normal(secs(0.02)), 2000, 7000, 2) * np.exp(-S.t_axis(secs(0.02)) / 0.003)
+                S.place(y, tick * 3, int(r.integers(n)), wrap=True)
+        out += S.pan(y, r.uniform(-0.7, 0.7)) * r.uniform(0.5, 1.0)
+    return out
+
+
+def cooling_ticks(n, seed, count=25):
+    """A parked car's exhaust ticking as it cools (mono, circular)."""
+    r = np.random.default_rng(seed)
+    y = np.zeros(n)
+    k = secs(0.06)
+    tk = S.t_axis(k)
+    at = 0.0
+    for _ in range(count):
+        at += r.exponential(n / SR / count)
+        f = r.uniform(2500, 5000)
+        s = np.sin(2 * np.pi * f * tk) * np.exp(-tk / 0.006) + 0.3 * S.bp(r.standard_normal(k), 3000, 9000, 2) * np.exp(-tk / 0.002)
+        S.place(y, s * r.uniform(0.3, 1.0), secs(at % (n / SR)), wrap=True)
+    return y
+
+
+def reed_rustle(n, seed):
+    """Reeds and rushes at the water's edge: a dry, papery swish in gusts."""
+    gust = 0.4 + 0.6 * np.clip(0.5 + 0.6 * S.smooth_noise(n, 0.12, seed), 0, 1.2)
+    ch = []
+    for c in range(2):
+        g = np.roll(gust, secs(0.4) * c)
+        x = S.circ_bp(S.noise(n, seed + 3 + c), 2500, 9000, 2)
+        grain = 1 + 0.8 * S.smooth_noise(n, 25, seed + 7 + c)
+        ch.append(x * g ** 2 * grain)
+    return np.stack(ch, axis=1)
+
+
+@builder("place_beach")
+def place_beach():
+    dur = 50
+    B = Bed(dur, 3101)
+    n = B.n
+    # the shore break, close: a different stretch of the recording to the bed
+    B.add(texture(src("beach_day", True), dur, 31011, chunk=18), -22)
+    B.add(gum_wind(n, 31012, gust_rate=0.1, crisp=0.0), -31)
+    B.add(ear_wind(n, 31013, gust_rate=0.07), -36)
+    B.scatter(gull_pool(), 5, gain_db=(-18, -9), dist=(0.15, 0.5))
+    place_save("place_beach_loop", B.x)
+
+
+@builder("place_beach_night")
+def place_beach_night():
+    dur = 55
+    B = Bed(dur, 3102)
+    n = B.n
+    B.add(texture(src("beach_night", True), dur, 31021, chunk=18), -22)
+    B.add(ear_wind(n, 31022, gust_rate=0.05), -38)
+    place_save("place_beach_night_loop", B.x)
+
+
+@builder("place_lookout")
+def place_lookout():
+    """Up on a lookout (Kings Park, Reabold Hill, the coast): open wind in
+    your ears, the city spread out below, birds and a plane far off."""
+    dur = 50
+    B = Bed(dur, 3201)
+    n = B.n
+    B.add(ear_wind(n, 32011, gust_rate=0.11), -24)
+    B.add(gum_wind(n, 32012, gust_rate=0.09, crisp=0.6), -33)
+    B.add(city_hum(n, 32013, 35, 400), -37)
+    B.scatter(bird_pools(), 3, gain_db=(-26, -18), dist=(0.6, 0.9))
+    # a plane coming in to Perth airport, high and far: a slow swell of jet roar
+    jet = S.circ_bp(S.pink(n, 32014), 120, 2500, 2)
+    B.add(np.stack([jet, np.roll(jet, secs(0.02))], axis=1) * env_window(n, 12, 26, 11, 13)[:, None], -40)
+    place_save("place_lookout_loop", B.x)
+
+
+@builder("place_lookout_night")
+def place_lookout_night():
+    dur = 55
+    B = Bed(dur, 3202)
+    n = B.n
+    B.add(ear_wind(n, 32021, gust_rate=0.07), -27)
+    B.add(city_hum(n, 32022, 30, 300), -34)
+    B.add(S.circ_bp(texture(src("crickets_sub", True), dur, 32023, chunk=17, region=(22.5, 82)), 2500, 9000), -40)
+    y = siren(14.0, 32024, dist=0.95)
+    B.put(np.stack([y, np.roll(y, secs(0.01))], axis=1), secs(20), -30)
+    place_save("place_lookout_night_loop", B.x)
+
+
+@builder("place_bush")
+def place_bush():
+    """In among the trees (Kings Park bushland, Bold Park): birds close by,
+    leaves rustling and knocking overhead. Cicadas come from the weather layer."""
+    dur = 55
+    B = Bed(dur, 3301)
+    n = B.n
+    B.add(gum_wind(n, 33011, gust_rate=0.08, crisp=1.3), -27)
+    B.add(texture(src("walyunga", True), dur, 33012, chunk=20, avoid_peaks_db=8), -31)
+    B.scatter(bird_pools(), 7, gain_db=(-12, -4), dist=(0.05, 0.35))
+    wag = snips("wagtail1", 1500, 8000, thresh_db=12, min_len=0.4, max_len=4, best=True, n=4)
+    B.scatter(wag, 3, gain_db=(-12, -6), dist=(0.05, 0.3))
+    B.scatter([twitter(3310 + i) for i in range(8)], 9, gain_db=(-16, -8), dist=(0.05, 0.4), pitch=0.06)
+    place_save("place_bush_loop", B.x)
+
+
+@builder("place_bush_night")
+def place_bush_night():
+    dur = 60
+    B = Bed(dur, 3302)
+    n = B.n
+    B.add(texture(src("crickets_sub", True), dur, 33021, chunk=17, region=(22.5, 82)), -27)
+    B.add(gum_wind(n, 33022, gust_rate=0.05, crisp=0.9), -36)
+    # something moving in the leaf litter (a possum, a bandicoot): a few
+    # dry scuffles, close and to one side
+    for k, at in enumerate(B.times(3, 0.7)):
+        L = secs(B.r.uniform(0.6, 1.4))
+        sc = S.bp(B.r.standard_normal(L), 1200, 7000, 2) * (S.smooth_noise(L, 18, 33023 + k, periodic=False) > 0.3)
+        B.put(distant(S.fade(sc, 0.02, 0.1), 0.2, B.r.uniform(-0.8, 0.8), k), at, -16)
+    owl = src("boobook1")
+    ev = find_events(owl, 350, 1200, thresh_db=12, min_len=0.25, max_len=2.0, gap=0.25)
+    calls = [S.lp(cut(owl, a, b), 1600, 3) for a, b, _ in ev]
+    tt = secs(30)
+    for j in range(min(len(calls), 4)):
+        B.put(distant(calls[j % len(calls)], 0.45, 0.4, j, room=1.6), tt, -12)
+        tt += secs(B.r.uniform(1.6, 2.4))
+    place_save("place_bush_night_loop", B.x)
+
+
+@builder("place_quay")
+def place_quay():
+    """Elizabeth Quay: water slapping the pontoons and the quay wall, boats'
+    halyards, a ferry idling at the jetty, people strolling, and the Swan
+    Bells ringing across the inlet."""
+    dur = 60
+    B = Bed(dur, 3401)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 34011, chunk=20), -27)
+    B.add(pontoon_slaps(n, 34012, 34), -28)
+    hal = halyard_tinks(n, 34013, clusters=8)
+    B.add(np.stack([hal, np.roll(hal, secs(0.31))], axis=1), -38)
+    fe = texture(src("ferry", True), dur, 34014, chunk=16)
+    B.add(S.circ_lp(fe, 900) * env_window(n, 5, 30, 6, 8)[:, None], -34)
+    B.add(S.circ_lp(texture(src("bar_wa", True), dur, 34015, chunk=15), 3500), -40)
+    B.scatter(gull_pool(), 4, gain_db=(-18, -10), dist=(0.2, 0.6))
+    for k, at in enumerate(B.times(2, 0.6)):
+        y = footsteps(7.0, 34100 + k, rate_hz=B.r.uniform(2.5, 2.9))
+        B.put(pass_stereo(y, k % 2 == 1), at, -22)
+    bells = distant(swan_bells(22.0, 34016), 0.55, -0.4, 3, room=2.5)
+    B.put(bells, secs(32), -9)
+    place_save("place_quay_loop", B.x)
+
+
+@builder("place_quay_night")
+def place_quay_night():
+    dur = 60
+    B = Bed(dur, 3402)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 34021, chunk=20), -28)
+    B.add(pontoon_slaps(n, 34022, 26), -30)
+    hal = halyard_tinks(n, 34023, clusters=6)
+    B.add(np.stack([hal, np.roll(hal, secs(0.27))], axis=1), -38)
+    B.add(fridge_hum(n, 34024), -40)
+    B.add(city_hum(n, 34025, 30, 250), -38)
+    place_save("place_quay_night_loop", B.x)
+
+
+@builder("place_riverside")
+def place_riverside():
+    """On the river bank (the foreshore paths, Matilda Bay, Heirisson Island):
+    small waves lapping close, reeds, birds over the water, a rowing crew."""
+    dur = 55
+    B = Bed(dur, 3501)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 35011, chunk=20), -25)
+    B.add(reed_rustle(n, 35012), -36)
+    B.scatter(gull_pool(), 3, gain_db=(-22, -14), dist=(0.3, 0.7))
+    B.scatter(bird_pools(), 2, gain_db=(-22, -16), dist=(0.4, 0.7))
+    row = rowing_pass(24.0, 35013)
+    B.put(distant(row, 0.55, 0.3, 5, room=1.8), secs(18), -22)
+    place_save("place_riverside_loop", B.x)
+
+
+@builder("place_riverside_night")
+def place_riverside_night():
+    dur = 55
+    B = Bed(dur, 3502)
+    n = B.n
+    B.add(texture(src("lapping", True), dur, 35021, chunk=20), -26)
+    B.add(reed_rustle(n, 35022), -40)
+    B.add(S.circ_bp(texture(src("crickets_sub", True), dur, 35023, chunk=17, region=(22.5, 82)), 2000, 9000), -36)
+    bonk = (snips("pobble1", 250, 1200, thresh_db=12, min_len=0.05, max_len=0.6, gap=0.08)
+            + snips("pobble2", 250, 1200, thresh_db=12, min_len=0.05, max_len=0.6, gap=0.08))
+    bonk = [S.hp(b, 180) for b in bonk]
+    for k, at in enumerate(B.times(5, 0.9)):
+        tt = at
+        for j in range(int(B.r.integers(2, 5))):
+            B.put(distant(bonk[int(B.r.integers(len(bonk)))], 0.4, B.r.uniform(-0.7, 0.7), k * 10 + j, room=1.0), tt, -15)
+            tt += secs(B.r.uniform(0.5, 1.3))
+    place_save("place_riverside_night_loop", B.x)
+
+
+@builder("place_carpark")
+def place_carpark():
+    """A big open car park by day (shops, the beach, the footy): distant
+    traffic, doors and boots shutting, a trolley rattling past."""
+    dur = 50
+    B = Bed(dur, 3601)
+    n = B.n
+    B.add(S.circ_lp(texture(src("traffic_peak", True), dur, 36011, chunk=16), 1500), -32)
+    B.add(gum_wind(n, 36012, gust_rate=0.06, crisp=0.2), -40)
+    for k, at in enumerate(B.times(6, 0.8)):
+        L = secs(0.5)
+        tk = S.t_axis(L)
+        thud = (np.sin(2 * np.pi * B.r.uniform(70, 110) * tk) * np.exp(-tk / 0.06)
+                + 0.5 * S.bp(B.r.standard_normal(L), 300, 3000, 2) * np.exp(-tk / 0.02)
+                + 0.25 * S.bp(B.r.standard_normal(L), 3000, 8000, 2) * np.exp(-tk / 0.008))
+        B.put(distant(S.fade(thud, 0.001, 0.1), B.r.uniform(0.3, 0.75), B.r.uniform(-0.8, 0.8), k), at, -14)
+    # a trolley: rattling wheels on the bitumen, passing
+    L = secs(6.0)
+    tk = S.t_axis(L)
+    rat = S.bp(B.r.standard_normal(L), 900, 5000, 2) * (1 + 0.8 * np.sign(np.sin(2 * np.pi * 11 * tk)))
+    B.put(pass_stereo(rat * np.exp(-((tk - 3) / 1.6) ** 2)), secs(22), -20)
+    y = car_pass(8.0, 36013, speed=6, dist=10, kind="car")
+    B.put(pass_stereo(S.lp(y, 3000)), secs(36), -18)
+    place_save("place_carpark_loop", B.x)
+
+
+@builder("place_carpark_night")
+def place_carpark_night():
+    """A quiet car park at night: buzzing fluorescent tubes (one flickering),
+    a parked car ticking as it cools, the city a long way off, and nothing
+    else. Nearly empty, on purpose."""
+    dur = 55
+    B = Bed(dur, 3602)
+    n = B.n
+    B.add(fluoro_buzz(n, 36021), -34)
+    B.add(fridge_hum(n, 36022), -36)
+    B.add(S.circ_lp(texture(src("traffic_night", True), dur, 36023, chunk=16), 900), -36)
+    ct = cooling_ticks(n, 36024, count=22)
+    B.add(np.stack([ct * 0.6, ct], axis=1), -36)
+    y = car_pass(9.0, 36025, speed=14, dist=50, kind="car")
+    B.put(pass_stereo(S.lp(y, 1500)), secs(30), -26)
+    place_save("place_carpark_night_loop", B.x)
+
+
 def main(argv):
     import json
     names = list(BUILD)

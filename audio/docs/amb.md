@@ -20,6 +20,19 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
   loop end. The few bird/clatter peaks are tucked under -2 dBFS by a
   circular (seam-safe) limiter. The loop seam is verified numerically on every
   build (jump across the join must look like any other sample step).
+- **Place layers** (`place/place_<type>_loop`, `place_<type>_night_loop`
+  after dark): close-up detail for a point of interest, played over the
+  zone bed while you're near it. Stereo, 50-60 s seamless loops, -26 LUFS,
+  OGG q0 at 32 kHz. `ambience_manager.gd` takes the places from the map's
+  points of interest (`MapStreamer.get_pois()`, read by `Audio.hooks` when
+  the map loads): beaches (150 m), lookouts (120 m; the Kings Park ones and
+  the State War Memorial also get the bush under the wind), the Bell Tower
+  and Elizabeth Quay bridge as the quay, the foreshore spots and Lake Monger
+  as the river bank (`POI_PLACES`), quiet spots as car parks (60 m, at
+  where the car stops) and servos and drive-throughs as car parks at night
+  only. Nodes in the `poi` group (meta `poi_type`, optional `radius`) and
+  `Audio.ambience.add_place(type, position, radius)` work too. Each type is
+  at full volume within 35% of its radius and fades out to the edge.
 - **One-shots**: mono, 3D-positioned in game, peak -1 dBTP. The `_loop`
   one-shots (crossing bells, pedestrian signals) are mono seamless loops at
   -1 dBTP for placing on an actual crossing.
@@ -64,6 +77,18 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | amb_beach_dawn | yes (100 s) | Beach 05:00-07:00: a calm morning sea, gulls, magpies in the dunes behind, a light breeze | P3 | beach_night, mag_kp2, mag_dl (+ synth gulls) |
 | amb_tunnel | yes (60 s) | Northbridge tunnel: low drone, jet fans, light hum, reverberant car passes | P3 | synth only |
 | amb_carmeet | yes (90 s) | Night car meet: idling engines (V8 burble, four, a rough six), chatter, a muffled car stereo, occasional revs | P2 | bar_wa (+ synth idles, stereo, revs) |
+| place/place_beach_loop | yes (50 s) | At the beach: the shore break close by, the sea breeze in your ears, gulls | P2 | beach_day (+ synth wind, gulls) |
+| place/place_beach_night_loop | yes (55 s) | The beach at night: waves close by, a light onshore wind | P2 | beach_night (+ synth wind) |
+| place/place_lookout_loop | yes (50 s) | Up on a lookout: open, buffeting wind in your ears and a whistle through the railings, gums rustling, the city spread out below, birds and a plane far off | P2 | mag_kp2, mag_dl (+ synth wind, hum, jet) |
+| place/place_lookout_night_loop | yes (55 s) | A lookout at night: the wind, the city's hum below, crickets, one very far siren | P2 | crickets_sub (+ synth wind, hum, siren) |
+| place/place_bush_loop | yes (55 s) | In among the trees (Kings Park bushland, Bold Park): magpies, wagtails and small birds close by, gum leaves rustling and knocking overhead. Cicadas come from the weather layer | P2 | walyunga, mag_kp2, mag_dl, wagtail1 (+ synth wind, twitter) |
+| place/place_bush_night_loop | yes (60 s) | The bush at night: crickets close, a breeze, something scuffling in the leaf litter, a boobook calling | P2 | crickets_sub, boobook1 (+ synth wind, scuffles) |
+| place/place_quay_loop | yes (60 s) | Elizabeth Quay: water slapping the pontoons and the quay wall, halyards tinking, a ferry idling at the jetty, people strolling, gulls, and the Swan Bells ringing changes across the inlet | P2 | lapping, ferry, bar_wa (+ synth slaps, halyards, bells, gulls, footsteps) |
+| place/place_quay_night_loop | yes (60 s) | The quay at night: slapping and lapping, halyards, the city's hum | P2 | lapping (+ synth) |
+| place/place_riverside_loop | yes (55 s) | On the river bank (the foreshore, Matilda Bay, Heirisson Island): small waves lapping close, reeds rustling, gulls and magpies, a rowing eight passing | P2 | lapping, mag_kp2, mag_dl (+ synth reeds, gulls, rowing) |
+| place/place_riverside_night_loop | yes (55 s) | The river bank at night: lapping, reeds, crickets, banjo frogs bonking | P2 | lapping, crickets_sub, pobble1, pobble2 (+ synth reeds) |
+| place/place_carpark_loop | yes (50 s) | A big open car park by day: distant traffic, doors and boots shutting, a trolley rattling past, a car creeping by | P2 | traffic_peak (+ synth thuds, trolley, car) |
+| place/place_carpark_night_loop | yes (55 s) | A quiet car park at night: old fluorescent tubes buzzing (one flickering), a parked car ticking as it cools, the city a long way off, one car on the road beyond. Nearly empty, on purpose | P2 | traffic_night (+ synth buzz, hum, ticks, car) |
 | amb_bird_raven_01..03 | no | Australian raven, the long mournful falling 'aah-aah-aaaah' | P1 | raven_db |
 | amb_bird_magpie_01..03 | no | Australian magpie warble/carol (01-02 Kings Park, 03 close suburban) | P1 | mag_kp2, mag_dl |
 | amb_bird_kookaburra_01..02 | no | Laughing kookaburra family laugh (Kings Park) | P1 | kook_kp |

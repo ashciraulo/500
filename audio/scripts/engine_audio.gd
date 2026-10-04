@@ -42,7 +42,7 @@ const CAR_SETS := {
 	"abarth_595_comp": "tjetsport", "abarth_695_tributo": "tjetsport",
 	"abarth_695_biposto": "tjetstraight", "e_500e_2013": "electric",
 	"e_500e_2020": "electric", "abarth_500e": "abarthe",
-	"classic_nuova": "classic", "classic_d": "classic", "classic_giardiniera": "classic",
+	"classic_nuova": "classic", "classic_d": "classic", "classic_giardiniera": "classicflat",
 	"classic_500f": "classic", "classic_500l": "classic", "classic_500r": "classic",
 	"classic_jolly": "classic", "classic_sport": "classicsport",
 	"classic_abarth_595": "classicabarth", "classic_abarth_695": "classicabarthsport",
@@ -58,6 +58,9 @@ const ENGINE_PARTS := {
 const EXHAUST_PARTS := {
 	"exhaust_stock": "", "exhaust_sport": "sport", "exhaust_twin": "sport",
 	"exhaust_abarth_quad": "straight",
+	# The barn-find Abarth megaphone: classics only (modern cars have no
+	# megaphone set, so they keep their stock note).
+	"exhaust_abarth_classic": "megaphone",
 }
 
 var rpm := 0.0
@@ -168,8 +171,8 @@ func build() -> void:
 	var family := family_of(engine_set)
 	if _auto_pops:
 		pops = 1.0 if (engine_set.ends_with("sport") or engine_set.ends_with("straight")
-				or family in ["tjet", "classicabarth"]) else 0.0
-		if engine_set.ends_with("straight"):
+				or engine_set.ends_with("megaphone") or family in ["tjet", "classicabarth"]) else 0.0
+		if engine_set.ends_with("straight") or engine_set.ends_with("megaphone"):
 			pops = 2.0
 	if _auto_turbo:
 		turbo = 1.0 if family in ["tjet", "twinair"] else 0.0
@@ -204,7 +207,7 @@ func silence() -> void:
 
 
 static func family_of(set_name: String) -> String:
-	return set_name.trim_suffix("sport").trim_suffix("straight")
+	return set_name.trim_suffix("sport").trim_suffix("straight").trim_suffix("megaphone")
 
 
 ## The engine set the vehicle's fitted parts call for, e.g. "fire12sport".

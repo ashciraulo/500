@@ -73,7 +73,7 @@ func _test_index(audio: Node) -> void:
 
 func _test_engines(audio: Node) -> void:
 	print("engine sets")
-	for fam in ["fire12", "fire14", "twinair", "tjet", "classic", "classicabarth", "electric", "abarthe"]:
+	for fam in ["fire12", "fire14", "twinair", "tjet", "classic", "classicflat", "classicabarth", "electric", "abarthe"]:
 		var names: PackedStringArray = audio.names_in("engine/" + fam)
 		var on := 0
 		var off := 0
@@ -83,7 +83,10 @@ func _test_engines(audio: Node) -> void:
 			elif n.contains("_offload_"):
 				off += 1
 		check(on >= 5 and on == off, "%s: %d on-load, %d off-load loops" % [fam, on, off])
-		if not fam.begins_with("electric") and not fam == "abarthe":
+		if fam.begins_with("classic"):
+			check(audio.names_in("engine/%smegaphone" % fam).size() >= 2 * on,
+					"%s has the Abarth megaphone set" % fam)
+		if not fam.begins_with("electric") and not fam == "abarthe" and fam != "classicflat":
 			for v in ["sport", "straight"]:
 				var vn := 0
 				for n in audio.names_in("engine/" + fam + v):
@@ -230,6 +233,57 @@ func _test_ambience(audio: Node) -> void:
 	amb.lightning(500.0)
 	audio.set_player_inside(false)
 	check(true, "weather and lightning without errors")
+	# Place layers: every type has day and night loops; a place fades in as
+	# you get near it and out as you leave; a "poi" node counts as a place.
+	for type in amb.PLACE_TYPES:
+		check(audio.has("amb/place/place_%s_loop" % type) and audio.has("amb/place/place_%s_night_loop" % type),
+				"place %s has day and night loops" % type)
+	amb.set_time_of_day(12.0)
+	amb.add_place("beach", Vector3(1000, 0, 0), 100.0)
+	amb.update_places(Vector3(1010, 0, 0))
+	check(is_equal_approx(amb._place_amount.get("beach", 0.0), 1.0), "full beach layer at the beach")
+	amb.update_places(Vector3(1080, 0, 0))
+	var mid: float = amb._place_amount.get("beach", 0.0)
+	check(mid > 0.0 and mid < 1.0, "beach layer fades with distance (%.2f)" % mid)
+	amb.update_places(Vector3(0, 0, 0))
+	check(amb._place_amount.get("beach", 0.0) == 0.0, "no beach layer far away")
+	var poi := Node3D.new()
+	poi.add_to_group("poi")
+	poi.set_meta("poi_type", "carpark")
+	root.add_child(poi)
+	poi.global_position = Vector3(-500, 0, 300)
+	amb.set_time_of_day(23.0)
+	amb.update_places(Vector3(-505, 0, 300))
+	for i in 10:
+		await process_frame
+	var cp: AudioStreamPlayer = amb._place_players.get("carpark")
+	check(cp != null and cp.playing, "car park POI node plays its layer")
+	check(amb.place_sound("carpark") == "amb/place/place_carpark_night_loop", "night loop after dark")
+	poi.queue_free()
+	amb.clear_places()
+	# The map's POI data (MapStreamer.get_pois()) becomes place layers.
+	amb.add_map_pois([
+		{"id": "beach_cottesloe", "kind": "beach", "suburb": "Cottesloe", "p": Vector3(0, 0, 0), "at": Vector3(5000, 0, 0)},
+		{"id": "lookout_dryandra_lookout", "kind": "lookout", "suburb": "Kings Park", "p": Vector3.ZERO, "at": Vector3(0, 0, 5000)},
+		{"id": "landmark_bell_tower", "kind": "landmark", "suburb": "Perth", "p": Vector3.ZERO, "at": Vector3(-5000, 0, 0)},
+		{"id": "servo_1", "kind": "servo", "suburb": "Perth", "p": Vector3(0, 0, -5000), "at": Vector3(0, 0, -5010)},
+	])
+	amb.update_places(Vector3(5000, 0, 10))
+	check(amb._place_amount.get("beach", 0.0) == 1.0, "map beach POI -> beach layer")
+	amb.update_places(Vector3(0, 0, 5000))
+	check(amb._place_amount.get("lookout", 0.0) == 1.0 and amb._place_amount.get("bush", 0.0) == 1.0,
+			"Kings Park lookout -> lookout wind over the bush")
+	amb.update_places(Vector3(-5000, 0, 0))
+	check(amb._place_amount.get("quay", 0.0) == 1.0, "bell tower -> quay layer")
+	amb.set_time_of_day(12.0)
+	amb.update_places(Vector3(0, 0, -5000))
+	check(amb._place_amount.get("carpark", 0.0) == 0.0, "servo is quiet by day")
+	amb.set_time_of_day(23.0)
+	amb.update_places(Vector3(0, 0, -5000))
+	check(amb._place_amount.get("carpark", 0.0) == 1.0, "servo -> empty car park at night")
+	amb.clear_places()
+	amb.update_places(Vector3.ZERO)
+	amb.set_time_of_day(12.0)
 
 
 func _test_car_scene(audio: Node) -> void:
@@ -272,6 +326,16 @@ func _test_car_scene(audio: Node) -> void:
 		check(car.get_node("Audio/CarSounds").style == "abarth", "Abarth horn")
 		car.apply_car("classic_d")
 		check(engine.engine_set == "classic" and engine.classic_gearbox, "500 D -> classic (got %s)" % engine.engine_set)
+		check(engine.set_for_parts() == "classic", "a classic keeps its own note with stock parts")
+		var mega: Resource = PartsCatalogue.get_part(&"exhaust_abarth_classic")
+		if mega:
+			car.install_part(mega)
+			check(engine.engine_set == "classicmegaphone", "found Abarth megaphone -> classicmegaphone (got %s)" % engine.engine_set)
+			car.install_part(PartsCatalogue.get_part(&"exhaust_stock"))
+		car.apply_car("classic_giardiniera")
+		check(engine.engine_set == "classicflat" and engine.classic_gearbox, "Giardiniera -> classicflat (got %s)" % engine.engine_set)
+		car.apply_car("classic_abarth_595")
+		check(engine.engine_set == "classicabarth" and engine.pops > 0.0, "Abarth 595 SS -> classicabarth with pops (got %s)" % engine.engine_set)
 		car.apply_car("e_500e_2020")
 		check(engine.engine_set == "electric", "New 500e -> electric (got %s)" % engine.engine_set)
 		car.apply_car("pop_12")
@@ -352,6 +416,11 @@ func _test_traffic(audio: Node) -> void:
 	for set_name in ["sedan", "diesel", "busdiesel"]:
 		check(audio.names_in("engine/" + set_name).size() >= 10, "traffic engine set %s" % set_name)
 	check(AudioServer.get_bus_index("Vehicles") >= 0, "Vehicles bus exists")
+	for n in ["traffic_crowd_small_loop", "traffic_crowd_busy_loop", "traffic_steps_shoes_loop",
+			"traffic_steps_heels_loop", "traffic_steps_thongs_loop", "traffic_train_arrive", "traffic_train_doors",
+			"traffic_train_depart", "traffic_ferry_engine_loop", "traffic_ferry_idle_loop", "traffic_ferry_horn",
+			"traffic_ferry_wake_loop", "traffic_roadworks_day_loop", "traffic_ibis_grunt", "traffic_roo_thump"]:
+		check(audio.has("traffic/" + n), "city sound " + n)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	await create_timer(4.0).timeout
@@ -372,6 +441,43 @@ func _test_traffic(audio: Node) -> void:
 			if h and h.stream and h.stream.resource_path.contains("traffic_horn"):
 				horns += 1
 		check(horns == ta.manager.vehicles.size() and horns > 0, "traffic horns swapped (%d)" % horns)
+		# Pedestrians: footsteps on the nearest walkers, walla where they gather.
+		var gs := GDScript.new()
+		gs.source_code = "extends RefCounted\nvar position := Vector3.ZERO\nvar speed := 1.4\n"
+		gs.reload()
+		var ear_pos: Vector3 = audio.listener().global_position
+		var peds: Array = []
+		for i in 10:
+			var ped: RefCounted = gs.new()
+			ped.position = ear_pos + Vector3(2.0 + i, 0, 1.0)
+			peds.append(ped)
+		ta._assign_people(peds)
+		var stepping := 0
+		for voice in ta._steps:
+			if voice.ped != null and voice.player.playing:
+				stepping += 1
+		check(stepping == ta.STEP_VOICES, "footsteps on the nearest walkers (%d)" % stepping)
+		check(ta._crowd.playing and not ta._crowd_small.playing, "a crowd of 10 gets the busy walla")
+		ta._assign_people(peds.slice(0, 4))
+		check(ta._crowd_small.playing and not ta._crowd.playing, "four people get the small walla")
+		ta._assign_people([])
+		check(not ta._crowd_small.playing and ta._steps[0].ped == null, "no people, no walla or steps")
+		ta._on_train_arrived(ear_pos)
+		ta._on_train_departed(ear_pos)
+		check(true, "train arrival and departure sounds play")
+		# Emergency vehicles get our sirens, bikes a freewheel.
+		if ta.manager.has_method("spawn_emergency"):
+			for type in [&"police", &"ambulance", &"fire"]:
+				var em = ta.manager.spawn_emergency(audio.listener().global_position, type)
+				if em:
+					var sn: AudioStreamPlayer3D = em.body.get_node_or_null("Audio/Siren")
+					check(sn != null and sn.playing and sn.stream is AudioStreamOggVorbis,
+							"%s siren swapped in and playing" % type)
+					if type == &"police" and ta.manager.has_method("spawn_vehicle_at"):
+						var bike = ta.manager.spawn_vehicle_at(&"bike", em.lane(), maxf(em.s - 30.0, 0.0))
+						if bike:
+							var fw: AudioStreamPlayer3D = bike.body.get_node_or_null("Audio/Freewheel")
+							check(fw != null and fw.playing, "bike has a freewheel ticking")
 	# The real map: zones and the townhouse.
 	var amb: Node = audio.ambience
 	check(amb.zone_at(Vector3(0, 0, 0)) == "northbridge", "Little Shenton Lane is Northbridge")
@@ -386,6 +492,9 @@ func _test_traffic(audio: Node) -> void:
 			if not doors.is_empty():
 				audio.hooks._home.toggle_door(doors[0])  # plays the door sound
 		check(amb.zone == amb.zone_at(audio.listener().global_position), "ambience zone follows the camera (%s)" % amb.zone)
+		var map_node := main.find_child("PerthMap", true, false)
+		if map_node.has_method("get_pois") and not map_node.get_pois().is_empty():
+			check(amb._places.size() >= 50, "the map's points of interest became place layers (%d)" % amb._places.size())
 	main.queue_free()
 	await process_frame
 
