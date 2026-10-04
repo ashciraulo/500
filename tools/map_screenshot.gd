@@ -38,9 +38,16 @@ func _process(_delta: float) -> bool:
 			{name = "albany_hwy", wait = 300, cam = [Vector3(4104, 0, 3151), Vector3(4012, 0, 2962)], fog = 0.003, above = 3.0},
 			{name = "subiaco_aerial", wait = 300, cam = [Vector3(-2500, 200, 600), Vector3(-3000, 20, 150)], fog = 0.0010},
 			{name = "optus_stadium", wait = 300, cam = [Vector3(2800, 180, 1100), Vector3(3317, 20, 580)], fog = 0.0010},
+			{name = "fremantle_markets", wait = 300, cam = [Vector3(-9927, 0, 12300), Vector3(-9792, 0, 12461)], fog = 0.003, above = 3.0},
+			{name = "cottesloe_aerial", wait = 300, cam = [Vector3(-9288, 157, 5385), Vector3(-9688, 7, 5385)], fog = 0.0012},
+			{name = "scarborough_beach", wait = 300, cam = [Vector3(-9213, 0, -5773), Vector3(-9273, 0, -5975)], fog = 0.003, above = 3.0},
 			{name = "night_james_st", wait = 300, hour = 22.0, cam = [Vector3(-125, 0, 2), Vector3(60, 0, 100)], fog = 0.003, above = 5.0},
 			{name = "night_aerial", wait = 240, hour = 22.0, cam = [Vector3(-100, 260, -450), Vector3(350, 20, 900)], fog = 0.0008},
 		]
+		var only := _arg("only", "")
+		if only != "":
+			var names := only.split(",")
+			_shots = _shots.filter(func(s): return s.name in names)
 		return false
 	_frame += 1
 	if _shot >= _shots.size():

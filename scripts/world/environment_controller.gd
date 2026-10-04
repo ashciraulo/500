@@ -88,8 +88,6 @@ func _update(delta: float) -> void:
 	var flash_color := Color(0.75, 0.8, 1.0) * _flash
 	_sky.sky_top_color = top + flash_color
 	_sky.sky_horizon_color = horizon + flash_color
-	_sky.ground_horizon_color = horizon * 0.8
-	_sky.ground_bottom_color = horizon * 0.25
 	_sky.sun_angle_max = 30.0
 	_sky.sky_energy_multiplier = 1.0 + _flash * 2.0
 
@@ -98,7 +96,12 @@ func _update(delta: float) -> void:
 	fog_density = lerpf(fog_density, fog_density_storm, clampf((rain - 0.35) / 0.65, 0.0, 1.0))
 	fog_density *= lerpf(1.4, 1.0, daylight)
 	_environment.fog_density = fog_density
-	_environment.fog_light_color = horizon.lerp(Color(0.02, 0.02, 0.04), lerpf(0.6, 0.15, daylight))
+	var fog_color := horizon.lerp(Color(0.02, 0.02, 0.04), lerpf(0.6, 0.15, daylight))
+	_environment.fog_light_color = fog_color
+	# Below the horizon is always fogged-out ground past the camera's far
+	# plane, so the sky's ground half takes the fog colour (no grey band).
+	_sky.ground_horizon_color = fog_color
+	_sky.ground_bottom_color = fog_color
 	_environment.fog_sun_scatter = 0.15 * (1.0 - overcast)
 
 	# Flat ambient colour rather than sky radiance: cheap, very PS1, and it
