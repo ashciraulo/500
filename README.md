@@ -16,6 +16,24 @@ cycle with Perth's sun, three kinds of weather, and the lo-fi render pipeline.
 
 The first import takes a few seconds while Godot builds its `.godot/` cache.
 
+### Build a copy that runs without the editor
+
+`export_presets.cfg` has Windows, Linux and macOS presets. Install the
+export templates once (Godot: **Editor > Manage Export Templates >
+Download and Install**), then **Project > Export...**, pick a platform and
+**Export Project**. Or from a terminal:
+
+```sh
+godot --headless --path . --export-release Windows build/windows/500.exe
+godot --headless --path . --export-release Linux build/linux/500.x86_64
+godot --headless --path . --export-release macOS build/macos/500.zip
+```
+
+Keep the `.pck` next to the program. Saves, photos and the My Music folder
+live in the user data folder (on Windows `%APPDATA%\Godot\app_userdata\500`).
+The macOS build is unsigned, so the first time right-click it and choose
+**Open**.
+
 ## Controls
 
 Keyboard or any standard gamepad. Press **F1** in game to show/hide this list.
@@ -68,6 +86,11 @@ turns). CI runs it on every push; locally:
 godot --headless --path . --import
 godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/traffic_test.gd
+godot --headless --path . --fixed-fps 60 --script res://tools/mystery_test.gd -- --no-save
+# A real-time playthrough from whatever save you have (or none): load, drive
+# out of the carport, workshop, a job, switching cars, walking, sleeping.
+# Without tour=off it also tours the whole map and reports streaming hitches.
+godot --headless --path . --script res://tools/playthrough.gd -- tour=off
 # Optional, a few minutes: traffic soak on the Perth map (not in CI)
 godot --headless --path . --fixed-fps 60 --script res://tools/traffic_map_test.gd
 ```

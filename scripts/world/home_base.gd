@@ -15,6 +15,9 @@ extends Node3D
 signal door_toggled(door_name: StringName, open: bool)
 signal slept(day: int)
 signal shed_unlocked
+## Someone tried the locked shed door. A listener may unlock it (the mystery,
+## once you have the key), and then the door opens as normal.
+signal shed_tried
 
 const DOOR_OPEN_ANGLE := deg_to_rad(100.0)
 ## Doors that swing the other way (clockwise seen from above), so they open
@@ -76,7 +79,9 @@ func toggle_door(door_name: StringName) -> bool:
 	if not _doors.has(door_name):
 		return false
 	if door_name == &"Shed_Door" and not shed_is_unlocked:
-		return false
+		shed_tried.emit()
+		if not shed_is_unlocked:
+			return false
 	var door: Dictionary = _doors[door_name]
 	door.open = not door.open
 	var node: Node3D = door.node

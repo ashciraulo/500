@@ -45,6 +45,10 @@ func _ready() -> void:
 	_sky = _environment.sky.sky_material as ProceduralSkyMaterial
 	_sun = get_node(sun_path)
 	_moon = get_node(moon_path)
+	# The procedural sky paints a disc for every directional light in the
+	# light's own colour and energy, so the faint moon came out as a black
+	# blot in the evening sky. It only lights the scene.
+	_moon.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 	_rain = get_node_or_null(rain_path)
 	Weather.lightning.connect(_on_lightning)
 	_update(0.0)

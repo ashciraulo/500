@@ -19,6 +19,9 @@ const PARK_RADIUS := 1100.0
 ## The follower keeps about this far behind you.
 const FOLLOW_GAP := 38.0
 const FOLLOW_MAX_TIME := 75.0
+## How far down the lane (m, from the carport, the way you drive out) the
+## classic idles at night. Past about 60 m the lane meets buildings.
+const LANE_END_DISTANCE := 45.0
 const MODEL := preload("res://art/models/cars/pop/pop.glb")
 
 var _car: CarController
@@ -48,8 +51,8 @@ func _setup() -> void:
 		map = get_parent().get_parent().get_node_or_null("PerthMap")
 	if map and map.has_method("get_spawn_transform"):
 		var spawn: Transform3D = map.get_spawn_transform()
-		# The far end of the lane, behind the carport.
-		_lane_end = spawn.origin + spawn.basis.z * 55.0
+		# The far end of the lane, the way you drive out of the carport.
+		_lane_end = spawn.origin - spawn.basis.z * LANE_END_DISTANCE
 	var places: Dictionary = get_parent().get("places") if get_parent() else {}
 	for spot: Dictionary in places.get("photo_spots", []):
 		if spot.id == "riverside_east":

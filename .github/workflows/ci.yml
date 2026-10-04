@@ -63,6 +63,26 @@ jobs:
             exit 1
           fi
 
+      - name: Mystery test
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/mystery_test.gd -- --no-save 2>&1 \
+            | tee mystery.log | grep -E "FAIL|MYSTERY|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" mystery.log; then
+            echo "::error::GDScript errors in the mystery"
+            exit 1
+          fi
+
+      - name: Playthrough (fresh save, real time)
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --script res://tools/playthrough.gd -- tour=off 2>&1 \
+            | tee playthrough.log | grep -E "ok |FAIL|PLAYTHROUGH|  - |hitches|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" playthrough.log; then
+            echo "::error::GDScript errors while playing through"
+            exit 1
+          fi
+
       - name: Audio tests
         run: |
           set -o pipefail

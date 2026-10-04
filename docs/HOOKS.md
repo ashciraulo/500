@@ -281,3 +281,28 @@ records).
   `oddity/odd_river_lights_shimmer`) and the midnight station
   (`oddity/odd_midnight_station_found` the first time). Each counts once as
   discovery `oddity/<id>`. Missing sounds play nothing.
+
+## The main mystery
+
+- `Mystery` (under `GameplayPlaces`, data in
+  `data/progression/mystery.json`). After midnight, tuning to the midnight
+  station makes the voice name a place (shown as a message and in the phone's
+  Leads tab). Between midnight and 3:30 a small glowing object waits there;
+  stop beside it or walk up to it. The next morning it's on the boxes in the
+  cupboard under the stairs, and that cupboard is open. Each clue needs a
+  career tier and at least `min_days` days after the last; the seventh, the
+  shed key, needs the last tier. Finds are discoveries `mystery/<id>`, the
+  end is `mystery/solved` and reward `trinket_night_drive_tape`. Saved under
+  `mystery`.
+- `HomeBase.shed_tried` fires when someone tries the locked shed. The
+  mystery unlocks it if you have the key; otherwise, late at night,
+  something knocks back (discovery `oddity/shed_knock`).
+- Walking up to the sheet in the open shed hides `Shed_Sheeted` and puts the
+  card table, cassette deck and transmitter (`MysteryProps.build_shed`) there.
+- Sounds (missing ones play nothing): `oddity/odd_clue` (variants) for the
+  voice and each find, `oddity/odd_key_found` (Music bus),
+  `oddity/odd_shed_interior_loop` (Ambience, in the open shed),
+  `oddity/odd_mystery_bed_loop` (fades in on the Music bus during mystery
+  moments) and `oddity/odd_shed_knock` (falls back to
+  `home/home_odd_wall_tapping`). The shed unlock sound is game_hooks.gd's,
+  on `shed_unlocked`.

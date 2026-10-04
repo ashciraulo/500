@@ -13,6 +13,7 @@
 		"livery_side_stripe": {"kind": "livery", "mode": "side_stripe", "color": "#c8242b", "meet": 3, "title": "An Abarth-style side stripe"},
 		"livery_two_tone": {"kind": "livery", "mode": "two_tone", "color": "#efece4", "meet": 6, "title": "A two-tone white roof"},
 		"trinket_meet_plaque": {"kind": "trinket", "slot": "dash", "color": "#b8b8b0", "meet": 10, "title": "A Roe Street meet dash plaque"},
+		"trinket_night_drive_tape": {"kind": "trinket", "slot": "dash", "color": "#1e1e21", "title": "The NIGHT DRIVE 13 tape, from the shed"},
 		"garage_road_map": {"kind": "garage"},
 		"garage_neon_sign": {"kind": "garage"}
 	}

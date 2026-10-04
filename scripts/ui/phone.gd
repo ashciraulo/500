@@ -221,6 +221,11 @@ func _refresh_leads() -> void:
 	_text(_leads_list, "Scenic drives done: %d. Green SCENIC DRIVE signs start them." % Progression.get_stat("scenic_drives"))
 	_text(_leads_list, "Lifts given: %d. Passengers show up on the job board." % Progression.get_stat("lifts_given"))
 	_text(_leads_list, "Trains beaten: %d of %d raced. Drive alongside a moving train and get past the front." % [Progression.get_stat("trains_beaten"), Progression.get_stat("trains_raced")])
+	var mystery := get_tree().root.find_child("Mystery", true, false)
+	if mystery and mystery.has_method("notes"):
+		_text(_leads_list, "After midnight", 18, accent)
+		for line in mystery.notes():
+			_text(_leads_list, line, 13 if line.begins_with("  ") else 15)
 	var relaxed := CheckButton.new()
 	relaxed.text = "Relaxed cruising (lighter traffic, no jobs)"
 	relaxed.button_pressed = Activities.relaxed

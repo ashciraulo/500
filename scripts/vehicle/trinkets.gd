@@ -61,6 +61,10 @@ static func build(item: Dictionary) -> Node3D:
 			_sphere(swing, 0.006, Vector3(0, 0.04, -0.03), Color(0.05, 0.05, 0.05))
 		"interior_wooden_knob":
 			_sphere(root, 0.042, Vector3(0, 0.015, 0), color)
+		"trinket_night_drive_tape":  # From the shed, at the end of the mystery.
+			var tape := MysteryProps.build("cassette")
+			tape.rotation.y = 0.3
+			root.add_child(tape)
 		"trinket_meet_plaque":
 			_box(root, Vector3(0.11, 0.045, 0.005), Vector3(0, 0.022, 0), color, Vector3(-0.5, 0, 0))
 			var label := Label3D.new()

@@ -25,6 +25,9 @@ func _ready() -> void:
 	var odd := Oddities.new()
 	odd.name = "Oddities"
 	add_child(odd)
+	var mystery := Mystery.new()
+	mystery.name = "Mystery"
+	add_child(mystery)
 	for p: Dictionary in places.get("photo_spots", []):
 		var spot := PhotoSpot.new()
 		spot.spot_id = p.id

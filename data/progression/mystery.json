@@ -1,0 +1,76 @@
+{
+	"_comment": "The main mystery (scripts/world/mystery.gd). After midnight the unlisted station on the radio reads out a place; drive there between midnight and half past three and something is waiting. Each clue needs the career tier `tier` (0-based) and comes at least `min_days` days after the last one. `spot` is a photo spot id from data/world/places.json, or \"lane_end\" for the far end of Little Shenton Lane. `broadcast` is what the voice says; `found` is shown when you pick it up; `cupboard` is the prop that turns up in the cupboard under the stairs the next morning (cassette, polaroid, ticket, map, keyring). The last clue is the shed key.",
+	"min_days": 2,
+	"clues": [
+		{
+			"id": "tape_1",
+			"tier": 0,
+			"spot": "kings_park_fraser",
+			"broadcast": "\"...Fraser Avenue. The gums are white tonight. I left it on the kerb, under the third lamp...\"",
+			"found": "A cassette on the kerb, dry despite the dew. The label says NIGHT DRIVE 1 in neat capitals.",
+			"cupboard": "cassette",
+			"title": "the NIGHT DRIVE 1 tape"
+		},
+		{
+			"id": "polaroid",
+			"tier": 1,
+			"spot": "mounts_bay_cliffs",
+			"broadcast": "\"...Mounts Bay Road, under the scarp. Where the water's closest. Stop there a while...\"",
+			"found": "A Polaroid tucked into the railing. Little Shenton Lane at night, a round little car in your carport bay. The house lights are on.",
+			"cupboard": "polaroid",
+			"title": "the Polaroid of the lane"
+		},
+		{
+			"id": "ticket",
+			"tier": 1,
+			"spot": "the_esplanade",
+			"broadcast": "\"...The Esplanade. They ticketed me there once. March. Nineteen seventy-nine...\"",
+			"found": "A parking ticket, soft with age: 14 March 1979, Fiat 500, The Esplanade, 2:40 am. The plate has been scratched out.",
+			"cupboard": "ticket",
+			"title": "the 1979 parking ticket"
+		},
+		{
+			"id": "atlas_page",
+			"tier": 2,
+			"spot": "riverside_east",
+			"broadcast": "\"...Riverside Drive. The lights come up off the water if you wait. I marked them all...\"",
+			"found": "A page torn from a street directory. Pencil circles round Kings Park, the river, the end of Little Shenton Lane. Someone has written: they only show at night.",
+			"cupboard": "map",
+			"title": "the street directory page"
+		},
+		{
+			"id": "keyring",
+			"tier": 3,
+			"spot": "royal_street",
+			"broadcast": "\"...Royal Street, East Perth. I kept the shed key separate. Somewhere safe. Somewhere I'd go back to...\"",
+			"found": "A keyring with a paper tag: 15 LSL, SHED. The ring is empty.",
+			"cupboard": "keyring",
+			"title": "the empty keyring"
+		},
+		{
+			"id": "tape_12",
+			"tier": 3,
+			"spot": "havelock_street",
+			"broadcast": "\"...Havelock Street. This is the last tape. If you're hearing it, you've been driving my roads...\"",
+			"found": "Another cassette: NIGHT DRIVE 12, LAST. The handwriting is shakier than the first.",
+			"cupboard": "cassette",
+			"title": "the NIGHT DRIVE 12 tape"
+		},
+		{
+			"id": "shed_key",
+			"tier": 4,
+			"spot": "lane_end",
+			"broadcast": "\"...Little Shenton Lane. The far end, by the wall. Come home. It's waiting where I always parked...\"",
+			"found": "On the bricks where the idling car is always gone by the time you get there: a small brass key, cold as anything. It fits the tag.",
+			"cupboard": "",
+			"title": "the shed key"
+		}
+	],
+	"ending": [
+		"Under the sheet: a card table, a cassette deck, and a home-made transmitter, its little red light still on.",
+		"The deck is running. The tape is labelled NIGHT DRIVE 13, in your handwriting.",
+		"On the wall, a street directory map. Every pin is somewhere you've driven at night.",
+		"The voice on the tape reads the streets in the order you drove them. Then: \"Little Shenton Lane. Home.\" Then nothing.",
+		"You switch the transmitter off. The radio in the car still finds the station after midnight. It just doesn't say anything new."
+	]
+}
