@@ -242,7 +242,7 @@ func _run_step() -> bool:
 			garage.owned = PackedStringArray()
 			save.load_from(test_path)
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
-			_check(garage.owned.has("engine_ecu_remap"), "owned parts are saved")
+			_check(garage.owned.has("pop_12/engine_ecu_remap"), "owned parts are saved")
 			_check(is_equal_approx(float(_car.tuning.get("final_drive_mult", 0.0)), 1.1), "tuning is saved")
 			_check(_car.has_custom_paint(), "paint is saved")
 			_next()
@@ -277,6 +277,71 @@ func _run_step() -> bool:
 					if spot.offers("fuel"):
 						servo = spot
 				_check(servo != null and servo.offers("wash"), "the test grid has a servo with a car wash")
+				_next()
+		13:  # Career: tiers, the car yard, owning and swapping cars, an EV.
+			var garage := root.get_node("Garage")
+			var wallet := root.get_node("Wallet")
+			var progression := root.get_node("Progression")
+			var catalogue := load("res://scripts/vehicle/parts_catalogue.gd")
+			if _frame == 1:
+				_check(progression.tiers.size() == 5, "five career tiers")
+				var stats_ok := true
+				for tier in progression.tiers:
+					stats_ok = stats_ok and tier.challenges.size() >= 6 and tier.challenges.size() <= 8
+					for challenge in tier.challenges:
+						if not progression.KNOWN_STATS.has(challenge.stat):
+							stats_ok = false
+							print("    unknown stat: ", challenge.stat)
+				_check(stats_ok, "every tier has 6-8 challenges with known stats")
+				_check(progression.get_stat("suburbs_delivered") >= 1, "deliveries count suburbs")
+				var weather := root.get_node("Weather")
+				weather.set_state(2, true)  # STORM
+				_check(is_equal_approx(root.get_node("Jobs").weather_bonus(), 1.5), "storm jobs pay 50% more")
+				weather.set_state(0, true)
+				progression.tier_index = 0
+				wallet.earn(100000)
+				_check(garage.car_blocker("lounge_14") != "", "tier 2 cars are locked in tier 1")
+				_check(not garage.buy_car("lounge_14", _car), "can't buy a locked car")
+				progression.tier_index = 1
+				var pop_parts: Array = Array(_car.get_part_ids())
+				var money: int = wallet.balance
+				_check(garage.buy_car("lounge_14", _car), "buys a Lounge once tier 2 opens")
+				_check(wallet.balance == money - 2400, "the Lounge costs its price")
+				_check(_car.car_id == "lounge_14" and _car.gear_ratios.size() == 6, "now driving the six-speed Lounge (%s, %d gears)" % [_car.car_id, _car.gear_ratios.size()])
+				_check(_car.parts.is_empty() and not _car.has_custom_paint(), "the Lounge comes stock")
+				var kw: float = _car.get_stats().power_kw
+				_check(kw > 65.0 and kw < 85.0, "the Lounge makes about 74 kW (%.0f)" % kw)
+				money = wallet.balance
+				garage.buy_and_fit(catalogue.get_part(&"engine_ecu_remap"), _car)
+				_check(wallet.balance < money, "parts are bought per car")
+				_car.odometer_km = 42.0
+				_check(is_equal_approx(progression.get_stat("km_tier_car"), 42.0), "km in this tier's car counts")
+				_check(garage.switch_car("pop_12", _car), "swaps back to the Pop")
+				_check(Array(_car.get_part_ids()) == pop_parts and _car.has_custom_paint(),
+					"the Pop keeps its own parts and paint")
+				_check(not catalogue.fits(catalogue.get_part(&"engine_1_4_swap"), "lounge_14"), "engine swaps are Pop only")
+				progression.tier_index = 2
+				_check(garage.buy_car("e_500e_2013", _car) and _car.is_electric, "buys a 500e (%s, %s)" % [garage.car_blocker("e_500e_2013"), _car.car_id])
+				_check(not catalogue.fits(catalogue.get_part(&"engine_ecu_remap"), "e_500e_2013"), "no ECU remap for an EV")
+				_car.fuel_litres = _car.tank_litres
+				_teleport(Vector3(0, 0, -30))
+				_car.global_transform.basis = Basis()
+				_car.set_transmission(1)
+				Input.action_press("accelerate")
+			elif _frame == 360:
+				Input.action_release("accelerate")
+				_check(_car.speed_kmh() > 40.0, "the 500e pulls away (%.0f km/h)" % _car.speed_kmh())
+				_check(_car.fuel_litres < _car.tank_litres, "driving the 500e uses charge")
+				var save := root.get_node("SaveGame")
+				save.save_to("user://smoke_cars.json")
+				garage.switch_car("pop_12", _car)
+				garage.owned_cars = PackedStringArray(["pop_12"])
+				save.load_from("user://smoke_cars.json")
+				DirAccess.remove_absolute(ProjectSettings.globalize_path("user://smoke_cars.json"))
+				_check(_car.car_id == "e_500e_2013", "the car you were driving is saved")
+				_check(garage.owned_cars.has("lounge_14") and garage.cars.has("lounge_14"), "your other cars are saved")
+				_check(garage.lifetime_km(_car) >= 42.0, "lifetime km adds up every car")
+				garage.switch_car("pop_12", _car)
 				_next()
 		_:
 			Input.action_release("accelerate")

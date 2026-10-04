@@ -11,8 +11,10 @@ const SLOT_NAMES := {
 	"weight": "Weight",
 }
 ## Tab order; a spot shows the tabs for its kinds.
-const TAB_KINDS := ["parts", "tuning", "paint", "fuel", "wash"]
+## "cars" lets you swap between cars you own; "dealer" also sells them.
+const TAB_KINDS := ["parts", "tuning", "paint", "fuel", "wash", "cars"]
 const PLACE_NAMES := {"parts": "workshop", "tuning": "workshop", "paint": "paint booth",
+	"dealer": "car yard", "cars": "garage",
 	"fuel": "servo", "wash": "car wash"}
 ## Below this speed (km/h) the prompt shows and the workshop opens.
 const STOP_SPEED_KMH := 5.0
@@ -30,6 +32,8 @@ var _tuning_list: VBoxContainer
 var _paint_list: VBoxContainer
 var _fuel_list: VBoxContainer
 var _wash_list: VBoxContainer
+var _cars_list: VBoxContainer
+var _car_name: Label
 var _stats: GridContainer
 var _change: Label
 var _close: Button
@@ -105,7 +109,8 @@ func _set_open(open_it: bool) -> void:
 	_title.text = _spot.display_name
 	_change.text = ""
 	for i in TAB_KINDS.size():
-		_tabs.set_tab_hidden(i, not _spot.offers(TAB_KINDS[i]))
+		var shown: bool = _spot.offers(TAB_KINDS[i]) or (TAB_KINDS[i] == "cars" and _spot.offers("dealer"))
+		_tabs.set_tab_hidden(i, not shown)
 	for i in TAB_KINDS.size():
 		if not _tabs.is_tab_hidden(i):
 			_tabs.current_tab = i
@@ -186,13 +191,14 @@ func _build() -> void:
 	_paint_list = _scroll_tab("Paint")
 	_fuel_list = _scroll_tab("Fuel")
 	_wash_list = _scroll_tab("Wash")
+	_cars_list = _scroll_tab("Cars")
 
 	var side := VBoxContainer.new()
 	side.custom_minimum_size.x = 270
 	side.add_theme_constant_override("separation", 10)
 	body.add_child(side)
 	var heading := Label.new()
-	heading.text = "Your 500"
+	_car_name = heading
 	heading.add_theme_font_size_override("font_size", 18)
 	heading.add_theme_color_override("font_color", ACCENT)
 	side.add_child(heading)
@@ -228,9 +234,11 @@ func _refresh() -> void:
 	_refresh_paint()
 	_refresh_fuel()
 	_refresh_wash()
+	_refresh_cars()
 
 
 func _refresh_stats() -> void:
+	_car_name.text = CarCatalogue.get_car(_car.car_id).get("name", "Your car")
 	var s := _car.get_stats()
 	_clear(_stats)
 	for row in [
@@ -243,7 +251,8 @@ func _refresh_stats() -> void:
 		["Final drive", "%.2f" % s.final_drive],
 		["Paint", _paint_name()],
 		["Odometer", "%s km" % _number(_car.odometer_km)],
-		["Fuel", "%.1f / %d L" % [_car.fuel_litres, roundi(_car.tank_litres)]],
+		["Charge" if _car.is_electric else "Fuel", "%.1f / %d %s" % [_car.fuel_litres, roundi(_car.tank_litres),
+			"kWh" if _car.is_electric else "L"]],
 		["Dirt", _dirt_text()],
 	]:
 		var key := Label.new()
@@ -260,7 +269,7 @@ func _refresh_parts() -> void:
 	for slot in PartsCatalogue.SLOTS:
 		_heading(_parts_list, SLOT_NAMES.get(String(slot), String(slot).capitalize()))
 		var fitted: CarPart = _car.parts.get(slot)
-		for part in PartsCatalogue.for_slot(slot):
+		for part in PartsCatalogue.for_car(slot, _car.car_id):
 			var is_fitted := (fitted == null and part.is_stock()) or (fitted != null and fitted.id == part.id)
 			var owned := Garage.owns(part, _car)
 			var row := HBoxContainer.new()
@@ -375,26 +384,32 @@ func _refresh_paint() -> void:
 
 func _refresh_fuel() -> void:
 	_clear(_fuel_list)
-	var price := Garage.fuel_price()
-	var cheapest: float = Garage.FUEL_PRICES.min()
-	var note := "cheap day" if is_equal_approx(price, cheapest) else (
-		"prices jumped today" if price >= 2.0 else "")
-	_heading(_fuel_list, "Unleaded 91   $%.2f a litre" % price)
-	_text(_fuel_list, "%s%s. Prices here run on a weekly cycle." % [Garage.weekday(),
-		(", " + note) if note != "" else ""])
+	var price := Garage.fuel_price(_car)
+	var unit := "kWh" if _car.is_electric else "litres"
+	if _car.is_electric:
+		_heading(_fuel_list, "Fast charger   $%.2f a kWh" % price)
+		_text(_fuel_list, "Plug in and grab a coffee while it charges.")
+	else:
+		var cheapest: float = Garage.FUEL_PRICES.min()
+		var note := "cheap day" if is_equal_approx(price, cheapest) else (
+			"prices jumped today" if price >= 2.0 else "")
+		_heading(_fuel_list, "Unleaded 91   $%.2f a litre" % price)
+		_text(_fuel_list, "%s%s. Prices here run on a weekly cycle." % [Garage.weekday(),
+			(", " + note) if note != "" else ""])
 	var gauge := ProgressBar.new()
 	gauge.max_value = 1.0
 	gauge.value = _car.fuel_fraction()
 	gauge.show_percentage = false
 	gauge.custom_minimum_size.y = 14
 	_fuel_list.add_child(gauge)
-	_text(_fuel_list, "%.1f of %d litres in the tank." % [_car.fuel_litres, roundi(_car.tank_litres)])
+	_text(_fuel_list, "%.1f of %d %s in the %s." % [_car.fuel_litres, roundi(_car.tank_litres), unit,
+		"battery" if _car.is_electric else "tank"])
 	var space := _car.tank_litres - _car.fuel_litres
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	_fuel_list.add_child(row)
 	var fill := Button.new()
-	fill.text = "Fill it up  ($%d)" % Garage.fuel_cost(space)
+	fill.text = "%s  ($%d)" % ["Charge it up" if _car.is_electric else "Fill it up", Garage.fuel_cost(space, _car)]
 	fill.disabled = space < 0.1 or Wallet.balance < 1
 	fill.pressed.connect(_buy_fuel.bind(INF))
 	row.add_child(fill)
@@ -404,6 +419,69 @@ func _refresh_fuel() -> void:
 		button.disabled = space < 0.1 or not Wallet.can_afford(dollars)
 		button.pressed.connect(_buy_fuel.bind(dollars / price))
 		row.add_child(button)
+
+
+func _refresh_cars() -> void:
+	_clear(_cars_list)
+	_heading(_cars_list, "Your cars")
+	for id in Garage.owned_cars:
+		var car := CarCatalogue.get_car(id)
+		var row := HBoxContainer.new()
+		var label := Label.new()
+		var km: float = _car.odometer_km if id == _car.car_id else float(Garage.cars.get(id, {}).get("odometer_km", 0.0))
+		label.text = "%s (%s)   %s km" % [car.name, car.years, _number(km)]
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var button := Button.new()
+		button.custom_minimum_size.x = 170
+		if id == _car.car_id:
+			button.text = "Driving it"
+			button.disabled = true
+		elif not CarCatalogue.is_drivable(car):
+			button.text = "Needs restoring"
+			button.disabled = true
+		else:
+			button.text = "Take this one"
+		button.pressed.connect(func() -> void:
+			Garage.switch_car(id, _car)
+			_change.text = "Swapped into the %s." % car.name
+			_refresh_after_action())
+		row.add_child(button)
+		_cars_list.add_child(row)
+	if not _spot.offers("dealer"):
+		_text(_cars_list, "New cars come from the car yard once your career opens them up.")
+		return
+	for tier in range(0, 5):
+		var for_sale := CarCatalogue.for_sale().filter(func(c: Dictionary) -> bool: return int(c.tier) == tier)
+		if for_sale.is_empty():
+			continue
+		_heading(_cars_list, "Tier %d%s" % [tier + 1, "" if Progression.tier_index >= tier else "   (locked)"])
+		for car in for_sale:
+			var row := HBoxContainer.new()
+			var text := VBoxContainer.new()
+			text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var name_label := Label.new()
+			name_label.text = "%s (%s)   %d kW   $%s" % [car.name, car.years, car.power_kw, _number(car.price)]
+			text.add_child(name_label)
+			var blurb := Label.new()
+			blurb.text = car.blurb
+			blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			blurb.add_theme_font_size_override("font_size", 13)
+			blurb.add_theme_color_override("font_color", Color(0.7, 0.7, 0.68))
+			text.add_child(blurb)
+			row.add_child(text)
+			var button := Button.new()
+			button.custom_minimum_size.x = 170
+			var blocker := Garage.car_blocker(car.id)
+			button.text = "Buy it" if blocker == "" else blocker[0].to_upper() + blocker.substr(1)
+			button.disabled = blocker != ""
+			var id: String = car.id
+			button.pressed.connect(func() -> void:
+				if Garage.buy_car(id, _car):
+					_change.text = "Bought the %s. Your old car's waiting at home." % CarCatalogue.get_car(id).name
+				_refresh_after_action())
+			row.add_child(button)
+			_cars_list.add_child(row)
 
 
 func _refresh_wash() -> void:

@@ -31,6 +31,8 @@ signal headlights_changed(on: bool)
 ## A part was installed (or a slot went back to stock). The car body listens
 ## to swap visuals such as wheels and exhausts.
 signal parts_changed(slot: StringName, part: CarPart)
+## apply_car switched this to a different car (models swap bodies on this).
+signal car_changed(id: String)
 ## Fuel dropped below LOW_FUEL_FRACTION of the tank.
 signal fuel_low
 ## The tank ran dry; the engine cuts out until someone brings fuel.
@@ -53,6 +55,10 @@ const DEFAULT_SURFACE := &"asphalt"
 const RPM_PER_RAD_S := 60.0 / TAU
 
 @export var player_controlled := true
+## Which car this is (an id in data/cars/cars.json). `apply_car` changes it.
+@export var car_id := "pop_12"
+@export var rear_wheel_drive := false
+@export var is_electric := false
 
 @export_group("Engine")
 @export var idle_rpm := 850.0
@@ -157,6 +163,9 @@ var fuel_litres := 35.0
 ## Gameplay scale on real-world consumption, so servo stops come round
 ## every few hours of play rather than once a week.
 @export var fuel_use_scale := 2.0
+## Litres (or kWh, for an EV) used per kWh the engine delivers, and at idle.
+@export var fuel_per_kwh := 0.4
+@export var fuel_idle_per_hour := 0.8
 const LOW_FUEL_FRACTION := 0.12
 ## How dirty the car is, 0 (fresh from the car wash) to 1 (filthy).
 var dirt := 0.35
@@ -169,6 +178,18 @@ var paint_color := Color(0, 0, 0, 0)
 
 ## Stock values captured on _ready, so parts always stack from stock.
 var _stock := {}
+## The scene's own values (the Pop), so switching cars starts clean.
+var _scene_defaults := {}
+var _peak_torque := 102.0
+## CarController values a car spec may set (data/cars/cars.json).
+const SPEC_KEYS := [
+	"mass", "idle_rpm", "redline_rpm", "limiter_rpm", "torque_curve", "gear_ratios",
+	"final_drive", "reverse_ratio", "shift_time", "auto_upshift_rpm", "auto_downshift_rpm",
+	"engine_brake_per_krpm", "spring_strength", "damper_strength", "anti_roll_strength",
+	"brake_force", "handbrake_force", "tire_grip", "suspension_length", "lateral_stiffness",
+	"drag_coefficient", "tank_litres", "fuel_per_kwh", "fuel_idle_per_hour", "fuel_use_scale",
+	"rear_wheel_drive", "is_electric",
+]
 const _TUNABLE := [
 	"limiter_rpm", "redline_rpm", "final_drive", "gear_ratios", "shift_time",
 	"tire_grip", "lateral_stiffness", "spring_strength", "damper_strength",
@@ -187,8 +208,9 @@ var _last_velocity := Vector3.ZERO
 
 
 func _ready() -> void:
-	for key in _TUNABLE:
-		_stock[key] = get(key).duplicate() if get(key) is PackedFloat32Array else get(key)
+	for key in SPEC_KEYS:
+		_scene_defaults[key] = _copy(get(key))
+	_capture_stock()
 	if player_controlled:
 		add_to_group(&"player_car")
 		SaveGame.register("car", self)
@@ -206,6 +228,7 @@ func _ready() -> void:
 			"visual": anchor.get_node_or_null("Visual"),
 			"spin": anchor.get_node_or_null("Visual/Spin"),
 			"front": wheel_name.contains("F"),
+			"driven": wheel_name.contains("F") != rear_wheel_drive,
 			"left": wheel_name.ends_with("L"),
 			"compression": 0.0,
 			"last_compression": 0.0,
@@ -295,7 +318,7 @@ func _physics_process(delta: float) -> void:
 
 		var lateral := -v_lat * corner_mass / delta * lateral_stiffness
 		var longitudinal := 0.0
-		if wheel.front:
+		if wheel.driven:
 			longitudinal += drive_torque * 0.5 / wheel_radius
 		var braking := brake * brake_force * (0.3 if wheel.front else 0.2)
 		if not wheel.front:
@@ -316,7 +339,7 @@ func _physics_process(delta: float) -> void:
 
 		# Visual wheel spin; driven wheels spin up when they slip.
 		var spin_target := v_long / wheel_radius
-		if wheel.front and slip > 0.0 and drive_torque != 0.0:
+		if wheel.driven and slip > 0.0 and drive_torque != 0.0:
 			spin_target += signf(drive_torque) * slip * 25.0
 		if not wheel.front and handbrake_input > 0.5:
 			spin_target = 0.0
@@ -494,10 +517,50 @@ func has_custom_paint() -> bool:
 	return paint_color.a > 0.0
 
 
-func save_state() -> Dictionary:
+## Become a different car: its numbers from data/cars/cars.json, stock parts,
+## default tuning. Use `load_vehicle_state` afterwards to restore one you own.
+func apply_car(id: String) -> void:
+	var car := CarCatalogue.get_car(id)
+	if car.is_empty():
+		push_warning("Unknown car '%s'" % id)
+		return
+	car_id = id
+	# Take the old car's parts off first, while its stock values still apply.
+	for slot in parts.keys():
+		remove_part(slot)
+	for key in SPEC_KEYS:
+		set(key, _copy(_scene_defaults[key]))
+	is_electric = car.get("electric", false)
+	rear_wheel_drive = car.get("rear_engine", false)
+	var spec: Dictionary = car.get("spec", {})
+	for key in spec:
+		if not key in SPEC_KEYS:
+			push_warning("Car '%s' sets unknown spec key '%s'" % [id, key])
+			continue
+		var value: Variant = spec[key]
+		match key:
+			"torque_curve":
+				var curve := PackedVector2Array()
+				for point in value:
+					curve.append(Vector2(point[0], point[1]))
+				value = curve
+			"gear_ratios":
+				value = PackedFloat32Array(value)
+		set(key, value)
+	for wheel in _wheels:
+		wheel.driven = wheel.front != rear_wheel_drive
+	tuning = {}
+	paint_color = Color(0, 0, 0, 0)
+	_capture_stock()
+	gear = mini(gear, gear_ratios.size())
+	fuel_litres = minf(fuel_litres, tank_litres)
+	car_changed.emit(car_id)
+
+
+## Everything about this car that isn't where it's parked.
+func vehicle_state() -> Dictionary:
 	return {
-		"position": SaveGame.vec3_to_array(global_position),
-		"yaw": global_rotation.y,
+		"car_id": car_id,
 		"parts": Array(get_part_ids()),
 		"odometer_km": odometer_km,
 		"automatic": transmission == Transmission.AUTOMATIC,
@@ -508,13 +571,10 @@ func save_state() -> Dictionary:
 	}
 
 
-func load_state(data: Dictionary) -> void:
-	if data.has("position"):
-		# Lift slightly so the wheels settle onto the ground rather than in it.
-		var pos := SaveGame.array_to_vec3(data.position) + Vector3.UP * 0.3
-		global_transform = Transform3D(Basis(Vector3.UP, float(data.get("yaw", 0.0))), pos)
-		linear_velocity = Vector3.ZERO
-		angular_velocity = Vector3.ZERO
+func load_vehicle_state(data: Dictionary) -> void:
+	var id: String = data.get("car_id", car_id)
+	if id != car_id:
+		apply_car(id)
 	for slot in parts.keys():
 		remove_part(slot)
 	install_part_ids(PackedStringArray(data.get("parts", [])))
@@ -522,9 +582,27 @@ func load_state(data: Dictionary) -> void:
 	set_tuning(data.get("tuning", {}))
 	fuel_litres = clampf(float(data.get("fuel_litres", tank_litres)), 0.0, tank_litres)
 	dirt = clampf(float(data.get("dirt", dirt)), 0.0, 1.0)
+	paint_color = Color(0, 0, 0, 0)
 	var paint: String = data.get("paint", "")
 	if paint != "":
 		set_paint(Color.html(paint))
+
+
+func save_state() -> Dictionary:
+	var state := vehicle_state()
+	state["position"] = SaveGame.vec3_to_array(global_position)
+	state["yaw"] = global_rotation.y
+	return state
+
+
+func load_state(data: Dictionary) -> void:
+	if data.has("position"):
+		# Lift slightly so the wheels settle onto the ground rather than in it.
+		var pos := SaveGame.array_to_vec3(data.position) + Vector3.UP * 0.3
+		global_transform = Transform3D(Basis(Vector3.UP, float(data.get("yaw", 0.0))), pos)
+		linear_velocity = Vector3.ZERO
+		angular_velocity = Vector3.ZERO
+	load_vehicle_state(data)
 
 
 ## Headline numbers for menus and the garage.
@@ -550,7 +628,7 @@ func get_stats() -> Dictionary:
 
 func _rebuild_stats() -> void:
 	for key in _TUNABLE:
-		set(key, _stock[key].duplicate() if _stock[key] is PackedFloat32Array else _stock[key])
+		set(key, _copy(_stock[key]))
 	torque_multiplier = 1.0
 	wet_penalty_multiplier = 1.0
 	var multipliers := {
@@ -579,6 +657,21 @@ func _rebuild_stats() -> void:
 		lateral_stiffness = clampf(lateral_stiffness + m.get("lateral_stiffness_add", 0.0), 0.1, 1.0)
 		if m.has("gear_ratios"):
 			gear_ratios = PackedFloat32Array(m.gear_ratios)
+
+
+func _capture_stock() -> void:
+	for key in _TUNABLE:
+		_stock[key] = _copy(get(key))
+	_peak_torque = 1.0
+	for point in torque_curve:
+		_peak_torque = maxf(_peak_torque, point.y)
+	_rebuild_stats()
+
+
+static func _copy(value: Variant) -> Variant:
+	if value is PackedFloat32Array or value is PackedVector2Array:
+		return value.duplicate()
+	return value
 
 
 func _apply_paint() -> void:
@@ -675,7 +768,7 @@ func _update_engine(delta: float) -> float:
 	var driven_speed := 0.0
 	var driven_count := 0
 	for wheel in _wheels:
-		if wheel.front and wheel.grounded:
+		if wheel.driven and wheel.grounded:
 			driven_speed += linear_velocity.dot(-global_basis.z)
 			driven_count += 1
 	var wheel_omega := (driven_speed / driven_count) / wheel_radius if driven_count > 0 else 0.0
@@ -700,7 +793,7 @@ func _update_engine(delta: float) -> float:
 		var rate := free_rev_up if free_target > rpm else free_rev_down
 		rpm = move_toward(rpm, free_target, rate * delta)
 	rpm = clampf(rpm, idle_rpm * 0.9, limiter_rpm + 100.0)
-	engine_load = clampf(torque / (102.0 * torque_multiplier), -1.0, 1.0)
+	engine_load = clampf(torque / (_peak_torque * torque_multiplier), -1.0, 1.0)
 	_burn_fuel(maxf(torque, 0.0) * rpm * TAU / 60.0 / 1000.0, delta)
 	if not engaged:
 		return 0.0
@@ -713,7 +806,8 @@ func _burn_fuel(power_kw: float, delta: float) -> void:
 	if fuel_litres <= 0.0:
 		return
 	var before := fuel_litres
-	fuel_litres = maxf(0.0, fuel_litres - (0.8 + power_kw * 0.4) / 3600.0 * fuel_use_scale * delta)
+	var per_hour := fuel_idle_per_hour + power_kw * fuel_per_kwh
+	fuel_litres = maxf(0.0, fuel_litres - per_hour / 3600.0 * fuel_use_scale * delta)
 	var low := tank_litres * LOW_FUEL_FRACTION
 	if before >= low and fuel_litres < low:
 		fuel_low.emit()

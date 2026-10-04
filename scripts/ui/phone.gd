@@ -169,6 +169,12 @@ func _refresh_progress() -> void:
 		return
 	_text(_progress_list, "Tier %d: %s" % [Progression.tier_index + 1, tier.title], 18, Color(0.6, 0.85, 0.8))
 	_text(_progress_list, tier.blurb)
+	var next_cars := Progression.cars_unlocked_at(Progression.tier_index + 1)
+	if not next_cars.is_empty():
+		var names := PackedStringArray()
+		for car in next_cars:
+			names.append("%s ($%s)" % [car.name, _number(car.price)])
+		_text(_progress_list, "Finish this tier and the car yard will sell you: %s." % ", ".join(names), 14, Color(1.0, 0.88, 0.55))
 	for challenge in tier.challenges:
 		var done := Progression.is_done(challenge)
 		var value := Progression.get_stat(challenge.stat)
@@ -198,10 +204,14 @@ func _refresh_stats() -> void:
 	if car:
 		var stats := car.get_stats()
 		lines.append("")
-		lines.append("2013 Fiat 500 Pop, %.0f km on the clock" % car.odometer_km)
+		var info := CarCatalogue.get_car(car.car_id)
+		lines.append("%s (%s), %.0f km on the clock" % [info.get("name", car.car_id), info.get("years", ""), car.odometer_km])
 		lines.append("%.0f kW, %.0f Nm, %.0f kg" % [stats.power_kw, stats.torque_nm, stats.mass_kg])
-		lines.append("Fuel %.1f of %d L, unleaded $%.2f today (%s)" % [
-			car.fuel_litres, roundi(car.tank_litres), Garage.fuel_price(), Garage.weekday()])
+		if car.is_electric:
+			lines.append("Battery %.1f of %d kWh" % [car.fuel_litres, roundi(car.tank_litres)])
+		else:
+			lines.append("Fuel %.1f of %d L, unleaded $%.2f today (%s)" % [
+				car.fuel_litres, roundi(car.tank_litres), Garage.fuel_price(), Garage.weekday()])
 		for part in car.parts.values():
 			lines.append("  %s" % part.display_name)
 	_stats_label.text = "\n".join(lines)

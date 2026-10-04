@@ -1,70 +1,84 @@
 {
-	"_comment": "Tiers of the career. Every challenge in a tier must be done to move up. stat names are listed in scripts/autoload/progression.gd. Targets are sized for a slow game: tier 1 alone is several evenings of driving.",
+	"_comment": "Career tiers. Every challenge in a tier must be done to move up, and reaching a tier lets you buy that tier's cars (the `tier` field in data/cars/cars.json; tier 1 here is index 0). Stat names are listed at the top of scripts/autoload/progression.gd. Targets follow the plan's pacing (first new car after 4-6 hours, first Abarth 12-15, tier 4 cars 35-40, the rest 60+); check changes with `python3 tools/pacing_model.py`.",
 	"tiers": [
 		{
 			"id": "getting_by",
 			"title": "Getting by",
-			"blurb": "New in Northbridge with a tired grey Pop and a few hundred dollars. Pick up whatever work comes along.",
+			"blurb": "New in Northbridge with a tired Pop and a few hundred dollars. Pick up whatever work comes along.",
 			"pay_multiplier": 1.0,
-			"unlocks_car": "",
 			"challenges": [
-				{"id": "t1_earn", "title": "Pay the rent", "description": "Earn $3,000 in total.", "stat": "earned", "target": 3000},
-				{"id": "t1_deliveries", "title": "Odd jobs", "description": "Finish 15 deliveries.", "stat": "deliveries", "target": 15},
-				{"id": "t1_km", "title": "Learning the roads", "description": "Drive 150 km.", "stat": "km_driven", "target": 150},
-				{"id": "t1_trials", "title": "Not just a shopping trolley", "description": "Finish 3 time trials with any medal.", "stat": "trials_medalled", "target": 3},
-				{"id": "t1_night", "title": "Night shift", "description": "Finish 5 deliveries after dark.", "stat": "night_deliveries", "target": 5},
-				{"id": "t1_rain", "title": "Rain or shine", "description": "Finish 3 deliveries in the rain.", "stat": "rain_deliveries", "target": 3},
-				{"id": "t1_discover", "title": "Wandering", "description": "Discover 5 places.", "stat": "discoveries", "target": 5},
-				{"id": "t1_upgrades", "title": "A bit of love", "description": "Have 2 upgrades fitted to the car.", "stat": "upgrades_fitted", "target": 2}
+				{"id": "t1_earn", "title": "Pay the rent", "description": "Earn $2,500 in total.", "stat": "earned", "target": 2500},
+				{"id": "t1_deliveries", "title": "Odd jobs", "description": "Finish 10 deliveries.", "stat": "deliveries", "target": 10},
+				{"id": "t1_km", "title": "Learning the roads", "description": "Drive 120 km.", "stat": "km_driven", "target": 120},
+				{"id": "t1_trials", "title": "Not just a shopping trolley", "description": "Earn a medal in 2 time trials.", "stat": "trials_medalled", "target": 2},
+				{"id": "t1_night", "title": "Night shift", "description": "Finish 3 deliveries after dark.", "stat": "night_deliveries", "target": 3},
+				{"id": "t1_rain", "title": "Rain or shine", "description": "Finish 2 deliveries in the rain.", "stat": "rain_deliveries", "target": 2},
+				{"id": "t1_discover", "title": "Wandering", "description": "Discover 8 places.", "stat": "discoveries", "target": 8},
+				{"id": "t1_upgrades", "title": "A bit of love", "description": "Fit an upgrade to your car.", "stat": "upgrades_fitted", "target": 1}
 			]
 		},
 		{
 			"id": "known_around_town",
 			"title": "Known around town",
-			"blurb": "People know the little grey Fiat now. Better jobs, longer runs, fussier customers.",
-			"pay_multiplier": 1.5,
-			"unlocks_car": "lounge_14",
+			"blurb": "People know your little Fiat now. Better jobs, longer runs, fussier customers. Time for something with a bit more go.",
+			"pay_multiplier": 1.8,
 			"challenges": [
-				{"id": "t2_earn", "title": "Savings", "description": "Earn $12,000 in total.", "stat": "earned", "target": 12000},
-				{"id": "t2_deliveries", "title": "Regulars", "description": "Finish 50 deliveries.", "stat": "deliveries", "target": 50},
-				{"id": "t2_km", "title": "Clocking up", "description": "Drive 600 km.", "stat": "km_driven", "target": 600},
-				{"id": "t2_silver", "title": "Quick little thing", "description": "Earn silver or better in 6 time trials.", "stat": "trials_silver", "target": 6},
-				{"id": "t2_fragile", "title": "Handle with care", "description": "Deliver 10 fragile loads without a scratch.", "stat": "fragile_perfect", "target": 10},
-				{"id": "t2_storm", "title": "Through the storm", "description": "Finish 5 deliveries in a storm.", "stat": "storm_deliveries", "target": 5},
-				{"id": "t2_discover", "title": "Local knowledge", "description": "Discover 15 places.", "stat": "discoveries", "target": 15},
-				{"id": "t2_upgrades", "title": "Making it yours", "description": "Have 5 upgrades fitted to the car.", "stat": "upgrades_fitted", "target": 5}
+				{"id": "t2_earn", "title": "Savings", "description": "Earn $10,000 in total.", "stat": "earned", "target": 10000},
+				{"id": "t2_deliveries", "title": "Regulars", "description": "Finish 25 deliveries.", "stat": "deliveries", "target": 25},
+				{"id": "t2_car", "title": "Something with more go", "description": "Drive 160 km in a Lounge or TwinAir.", "stat": "km_tier_car", "target": 160},
+				{"id": "t2_silver", "title": "Quick little thing", "description": "Earn silver or better in 3 time trials.", "stat": "trials_silver", "target": 3},
+				{"id": "t2_fragile", "title": "Handle with care", "description": "Deliver 4 fragile loads without a scratch.", "stat": "fragile_perfect", "target": 4},
+				{"id": "t2_suburbs", "title": "Getting around", "description": "Deliver to 8 different suburbs.", "stat": "suburbs_delivered", "target": 8},
+				{"id": "t2_discover", "title": "Local knowledge", "description": "Discover 20 places.", "stat": "discoveries", "target": 20},
+				{"id": "t2_upgrades", "title": "Making it yours", "description": "Have 2 upgrades fitted to the car you drive.", "stat": "upgrades_fitted", "target": 2}
 			]
 		},
 		{
 			"id": "small_business",
 			"title": "Small business",
-			"blurb": "Word of mouth has turned into a phone that rings. Long hauls out to the hills and the coast.",
-			"pay_multiplier": 2.2,
-			"unlocks_car": "abarth_595",
+			"blurb": "Word of mouth has turned into a phone that rings. Long hauls to the hills and the coast, and a scorpion on the bonnet.",
+			"pay_multiplier": 3.0,
 			"challenges": [
-				{"id": "t3_earn", "title": "Turnover", "description": "Earn $35,000 in total.", "stat": "earned", "target": 35000},
-				{"id": "t3_deliveries", "title": "Busy season", "description": "Finish 120 deliveries.", "stat": "deliveries", "target": 120},
-				{"id": "t3_km", "title": "Long way round", "description": "Drive 1,800 km.", "stat": "km_driven", "target": 1800},
-				{"id": "t3_gold", "title": "Giant killer", "description": "Earn gold in 8 time trials.", "stat": "trials_gold", "target": 8},
-				{"id": "t3_fragile", "title": "Glass in the back", "description": "Deliver 30 fragile loads without a scratch.", "stat": "fragile_perfect", "target": 30},
-				{"id": "t3_night", "title": "Night owl", "description": "Finish 40 deliveries after dark.", "stat": "night_deliveries", "target": 40},
-				{"id": "t3_discover", "title": "Every corner", "description": "Discover 30 places.", "stat": "discoveries", "target": 30}
+				{"id": "t3_earn", "title": "Turnover", "description": "Earn $22,000 in total.", "stat": "earned", "target": 22000},
+				{"id": "t3_deliveries", "title": "Busy season", "description": "Finish 45 deliveries.", "stat": "deliveries", "target": 45},
+				{"id": "t3_car", "title": "Scorpion", "description": "Drive 200 km in an Abarth 500 or a 500e.", "stat": "km_tier_car", "target": 200},
+				{"id": "t3_gold", "title": "Giant killer", "description": "Earn gold in 2 time trials.", "stat": "trials_gold", "target": 2},
+				{"id": "t3_storm", "title": "Through the storm", "description": "Finish 2 deliveries in a storm.", "stat": "storm_deliveries", "target": 2},
+				{"id": "t3_night", "title": "Night owl", "description": "Finish 14 deliveries after dark.", "stat": "night_deliveries", "target": 14},
+				{"id": "t3_suburbs", "title": "All over the map", "description": "Deliver to 14 different suburbs.", "stat": "suburbs_delivered", "target": 14},
+				{"id": "t3_fragile", "title": "Glass in the back", "description": "Deliver 7 fragile loads without a scratch.", "stat": "fragile_perfect", "target": 7}
 			]
 		},
 		{
 			"id": "the_regular",
 			"title": "The regular",
 			"blurb": "Half of Perth has had something delivered by you. The other half has heard about it.",
-			"pay_multiplier": 3.0,
-			"unlocks_car": "classic_500f",
+			"pay_multiplier": 4.5,
 			"challenges": [
-				{"id": "t4_earn", "title": "Comfortable", "description": "Earn $90,000 in total.", "stat": "earned", "target": 90000},
-				{"id": "t4_deliveries", "title": "Institution", "description": "Finish 250 deliveries.", "stat": "deliveries", "target": 250},
-				{"id": "t4_km", "title": "Around Australia, nearly", "description": "Drive 5,000 km.", "stat": "km_driven", "target": 5000},
-				{"id": "t4_gold", "title": "Clean sweep", "description": "Earn gold in 16 time trials.", "stat": "trials_gold", "target": 16},
-				{"id": "t4_storm", "title": "Storm chaser", "description": "Finish 25 deliveries in a storm.", "stat": "storm_deliveries", "target": 25},
-				{"id": "t4_discover", "title": "Perth by heart", "description": "Discover 50 places.", "stat": "discoveries", "target": 50},
-				{"id": "t4_upgrades", "title": "Fully sorted", "description": "Have 8 upgrades fitted to the car.", "stat": "upgrades_fitted", "target": 8}
+				{"id": "t4_earn", "title": "Comfortable", "description": "Earn $50,000 in total.", "stat": "earned", "target": 50000},
+				{"id": "t4_deliveries", "title": "Institution", "description": "Finish 75 deliveries.", "stat": "deliveries", "target": 75},
+				{"id": "t4_car", "title": "Hot hatch", "description": "Drive 320 km in a 595 or the new 500e.", "stat": "km_tier_car", "target": 320},
+				{"id": "t4_gold", "title": "Clean sweep", "description": "Earn gold in 4 time trials.", "stat": "trials_gold", "target": 4},
+				{"id": "t4_storm", "title": "Storm chaser", "description": "Finish 4 deliveries in a storm.", "stat": "storm_deliveries", "target": 4},
+				{"id": "t4_discover", "title": "Perth by heart", "description": "Discover 45 places.", "stat": "discoveries", "target": 45},
+				{"id": "t4_suburbs", "title": "Every postcode", "description": "Deliver to 20 different suburbs.", "stat": "suburbs_delivered", "target": 20},
+				{"id": "t4_upgrades", "title": "Fully sorted", "description": "Have 4 upgrades fitted to the car you drive.", "stat": "upgrades_fitted", "target": 4}
+			]
+		},
+		{
+			"id": "perth_legend",
+			"title": "Perth legend",
+			"blurb": "The 695s are yours to buy. Nothing left to prove, but plenty left to drive.",
+			"pay_multiplier": 6.0,
+			"challenges": [
+				{"id": "t5_earn", "title": "Made it", "description": "Earn $120,000 in total.", "stat": "earned", "target": 120000},
+				{"id": "t5_deliveries", "title": "Part of the furniture", "description": "Finish 140 deliveries.", "stat": "deliveries", "target": 140},
+				{"id": "t5_km", "title": "Around Australia, nearly", "description": "Drive 1,600 km across all your cars.", "stat": "km_driven", "target": 1600},
+				{"id": "t5_gold", "title": "Every stopwatch", "description": "Earn gold in 8 time trials.", "stat": "trials_gold", "target": 8},
+				{"id": "t5_discover", "title": "Nowhere left", "description": "Discover 58 places.", "stat": "discoveries", "target": 58},
+				{"id": "t5_suburbs", "title": "Everywhere, twice", "description": "Deliver to 22 different suburbs.", "stat": "suburbs_delivered", "target": 22},
+				{"id": "t5_cars", "title": "The collection", "description": "Own 5 cars.", "stat": "cars_owned", "target": 5},
+				{"id": "t5_fragile", "title": "Steady hands", "description": "Deliver 22 fragile loads without a scratch.", "stat": "fragile_perfect", "target": 22}
 			]
 		}
 	]

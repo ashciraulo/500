@@ -86,8 +86,9 @@ func _ready() -> void:
 	_site("scarborough_beach", "Scarborough Beach", "Scarborough", Vector3(-18, 0, 32))
 	_site("guildford_antiques", "James Street antiques", "Guildford", Vector3(-135, 0, -315))
 
-	# Placeholder workshops: your carport at home, a spray shop and a servo.
-	_workshop("home_carport", "Carport", ["parts", "tuning"], Vector3(-7, 0, 4))
+	# Placeholder workshops: your carport at home, a spray shop, a servo and a car yard.
+	_workshop("home_carport", "Carport", ["parts", "tuning", "cars"], Vector3(-7, 0, 4))
+	_workshop("car_yard", "Scarborough Beach Rd car yard", ["dealer"], Vector3(-21, 0, 4), Color(0.6, 0.75, 1.0))
 	_workshop("spray_shop", "Osborne Park Smash & Spray", ["paint"], Vector3(66, 0, -36), Color(1.0, 0.6, 0.35))
 	_workshop("fitzgerald_st_servo", "Fitzgerald St servo", ["fuel", "wash"], Vector3(12, 0, 4), Color(0.95, 0.85, 0.4))
 

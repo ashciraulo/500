@@ -28,6 +28,10 @@ const MEDALS := ["gold", "silver", "bronze"]
 ## Average speeds (km/h, over road distance) for each medal.
 const MEDAL_SPEEDS := {"gold": 62.0, "silver": 52.0, "bronze": 42.0}
 const MEDAL_REWARDS := {"gold": 220, "silver": 120, "bronze": 60}
+## Delivery pay: base plus per road km, before the tier's pay multiplier.
+## tools/pacing_model.py reads these; re-run it after changing them.
+const DELIVERY_BASE_PAY := 55.0
+const DELIVERY_PAY_PER_KM := 26.0
 
 const CARGO := [
 	["a crate of Margaret River wine", true],
@@ -128,6 +132,7 @@ func accept(job: Dictionary) -> void:
 	active.damage = 0.0
 	active.stage = "to_pickup" if job.type == "delivery" else "to_start"
 	active.checkpoint = 0
+	active.weather_bonus = weather_bonus()
 	_place_beacon()
 	offers_changed.emit()
 	job_started.emit(active)
@@ -179,12 +184,24 @@ func objective_text() -> String:
 	return ""
 
 
+## Pay multiplier for a job taken right now: rain 25% more, storms 50%.
+func weather_bonus() -> float:
+	match Weather.state:
+		Weather.State.LIGHT_RAIN:
+			return 1.25
+		Weather.State.STORM:
+			return 1.5
+	return 1.0
+
+
 func describe(job: Dictionary) -> String:
 	if job.type == "delivery":
 		var fragile := " Fragile." if job.fragile else ""
-		return "%s: %s to %s. %.1f km, $%d.%s" % [
+		var bonus := weather_bonus()
+		var weather := "  +%d%% in this weather." % roundi((bonus - 1.0) * 100.0) if bonus > 1.0 else ""
+		return "%s: %s to %s. %.1f km, $%d.%s%s" % [
 			site(job.pickup).label() if site(job.pickup) else job.pickup, job.cargo,
-			site(job.dropoff).label() if site(job.dropoff) else job.dropoff, job.km, job.pay, fragile]
+			site(job.dropoff).label() if site(job.dropoff) else job.dropoff, job.km, job.pay, fragile, weather]
 	var record: Dictionary = trial_records.get(job.trial_id, {})
 	var best := "  Best %s (%s)" % [_clock(record.best), record.medal] if record.has("best") else ""
 	return "%s: %d checkpoints, %.1f km. Gold %s, silver %s, bronze %s.%s" % [
@@ -234,9 +251,14 @@ func _finish_delivery() -> void:
 	var bonus := roundi(job.pay * 0.25) if quick else 0
 	# Customers notice a clean car.
 	var tip := roundi(job.pay * 0.05) if _car and _car.dirt < 0.2 else 0
-	var total := roundi(pay) + bonus + tip
+	# Jobs taken in the rain pay 25% more, storm jobs 50%.
+	var weather_extra := roundi(job.pay * (float(job.get("weather_bonus", 1.0)) - 1.0))
+	var total := roundi(pay) + bonus + tip + weather_extra
 	Wallet.earn(total, "delivery")
 	Progression.add_stat("deliveries")
+	var drop := site(job.dropoff)
+	if drop:
+		Progression.note_suburb(drop.suburb)
 	if GameClock.is_night():
 		Progression.add_stat("night_deliveries")
 	if Weather.state != Weather.State.CLEAR:
@@ -248,6 +270,8 @@ func _finish_delivery() -> void:
 	var summary := "Delivered %s in %s. $%d" % [job.cargo, _clock(job.elapsed), total]
 	if bonus > 0:
 		summary += " (includes $%d for being quick)" % bonus
+	if weather_extra > 0:
+		summary += ", with $%d extra for the weather" % weather_extra
 	if tip > 0:
 		summary += ", plus a $%d tip for the clean car" % tip
 	if job.damage >= 0.5:
@@ -307,7 +331,7 @@ func _make_delivery(all_sites: Array[JobSite]) -> Dictionary:
 		return {}
 	var cargo: Array = CARGO[_rng.randi() % CARGO.size()]
 	var km := from.global_position.distance_to(to.global_position) * ROAD_FACTOR / 1000.0
-	var pay := (18.0 + km * 9.0) * Progression.pay_multiplier() * (1.3 if cargo[1] else 1.0)
+	var pay := (DELIVERY_BASE_PAY + km * DELIVERY_PAY_PER_KM) * Progression.pay_multiplier() * (1.3 if cargo[1] else 1.0)
 	return {
 		"id": _new_id(), "type": "delivery",
 		"title": "Deliver %s" % cargo[0], "cargo": cargo[0], "fragile": cargo[1],

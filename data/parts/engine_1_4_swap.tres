@@ -10,4 +10,5 @@ description = "The 74 kW 1.4 from the 500 Lounge. Revs higher and pulls harder."
 slot = &"engine"
 price = 4200
 modifiers = {"torque_mult": 1.42, "limiter_add": 600, "mass_add": 15}
+fits = PackedStringArray("pop_12")
 visual = ""

@@ -128,7 +128,8 @@ Run the game with `-- --no-save` to skip saving and loading entirely.
 
 Already saved: `clock` (time, day), `weather` (state, wetness), `car`
 (position, heading, parts, tuning, paint, fuel, dirt, odometer), `wallet`, `discoveries`,
-`progression` (stats, tier, unlocked cars), `garage` (parts you own), `jobs` (offers, active job, trial
+`progression` (stats, tier, suburbs), `garage` (your cars, their parts, and the
+state of the cars you are not driving), `jobs` (offers, active job, trial
 records).
 
 ## Money (autoload `Wallet`) and discoveries (autoload `Discoveries`)
@@ -149,8 +150,30 @@ records).
   `place_discovered(site)`. Audio can hook stinger sounds to these.
 - `Progression.add_stat(stat, amount)` counts anything (deliveries, medals,
   night drives). Tiers and their challenges live in
-  `data/progression/tiers.json`; each challenge names a stat and a target.
+  `data/progression/tiers.json`; each challenge names a stat from
+  `Progression.KNOWN_STATS` and a target. Reaching a tier lets you buy that
+  tier's cars. `python3 tools/pacing_model.py` estimates how many hours each
+  tier takes; run it after changing tiers, car prices or delivery pay.
+- Deliveries taken in light rain pay 25% more and in a storm 50% more.
   Signals: `stat_changed`, `challenge_completed`, `tier_completed`.
+
+## Cars (data/cars/cars.json, `CarCatalogue`, `Garage`)
+
+- Every car is data: name, years, ladder (modern / electric / classic), tier,
+  price, how it unlocks, and a `spec` of CarController values (mass, torque
+  curve, gear ratios, springs...). Classics have no spec yet; they arrive with
+  the barn finds.
+- `car.apply_car(id)` turns the player car into another model and emits
+  `car_changed(id)`. Until a car has its own model, every car borrows the
+  Pop's body; the models thread can swap bodies on `car_changed`, and audio
+  can swap engine sounds on it (`car.is_electric` for the EVs).
+- `Garage.owned_cars`, `buy_car(id, car)`, `switch_car(id, car)`,
+  `car_blocker(id)` (why it can't be bought yet), `lifetime_km(car)`.
+  Each car keeps its own parts, tuning, paint, fuel and odometer; bought
+  parts belong to the car (`fits` on a CarPart limits it to certain cars,
+  and EVs take no engine, intake, exhaust or gearbox parts).
+- WorkshopSpot kinds `cars` (swap between your cars, at home) and `dealer`
+  (the car yard, which also sells them).
 
 ## Workshops (autoload `Garage`, `WorkshopSpot` markers)
 

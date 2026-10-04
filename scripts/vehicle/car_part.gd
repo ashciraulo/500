@@ -22,6 +22,9 @@ extends Resource
 ## Price in Australian dollars. Stock parts are 0.
 @export var price := 0
 @export var modifiers := {}
+## Car ids this part fits. Empty = any car with the slot (electric cars
+## have no engine, intake, exhaust or gearbox to swap).
+@export var fits: PackedStringArray = []
 ## Model id for the car body to show, e.g. "exhaust_sport". Empty = none.
 @export var visual := ""
 

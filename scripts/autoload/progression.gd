@@ -2,24 +2,37 @@ extends Node
 ## Career progress (autoload: Progression): tiers, their challenges, and the
 ## counters challenges are measured against. Tiers live in
 ## data/progression/tiers.json. All challenges in a tier must be done to move
-## up; finishing a tier unlocks the next one and possibly a new car.
+## up; reaching a tier lets you buy that tier's cars at a dealer (the `tier`
+## of each car in data/cars/cars.json).
 ##
 ## Stats a challenge can use:
 ##   counters kept here (bump with `add_stat`): deliveries, night_deliveries,
 ##     rain_deliveries, storm_deliveries, fragile_perfect, trials_completed,
-##     trials_medalled, trials_silver, trials_gold
-##   read live: earned (Wallet.total_earned), km_driven (car odometer),
-##     discoveries (Discoveries count), upgrades_fitted (non-stock parts on the car)
+##     trials_medalled, trials_silver, trials_gold, parts_bought, cars_bought,
+##     washes, resprays, litres_bought
+##   read live: earned (Wallet.total_earned), km_driven (every car's odometer),
+##     km_tier_car (most km in one car of the current tier), discoveries
+##     (Discoveries count), upgrades_fitted (non-stock parts on the car you're
+##     driving), suburbs_delivered (different suburbs you've delivered to),
+##     cars_owned
 
 signal stat_changed(stat: String, value: float)
 signal challenge_completed(tier_index: int, challenge: Dictionary)
 signal tier_completed(tier_index: int, tier: Dictionary)
 
 const TIERS_PATH := "res://data/progression/tiers.json"
+## Every stat a challenge may name (the smoke test checks tiers.json against it).
+const KNOWN_STATS := [
+	"deliveries", "night_deliveries", "rain_deliveries", "storm_deliveries", "fragile_perfect",
+	"trials_completed", "trials_medalled", "trials_silver", "trials_gold", "parts_bought",
+	"cars_bought", "washes", "resprays", "litres_bought", "earned", "km_driven", "km_tier_car",
+	"discoveries", "upgrades_fitted", "suburbs_delivered", "cars_owned",
+]
 
 var tiers: Array = []
 var tier_index := 0
-var unlocked_cars: PackedStringArray = ["pop_12"]
+## Suburbs you've delivered to.
+var suburbs: PackedStringArray = []
 
 var _stats := {}
 var _completed := {}  # challenge id -> day completed
@@ -67,8 +80,13 @@ func get_stat(stat: String) -> float:
 		"discoveries":
 			return Discoveries.all().size()
 		"km_driven":
-			var car := _car()
-			return car.odometer_km if car else 0.0
+			return Garage.lifetime_km(_car())
+		"km_tier_car":
+			return Garage.km_in_tier(mini(tier_index, tiers.size() - 1), _car())
+		"suburbs_delivered":
+			return suburbs.size()
+		"cars_owned":
+			return Garage.owned_cars.size()
 		"upgrades_fitted":
 			var car := _car()
 			return car.parts.size() if car else 0.0
@@ -99,10 +117,20 @@ func check() -> void:
 		all_done = all_done and is_done(challenge)
 	if all_done:
 		var finished := tier_index
-		if tier.get("unlocks_car", "") != "" and not unlocked_cars.has(tier.unlocks_car):
-			unlocked_cars.append(tier.unlocks_car)
 		tier_index += 1
 		tier_completed.emit(finished, tier)
+
+
+## Note a delivery to a suburb (for "deliver in N suburbs" challenges).
+func note_suburb(suburb: String) -> void:
+	if suburb != "" and not suburbs.has(suburb):
+		suburbs.append(suburb)
+		check()
+
+
+## Cars a dealer will now sell you (by tier reached).
+func cars_unlocked_at(index: int) -> Array:
+	return CarCatalogue.for_sale().filter(func(c: Dictionary) -> bool: return int(c.tier) == index)
 
 
 func save_state() -> Dictionary:
@@ -110,7 +138,7 @@ func save_state() -> Dictionary:
 		"tier_index": tier_index,
 		"stats": _stats,
 		"completed": _completed,
-		"unlocked_cars": Array(unlocked_cars),
+		"suburbs": Array(suburbs),
 	}
 
 
@@ -118,7 +146,7 @@ func load_state(data: Dictionary) -> void:
 	tier_index = int(data.get("tier_index", 0))
 	_stats = data.get("stats", {})
 	_completed = data.get("completed", {})
-	unlocked_cars = PackedStringArray(data.get("unlocked_cars", ["pop_12"]))
+	suburbs = PackedStringArray(data.get("suburbs", []))
 
 
 func _car() -> CarController:

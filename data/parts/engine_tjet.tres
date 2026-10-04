@@ -10,4 +10,5 @@ description = "Abarth's turbo 1.4. A different car entirely."
 slot = &"engine"
 price = 9800
 modifiers = {"torque_mult": 1.95, "limiter_add": 200, "mass_add": 40}
+fits = PackedStringArray("pop_12")
 visual = ""

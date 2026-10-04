@@ -105,8 +105,12 @@ func _ready() -> void:
 	Jobs.place_discovered.connect(func(site: JobSite) -> void: toast("Discovered: %s" % site.label()))
 	Progression.challenge_completed.connect(func(_tier: int, challenge: Dictionary) -> void:
 		toast("Challenge done: %s" % challenge.title))
-	Progression.tier_completed.connect(func(_index: int, tier: Dictionary) -> void:
-		toast("Tier complete: %s! New jobs pay better now." % tier.title))
+	Progression.tier_completed.connect(func(index: int, tier: Dictionary) -> void:
+		var names := PackedStringArray()
+		for car in Progression.cars_unlocked_at(index + 1):
+			names.append(car.name)
+		var cars := " The car yard has the %s for you." % " and ".join(names) if not names.is_empty() else ""
+		toast("Tier complete: %s! Jobs pay better now.%s" % [tier.title, cars]))
 	if _car:
 		_car.fuel_low.connect(func() -> void: toast("Fuel's getting low. Time to find a servo."))
 		_car.fuel_empty.connect(func() -> void:

@@ -34,6 +34,29 @@ static func for_slot(slot: StringName) -> Array[CarPart]:
 	return result
 
 
+## Slots an electric car can't take parts in.
+const COMBUSTION_SLOTS: Array[StringName] = [&"engine", &"intake", &"exhaust", &"gearbox"]
+
+
+## True when a part can go on a car.
+static func fits(part: CarPart, car_id: String) -> bool:
+	if not part.fits.is_empty():
+		return part.fits.has(car_id)
+	var car := CarCatalogue.get_car(car_id)
+	if car.get("electric", false) and COMBUSTION_SLOTS.has(part.slot):
+		return part.is_stock()
+	return true
+
+
+## Parts for one slot that fit a car, cheapest first.
+static func for_car(slot: StringName, car_id: String) -> Array[CarPart]:
+	var result: Array[CarPart] = []
+	for part in for_slot(slot):
+		if fits(part, car_id):
+			result.append(part)
+	return result
+
+
 static func _ensure_loaded() -> void:
 	if not _parts.is_empty():
 		return
