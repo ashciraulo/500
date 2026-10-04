@@ -19,6 +19,12 @@ func _ready() -> void:
 	if not parsed is Dictionary:
 		return
 	places = parsed
+	var race := TrainRace.new()
+	race.name = "TrainRace"
+	add_child(race)
+	var odd := Oddities.new()
+	odd.name = "Oddities"
+	add_child(odd)
 	for p: Dictionary in places.get("photo_spots", []):
 		var spot := PhotoSpot.new()
 		spot.spot_id = p.id

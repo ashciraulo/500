@@ -220,6 +220,7 @@ func _refresh_leads() -> void:
 	_text(_leads_list, "Parking challenges: %d tried, %d gold. Look for the yellow PARK signs." % [Activities.parking.size(), golds])
 	_text(_leads_list, "Scenic drives done: %d. Green SCENIC DRIVE signs start them." % Progression.get_stat("scenic_drives"))
 	_text(_leads_list, "Lifts given: %d. Passengers show up on the job board." % Progression.get_stat("lifts_given"))
+	_text(_leads_list, "Trains beaten: %d of %d raced. Drive alongside a moving train and get past the front." % [Progression.get_stat("trains_beaten"), Progression.get_stat("trains_raced")])
 	var relaxed := CheckButton.new()
 	relaxed.text = "Relaxed cruising (lighter traffic, no jobs)"
 	relaxed.button_pressed = Activities.relaxed

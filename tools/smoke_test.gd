@@ -500,6 +500,44 @@ func _run_step() -> bool:
 			elif _frame == 5:
 				_check(_car.get_node("Body").scene_file_path.ends_with("pop/pop.glb"), "back in the Pop's body")
 				_check(_car.cosmetics.livery == "livery_racing_stripes", "the Pop kept its stripes")
+				# Racing a train: start alongside, then get past the front carriage.
+				var race: Node = load("res://scripts/world/train_race.gd").new()
+				_main.add_child(race)
+				race._car = _car
+				var fwd: Vector3 = -_car.global_basis.z
+				var train := Node3D.new()
+				_car.linear_velocity = fwd * 15.0
+				race._judge(train, _car.global_position + fwd * 20.0 + _car.global_basis.x * 12.0, fwd * 14.0)
+				_check(race._racing == train and progression.get_stat("trains_raced") == 1.0, "driving beside a train starts a race")
+				race._judge(train, _car.global_position - fwd * 15.0 + _car.global_basis.x * 12.0, fwd * 14.0)
+				_check(race._racing == null and progression.get_stat("trains_beaten") == 1.0, "getting past the front carriage beats it")
+				_car.linear_velocity = Vector3.ZERO
+				train.free()
+				race.queue_free()
+				# Night oddities: the follower in Kings Park and the river lights.
+				var odd: Node = _main.find_child("Oddities", true, false)
+				_check(odd != null, "night oddities are set up")
+				if odd:
+					root.get_node("GameClock").set_time(1.0)
+					_check(odd.is_night(), "1 am is oddity time")
+					odd._car = _car
+					odd._park_centre = _car.global_position
+					odd._trail.clear()
+					for i in 40:
+						odd._trail.append(_car.global_position + _car.global_basis.z * (80.0 - i * 2.0))
+					_car.linear_velocity = -_car.global_basis.z * 10.0
+					odd._check_follower(true)
+					_check(odd._follower != null, "headlights start following in Kings Park")
+					odd._follow_time = 20.0
+					odd._follower.global_position = _car.global_position - _car.global_basis.z * 20.0
+					odd._move_follower(0.01)
+					_check(odd._follower == null and root.get_node("Discoveries").has("oddity/kings_park_car"), "turn towards it and it's gone")
+					odd._river = _car.global_position + Vector3(40, 0, 0)
+					odd._check_river(true)
+					_check(root.get_node("Discoveries").has("oddity/river_lights"), "the river lights count as a discovery")
+					odd._check_river(false)
+					_car.linear_velocity = Vector3.ZERO
+					root.get_node("GameClock").set_time(12.0)
 				_next()
 		_:
 			Input.action_release("accelerate")

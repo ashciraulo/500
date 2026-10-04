@@ -267,3 +267,17 @@ records).
 - `data/cars/cars.json` `model` names the body under
   `art/models/cars/<model>/<model>.glb`; `CarController.apply_car()` swaps it
   in. Cars without one borrow the Pop's.
+
+## Train races and night oddities
+
+- `TrainRace` (under `GameplayPlaces`) listens to traffic's `train_spawned`
+  and races you against trains you drive beside; stats `trains_raced` and
+  `trains_beaten`. Sounds: `traffic/traffic_train_alongside_loop` (pitch =
+  train speed / 100 km/h) and `Audio.sting("race_win")`.
+- `Oddities` (under `GameplayPlaces`), midnight to 3:30: the Kings Park
+  follower (`oddity/odd_follower_engine_loop`), the lane idle
+  (`oddity/odd_lane_idle_loop`, then `oddity/odd_lane_idle_cutout` within
+  25 m), the river lights (`oddity/odd_river_lights_loop` and
+  `oddity/odd_river_lights_shimmer`) and the midnight station
+  (`oddity/odd_midnight_station_found` the first time). Each counts once as
+  discovery `oddity/<id>`. Missing sounds play nothing.

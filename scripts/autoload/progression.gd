@@ -34,6 +34,7 @@ const KNOWN_STATS := [
 	"discoveries", "upgrades_fitted", "suburbs_delivered", "cars_owned", "badges",
 	"barn_finds", "restoration_stages", "classics_restored", "photos_taken", "photo_spots",
 	"parking_done", "parking_gold", "scenic_drives", "meets_attended", "lifts_given",
+	"trains_raced", "trains_beaten",
 ]
 
 var tiers: Array = []
