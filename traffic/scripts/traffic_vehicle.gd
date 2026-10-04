@@ -45,6 +45,9 @@ var yield_wait := 0.0
 var stop_sign_wait := 0.0
 ## Connector we've been cleared to enter (no more yielding for it).
 var cleared: TrafficGraph.Lane
+## Every connector that clearance covers: back-to-back junctions joined by a
+## link too short to wait on are crossed in one go.
+var commits: Array = []
 ## Bus stops already served on the current lane.
 var served := {}
 var dwell := 0.0

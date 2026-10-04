@@ -68,4 +68,6 @@ turns). CI runs it on every push; locally:
 godot --headless --path . --import
 godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/traffic_test.gd
+# Optional, a few minutes: traffic soak on the Perth map (not in CI)
+godot --headless --path . --fixed-fps 60 --script res://tools/traffic_map_test.gd
 ```

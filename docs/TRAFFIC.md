@@ -15,11 +15,12 @@ walking the footpaths. The code lives in `traffic/`.
 | `traffic/sandbox/` | `traffic_sandbox.tscn`: the full game on the sandbox suburb. Open it and press F6. |
 | `tools/traffic_test.gd` | Headless test (CI runs it). |
 | `tools/traffic_screens.gd` | Screenshots of the sandbox (needs xvfb). |
+| `tools/traffic_map_test.gd` | Soak test on the Perth map: a few minutes of rush hour at home, two CBD junctions and both freeways. Too slow for CI; run it after changing driving rules. |
+| `tools/traffic_map_screens.gd` | Screenshots of traffic on the Perth map (needs xvfb). |
 
 `scenes/main.tscn` has a `Traffic` node (a `TrafficManager`) under `World`.
-Until the map provides roads it uses a network matching the test grid's
-streets, so the prototype already has traffic on the oval and in the town
-block.
+The Perth map hands it each tile's roads as the tile streams in. Scenes with
+the old test grid get a network matching the grid's streets instead.
 
 ## How it works
 
@@ -42,9 +43,18 @@ block.
   lane by the centre line. The through road has priority; side streets give
   way, roundabout entries give way to circulating traffic, and right turns
   give way to oncoming traffic. Tagged `stop` junctions need a full stop.
-  Nobody enters a junction while someone is crossing their path or when there
-  is no room on the far side. `signals` junctions run fixed-time phases
-  (green, amber, all-red) per axis, with Perth-style yellow-backed lights.
+  Nobody enters a junction while someone is crossing their path, while the
+  same move is backed up, or when there is no room on the far side.
+  Junctions joined by a link too short to wait on (dual carriageway
+  crossings, split intersections) are crossed in one go, only when all of
+  them are clear. Where two lanes become one, cars zip-merge: whoever is
+  nearer the merge goes first. On-ramps and slip lanes take smaller gaps
+  than crossings. `signals` junctions run fixed-time phases (green, amber,
+  all-red) per axis, with Perth-style yellow-backed lights; signal nodes
+  joined by short links, even through plain bends, are one set of lights.
+- **Routes** avoid dead ends (a one-way street into a laneway traffic
+  doesn't use, or the edge of the loaded map) whenever there's another way,
+  and cars don't spawn heading into one.
 - **Trains** are 3-car sets (6 in rush hour) that run on the left track where
   there are two, stop at stations for about 14 s, and close the boom gates at
   level crossings. Crossings are found wherever rail and road meet at the
@@ -63,7 +73,10 @@ The map gives traffic its roads by calling `add_network(data)` on the
 `get_tree().call_group(&"traffic", &"add_network", data)` works), once per
 tile as tiles load. Alternatively a node in the `traffic_sources` group with
 a `get_traffic_data()` method is read at startup. Roads join across calls on
-shared node ids, so use OSM node ids.
+shared node ids, so use OSM node ids. A tile's roads may arrive before or
+after its neighbours': junctions rebuild when new roads reach them (cars
+already on them keep going), signal sets join up across tiles, and stations
+and bus stops attach to rail and roads that arrive later.
 
 World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 `y` is the road surface height.

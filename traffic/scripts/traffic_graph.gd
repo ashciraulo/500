@@ -138,6 +138,9 @@ class Lane:
 	var conflicts: Array = []
 	## Things that can halt traffic along this lane: [{s, gate}], sorted by s.
 	var stops: Array = []
+	## Cached TrafficGraph.reach() and the graph version it was worked out for.
+	var reach := 0.0
+	var reach_version := -1
 	## Vehicles currently registered on this lane (managed by the traffic sim).
 	var vehicles: Array = []
 	## Parallel lanes in the same direction (for lane changes).
@@ -312,8 +315,12 @@ var rail_nodes: Array = []
 var rail_edges: Array = []
 var crossings: Array = []
 var bus_stops: Array = []
+var stations: Array = []
 
+## Bumped whenever roads are added, so cached route facts get refreshed.
+var version := 0
 var _road_keys := {}
+var _pending_bus_stops: Array = []
 var _lane_cells := {}
 var _ped_cells := {}
 var _rail_cells := {}
@@ -350,6 +357,7 @@ func add_data(data: Dictionary) -> int:
 	if added.is_empty() and data.get("rail", []).is_empty() and data.get("footways", []).is_empty():
 		return 0
 
+	version += 1
 	_mark_minor_approaches(dirty.keys())
 	for node in dirty.keys():
 		_compute_radius(node)
@@ -360,11 +368,18 @@ func add_data(data: Dictionary) -> int:
 			rebuild[road] = true
 	for road in rebuild.keys():
 		_build_lanes(road)
-	connectors = connectors.filter(func(c): return not dirty.has(c.node))
-	for node in dirty.keys():
+	# Lanes were rebuilt at both ends of those roads, so the junctions at
+	# both ends need their connectors redone too.
+	var junctions := dirty.duplicate()
+	for road in rebuild.keys():
+		junctions[road.a] = true
+		junctions[road.b] = true
+	connectors = connectors.filter(func(c): return not junctions.has(c.node))
+	for node in junctions.keys():
 		_build_connectors(node)
+	for node in junctions.keys():
 		_find_conflicts(node)
-	_build_signals(dirty.keys())
+	_build_signals(junctions.keys())
 	for road in added:
 		_index_road(road)
 		_build_footpaths(road)
@@ -377,6 +392,11 @@ func add_data(data: Dictionary) -> int:
 		_add_rail(_points(r.pts))
 	for st in data.get("stations", []):
 		_add_station(_vec(st.p), str(st.get("name", "")))
+	if not added.is_empty() and not _pending_bus_stops.is_empty():
+		var waiting := _pending_bus_stops
+		_pending_bus_stops = []
+		for p in waiting:
+			_add_bus_stop(p)
 	for bs in data.get("bus_stops", []):
 		_add_bus_stop(_vec(bs.p))
 	if not data.get("rail", []).is_empty() or not added.is_empty():
@@ -446,7 +466,14 @@ func _make_road(r: Dictionary) -> Road:
 ## OSM puts give_way/stop tags on the minor road a few metres before the
 ## junction. Pass them on to the junction they belong to.
 func _mark_minor_approaches(touched: Array) -> void:
+	# A junction can gain roads after its give-way node was added (map tiles
+	# arrive one at a time), so look at the neighbours of touched nodes too.
+	var candidates := {}
 	for node in touched:
+		candidates[node] = true
+		for road in node.roads:
+			candidates[road.other(node)] = true
+	for node in candidates.keys():
 		if node.ctrl != &"give_way" and node.ctrl != &"stop":
 			continue
 		if node.degree() >= 3:
@@ -530,6 +557,12 @@ func _build_lanes(road: Road) -> void:
 
 
 func _build_connectors(node: GNode) -> void:
+	# Keep the same connector objects where the same move still exists, so
+	# cars already on them (or planning through them) stay consistent when a
+	# new map tile rebuilds the junction.
+	var old := {}
+	for c in node.connectors:
+		old[[c.in_lane, c.next[0]]] = c
 	node.connectors.clear()
 	var majors := _major_roads(node)
 	var deg := node.degree()
@@ -554,7 +587,7 @@ func _build_connectors(node: GNode) -> void:
 					elif ang < -0.6:
 						turn = Turn.RIGHT
 				for lout in _target_lanes(lin, outs, turn, deg):
-					var c := _make_connector(lin, lout, node, turn)
+					var c := _make_connector(lin, lout, node, turn, old.get([lin, lout]))
 					_assign_priority(c, node, rin, rout, majors)
 					lin.next.append(c)
 
@@ -584,10 +617,16 @@ func _target_lanes(lin: Lane, outs: Array, turn: int, deg: int) -> Array:
 	return result
 
 
-func _make_connector(lin: Lane, lout: Lane, node: GNode, turn: int) -> Lane:
-	var c := Lane.new()
-	c.id = _next_lane_id
-	_next_lane_id += 1
+func _make_connector(lin: Lane, lout: Lane, node: GNode, turn: int, reuse: Lane = null) -> Lane:
+	var c := reuse
+	if c == null:
+		c = Lane.new()
+		c.id = _next_lane_id
+		_next_lane_id += 1
+	c.yield_to.clear()
+	c.conflicts.clear()
+	c.full_stop = false
+	c.stops.clear()
 	c.connector = true
 	c.node = node
 	c.in_lane = lin
@@ -627,15 +666,16 @@ func _find_conflicts(node: GNode) -> void:
 	var list: Array = node.connectors
 	for c in list:
 		c.conflicts.clear()
-	if node.degree() == 2:
-		return
+	# Where the road just bends, the only conflict is a lane ending and
+	# merging into its neighbour.
+	var bend := node.degree() == 2
 	for i in list.size():
 		for j in range(i + 1, list.size()):
 			var c1: Lane = list[i]
 			var c2: Lane = list[j]
 			if c1.in_lane == c2.in_lane:
 				continue  # Same queue: the car in front is enough.
-			if c1.next[0] == c2.next[0] or _paths_touch(c1.pts, c2.pts, 2.6):
+			if c1.next[0] == c2.next[0] or (not bend and _paths_touch(c1.pts, c2.pts, 2.6)):
 				c1.conflicts.append(c2)
 				c2.conflicts.append(c1)
 
@@ -709,23 +749,48 @@ func _build_signals(touched: Array) -> void:
 	for node in touched:
 		if node.ctrl != &"signals" or node.signal_controller != null:
 			continue
-		var controller := SignalController.new()
+		# Signal nodes joined by short roads are one set of lights. Part of the
+		# set may already exist (it arrived with an earlier map tile).
+		var cluster: Array = []
 		var stack: Array = [node]
 		while not stack.is_empty():
 			var n: GNode = stack.pop_back()
-			if n.signal_controller != null:
+			if cluster.has(n):
 				continue
-			n.signal_controller = controller
-			controller.nodes.append(n)
+			cluster.append(n)
 			for road in n.roads:
+				# Follow short links, through plain bends, to the next set of
+				# signals: a dual carriageway crossing is one intersection.
+				var path: Array = []
 				var o: GNode = road.other(n)
-				if o.ctrl == &"signals" and o.signal_controller == null and road.length < 30.0:
+				var link: Road = road
+				var total: float = road.length
+				while o.ctrl != &"signals" and o.degree() == 2 and total < 30.0:
+					path.append(o)
+					link = o.roads[0] if o.roads[1] == link else o.roads[1]
+					o = link.other(o)
+					total += link.length
+				if o.ctrl == &"signals" and total < 30.0 and not cluster.has(o):
 					stack.append(o)
+					for m in path:
+						if not cluster.has(m):
+							cluster.append(m)
+		var controller: SignalController = null
+		for n in cluster:
+			if n.signal_controller != null:
+				controller = n.signal_controller
+				break
+		if controller == null:
+			controller = SignalController.new()
+			signal_controllers.append(controller)
+		for n in cluster:
+			if n.signal_controller == null:
+				n.signal_controller = controller
+				controller.nodes.append(n)
 		var center := Vector3.ZERO
 		for n in controller.nodes:
 			center += n.pos
 		controller.center = center / controller.nodes.size()
-		signal_controllers.append(controller)
 
 	for controller in signal_controllers:
 		if not controller.nodes.any(func(n): return touched.has(n)):
@@ -737,8 +802,14 @@ func _build_signals(touched: Array) -> void:
 				if road.rank > best_rank and not road.lanes_into(n).is_empty():
 					best_rank = road.rank
 					controller.axis = road.direction_from(n)
+		for ap in controller.approaches:
+			var lane: Lane = ap.lane
+			lane.stops = lane.stops.filter(func(st): return not (st.gate is SignalGate and st.gate.controller == controller))
+			if lane.signal_gate != null and lane.signal_gate.controller == controller:
+				lane.signal_gate = null
 		controller.approaches.clear()
-		controller.timer = randf() * 20.0
+		# Offset each set of lights by where it is, so runs are repeatable.
+		controller.timer = fposmod(controller.center.x * 0.37 + controller.center.z * 0.61, 20.0)
 		for n in controller.nodes:
 			for road in n.roads:
 				var o: GNode = road.other(n)
@@ -881,6 +952,8 @@ func _add_rail(pts: PackedVector3Array) -> void:
 	edge.a.edges.append(edge)
 	edge.b.edges.append(edge)
 	rail_edges.append(edge)
+	for st in stations:
+		_attach_station(edge, st)
 	var s := 0.0
 	while s < edge.length:
 		var cell := cell_of(point_at(edge.pts, edge.cum, s))
@@ -907,10 +980,18 @@ func _rail_node_at(p: Vector3) -> RailNode:
 
 
 func _add_station(p: Vector3, station_name: String) -> void:
+	stations.append({ "pos": p, "name": station_name })
 	for edge in rail_edges:
-		var s := closest_s(edge.pts, edge.cum, p)
-		if point_at(edge.pts, edge.cum, s).distance_to(p) < 40.0:
-			edge.stations.append({ "s": s, "name": station_name })
+		_attach_station(edge, stations[stations.size() - 1])
+
+
+## Rail and stations can arrive in different map tiles, so whichever comes
+## second does the attaching.
+func _attach_station(edge: RailEdge, st: Dictionary) -> void:
+	var s := closest_s(edge.pts, edge.cum, st.pos)
+	if point_at(edge.pts, edge.cum, s).distance_to(st.pos) < 40.0:
+		if not edge.stations.any(func(e): return absf(e.s - s) < 1.0):
+			edge.stations.append({ "s": s, "name": st.name })
 
 
 func _add_bus_stop(p: Vector3) -> void:
@@ -928,6 +1009,7 @@ func _add_bus_stop(p: Vector3) -> void:
 			best = lane
 			best_s = s
 	if best == null:
+		_pending_bus_stops.append(p)
 		return
 	var gate := BusStopGate.new()
 	gate.pos = p
@@ -973,6 +1055,27 @@ func _find_level_crossings() -> void:
 
 
 # --- Queries ------------------------------------------------------------------
+
+const REACH := 250.0
+
+## How far you can drive on from the start of `lane`, capped at REACH metres.
+## Short answers mean a dead end ahead: a one-way street into a laneway
+## traffic doesn't use, or the edge of the loaded map.
+func reach(lane: Lane, depth := 0) -> float:
+	if lane.reach_version == version:
+		return lane.reach
+	if depth > 40:
+		return REACH
+	lane.reach_version = version
+	lane.reach = REACH  # A loop back to here counts as open road.
+	var best := 0.0
+	for n in lane.next:
+		best = maxf(best, reach(n, depth + 1))
+		if lane.length + best >= REACH:
+			break
+	lane.reach = minf(lane.length + best, REACH)
+	return lane.reach
+
 
 static func cell_of(p: Vector3) -> Vector2i:
 	return Vector2i(floori(p.x / CELL), floori(p.z / CELL))
