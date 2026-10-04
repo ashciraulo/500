@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Shader" path="res://shaders/lofi_post.gdshader" id="2_post"]
@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://traffic/scripts/traffic_manager.gd" id="11_traffic"]
 [ext_resource type="Script" path="res://scripts/world/gameplay_places.gd" id="12_places"]
 [ext_resource type="Script" path="res://scripts/ui/photo_mode.gd" id="13_photo"]
+[ext_resource type="Script" path="res://scripts/player/on_foot.gd" id="14_on_foot"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
 shader = ExtResource("2_post")
@@ -134,6 +135,11 @@ car_path = NodePath("../Car")
 
 [node name="Camera3D" type="Camera3D" parent="LoFi/SubViewport/World/CameraRig"]
 far = 4000.0
+
+[node name="Player" type="CharacterBody3D" parent="LoFi/SubViewport/World"]
+script = ExtResource("14_on_foot")
+car_path = NodePath("../Car")
+camera_rig_path = NodePath("../CameraRig")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("7_hud")

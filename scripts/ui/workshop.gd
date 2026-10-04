@@ -21,6 +21,8 @@ const PLACE_NAMES := {"parts": "workshop", "tuning": "workshop", "paint": "paint
 	"fuel": "servo", "wash": "car wash"}
 ## Below this speed (km/h) the prompt shows and the workshop opens.
 const STOP_SPEED_KMH := 5.0
+## A tap of F opens the workshop on release; holding it longer gets out of the car.
+const TAP_SECONDS := 0.4
 
 var _car: CarController
 var _spot: WorkshopSpot
@@ -43,6 +45,7 @@ var _stats: GridContainer
 var _change: Label
 var _close: Button
 var _check_timer := 0.0
+var _press_ms := -1
 
 
 func _ready() -> void:
@@ -69,9 +72,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _panel.visible and (event.is_action_pressed("pause") or event.is_action_pressed("interact")):
 		_set_open(false)
 		get_viewport().set_input_as_handled()
-	elif not _panel.visible and event.is_action_pressed("interact") and _spot and not get_tree().paused:
-		open(_spot)
-		get_viewport().set_input_as_handled()
+	elif not _panel.visible and _spot and not get_tree().paused:
+		if event.is_action_pressed("interact"):
+			_press_ms = Time.get_ticks_msec()
+		elif event.is_action_released("interact") and _press_ms >= 0:
+			if Time.get_ticks_msec() - _press_ms < TAP_SECONDS * 1000.0:
+				open(_spot)
+				get_viewport().set_input_as_handled()
+			_press_ms = -1
 
 
 ## Open the workshop for a spot (the smoke test calls this directly).
@@ -93,7 +101,7 @@ func is_open() -> bool:
 
 func _find_spot() -> WorkshopSpot:
 	var car := get_tree().get_first_node_in_group(&"player_car") as CarController
-	if car == null or car.speed_kmh() > STOP_SPEED_KMH:
+	if car == null or not car.player_controlled or car.speed_kmh() > STOP_SPEED_KMH:
 		return null
 	for spot in get_tree().get_nodes_in_group(&"workshop_spots"):
 		if (spot as WorkshopSpot).contains(car.global_position):

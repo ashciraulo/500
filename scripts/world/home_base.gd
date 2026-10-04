@@ -22,6 +22,12 @@ const DOOR_OPEN_ANGLE := deg_to_rad(100.0)
 const OPEN_CLOCKWISE := [&"Door_French_R", &"Door_Balcony_R"]
 const SLIDE_DISTANCE := 1.05
 const WAKE_HOUR := 7.0
+## An invisible ramp over the stair nosings so walking up and down is smooth,
+## in house coordinates (Blender: x across, y back from the street, z up).
+## Keep in step with the stairs in build_shenton.py.
+const STAIR_X := Vector2(0.0, 1.0)
+const STAIR_FOOT := Vector2(9.053, 0.15)  # (y, z) where the nosing line meets the hall floor
+const STAIR_HEAD := Vector2(5.0, 3.16)    # (y, z) at the landing edge
 
 ## Lamp colour, energy and range by marker name. Unlisted markers use DEFAULT_LAMP.
 const LAMPS := {
@@ -47,12 +53,14 @@ var _markers := {}  # StringName -> Node3D
 
 
 func _ready() -> void:
+	add_to_group(&"home_base")
 	for model in get_children():
 		PS1Model.apply(model)
 	_collect(self)
 	for door_name in _doors:
 		_add_door_collider(_doors[door_name].node)
 	_set_collision_layers(self)
+	_add_stair_ramp()
 
 
 func _process(_delta: float) -> void:
@@ -93,6 +101,10 @@ func door_names() -> Array:
 	return _doors.keys()
 
 
+func is_door(door_name: StringName) -> bool:
+	return _doors.has(door_name)
+
+
 func unlock_shed() -> void:
 	if shed_is_unlocked:
 		return
@@ -127,7 +139,7 @@ func _collect(node: Node) -> void:
 		if node.name.begins_with("Door_") or node_name == &"Shed_Door":
 			_doors[node_name] = {"node": node, "rest": node.transform, "open": false,
 				"slide": node_name == &"Door_Sliding"}
-		elif node.name.begins_with("Spawn_") or node_name == &"Bed":
+		elif (node.name.begins_with("Spawn_") or node_name == &"Bed") and not node is MeshInstance3D:
 			_markers[node_name] = node
 		elif node.name.begins_with("Light_") and not node is MeshInstance3D:
 			_markers[node_name] = node
@@ -157,6 +169,8 @@ func _add_door_collider(door: Node3D) -> void:
 	var body := AnimatableBody3D.new()
 	body.collision_layer = 2
 	body.collision_mask = 0
+	# Synced bodies only follow their own transform, not the swinging mesh above them.
+	body.sync_to_physics = false
 	var shape := CollisionShape3D.new()
 	var box_shape := BoxShape3D.new()
 	box_shape.size = box.size
@@ -164,6 +178,28 @@ func _add_door_collider(door: Node3D) -> void:
 	shape.position = box.get_center()
 	body.add_child(shape)
 	mesh.add_child(body)
+
+
+func _add_stair_ramp() -> void:
+	# House (x, y, z) is local (x, z, -y).
+	var foot := Vector3(STAIR_X.x, STAIR_FOOT.y, -STAIR_FOOT.x)
+	var head := Vector3(STAIR_X.x, STAIR_HEAD.y, -STAIR_HEAD.x)
+	var along := head - foot
+	var thick := 0.1
+	var tilt := Basis(Vector3.RIGHT, -atan2(along.y, along.z))
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(STAIR_X.y - STAIR_X.x, thick, along.length())
+	var col := CollisionShape3D.new()
+	col.shape = shape
+	col.transform = Transform3D(tilt, (foot + head) * 0.5 + Vector3((STAIR_X.y - STAIR_X.x) * 0.5, 0, 0)
+		+ tilt.y * (0.01 - thick * 0.5))
+	var body := StaticBody3D.new()
+	body.name = &"StairRamp"
+	body.set_meta(&"surface", "stairs")  # for FootstepAudio
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.add_child(col)
+	add_child(body)
 
 
 func _first_mesh(node: Node) -> MeshInstance3D:

@@ -53,6 +53,16 @@ jobs:
             exit 1
           fi
 
+      - name: On-foot test
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/on_foot_test.gd -- --no-save 2>&1 \
+            | tee onfoot.log | grep -E "ok |FAIL|ON FOOT|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" onfoot.log; then
+            echo "::error::GDScript errors while walking around the home"
+            exit 1
+          fi
+
       - name: Audio tests
         run: |
           set -o pipefail

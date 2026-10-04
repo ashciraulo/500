@@ -10,6 +10,7 @@ L: headlights    R / D-pad down: reset car    Mouse click: look around (interior
 F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
 F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)
 F / A: use a workshop, servo or spray shop when parked in its bay    P / L3: photo mode
+Hold F / A: get out of the car    On foot: WASD walk, Space hurry, F open doors, sleep, get in
 Radio: . / , station    / on-off    M next track    N next playlist (My Music)    H: horn"""
 
 var _car: CarController
@@ -18,6 +19,7 @@ var _gear: Label
 var _status: Label
 var _help: Label
 var _rev_bar: ColorRect
+var _gauges: Control
 var _rev_back: ColorRect
 var _objective: Label
 var _fuel_bar: ColorRect
@@ -34,27 +36,32 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	_speed = _label(root, 40, Vector2(-220, -110))
-	var unit := _label(root, 14, Vector2(-140, -92))
+	# Speed, gear, revs and fuel: hidden while the player is out of the car.
+	_gauges = Control.new()
+	_gauges.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_gauges.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_gauges)
+	_speed = _label(_gauges, 40, Vector2(-220, -110))
+	var unit := _label(_gauges, 14, Vector2(-140, -92))
 	unit.text = "km/h"
-	_gear = _label(root, 40, Vector2(-80, -110))
+	_gear = _label(_gauges, 40, Vector2(-80, -110))
 	_rev_back = ColorRect.new()
 	_rev_back.color = Color(0, 0, 0, 0.45)
 	_rev_back.size = Vector2(200, 10)
 	_rev_back.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_rev_back.position = Vector2(-220, -50)
-	root.add_child(_rev_back)
+	_gauges.add_child(_rev_back)
 	_rev_bar = ColorRect.new()
 	_rev_bar.size = Vector2(0, 10)
 	_rev_back.add_child(_rev_bar)
-	_fuel_label = _label(root, 13, Vector2(-220, -136))
+	_fuel_label = _label(_gauges, 13, Vector2(-220, -136))
 	_fuel_label.text = "FUEL"
 	var fuel_back := ColorRect.new()
 	fuel_back.color = Color(0, 0, 0, 0.45)
 	fuel_back.size = Vector2(150, 6)
 	fuel_back.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	fuel_back.position = Vector2(-170, -128)
-	root.add_child(fuel_back)
+	_gauges.add_child(fuel_back)
 	_fuel_bar = ColorRect.new()
 	_fuel_bar.size = Vector2(150, 6)
 	fuel_back.add_child(_fuel_bar)
@@ -155,6 +162,7 @@ func _process(delta: float) -> void:
 		Settings.show_help = _help.visible
 	if not _car:
 		return
+	_gauges.visible = _car.player_controlled
 	_speed.text = "%3d" % roundi(_car.speed_kmh())
 	match _car.gear:
 		-1: _gear.text = "R"
