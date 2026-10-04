@@ -30,6 +30,7 @@ var _workshop: Node
 var _phone_open := false
 var _workshop_open := false
 var _room_tone: AudioStreamPlayer
+var traffic: Node            # traffic_audio.gd, once the city's TrafficManager turns up
 var _look_timer := 0.0
 
 
@@ -215,6 +216,13 @@ func _find_nodes() -> void:
 		_phone = scene_root.find_child("Phone", true, false)
 	if not is_instance_valid(_workshop):
 		_workshop = scene_root.find_child("Workshop", true, false)
+	if not is_instance_valid(traffic):
+		var tm := scene_root.find_child("Traffic", true, false)
+		if tm and tm.has_signal("vehicle_spawned"):
+			traffic = preload("res://audio/scripts/traffic_audio.gd").new()
+			traffic.name = "TrafficAudio"
+			add_child(traffic)
+			traffic.setup(tm)
 
 
 ## Cargo shifts in the back when you hit something mid-delivery.

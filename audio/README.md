@@ -52,6 +52,7 @@ Exhaust upgrades are their own sets: `fire12sport`, `fire12straight`.
 | Folder | What | Docs |
 | --- | --- | --- |
 | `engine/` | 8 engine families (Fire 1.2, 1.4 16v, TwinAir, T-Jet, classic twin, classic Abarth, electric, Abarth 500e generator), each petrol one with sport and straight-through exhausts, plus extras (gear clunks, turbo, blow-off, backfires, gearbox whine, carb gulp) | [engine](docs/engine.md) |
+| `engine/sedan`, `diesel`, `busdiesel`, `traffic/` | Other traffic: car, ute/van and bus engines, horns, bus air brake, trains | [traffic](docs/traffic.md) |
 | `car/` | Doors, horns, indicators, wipers, radio clicks, windows, roof, cargo... | [car](docs/car.md) |
 | `tyre/`, `impact/` | Rolling on each surface, skids, splashes, road features, crashes, street objects | [tyre](docs/tyre.md), [impact](docs/impact.md) |
 | `weather/` | Rain outside and on the roof, thunder, wind, cicadas, drips | [weather](docs/weather.md) |
@@ -71,6 +72,7 @@ Everything generated is reproducible (fixed random seeds):
     python3 audio/tools/gen_engines.py        # or: gen_engines.py fire12 tjet
     python3 audio/tools/gen_car.py            # car foley
     python3 audio/tools/gen_tyres.py          # tyres, surfaces, impacts
+    python3 audio/tools/gen_traffic.py        # traffic engines, horns, trains
     python3 audio/tools/gen_weather.py
     python3 audio/tools/gen_ui.py
     python3 audio/tools/gen_home.py
@@ -109,6 +111,15 @@ start swapping in your own recordings, regenerate only what you need.
   the radio until the last 30% of the par time, then the mission tension
   loop fades in and builds; time trials play the time-trial loop with
   countdown ticks before each medal time. The radio dips under both.
+- **Traffic** (`traffic_audio.gd`, made by `Audio.hooks` when the city's
+  TrafficManager appears): pooled engine voices on the nearest cars (4),
+  utes and vans (2) and buses (2), our horns on every vehicle, the bus air
+  brake when a bus pulls up, trains rumbling past with their horn at level
+  crossings, crossing bells while the booms are down, and pedestrian beeps
+  at signals. Everything plays on the Vehicles bus.
+- **Changing car**: `EngineAudio.CAR_SETS` maps each car in
+  `data/cars/cars.json` to its engine set, and the horn style follows (classic
+  meep, Abarth blare, modern).
 - **Volume settings**: `Settings.volume_master`, `volume_effects`,
   `volume_music` and `volume_radio` (0..1, sliders in the pause menu's
   Sound section, next to an "Open My Music folder" button).

@@ -33,11 +33,25 @@ func _ready() -> void:
 		_seat = _car.get_node_or_null("DriverSeat") as Node3D
 		if "player_controlled" in _car:
 			player_controlled = bool(_car.player_controlled)
+		if _car.has_signal("car_changed"):
+			_car.connect("car_changed", _on_car_changed)
+		if "car_id" in _car:
+			_on_car_changed(String(_car.car_id))
 	_horn = _player("SFX", 6.0)
 	_wipers = _player("Cabin", 2.0)
 	_indicator = _player("Cabin", 2.0)
 	_buffet = _player("Weather", 4.0)
 	_buffet.stream = Audio.stream("weather/weather_wind_buffet", true)
+
+
+## Horn, doors and indicator follow the car: classics meep, Abarths blare.
+func _on_car_changed(car_id: String) -> void:
+	if car_id.begins_with("classic_"):
+		style = "classic"
+	elif car_id.begins_with("abarth"):
+		style = "abarth"
+	else:
+		style = "modern"
 
 
 func _player(bus: String, unit: float) -> AudioStreamPlayer3D:

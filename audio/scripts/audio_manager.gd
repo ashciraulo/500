@@ -25,6 +25,7 @@ const BUSES := [
 	["Cabin", "Master"],     # inside-the-car sounds that are never muffled
 	["World", "Master"],     # everything outside the cabin; muffled when inside
 	["Engine", "World"],
+	["Vehicles", "World"],   # other people's cars, buses and trains
 	["Tyres", "World"],
 	["SFX", "World"],
 	["Ambience", "World"],

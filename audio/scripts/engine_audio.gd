@@ -34,6 +34,20 @@ extends Node3D
 ## parts_changed signal; see ENGINE_PARTS and EXHAUST_PARTS).
 @export var follow_parts := true
 
+## Car id (data/cars/cars.json) -> its engine set, for the car's
+## car_changed signal. Cars not listed keep the set they have.
+const CAR_SETS := {
+	"pop_12": "fire12", "hybrid_10": "fire12", "lounge_14": "fire14",
+	"twinair_09": "twinair", "abarth_500": "tjet", "abarth_595_turismo": "tjet",
+	"abarth_595_comp": "tjetsport", "abarth_695_tributo": "tjetsport",
+	"abarth_695_biposto": "tjetstraight", "e_500e_2013": "electric",
+	"e_500e_2020": "electric", "abarth_500e": "abarthe",
+	"classic_nuova": "classic", "classic_d": "classic", "classic_giardiniera": "classic",
+	"classic_500f": "classic", "classic_500l": "classic", "classic_500r": "classic",
+	"classic_jolly": "classic", "classic_sport": "classicsport",
+	"classic_abarth_595": "classicabarth", "classic_abarth_695": "classicabarthsport",
+}
+
 ## Engine part id -> engine family. Parts not listed keep the current family
 ## (an ECU remap or a stock engine sounds like what's fitted).
 const ENGINE_PARTS := {
@@ -87,6 +101,10 @@ func _ready() -> void:
 		_vehicle.connect("gear_changed", _on_gear_changed)
 	if follow_parts and _vehicle and _vehicle.has_signal("parts_changed"):
 		_vehicle.connect("parts_changed", func(_slot, _part) -> void: _apply_parts())
+		if _vehicle.has_signal("car_changed"):
+			_vehicle.connect("car_changed", set_car)
+		if "car_id" in _vehicle and CAR_SETS.has(String(_vehicle.car_id)):
+			_set_base(CAR_SETS[String(_vehicle.car_id)])
 		engine_set = set_for_parts()
 	build()
 	if _vehicle:
@@ -142,6 +160,9 @@ func build() -> void:
 		if not _avas:
 			_avas = _make_player(null)
 		_avas.stream = Audio.stream(avas, true)
+	elif _avas:
+		_avas.stop()
+		_avas.stream = null
 	var lim := "engine/%s/eng_%s_limiter" % [engine_set, engine_set]
 	_limiter.stream = Audio.stream(lim) if Audio.has(lim) else null
 	var family := family_of(engine_set)
@@ -154,6 +175,32 @@ func build() -> void:
 		turbo = 1.0 if family in ["tjet", "twinair"] else 0.0
 	if engine_set.begins_with("classic"):
 		classic_gearbox = true
+
+
+## Switch to the engine of another car (by cars.json id).
+func set_car(car_id: String) -> void:
+	if not CAR_SETS.has(car_id):
+		return
+	_set_base(CAR_SETS[car_id])
+	_apply_parts()
+
+
+func _set_base(set_name: String) -> void:
+	_base_family = family_of(set_name)
+	_base_suffix = set_name.trim_prefix(_base_family)
+	classic_gearbox = set_name.begins_with("classic")
+
+
+## Stop all sound at once, without the shut-down one-shot (for pooled AI
+## engines being handed to another car). start_running() brings it back.
+func silence() -> void:
+	running = false
+	_master = 0.0
+	if _fade_tween:
+		_fade_tween.kill()
+	_set_loops_playing(false)
+	if _limiter:
+		_limiter.stop()
 
 
 static func family_of(set_name: String) -> String:

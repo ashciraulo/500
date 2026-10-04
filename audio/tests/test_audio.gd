@@ -46,6 +46,7 @@ func _ready() -> void:
 	await _test_ambience(audio)
 	await _test_car_scene(audio)
 	await _test_hooks(audio)
+	await _test_traffic(audio)
 	print("%d failure(s)" % failures)
 	quit(1 if failures else 0)
 
@@ -248,6 +249,17 @@ func _test_car_scene(audio: Node) -> void:
 	car.install_part(PartsCatalogue.get_part(&"exhaust_stock"))
 	check(engine.engine_set == "fire12", "back to stock -> fire12 (got %s)" % engine.engine_set)
 	check(engine.turbo == 0.0, "stock set has no turbo")
+	# Changing car changes the engine and horn.
+	if car.has_method("apply_car"):
+		car.apply_car("abarth_695_biposto")
+		check(engine.engine_set == "tjetstraight", "Abarth 695 biposto -> tjetstraight (got %s)" % engine.engine_set)
+		check(car.get_node("Audio/CarSounds").style == "abarth", "Abarth horn")
+		car.apply_car("classic_d")
+		check(engine.engine_set == "classic" and engine.classic_gearbox, "500 D -> classic (got %s)" % engine.engine_set)
+		car.apply_car("e_500e_2020")
+		check(engine.engine_set == "electric", "New 500e -> electric (got %s)" % engine.engine_set)
+		car.apply_car("pop_12")
+		check(engine.engine_set == "fire12" and not engine.classic_gearbox, "Pop -> fire12 (got %s)" % engine.engine_set)
 	# Running dry stops the engine; fuel brings it back.
 	car.fuel_litres = 0.0
 	await create_timer(0.3).timeout
@@ -292,3 +304,32 @@ func _test_hooks(audio: Node) -> void:
 		if not audio.has(n) and not audio._variants.has(n):
 			missing.append(n)
 	check(missing.is_empty(), "hook sounds exist %s" % [missing])
+
+
+func _test_traffic(audio: Node) -> void:
+	print("traffic")
+	for set_name in ["sedan", "diesel", "busdiesel"]:
+		check(audio.names_in("engine/" + set_name).size() >= 10, "traffic engine set %s" % set_name)
+	check(AudioServer.get_bus_index("Vehicles") >= 0, "Vehicles bus exists")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	await create_timer(4.0).timeout
+	var ta: Node = audio.hooks.traffic
+	check(ta != null, "traffic audio found the TrafficManager")
+	if ta:
+		ta.hear_radius = 400.0  # traffic spawns out of sight, well away from the camera
+		await create_timer(0.6).timeout
+		var voiced := 0
+		for kind in ta._voices:
+			for voice in ta._voices[kind]:
+				if voice.v != null and voice.engine.running:
+					voiced += 1
+		check(voiced >= 1, "nearby traffic has engine voices (%d)" % voiced)
+		var horns := 0
+		for v in ta.manager.vehicles:
+			var h: AudioStreamPlayer3D = v.body.get_node_or_null("Audio/Horn")
+			if h and h.stream and h.stream.resource_path.contains("traffic_horn"):
+				horns += 1
+		check(horns == ta.manager.vehicles.size() and horns > 0, "traffic horns swapped (%d)" % horns)
+	main.queue_free()
+	await process_frame
