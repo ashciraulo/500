@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Shader" path="res://shaders/lofi_post.gdshader" id="2_post"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/vehicles/fiat_500_pop.tscn" id="5_car"]
 [ext_resource type="Script" path="res://scripts/camera/car_camera_rig.gd" id="6_cam"]
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="8_pause"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
 shader = ExtResource("2_post")
@@ -95,6 +96,7 @@ light_color = Color(0.55, 0.65, 0.95, 1)
 light_energy = 0.0
 
 [node name="EnvironmentController" type="Node" parent="LoFi/SubViewport/World"]
+process_mode = 3
 script = ExtResource("3_env")
 world_environment_path = NodePath("../WorldEnvironment")
 sun_path = NodePath("../Sun")
@@ -124,3 +126,6 @@ far = 1500.0
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("7_hud")
 car_path = NodePath("../LoFi/SubViewport/World/Car")
+
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+script = ExtResource("8_pause")

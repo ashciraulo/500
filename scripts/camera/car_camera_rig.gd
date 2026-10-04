@@ -25,7 +25,6 @@ enum Mode { CHASE, INTERIOR }
 
 @export_group("Interior")
 @export var interior_fov := 72.0
-@export var mouse_sensitivity := 0.0025
 @export var stick_look_speed := 2.2
 
 var _car: CarController
@@ -53,8 +52,8 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_look_yaw -= event.relative.x * mouse_sensitivity
-		_look_pitch -= event.relative.y * mouse_sensitivity
+		_look_yaw -= event.relative.x * Settings.mouse_sensitivity
+		_look_pitch -= event.relative.y * Settings.mouse_sensitivity
 		_look_idle = 0.0
 
 

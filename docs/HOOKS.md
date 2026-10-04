@@ -74,3 +74,13 @@ Physics layers: 1 = world (roads, ground), 2 = buildings. The car is on layer 1 
 `lofi_enabled`, `target_height` (240), `vertex_snap_scale`, `affine_strength`,
 `color_levels`, `dither_enabled`. Call `apply()` after changing them.
 Shader globals: `ps1_snap_resolution`, `ps1_affine_strength`, `ps1_wetness`.
+
+## Settings (autoload `Settings`)
+
+Player choices from the pause menu, saved to `user://settings.cfg`:
+`automatic_gearbox`, `mouse_sensitivity`, `day_length_minutes`,
+`weather_choice` (-1 natural, else a `Weather.State`), `clock_frozen`,
+`lofi_enabled`, `lofi_target_height`, `dither_enabled`, `vertex_snap_scale`,
+`show_help`. Change values, then call `apply()`; `save_settings()` writes them.
+The pause menu (`scripts/ui/pause_menu.gd`) pauses the tree, so anything that
+should keep running while paused needs `process_mode = PROCESS_MODE_ALWAYS`.

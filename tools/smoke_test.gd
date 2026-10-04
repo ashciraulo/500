@@ -105,6 +105,15 @@ func _run_step() -> bool:
 			root.get_node("GameClock").set_time(23.0)
 			_check(weather.intensity() > 0.9, "storm sets full rain intensity")
 			_check(root.get_node("GameClock").is_night(), "23:00 is night")
+			var settings := root.get_node("Settings")
+			settings.weather_choice = 1  # Light rain, locked
+			settings.automatic_gearbox = false
+			settings.apply()
+			_check(weather.state == 1 and weather.locked, "settings lock the chosen weather")
+			_check(_car.transmission == 0, "settings switch the gearbox to manual")
+			settings.weather_choice = -1
+			settings.apply()
+			_check(not weather.locked, "natural weather unlocks it")
 			var telemetry: Dictionary = _car.get_telemetry()
 			for key in ["rpm", "throttle", "gear", "speed_kmh", "surface", "weather_intensity"]:
 				_check(telemetry.has(key), "telemetry has '%s'" % key)

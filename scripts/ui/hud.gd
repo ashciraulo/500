@@ -6,9 +6,9 @@ extends CanvasLayer
 
 const HELP := """W/S or triggers: throttle / brake    A/D or stick: steer    Space / B: handbrake
 E/Q or bumpers: gear up / down    G / Select: manual <-> auto    C / Y: camera
-L: headlights    R / Start: reset car    Mouse click: look around (interior)
+L: headlights    R / D-pad down: reset car    Mouse click: look around (interior)
 F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
-F9: lo-fi on/off    F1: hide this    Esc: release mouse"""
+F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings"""
 
 var _car: CarController
 var _speed: Label
@@ -52,12 +52,14 @@ func _ready() -> void:
 	_help.add_theme_font_size_override("font_size", 14)
 	_help.add_theme_color_override("font_outline_color", Color.BLACK)
 	_help.add_theme_constant_override("outline_size", 4)
+	_help.visible = Settings.show_help
 	root.add_child(_help)
 
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_help"):
 		_help.visible = not _help.visible
+		Settings.show_help = _help.visible
 	if not _car:
 		return
 	_speed.text = "%3d" % roundi(_car.speed_kmh())

@@ -28,14 +28,19 @@ Keyboard or any standard gamepad. Press **F1** in game to show/hide this list.
 | Gear up / down | E / Q | RB / LB |
 | Manual ↔ automatic | G | Select / Back |
 | Camera (chase / interior) | C | Y |
-| Look around | Click to capture mouse, Esc to release | Right stick |
+| Look around | Click to capture the mouse | Right stick |
 | Headlights (auto by default) | L | D-pad up |
-| Reset car upright | R | Start |
+| Reset car upright | R | D-pad down |
+| Pause and settings | Esc | Start |
 | Next weather (and lock it) | F5 | D-pad right |
 | Lock / unlock weather | F6 | |
 | Skip forward 1 hour | F7 | D-pad left |
 | Lock / unlock the clock | F8 | |
 | Lo-fi filter on / off | F9 | |
+
+The pause menu lets you pick the weather and time of day (or leave them
+natural), freeze the clock, change the day length and gearbox, and tune the
+lo-fi look. Settings are saved between sessions.
 
 In **automatic**, hold brake at a standstill to reverse. In **manual**, shift
 down past neutral to get reverse (only when nearly stopped). The clutch is

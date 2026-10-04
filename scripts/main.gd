@@ -12,6 +12,7 @@ func _ready() -> void:
 	RenderSettings.changed.connect(_apply_render_settings)
 	get_viewport().size_changed.connect(_apply_render_settings)
 	_apply_render_settings()
+	Settings.apply()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -25,8 +26,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameClock.toggle_locked()
 	elif event.is_action_pressed("toggle_lofi"):
 		RenderSettings.toggle_lofi()
-	elif event.is_action_pressed("ui_cancel"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
