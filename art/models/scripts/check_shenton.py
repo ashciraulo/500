@@ -34,7 +34,10 @@ FLOORS = {"ground": (B.FZ0, B.CZ0), "upper": (B.FZ1, B.CZ1)}
 # things that lie flat or hang high and never block anyone
 FLAT = ("Rug", "Gallery", "Pendant", "TV_Screen", "Guitar_", "Poster_", "LPs", "Synth_Mono", "Pedalboard", "Corkboard", "AC_", "Intercom", "Plant_Hanging", "TowelRail",
         "candle", "Photo_", "Books_", "BedLamp", "Laptop", "DeskLamp", "TableLamp", "CoffeeMachine", "Kettle",
-        "Herbs", "Succulent", "Plant_Bath", "Bar_Top", "porch_light", "Balcony_")
+        "Herbs", "Succulent", "Plant_Bath", "Bar_Top", "porch_light", "Balcony_",
+        # small mystery props that sit on furniture, hang or lie flat (the loose
+        # brick is set into the fireplace on purpose)
+        "Oddity_", "Fireplace_Bricks")
 
 
 # ------------------------------------------------------------------ 2D geometry

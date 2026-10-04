@@ -16,6 +16,11 @@ python3.11 art/models/scripts/build_pop.py --render      # also writes preview r
 
 Then open Godot once so it re-imports the `.glb` files.
 
+The mystery's seven clues export alone, named by their ids in
+`data/progression/mystery.json` (tape_1, polaroid, ticket, atlas_page,
+keyring, tape_12, shed_key): `python3.11 art/models/scripts/build_mystery.py`
+writes `home/mystery/<id>.glb`.
+
 ## Conventions
 
 - Metres, Y up in Godot. Cars face **-Z** (Godot forward); origin on the
@@ -121,7 +126,10 @@ x 0..5.4, z 0..-12.
 | `Door_*`, `Shed_Door` | Origin on the hinge, swing about local Y. `Door_Sliding` slides along local X. `HomeBase.toggle_door()` animates them; `Shed_Door` stays locked until `unlock_shed()`. |
 | `Padlock` | Hidden once the shed is unlocked. |
 | `Deco_RoadMap`, `Deco_NeonSign`, `Deco_Shelf_1`..`8`, `Corkboard_Pin_1`..`12`, `Photo_Frame_1`..`6` | Empties where the game puts things you collect: a framed street directory and a corkboard (rear living, x=0 wall), a neon "500" (on the player's shed, over the bay), trophies (two shelves over the lounge couch) and album photos (frames up the stairs). Blank props sit behind them. They face like the furniture: local -Y (Godot +Z) points into the room. |
-| `Spawn_Player`, `Spawn_Front`, `Spawn_Courtyard`, `Spawn_Car` | Spawn points (`HomeBase.spawn_transform()`). |
+| `ShedInterior_Root`, `Shed_Sheeted` | Everything inside the player's shed. `Shed_Sheeted` is a dust sheet over a card table against the back wall, 1.0 x 0.55 x 0.78 m; `scripts/world/mystery.gd` hides it on the reveal and builds what's under it from its bounding box. Around it: an old plate, a hubcap and keys on the left wall, a folding chair, and a tea chest of photos by the door with a valve radio on it. `Shed_Bulb` is the glowing bulb; `ShedInterior_Light` is an empty for a lamp; `Shed_Knock` (just inside the door) is where the knocking comes from; `Shed_Ending` is where to stand for the ending, facing the table. The shed door swings in, clear of the parked car and of the table. |
+| `Oddity_Photo`, `Oddity_Photo_Figure` | The photo at the foot of the stairs. The figure print (someone by the courtyard gate) sits just behind the plain one, so hiding `Oddity_Photo` reveals it. |
+| `Oddity_Plant`, `Oddity_LooseBrick`, `Oddity_Footprints`, `Oddity_Drawing` | Small wrong things: a plant on the breakfast bar leaning toward the sliding door (turn it 180 degrees to face the front door), a loose brick in the bricked-up fireplace, small muddy footprints in from the courtyard, a child's drawing on the fridge. Origins on the props. |
+| `Spawn_Player`, `Spawn_Front`, `Spawn_Courtyard`, `Spawn_Car` | Spawn points (`HomeBase.spawn_transform()`). The car parks with room to stand at the shed door behind it, and the carport posts stand back under the roof so it can swing left or right into the narrow rear lane straight away. |
 | `Bed` | Walk here to sleep (`HomeBase.sleep()` skips to 7:00 next day). |
 | `Light_*` | Warm lamp positions; `HomeBase` adds lights that come on at dusk. `Light_WC_Up` flickers. |
 

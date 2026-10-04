@@ -21,8 +21,9 @@ signal shed_tried
 
 const DOOR_OPEN_ANGLE := deg_to_rad(100.0)
 ## Doors that swing the other way (clockwise seen from above), so they open
-## into the room. Keep in step with OPEN_CLOCKWISE in build_shenton.py.
-const OPEN_CLOCKWISE := [&"Door_French_R", &"Door_Balcony_R"]
+## into the room (the shed door swings in, clear of the parked car). Keep in
+## step with OPEN_CLOCKWISE in build_shenton.py.
+const OPEN_CLOCKWISE := [&"Door_French_R", &"Door_Balcony_R", &"Shed_Door"]
 const SLIDE_DISTANCE := 1.05
 const WAKE_HOUR := 7.0
 ## An invisible ramp over the stair nosings so walking up and down is smooth,

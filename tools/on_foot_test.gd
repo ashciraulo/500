@@ -187,12 +187,13 @@ func _ground(p: Vector3) -> Vector3:
 	return hit.position if not hit.is_empty() else p
 
 
-## Stand in the carport a metre in front of the shed door, facing it.
+## Stand in the carport between the shed door and the parked car, facing
+## the door.
 func _put_at_shed() -> void:
 	var door: Node3D = _home.find_child("Shed_Door", true, false)
 	var mesh: MeshInstance3D = door if door is MeshInstance3D else door.find_children("*", "MeshInstance3D")[0]
 	var centre := _local(mesh.global_transform * mesh.get_aabb().get_center())
-	_put(Vector3(centre.x, centre.y + 0.6, 0.0), Vector3(centre.x, centre.y, 1.4))
+	_put(Vector3(centre.x, centre.y + 0.4, 0.0), Vector3(centre.x, centre.y, 1.4))
 
 
 func _shot(name: String) -> void:

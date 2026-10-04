@@ -42,6 +42,7 @@ from mathutils import Vector  # noqa: E402
 from lib import arch as A  # noqa: E402
 from lib import common as C  # noqa: E402
 from lib import furniture as F  # noqa: E402
+from lib import mystery as MY  # noqa: E402
 from lib import studio as S  # noqa: E402
 from lib import textures as TX  # noqa: E402
 
@@ -127,7 +128,7 @@ def ext_wall(axis, at, a0, a1, z0, z1, outward, M, openings=(), outer="render"):
 
 # Doors that open clockwise seen from above (HomeBase swings every other door
 # anticlockwise); keep in step with OPEN_CLOCKWISE in scripts/world/home_base.gd.
-OPEN_CLOCKWISE = ("Door_French_R", "Door_Balcony_R")
+OPEN_CLOCKWISE = ("Door_French_R", "Door_Balcony_R", "Shed_Door")
 
 
 def _french_parts(length, height, M):
@@ -394,6 +395,15 @@ def it(name, parts, pos, rot=0):
     return F.item(uniq(name), parts, pos, rot)
 
 
+def prop(name, parts, pos, rot=0):
+    """Like it(), but the object's origin sits at pos, so the game can find,
+    turn or slide it (clues, oddities, the shed key)."""
+    o = F.item(uniq(name), parts, pos, rot)
+    C.set_origin(o, pos)
+    o.rotation_euler = (0, 0, 0)
+    return o
+
+
 def interior(M):
     out = []
     z0, z1 = FZ0, FZ1
@@ -423,7 +433,7 @@ def interior(M):
     for i, y in enumerate((1.8, 1.95, 2.95)):
         out.append(it("candle", [F.cyl(0.03, 0.12 + i * 0.04, (0, 0, 0.06 + i * 0.02), F.M("cream"), 6)],
                       (0.22, y, z0 + 1.16)))
-    out.append(it("Photo_FaceDown", [F.bx((-0.1, -0.13, 0), (0.1, 0.13, 0.015), F.M("frame"))], (3.35, 2.9, z0 + 0.42), 20))
+    out.append(it("Photo_FaceDown", [F.bx((-0.1, -0.13, 0), (0.1, 0.13, 0.015), F.M("frame"))], (3.5, 3.12, z0 + 0.42)))
     out.append(it("Throw_Basket", [F.cyl(0.22, 0.35, (0, 0, 0.175), F.M("wood_light"), 10),
                                    C.sphere("f", 0.2, (0, 0, 0.33), F.M("throw"), segs=8, rings=4, scale=(1, 1, 0.5))],
                   (4.2, 2.0, z0)))
@@ -518,7 +528,60 @@ def interior(M):
     out.append(it("Curtains_Bed2", F.curtains(2.0, 2.2), (2.5, D - 0.08, z1), 180))
     out.append(it("DeskLamp", F.table_lamp(), (W - 0.22, 9.55, z1 + 0.8)))     # on the bass amp
     out += deco_slots(z0)
+    out += mystery_house(z0)
     return out
+
+
+def mystery_house(z0):
+    """The mystery's props in the house. Each is its own node with its
+    origin on the prop, for the game to show, hide, turn or slide. (The clues
+    themselves are scripts/world/mystery.gd's: it stacks them on
+    Storage_Boxes in the under-stair cupboard as they turn up.)
+
+      Oddity_Photo / Oddity_Photo_Figure  the stair photo, without and with
+                          someone at the gate (the figure one sits behind)
+      Oddity_Plant        leans toward the sliding door; turn it 180 degrees
+                          to face the front door
+      Oddity_LooseBrick   proud of the bricked-up fireplace
+      Oddity_Footprints   small muddy footprints in from the sliding door
+      Oddity_Drawing      a child's drawing on the fridge
+    """
+    out = []
+    # the old fireplace, bricked up, with one brick sitting proud
+    fx, fy, fw, fh = 0.36, 2.4, 0.7, 0.85
+    out.append(it("Fireplace_Bricks", MY.bricked_fireplace(fw, fh), (fx, fy, z0), 90))
+    brick_x, brick_z = _loose_brick_centre(fw)
+    out.append(prop("Oddity_LooseBrick", MY.loose_brick(), (fx, fy + brick_x, z0 + brick_z), 90))
+    # the stair photo: the same courtyard, once without and once with someone
+    # at the gate; the figure print sits a hair behind the plain one
+    py, pz = 8.86, z0 + 1.95
+    out.append(it("Oddity_Photo_Frame", [F.bx((-0.17, -0.025, -0.13), (0.17, 0.0, 0.13), F.M("frame")),
+                                         F.bx((-0.145, -0.027, -0.105), (0.145, -0.025, 0.105), F.M("cream"))],
+                  (0.02, py, pz), 90))
+    for name, kind, y in (("Oddity_Photo", "courtyard", -0.0285), ("Oddity_Photo_Figure", "courtyard_figure", -0.0278)):
+        out.append(prop(name, [MY._picture_centered("photo_" + kind, MY._img_photo(kind, 32, 24), 0.26, 0.18, y)],
+                        (0.02, py, pz), 90))
+    # on the breakfast bar, leaning toward the sliding door (+Y)
+    out.append(prop("Oddity_Plant", MY.leaning_plant(), (4.55, 8.62, z0 + 1.09), 180))
+    # muddy little footprints in from the sliding door toward the stairs
+    out.append(prop("Oddity_Footprints", MY.wet_footprints(8, 0.62), (2.95, 11.7, z0 + 0.003), 0))
+    # the fridge faces +Y; the drawing goes under the magnets, left of the handle
+    out.append(prop("Oddity_Drawing", MY.crayon_drawing(), (2.6, 7.35, z0 + 0.74), 180))
+    return out
+
+
+def _loose_brick_centre(w):
+    """Across and up the infill to the gap bricked_fireplace leaves."""
+    bw, bh, gap = 0.115, 0.055, 0.008
+    z = 0.004 + MY.LOOSE_ROW * (bh + gap)
+    off = 0 if MY.LOOSE_ROW % 2 else bw / 2
+    x = -w / 2 - off
+    while x < w / 2:
+        x0, x1 = max(x + 0.004, -w / 2), min(x + bw, w / 2)
+        if abs((x0 + x1) / 2 - MY.LOOSE_X) < 0.03:
+            return (x0 + x1) / 2, z + bh / 2
+        x += bw + gap
+    raise ValueError("no loose brick")
 
 
 def _blank_frame(w, h, mat="cream", depth=0.025):
@@ -671,25 +734,41 @@ def site(M):
     it("Clothes_Line", [F.cyl(0.02, 1.7, (0, 0, 0.85), F.M("metal"), 5),
                             F.bx((-0.7, -0.01, 1.7), (0.7, 0.01, 1.72), F.M("metal"))], (4.4, 13.0, 0), 90)
 
-    # shared carport: skillion roof on timber posts, open to the rear lane
+    # shared carport: skillion roof on timber posts, open to the rear lane.
+    # The posts stand back under the roof (a steel beam carries the front
+    # edge) so a car can swing out into the narrow lane as soon as it rolls
+    # forward, left or right, without clipping a post.
     cy0, cy1 = y1 + 0.18, 23.0
-    A.block((-PARTY, cy0, -0.05), (11.2, cy1, 0.0), M["concrete"], b, uv=2.0)
+    post_y = 19.7
+    # the slab runs on behind #13 too, so nothing catches a wheel swinging left
+    A.block((-5.8, cy0, -0.05), (11.2, cy1, 0.0), M["concrete"], b, uv=2.0)
     A.block((-PARTY, cy0, 2.55), (11.2, cy1, 2.65), M["timber"], "Site")
     A.block((-PARTY - 0.05, cy0 - 0.05, 2.65), (11.25, cy1 + 0.1, 2.7), M["corrugated"], "Site")
+    A.block((-PARTY, cy1 - 0.12, 2.37), (11.2, cy1, 2.55), F.M("pot_dark"), "Site")         # front beam
+    A.block((-PARTY, post_y - 0.08, 2.43), (11.2, post_y + 0.08, 2.55), M["timber"], "Site")  # post beam
     for x in (-0.1, 3.7, 7.5, 11.1):
-        A.block((x - 0.06, cy1 - 0.15, 0), (x + 0.06, cy1 - 0.03, 2.55), M["post"], b)
+        A.block((x - 0.06, post_y - 0.06, 0), (x + 0.06, post_y + 0.06, 2.43), M["post"], b)
     # sheds along the courtyard wall, doors facing the carport
     sheds = [(-0.1, 2.2, True), (3.6, 5.5, False), (5.7, 7.5, False), (9.1, 11.0, False)]
     shed_door = None
     for x0, x1, mine in sheds:
-        A.block((x0, cy0, 0), (x1, cy0 + 1.6, 2.4), M["render"], b)
         door_x0 = (x0 + x1) / 2 - 0.42
         if mine:
-            # the player's shed: hollow inside, white door, padlocked hasp
-            A.block((x0 + 0.08, cy0 + 0.02, 0.0), (x1 - 0.08, cy0 + 1.52, 2.32), M["concrete"], "Site_Shed")
-            shed_door = door("Shed_Door", "x", (door_x0, cy0 + 1.62), 0.84, 0.02, 2.0, M["door"], knob=False)
-            lock = it("Padlock", F.padlock(), (door_x0 + 0.78, cy0 + 1.67, 1.05), 180)
-            hasp = C.box_minmax("hasp", (door_x0 + 0.70, cy0 + 1.645, 1.03), (door_x0 + 0.92, cy0 + 1.655, 1.09),
+            # the player's shed: hollow (walls, floor and roof), white door,
+            # padlocked hasp
+            t = 0.08
+            A.block((x0, cy0, 0), (x1, cy0 + t, 2.4), M["render"], b)
+            A.block((x0, cy0, 0), (x0 + t, cy0 + 1.6, 2.4), M["render"], b)
+            A.block((x1 - t, cy0, 0), (x1, cy0 + 1.6, 2.4), M["render"], b)
+            A.wall("x", cy0 + 1.6, x0 + t, x1 - t, 0, 2.4, t, M["render"], b,
+                   [(door_x0, door_x0 + 0.84, 0, 2.02)], side=-1)
+            A.block((x0, cy0, 2.32), (x1, cy0 + 1.6, 2.4), M["render"], b)
+            A.block((x0 + t, cy0 + t, 0.0), (x1 - t, cy0 + 1.6 - t, 0.02), M["concrete"], b, uv=2.0)
+            # the door sits flush in the opening and swings in, so it clears
+            # a car parked in front of it
+            shed_door = door("Shed_Door", "x", (door_x0, cy0 + 1.58), 0.84, 0.02, 2.0, M["door"], knob=False)
+            lock = it("Padlock", F.padlock(), (door_x0 + 0.78, cy0 + 1.628, 1.05), 180)
+            hasp = C.box_minmax("hasp", (door_x0 + 0.70, cy0 + 1.6, 1.03), (door_x0 + 0.92, cy0 + 1.612, 1.09),
                                 F.M("steel"))
             A.add(hasp, "Site")
             lock.name = "Padlock"
@@ -698,20 +777,68 @@ def site(M):
             A.add(C.box_minmax("NeonSign_Backing", (neon_x - 0.3, cy0 + 1.6, neon_z - 0.16),
                                (neon_x + 0.3, cy0 + 1.625, neon_z + 0.16), F.M("black")), "Site")
             marker("Deco_NeonSign", (neon_x, cy0 + 1.63, neon_z), 180)
+            shed_interior(x0 + 0.08, x1 - 0.08, cy0 + 0.08, cy0 + 1.52, door_x0)
         else:
+            A.block((x0, cy0, 0), (x1, cy0 + 1.6, 2.4), M["render"], b)
             A.block((door_x0, cy0 + 1.6, 0.02), (door_x0 + 0.84, cy0 + 1.62, 2.02), M["door"], "Site")
-    # inside the player's shed (seen once the padlock comes off)
-    it("Shed_Sheeted", F.sheet_covered(1.1, 0.7, 0.9), (0.9, cy0 + 0.6, 0.0))
-    it("Shed_Boxes", F.boxes(31, 3), (1.75, cy0 + 0.4, 0.0))
-    it("Shed_Tin", [F.cyl(0.12, 0.1, (0, 0, 0.05), F.M("rust"), 10)], (0.3, cy0 + 0.25, 0.0))
-    marker("Spawn_Car", (1.3, 20.6, 0.05), 0)      # nose toward the rear lane
-    marker("Light_Carport", (1.3, 20.0, 2.45))
+    # nose toward the rear lane, with room to stand at the shed door behind it
+    marker("Spawn_Car", (1.3, 21.3, 0.05), 0)
+    marker("Light_Carport", (1.3, 20.4, 2.45))
 
     # rear lane
     A.block((-12, cy1, -0.05), (24, cy1 + 5.0, 0.0), M["asphalt"], b, uv=3.0)
     # no wall across the far side: the lane opens onto the street behind, so
     # the car can drive straight out of the carport
     return gate, shed_door
+
+
+def _wall_mount(parts, axis_rot):
+    """Turn a flat-lying prop (face up) to face -Y, back at y=0."""
+    for p in parts:
+        C.apply_transform(p)
+        p.rotation_euler = (math.radians(axis_rot), 0, 0)
+        C.apply_transform(p)
+    hi = max(v.co.y for p in parts for v in p.data.vertices)
+    for p in parts:
+        for v in p.data.vertices:
+            v.co.y -= hi
+    return parts
+
+
+def shed_interior(x0, x1, y0, y1, door_x0):
+    """What's inside the player's shed, under ShedInterior_Root. The inside
+    is x0..x1, y0 (back wall, toward the courtyard) .. y1 (door wall), floor
+    at 0, ceiling at 2.32.
+
+    Shed_Sheeted is the dust sheet over a card table against the back wall.
+    scripts/world/mystery.gd hides it on the reveal and builds the table,
+    deck, transmitter, tapes and map from its bounding box, so its size is
+    the table's: 1.0 wide, 0.55 deep (the door's inward swing reaches 0.6
+    from the back wall), 0.78 high."""
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    root = marker("ShedInterior_Root", (cx, cy, 0.0))
+    kids = []
+    table_x, table_d = x0 + 0.95, 0.55
+    kids.append(prop("Shed_Sheeted", F.sheet_covered(1.0, table_d, 0.78),
+                     (table_x, y0 + 0.01 + table_d / 2, 0.02), 0))
+    kids.append(prop("Shed_KeyBoard", MY.key_board(), (x0, y0 + 0.95, 1.5), 90))
+    kids.append(prop("Shed_OldPlate", MY.old_plate(), (x0, y0 + 0.5, 1.78), 90))
+    kids.append(prop("Shed_Hubcap", _wall_mount(MY.hubcap(), 90), (x0, y0 + 0.5, 1.28), 90))
+    # the chair and the tea chest on the right, past the door's reach; a
+    # valve radio on the chest, facing into the shed
+    kids.append(prop("Shed_Chair", MY.folding_chair(), (x1 - 0.28, y0 + 0.74, 0.02), 0))
+    kids.append(prop("Shed_TeaChest-col", MY.tea_chest(), (x1 - 0.24, y1 - 0.22, 0.02), 0))
+    kids.append(prop("Shed_Radio", MY.valve_radio(), (x1 - 0.24, y1 - 0.24, 0.5), 0))
+    kids.append(prop("Shed_Bulb", MY.bare_bulb(0.32), (cx, cy, 2.32)))
+    kids.append(marker("ShedInterior_Light", (cx, cy, 1.85)))
+    # the ending: stand in front of the table, facing it
+    kids.append(marker("Shed_Ending", (table_x, y0 + 0.95, 0.02), 0))
+    # where the knocking comes from: just inside the door
+    kids.append(marker("Shed_Knock", (door_x0 + 0.42, y1 - 0.05, 1.2), 180))
+    for k in kids:
+        k.parent = root
+        k.matrix_parent_inverse = root.matrix_world.inverted()
+    return root
 
 
 # ------------------------------------------------------------------ main
