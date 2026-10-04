@@ -11,6 +11,7 @@
 | `art/textures/`, `art/materials/` | Small, low-res textures (128 px or less is the target) and saved materials. | Models |
 | `map/` | OpenStreetMap extracts, the import code that turns them into Godot scenes, and the generated Perth map scenes. | Map |
 | `audio/` | Sound effects, ambience, engine synthesis code, music player. | Audio |
+| `data/` | Game data as Godot resources, e.g. `data/parts/` for car upgrades. | Core |
 | `docs/` | Design notes and interface docs. | Everyone |
 | `tools/` | Headless scripts: tests, importers, generators. | Everyone |
 

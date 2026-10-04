@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"engine_tjet"
+display_name = "1.4 T-Jet turbo"
+description = "Abarth's turbo 1.4. A different car entirely."
+slot = &"engine"
+price = 9800
+modifiers = {"torque_mult": 1.95, "limiter_add": 200, "mass_add": 40}
+visual = ""

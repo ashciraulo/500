@@ -28,6 +28,9 @@ signal transmission_changed(automatic: bool)
 signal impact(strength: float)
 signal surface_changed(surface: StringName)
 signal headlights_changed(on: bool)
+## A part was installed (or a slot went back to stock). The car body listens
+## to swap visuals such as wheels and exhausts.
+signal parts_changed(slot: StringName, part: CarPart)
 
 enum Transmission { MANUAL, AUTOMATIC }
 
@@ -136,6 +139,21 @@ var steer_angle := 0.0
 ## True while the camera is in the cabin (set by CarCameraRig). Audio uses it
 ## to switch to the muffled interior mix.
 var is_player_inside := false
+## Engine torque multiplier from installed parts.
+var torque_multiplier := 1.0
+## How much rain hurts grip (1 = stock tyres).
+var wet_penalty_multiplier := 1.0
+## Installed parts by slot. Empty slots run the stock part.
+var parts := {}
+
+## Stock values captured on _ready, so parts always stack from stock.
+var _stock := {}
+const _TUNABLE := [
+	"limiter_rpm", "redline_rpm", "final_drive", "gear_ratios", "shift_time",
+	"tire_grip", "lateral_stiffness", "spring_strength", "damper_strength",
+	"anti_roll_strength", "suspension_length", "brake_force", "handbrake_force",
+	"mass", "drag_coefficient",
+]
 
 var _wheels: Array[Dictionary] = []
 var _shift_timer := 0.0
@@ -148,6 +166,8 @@ var _last_velocity := Vector3.ZERO
 
 
 func _ready() -> void:
+	for key in _TUNABLE:
+		_stock[key] = get(key).duplicate() if get(key) is PackedFloat32Array else get(key)
 	if player_controlled:
 		add_to_group(&"player_car")
 	_spawn_transform = global_transform
@@ -214,7 +234,7 @@ func _physics_process(delta: float) -> void:
 	var surface_votes := {}
 	var worst_slip := 0.0
 	grounded_wheels = 0
-	var wet_grip := lerpf(1.0, 0.78, Weather.wetness)
+	var wet_grip := lerpf(1.0, 1.0 - 0.22 * wet_penalty_multiplier, Weather.wetness)
 	for i in _wheels.size():
 		var wheel: Dictionary = _wheels[i]
 		var forward := -global_basis.z
@@ -387,6 +407,92 @@ func reset_to_spawn() -> void:
 	_begin_shift(1)
 
 
+## Install a part in its slot (replacing whatever was there).
+func install_part(part: CarPart) -> void:
+	if part.is_stock():
+		parts.erase(part.slot)
+	else:
+		parts[part.slot] = part
+	_rebuild_stats()
+	parts_changed.emit(part.slot, part)
+
+
+## Put a slot back to the stock part.
+func remove_part(slot: StringName) -> void:
+	if not parts.has(slot):
+		return
+	parts.erase(slot)
+	_rebuild_stats()
+	parts_changed.emit(slot, PartsCatalogue.get_part(StringName(String(slot) + "_stock")))
+
+
+## Installed part ids, for saving.
+func get_part_ids() -> PackedStringArray:
+	var ids := PackedStringArray()
+	for part in parts.values():
+		ids.append(part.id)
+	return ids
+
+
+## Restore a saved set of parts. Unknown ids are skipped.
+func install_part_ids(ids: PackedStringArray) -> void:
+	for id in ids:
+		var part := PartsCatalogue.get_part(id)
+		if part:
+			install_part(part)
+
+
+## Headline numbers for menus and the garage.
+func get_stats() -> Dictionary:
+	var peak_torque := 0.0
+	var peak_power_kw := 0.0
+	var at_rpm := idle_rpm
+	while at_rpm <= limiter_rpm:
+		var torque := _torque_at(at_rpm)
+		peak_torque = maxf(peak_torque, torque)
+		peak_power_kw = maxf(peak_power_kw, torque * at_rpm * TAU / 60.0 / 1000.0)
+		at_rpm += 50.0
+	return {
+		"power_kw": peak_power_kw,
+		"torque_nm": peak_torque,
+		"mass_kg": mass,
+		"grip": tire_grip,
+		"brake_force": brake_force,
+		"limiter_rpm": limiter_rpm,
+		"final_drive": final_drive,
+	}
+
+
+func _rebuild_stats() -> void:
+	for key in _TUNABLE:
+		set(key, _stock[key].duplicate() if _stock[key] is PackedFloat32Array else _stock[key])
+	torque_multiplier = 1.0
+	wet_penalty_multiplier = 1.0
+	var multipliers := {
+		"final_drive_mult": "final_drive", "shift_time_mult": "shift_time",
+		"grip_mult": "tire_grip", "spring_mult": "spring_strength",
+		"damper_mult": "damper_strength", "anti_roll_mult": "anti_roll_strength",
+		"drag_mult": "drag_coefficient",
+	}
+	for part in parts.values():
+		var m: Dictionary = part.modifiers
+		torque_multiplier *= m.get("torque_mult", 1.0)
+		wet_penalty_multiplier *= m.get("wet_penalty_mult", 1.0)
+		for key in multipliers:
+			if m.has(key):
+				set(multipliers[key], get(multipliers[key]) * m[key])
+		if m.has("brake_mult"):
+			brake_force *= m.brake_mult
+			handbrake_force *= m.brake_mult
+		limiter_rpm += m.get("limiter_add", 0.0)
+		redline_rpm += m.get("limiter_add", 0.0)
+		suspension_length += m.get("ride_height_add", 0.0)
+		mass += m.get("mass_add", 0.0)
+		lateral_stiffness = clampf(lateral_stiffness + m.get("lateral_stiffness_add", 0.0), 0.1, 1.0)
+		if m.has("gear_ratios"):
+			gear_ratios = PackedFloat32Array(m.gear_ratios)
+
+
 func _read_player_input(delta: float) -> void:
 	var raw_throttle := Input.get_action_strength("accelerate")
 	var raw_brake := Input.get_action_strength("brake")
@@ -498,13 +604,17 @@ func _update_engine(delta: float) -> float:
 		var rate := free_rev_up if free_target > rpm else free_rev_down
 		rpm = move_toward(rpm, free_target, rate * delta)
 	rpm = clampf(rpm, idle_rpm * 0.9, limiter_rpm + 100.0)
-	engine_load = clampf(torque / 102.0, -1.0, 1.0)
+	engine_load = clampf(torque / (102.0 * torque_multiplier), -1.0, 1.0)
 	if not engaged:
 		return 0.0
 	return torque * ratio * drivetrain_efficiency
 
 
 func _torque_at(at_rpm: float) -> float:
+	return _stock_torque_at(at_rpm) * torque_multiplier
+
+
+func _stock_torque_at(at_rpm: float) -> float:
 	if at_rpm <= torque_curve[0].x:
 		return torque_curve[0].y
 	for i in range(1, torque_curve.size()):

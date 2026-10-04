@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"exhaust_twin"
+display_name = "Twin-tip system"
+description = "Cat-back system with twin tips."
+slot = &"exhaust"
+price = 900
+modifiers = {"torque_mult": 1.04}
+visual = "exhaust_twin"

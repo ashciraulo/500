@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"engine_1_4_swap"
+display_name = "1.4 16v swap"
+description = "The 74 kW 1.4 from the 500 Lounge. Revs higher and pulls harder."
+slot = &"engine"
+price = 4200
+modifiers = {"torque_mult": 1.42, "limiter_add": 600, "mass_add": 15}
+visual = ""

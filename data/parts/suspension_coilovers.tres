@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"suspension_coilovers"
+display_name = "Coilovers"
+description = "Adjustable coilovers, set up firm."
+slot = &"suspension"
+price = 1500
+modifiers = {"spring_mult": 1.45, "damper_mult": 1.3, "anti_roll_mult": 1.6, "ride_height_add": -0.045, "lateral_stiffness_add": 0.05}
+visual = ""

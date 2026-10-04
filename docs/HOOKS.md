@@ -84,3 +84,18 @@ Player choices from the pause menu, saved to `user://settings.cfg`:
 `show_help`. Change values, then call `apply()`; `save_settings()` writes them.
 The pause menu (`scripts/ui/pause_menu.gd`) pauses the tree, so anything that
 should keep running while paused needs `process_mode = PROCESS_MODE_ALWAYS`.
+
+## Parts and upgrades
+
+Parts are data in `data/parts/<id>.tres` (`CarPart`, `scripts/vehicle/car_part.gd`).
+Each has a `slot` (engine, intake, exhaust, gearbox, suspension, tyres, wheels,
+brakes, weight), a `price` (AUD), stat `modifiers` (keys documented in
+`car_part.gd`) and an optional `visual` model id (`exhaust_sport`,
+`wheel_alloy15`, ...) for the car body to show. `PartsCatalogue` lists them:
+`all()`, `for_slot(slot)`, `get_part(id)`.
+
+On the car: `install_part(part)`, `remove_part(slot)`, `parts` (slot -> part),
+`get_part_ids()` / `install_part_ids(ids)` for saving, and `get_stats()` for
+headline numbers (power_kw, torque_nm, mass_kg, grip, ...). Parts always stack
+from the stock values. Signal `parts_changed(slot, part)` fires on every change;
+the car body uses `part.visual` to swap wheels and exhausts.

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"intake_panel_filter"
+display_name = "Panel filter"
+description = "A cotton drop-in filter. Breathes a little easier."
+slot = &"intake"
+price = 120
+modifiers = {"torque_mult": 1.02}
+visual = ""

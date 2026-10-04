@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"exhaust_sport"
+display_name = "Sport back box"
+description = "A freer-flowing back box with a bigger tip."
+slot = &"exhaust"
+price = 550
+modifiers = {"torque_mult": 1.03}
+visual = "exhaust_sport"

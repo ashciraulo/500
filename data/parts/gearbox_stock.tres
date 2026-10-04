@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"gearbox_stock"
+display_name = "5-speed (stock)"
+description = "Stock C514 gearbox and 4.07 final drive."
+slot = &"gearbox"
+price = 0
+modifiers = {}
+visual = ""

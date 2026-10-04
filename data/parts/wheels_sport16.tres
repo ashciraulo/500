@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"wheels_sport16"
+display_name = "16\" sport alloys"
+description = "Wider rims for a bit more bite."
+slot = &"wheels"
+price = 1300
+modifiers = {"mass_add": -2, "grip_mult": 1.02}
+visual = "wheel_sport16"

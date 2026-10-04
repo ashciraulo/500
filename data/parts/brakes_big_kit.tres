@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"brakes_big_kit"
+display_name = "Big brake kit"
+description = "Four-pot calipers up front, rear discs."
+slot = &"brakes"
+price = 1900
+modifiers = {"brake_mult": 1.3}
+visual = ""
