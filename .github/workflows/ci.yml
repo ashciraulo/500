@@ -49,3 +49,13 @@ jobs:
             echo "::error::GDScript errors in the audio tests"
             exit 1
           fi
+
+      - name: Home check
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --script res://tools/home_check.gd 2>&1 \
+            | tee home.log | grep -E "FAIL|HOME CHECK|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" home.log; then
+            echo "::error::GDScript errors in the home scene"
+            exit 1
+          fi

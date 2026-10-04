@@ -60,3 +60,27 @@ along X, outer face pointing away from the car. Styles: `pop_trim` (stock),
 
 Real proportions: length 3.55 m, width 1.63 m, height 1.49 m, wheelbase
 2.30 m, track 1.41 m, tyres 175/65 R14 (radius 0.29 m).
+
+## Home: 15 Little Shenton Lane
+
+`scripts/build_shenton.py` writes `home/shenton/shenton_house.glb` (shell,
+stairs, roof, windows, doors, markers), `shenton_interior.glb` (furniture and
+the small mysteries) and `shenton_site.glb` (garden, courtyard, the shared
+carport and sheds, lanes, neighbours). `scenes/home/shenton.tscn` instances
+all three under `HomeBase` (`scripts/world/home_base.gd`), and
+`tools/home_check.gd` checks the scene headless in CI.
+
+In Godot the street is at +Z and the carport at -Z; the house fills
+x 0..5.4, z 0..-12.
+
+| Node | Contract |
+| --- | --- |
+| `*-col`, `*-colonly` | Trimesh collision; `HomeBase` puts ground and floors on layer 1, everything else on layers 1+2. |
+| `Door_*`, `Shed_Door` | Origin on the hinge, swing about local Y. `Door_Sliding` slides along local X. `HomeBase.toggle_door()` animates them; `Shed_Door` stays locked until `unlock_shed()`. |
+| `Padlock` | Hidden once the shed is unlocked. |
+| `Spawn_Player`, `Spawn_Front`, `Spawn_Courtyard`, `Spawn_Car` | Spawn points (`HomeBase.spawn_transform()`). |
+| `Bed` | Walk here to sleep (`HomeBase.sleep()` skips to 7:00 next day). |
+| `Light_*` | Warm lamp positions; `HomeBase` adds lights that come on at dusk. `Light_WC_Up` flickers. |
+
+The listing photos of the house are reference only: never textures, never
+committed.

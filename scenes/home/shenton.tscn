@@ -1,0 +1,15 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/home_base.gd" id="1_home"]
+[ext_resource type="PackedScene" path="res://art/models/home/shenton/shenton_house.glb" id="2_house"]
+[ext_resource type="PackedScene" path="res://art/models/home/shenton/shenton_interior.glb" id="3_interior"]
+[ext_resource type="PackedScene" path="res://art/models/home/shenton/shenton_site.glb" id="4_site"]
+
+[node name="Shenton" type="Node3D"]
+script = ExtResource("1_home")
+
+[node name="House" parent="." instance=ExtResource("2_house")]
+
+[node name="Interior" parent="." instance=ExtResource("3_interior")]
+
+[node name="Site" parent="." instance=ExtResource("4_site")]

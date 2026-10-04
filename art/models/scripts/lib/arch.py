@@ -56,19 +56,24 @@ def wall(axis, at, a0, a1, z0, z1, thick, material, bucket, openings=(), uv=1.0,
         t0, t1 = at, at + thick
     else:
         t0, t1 = at - thick, at
-    ops = sorted(openings)
+    # Split the run into columns at every opening edge; each column is solid
+    # except where openings cover it, so stacked openings (a door under a
+    # window) never produce overlapping blocks.
+    ops = [(max(b0, a0), min(b1, a1), zb, zt) for b0, b1, zb, zt in openings if b1 > a0 and b0 < a1]
+    cuts = sorted({a0, a1} | {b for o in ops for b in o[:2]})
     pieces = []
-    cur = a0
-    for b0, b1, zb, zt in ops:
-        if b0 > cur:
-            pieces.append((cur, b0, z0, z1))
-        if zb > z0:
-            pieces.append((b0, b1, z0, zb))
-        if zt < z1:
-            pieces.append((b0, b1, zt, z1))
-        cur = b1
-    if cur < a1:
-        pieces.append((cur, a1, z0, z1))
+    for c0, c1 in zip(cuts, cuts[1:]):
+        if c1 - c0 < 1e-4:
+            continue
+        holes = sorted((max(zb, z0), min(zt, z1)) for b0, b1, zb, zt in ops
+                       if b0 <= c0 + 1e-6 and b1 >= c1 - 1e-6 and zt > z0 and zb < z1)
+        z = z0
+        for hb, ht in holes:
+            if hb > z + 1e-4:
+                pieces.append((c0, c1, z, hb))
+            z = max(z, ht)
+        if z1 > z + 1e-4:
+            pieces.append((c0, c1, z, z1))
     objs = []
     for p0, p1, q0, q1 in pieces:
         if axis == "x":
