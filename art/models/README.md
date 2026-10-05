@@ -20,6 +20,27 @@ The mystery's seven clues export alone, named by their ids in
 `data/progression/mystery.json` (tape_1, polaroid, ticket, atlas_page,
 keyring, tape_12, shed_key): `python3.11 art/models/scripts/build_mystery.py`
 writes `home/mystery/<id>.glb`.
+It also writes `home/mystery/shed_reveal.glb`, what's under the dust sheet
+in the shed: M.'s 1979 broadcasting table (a cassette deck, a desk mic, a
+tin-box transmitter with a lit valve and an aerial to the ceiling, the
+NIGHT DRIVE tapes, M.'s open journal, a thermos and ashtray, a pinboard of
+map and Polaroids, a MARCH 1979 calendar). Origin at the table's footprint
+centre on the floor, the wall side toward Godot +Z (it fits `Shed_Sheeted`'s
+1.0 x 0.55 x 0.78 m box); empties `DeckLight`, `TxLight`, `Valve` and `Bulb`
+for its lamps.
+
+The night shift's city vehicles (`lib/city_vehicles.py`):
+`python3.11 art/models/scripts/build_city.py` writes `props/city/sweeper.glb`,
+`bin_truck.glb`, `wheelie_bin.glb` and `food_van.glb` for `traffic/`. They
+face Godot -Z with the kerb side at -X, origin on the ground at the
+footprint centre, and have no wheel nodes. The traffic code recolours the
+`Paint` and `Livery` materials; `HeadL`/`HeadR`/`TailL`/`TailR` are their own
+meshes so lit materials can be swapped in. Moving parts have origins on
+their pivots: `BroomL`/`BroomR` (sweeper), `BinArm` with `Rail` and `Grip`
+(bin truck, kerb side), `Beacon/A` and `Beacon/B` (amber roof lamps), `Lid`
+(wheelie bin, own `Lid` material, hinged at the back) and `Awning` (food
+van, shown open). The food van has empties `HatchLight`, `SignSide` (faces
+-X) and `SignFront` for its lamp and Label3D signs; no baked text.
 
 ## Conventions
 
