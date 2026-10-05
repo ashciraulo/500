@@ -44,6 +44,8 @@ uniform vec4 livery_color : source_color = vec4(1.0);
 uniform mat4 livery_space = mat4(1.0);
 uniform vec3 livery_min = vec3(-0.8, 0.2, -1.8);
 uniform vec3 livery_max = vec3(0.8, 1.7, 1.8);
+// Door number for the rally roundels (livery mode 6), 0..99.
+uniform int livery_number = 0;
 
 varying vec3 world_pos;
 varying vec2 affine_uv;
@@ -63,6 +65,26 @@ void vertex() {
 	// screen-linear (affine) UVs, like the PS1 had.
 	affine_uv = UV * uv_scale * clip.w;
 	affine_w = clip.w;
+}
+
+// 1 inside a lit segment of a seven-segment digit. p is in the digit's box:
+// x 0..1 left to right, y 0..2 bottom to top.
+float seven_segment(vec2 p, int digit) {
+	if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 2.0) {
+		return 0.0;
+	}
+	int bits[10] = int[](63, 6, 91, 79, 102, 109, 125, 7, 127, 111);
+	int on = bits[clamp(digit, 0, 9)];
+	float t = 0.24;
+	float lit = 0.0;
+	lit = max(lit, float((on & 1) != 0) * step(2.0 - t, p.y));                       // a
+	lit = max(lit, float((on & 2) != 0) * step(1.0 - t, p.x) * step(1.0, p.y));      // b
+	lit = max(lit, float((on & 4) != 0) * step(1.0 - t, p.x) * step(p.y, 1.0));      // c
+	lit = max(lit, float((on & 8) != 0) * step(p.y, t));                             // d
+	lit = max(lit, float((on & 16) != 0) * step(p.x, t) * step(p.y, 1.0));           // e
+	lit = max(lit, float((on & 32) != 0) * step(p.x, t) * step(1.0, p.y));           // f
+	lit = max(lit, float((on & 64) != 0) * step(abs(p.y - 1.0), t * 0.5));           // g
+	return lit;
 }
 
 void fragment() {
@@ -99,6 +121,27 @@ void fragment() {
 			mask = step(0.86, across) * step(0.25, up) * step(up, 0.3);
 		} else if (livery_mode == 5) {
 			mask = step(0.8, up);
+		} else if (livery_mode == 6) {
+			// A white roundel on each door with the number in the colour.
+			// Read along the side as someone standing beside the car sees it.
+			float centre_z = (livery_min.z + livery_max.z) * 0.5 + size.z * 0.02;
+			float side = sign(local.x - (livery_min.x + livery_max.x) * 0.5);
+			vec2 at = vec2((local.z - centre_z) * -side, local.y - (livery_min.y + size.y * 0.37));
+			float radius = size.y * 0.14;
+			mask = step(0.82, across) * step(length(at), radius);
+			vec2 cell = at / (radius * 0.55);
+			int tens = livery_number / 10;
+			int ones = livery_number - tens * 10;
+			float digit = 0.0;
+			if (tens > 0) {
+				digit = max(seven_segment(cell + vec2(1.25, 1.0), tens),
+					seven_segment(cell + vec2(-0.25, 1.0), ones));
+			} else {
+				digit = seven_segment(cell + vec2(0.5, 1.0), ones);
+			}
+			paint = mix(vec3(0.94, 0.93, 0.89), livery_color.rgb, digit);
+		} else if (livery_mode == 7) {
+			mask = step(across, 0.08);
 		}
 		// Livery paint weathers a little with the car's wear texture.
 		color = mix(color, paint * mix(vec3(1.0), tex.rgb, 0.35), mask);

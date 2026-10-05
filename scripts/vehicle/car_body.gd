@@ -25,7 +25,9 @@ var _steering_rest: Basis
 var _brake_lights: Node3D
 var _stock_paint: Color
 var _stock_wear: Texture2D
-const LIVERY_MODES := {"stripes": 1, "chequered_roof": 2, "scorpion": 3, "side_stripe": 4, "two_tone": 5}
+var _stock_finish := Vector2(0.9, 0.0)  # roughness, metallic
+const LIVERY_MODES := {"stripes": 1, "chequered_roof": 2, "scorpion": 3, "side_stripe": 4, "two_tone": 5,
+	"rally_numbers": 6, "centre_stripe": 7}
 var _livery_mode := 0
 var _trinkets: Node3D
 var _swings: Array[Node3D] = []
@@ -45,6 +47,7 @@ func _ready() -> void:
 	if paint:
 		_stock_paint = paint.get_shader_parameter("albedo_color")
 		_stock_wear = paint.get_shader_parameter("albedo_texture")
+		_stock_finish = Vector2(paint.get_shader_parameter("roughness"), paint.get_shader_parameter("metallic"))
 	var wheels := get_parent().get_node_or_null("Wheels")
 	if wheels:
 		PS1Model.apply(wheels)
@@ -130,6 +133,13 @@ func reset_paint() -> void:
 	paint.set_shader_parameter("albedo_texture", _stock_wear)
 
 
+## Clear coat: roughness and metallic for the paint, or below zero for the
+## model's own.
+func set_finish(rough: float, metal: float) -> void:
+	_set_paint_param("roughness", rough if rough >= 0.0 else _stock_finish.x)
+	_set_paint_param("metallic", metal if metal >= 0.0 else _stock_finish.y)
+
+
 ## Show earned extras: `livery` is a cosmetic ({} for none), `trinkets` a
 ## list of them (see data/progression/cosmetics.json and Trinkets).
 func apply_cosmetics(livery: Dictionary, trinkets: Array) -> void:
@@ -137,6 +147,7 @@ func apply_cosmetics(livery: Dictionary, trinkets: Array) -> void:
 	_set_paint_param("livery_mode", _livery_mode)
 	if _livery_mode > 0:
 		_set_paint_param("livery_color", Color.html(livery.get("color", "#ffffff")))
+		_set_paint_param("livery_number", int(livery.get("number", 0)))
 		var bounds := _body_bounds()
 		_set_paint_param("livery_min", bounds.position)
 		_set_paint_param("livery_max", bounds.end)

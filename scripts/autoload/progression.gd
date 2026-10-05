@@ -32,7 +32,7 @@ const COSMETICS_PATH := "res://data/progression/cosmetics.json"
 const KNOWN_STATS := [
 	"deliveries", "night_deliveries", "rain_deliveries", "storm_deliveries", "fragile_perfect",
 	"trials_completed", "trials_medalled", "trials_silver", "trials_gold", "parts_bought",
-	"cars_bought", "washes", "resprays", "litres_bought", "earned", "km_driven", "km_tier_car",
+	"cars_bought", "washes", "resprays", "liveries_painted", "litres_bought", "earned", "km_driven", "km_tier_car",
 	"discoveries", "upgrades_fitted", "suburbs_delivered", "cars_owned", "badges",
 	"barn_finds", "restoration_stages", "classics_restored", "photos_taken", "photo_spots",
 	"parking_done", "parking_gold", "scenic_drives", "meets_attended", "lifts_given",

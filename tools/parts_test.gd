@@ -222,6 +222,26 @@ func _field_gear() -> void:
 	_car.load_vehicle_state({"car_id": "classic_nuova"})
 	_check(_car.wear.brakes == 0.0, "another car has its own wear")
 	_car.load_vehicle_state({"car_id": "pop_12"})
+	# Spray shop: clear coats and liveries.
+	var paint_mat: ShaderMaterial = _car.get_node("Body")._materials.get("Paint")
+	var stock_rough: float = paint_mat.get_shader_parameter("roughness") if paint_mat else 0.0
+	wallet.balance = maxi(wallet.balance, 5000)
+	_check(garage.apply_finish(_car, "metallic") and _car.finish == "metallic", "a metallic coat at the spray shop")
+	if paint_mat:
+		_check(is_equal_approx(paint_mat.get_shader_parameter("metallic"), garage.FINISHES.metallic[4]), "and the paint shines like metal")
+	_check(garage.paint_livery(_car, "rally_numbers", 2, 27) and _car.cosmetics.livery == "custom", "rally roundels painted on")
+	if paint_mat:
+		_check(paint_mat.get_shader_parameter("livery_mode") == 6 and paint_mat.get_shader_parameter("livery_number") == 27, "the roundels carry number 27")
+	_check(String(_car.logbook[-1].text).contains("number 27"), "the service book notes the livery")
+	var sprayed: Dictionary = _car.vehicle_state()
+	_car.load_vehicle_state({"car_id": "pop_12"})
+	_check(_car.finish == "" and _car.cosmetics.livery == "", "a state without them means the factory finish")
+	if paint_mat:
+		paint_mat = _car.get_node("Body")._materials.get("Paint")
+		_check(is_equal_approx(paint_mat.get_shader_parameter("roughness"), stock_rough), "back to the model's own roughness")
+	_car.load_vehicle_state(sprayed)
+	_check(_car.finish == "metallic" and _car.custom_livery.get("number", 0) == 27, "coat and livery are saved with the car")
+	_car.load_vehicle_state({"car_id": "pop_12"})
 	root.get_node("GameClock").set_time(10.0)
 	# The time of day, for birds.
 	var clock := root.get_node("GameClock")

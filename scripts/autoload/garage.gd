@@ -28,6 +28,33 @@ const PAINTS := [
 	["Kings Park olive", Color(0.36, 0.38, 0.2), 1300],
 ]
 
+## Clear coats at the spray shop: id -> [name, price, hours, roughness,
+## metallic]. Without one the car keeps its model's own finish.
+const FINISHES := {
+	"gloss": ["Gloss clear coat", 600, 3.0, 0.32, 0.0],
+	"metallic": ["Metallic flake", 1400, 4.0, 0.42, 0.55],
+	"satin": ["Satin", 700, 3.0, 0.7, 0.05],
+	"matte": ["Matte", 900, 3.0, 1.0, 0.0],
+}
+## Liveries the spray shop paints on: mode -> [name, price, hours]. Modes are
+## CarBody.LIVERY_MODES.
+const LIVERIES := {
+	"stripes": ["Twin racing stripes", 450, 2.0],
+	"centre_stripe": ["One wide centre stripe", 350, 1.5],
+	"side_stripe": ["A side stripe", 400, 1.5],
+	"two_tone": ["Two-tone roof", 700, 3.0],
+	"rally_numbers": ["Rally roundels with a door number", 250, 1.0],
+}
+## Colours for stripes and numbers: [name, colour].
+const LIVERY_COLOURS := [
+	["White", Color(0.95, 0.94, 0.9)],
+	["Black", Color(0.06, 0.06, 0.07)],
+	["Red", Color(0.78, 0.12, 0.14)],
+	["Gold", Color(0.79, 0.64, 0.23)],
+	["Blue", Color(0.16, 0.36, 0.7)],
+	["Green", Color(0.1, 0.42, 0.24)],
+]
+
 ## Hours of the day spent in the shed fitting a part, by slot.
 const FIT_HOURS := {
 	"engine": 4.0, "gearbox": 3.0, "suspension": 2.5, "exhaust": 1.0,
@@ -131,6 +158,32 @@ func respray(car: CarController, index: int) -> bool:
 	GameClock.advance(RESPRAY_HOURS)
 	Progression.add_stat("resprays")
 	resprayed.emit(paint[1])
+	return true
+
+
+## Paint one of LIVERIES on, in one of LIVERY_COLOURS (`number` for rally
+## roundels). Returns false if you can't afford it.
+func paint_livery(car: CarController, mode: String, colour: int, number := 0) -> bool:
+	var job: Array = LIVERIES[mode]
+	if not Wallet.spend(job[1]):
+		return false
+	var shade: Array = LIVERY_COLOURS[colour]
+	car.set_custom_livery(mode, shade[1], number)
+	car.log_entry("%s painted on in %s%s." % [job[0], String(shade[0]).to_lower(),
+		", number %d" % number if mode == "rally_numbers" else ""])
+	GameClock.advance(job[2])
+	Progression.add_stat("liveries_painted")
+	return true
+
+
+## Lay down one of FINISHES. Returns false if you can't afford it.
+func apply_finish(car: CarController, id: String) -> bool:
+	var coat: Array = FINISHES[id]
+	if not Wallet.spend(coat[1]):
+		return false
+	car.set_finish(id)
+	car.log_entry("%s laid down." % coat[0])
+	GameClock.advance(coat[2])
 	return true
 
 

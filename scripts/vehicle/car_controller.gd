@@ -245,6 +245,12 @@ var paint_color := Color(0, 0, 0, 0)
 ## Earned extras fitted to this car: "livery" (a cosmetic id or "") and
 ## "trinkets" (cosmetic ids, one per slot). See data/progression/cosmetics.json.
 var cosmetics := {"livery": "", "trinkets": []}
+## The spray shop's own livery, used when cosmetics.livery is "custom":
+## {"mode": a CarBody livery mode, "color": "#rrggbb", "number": 1..99}.
+var custom_livery := {}
+## Clear-coat finish from the spray shop ("" keeps the model's own; see
+## Garage.FINISHES).
+var finish := ""
 const MODEL_PATH := "res://art/models/cars/%s/%s.glb"
 
 ## Stock values captured on _ready, so parts always stack from stock.
@@ -876,6 +882,8 @@ func apply_car(id: String) -> void:
 	tuning = {}
 	paint_color = Color(0, 0, 0, 0)
 	cosmetics = {"livery": "", "trinkets": []}
+	custom_livery = {}
+	finish = ""
 	_swap_model(car.get("model", "pop"))
 	_apply_paint()
 	_capture_stock()
@@ -896,6 +904,8 @@ func vehicle_state() -> Dictionary:
 		"dirt": dirt,
 		"paint": paint_color.to_html() if has_custom_paint() else "",
 		"cosmetics": cosmetics.duplicate(true),
+		"custom_livery": custom_livery.duplicate(),
+		"finish": finish,
 		"roof_open": roof_open,
 		"wear": wear.duplicate(),
 		"logbook": logbook.duplicate(true),
@@ -916,6 +926,10 @@ func load_vehicle_state(data: Dictionary) -> void:
 	paint_color = Color(0, 0, 0, 0)
 	var saved: Dictionary = data.get("cosmetics", {})
 	cosmetics = {"livery": String(saved.get("livery", "")), "trinkets": Array(saved.get("trinkets", []))}
+	custom_livery = Dictionary(data.get("custom_livery", {})).duplicate()
+	if cosmetics.livery == "custom" and custom_livery.is_empty():
+		cosmetics.livery = ""
+	finish = String(data.get("finish", ""))
 	var paint: String = data.get("paint", "")
 	if paint != "":
 		set_paint(Color.html(paint))
@@ -1018,10 +1032,24 @@ static func _copy(value: Variant) -> Variant:
 	return value
 
 
-## Put a livery on (a cosmetic id from Progression.rewards, or "" for none).
+## Put a livery on (a cosmetic id from Progression.rewards, "custom" for the
+## spray shop's one, or "" for none).
 func set_livery(id: String) -> void:
 	cosmetics.livery = id
 	_apply_cosmetics()
+
+
+## Paint a spray shop livery on: `mode` is a CarBody livery mode, `color` its
+## colour and `number` the door number (rally numbers only).
+func set_custom_livery(mode: String, color: Color, number := 0) -> void:
+	custom_livery = {"mode": mode, "color": "#" + color.to_html(false), "number": clampi(number, 0, 99)}
+	set_livery("custom")
+
+
+## Change the clear coat ("" for the model's own).
+func set_finish(id: String) -> void:
+	finish = id
+	_apply_paint()
 
 
 func has_trinket(id: String) -> bool:
@@ -1314,7 +1342,11 @@ func _apply_cosmetics() -> void:
 	var trinkets := []
 	for id: String in cosmetics.trinkets:
 		trinkets.append(Progression.cosmetic(id))
-	var livery: Dictionary = Progression.cosmetic(cosmetics.livery) if cosmetics.livery != "" else {}
+	var livery: Dictionary = {}
+	if cosmetics.livery == "custom":
+		livery = custom_livery
+	elif cosmetics.livery != "":
+		livery = Progression.cosmetic(cosmetics.livery)
 	body.apply_cosmetics(livery, trinkets)
 
 
@@ -1330,6 +1362,9 @@ func _apply_paint() -> void:
 		body.set_paint(Classics.paint_for(car_id), not Classics.is_stage_done(car_id, "paint"))
 	elif body.has_method("reset_paint"):
 		body.reset_paint()
+	if body.has_method("set_finish"):
+		var coat: Array = Garage.FINISHES.get(finish, [])
+		body.set_finish(coat[3] if coat else -1.0, coat[4] if coat else -1.0)
 
 
 func _read_player_input(delta: float) -> void:

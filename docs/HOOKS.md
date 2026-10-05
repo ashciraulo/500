@@ -323,6 +323,14 @@ records).
   `Mount_Gear` nodes; without them the Pop's measured spots are used.
 - Liveries are drawn by `shaders/ps1_surface.gdshader` in the car's own space
   over the `Body` mesh's bounds (`car_body.gd` `apply_cosmetics()`).
+- The spray shop also paints its own liveries (`Garage.LIVERIES`, in one of
+  `Garage.LIVERY_COLOURS`): `Garage.paint_livery(car, mode, colour, number)`
+  stores them in `car.custom_livery` and sets `cosmetics.livery` to
+  `"custom"`. Rally roundels (`rally_numbers`) carry a 1-99 door number drawn
+  as seven-segment digits; `centre_stripe` is one wide stripe nose to tail.
+- Clear coats (`Garage.FINISHES`: gloss, metallic, satin, matte) set the
+  `Paint` material's roughness and metallic; `car.finish` is saved with the
+  car, and `""` keeps the model's own.
 - Garage decorations (`kind: garage`) are earned but not shown yet: the home
   scene can read `Progression.earned_cosmetics("garage")`.
 - `data/cars/cars.json` `model` names the body under

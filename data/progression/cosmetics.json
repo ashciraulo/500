@@ -1,5 +1,5 @@
 {
-	"_comment": "How each cosmetic reward looks and where else it comes from. Mileage rewards are listed in mileage_rewards.json (same ids); `meet` rewards come from nights at the car meet (number of visits). Trinket `slot`: mirror (hangs from the rear-view mirror), dash (top of the dash), shelf (parcel shelf), gear (on the gear lever). Livery `mode`: stripes, chequered_roof, scorpion, side_stripe, two_tone. Garage decorations are shown at home (see docs/HOOKS.md).",
+	"_comment": "How each cosmetic reward looks and where else it comes from. Mileage rewards are listed in mileage_rewards.json (same ids); `meet` rewards come from nights at the car meet (number of visits). Trinket `slot`: mirror (hangs from the rear-view mirror), dash (top of the dash), shelf (parcel shelf), gear (on the gear lever). Livery `mode`: stripes, chequered_roof, scorpion, side_stripe, two_tone, rally_numbers (with `number`), centre_stripe. Garage decorations are shown at home (see docs/HOOKS.md).",
 	"items": {
 		"trinket_fluffy_dice": {"kind": "trinket", "slot": "mirror", "color": "#e8e4dc"},
 		"trinket_nodding_dog": {"kind": "trinket", "slot": "shelf", "color": "#8a5a32"},

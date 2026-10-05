@@ -35,6 +35,9 @@ var _tabs: TabContainer
 var _parts_list: VBoxContainer
 var _tuning_list: VBoxContainer
 var _paint_list: VBoxContainer
+## The spray shop's livery picks, kept while the screen is open.
+var _livery_colour := 0
+var _livery_number := 5
 var _fuel_list: VBoxContainer
 var _wash_list: VBoxContainer
 var _service_list: VBoxContainer
@@ -407,6 +410,68 @@ func _refresh_paint() -> void:
 			button.text = "%s\nYour colour" % paint[0]
 		button.pressed.connect(_respray.bind(i))
 		grid.add_child(button)
+	_refresh_finishes()
+	_refresh_liveries()
+
+
+func _refresh_finishes() -> void:
+	_heading(_paint_list, "Clear coat")
+	_text(_paint_list, "A new coat over whatever colour it is. Gloss shines up in the sun and the rain, matte doesn't shine at all.")
+	for id: String in Garage.FINISHES:
+		var coat: Array = Garage.FINISHES[id]
+		var on: bool = _car.finish == id
+		_paint_list.add_child(_extra_row("%s   $%s, %s h" % [coat[0], _number(coat[1]), _hours(coat[2])],
+			"On it now" if on else "Lay it down", on or not Wallet.can_afford(coat[1]), func() -> void:
+				if Garage.apply_finish(_car, id):
+					_change.text = "%s laid down." % coat[0]))
+
+
+func _refresh_liveries() -> void:
+	_heading(_paint_list, "Stripes and numbers")
+	_text(_paint_list, "Painted over the colour. Pick a colour (and a door number for the roundels), then the job.")
+	var colours := HBoxContainer.new()
+	colours.add_theme_constant_override("separation", 6)
+	_paint_list.add_child(colours)
+	for i in Garage.LIVERY_COLOURS.size():
+		var shade: Array = Garage.LIVERY_COLOURS[i]
+		var chip := Button.new()
+		chip.text = shade[0]
+		chip.toggle_mode = true
+		chip.button_pressed = i == _livery_colour
+		var look := StyleBoxFlat.new()
+		look.bg_color = Color(0.15, 0.14, 0.13)
+		look.border_color = shade[1] if i != _livery_colour else ACCENT
+		look.border_width_left = 16
+		look.set_border_width(SIDE_BOTTOM, 3 if i == _livery_colour else 1)
+		look.set_border_width(SIDE_TOP, 1)
+		look.set_border_width(SIDE_RIGHT, 1)
+		look.content_margin_left = 22
+		look.content_margin_right = 8
+		for state: String in ["normal", "hover", "pressed", "focus"]:
+			chip.add_theme_stylebox_override(state, look)
+		chip.pressed.connect(func() -> void:
+			_livery_colour = i
+			_refresh_after_action())
+		colours.add_child(chip)
+	var number_row := HBoxContainer.new()
+	var number_label := Label.new()
+	number_label.text = "Door number"
+	number_row.add_child(number_label)
+	var number := SpinBox.new()
+	number.min_value = 1
+	number.max_value = 99
+	number.value = _livery_number
+	number.value_changed.connect(func(value: float) -> void: _livery_number = int(value))
+	number_row.add_child(number)
+	_paint_list.add_child(number_row)
+	var current: Dictionary = _car.custom_livery if _car.cosmetics.get("livery", "") == "custom" else {}
+	for mode: String in Garage.LIVERIES:
+		var job: Array = Garage.LIVERIES[mode]
+		var on: bool = current.get("mode", "") == mode
+		_paint_list.add_child(_extra_row("%s   $%s, %s h%s" % [job[0], _number(job[1]), _hours(job[2]), "   (on it now)" if on else ""],
+			"Paint it", not Wallet.can_afford(job[1]), func() -> void:
+				if Garage.paint_livery(_car, mode, _livery_colour, _livery_number):
+					_change.text = "%s, in %s." % [job[0], String(Garage.LIVERY_COLOURS[_livery_colour][0]).to_lower()]))
 
 
 func _refresh_fuel() -> void:
@@ -572,13 +637,16 @@ func _refresh_extras() -> void:
 	_clear(_extras_list)
 	var liveries := Progression.earned_cosmetics("livery")
 	var trinkets := Progression.earned_cosmetics("trinket")
-	if liveries.is_empty() and trinkets.is_empty():
+	if liveries.is_empty() and trinkets.is_empty() and _car.custom_livery.is_empty():
 		_heading(_extras_list, "Extras")
 		_text(_extras_list, "Nothing yet. Trinkets and liveries come from kilometres on the clock and nights at the car meet. Next at %s km." % _number(float(Progression.next_mileage_reward().get("km", 0))))
 		return
 	_heading(_extras_list, "Livery")
 	var current: String = _car.cosmetics.get("livery", "")
-	for item: Dictionary in [{"id": "", "title": "None, just the paint"}] + liveries:
+	var choices: Array = [{"id": "", "title": "None, just the paint"}]
+	if not _car.custom_livery.is_empty():
+		choices.append({"id": "custom", "title": "The spray shop's %s" % String(Garage.LIVERIES.get(_car.custom_livery.get("mode", ""), ["livery"])[0]).to_lower()})
+	for item: Dictionary in choices + liveries:
 		var id: String = item.id
 		_extras_list.add_child(_extra_row(item.title, "On" if id == current else "Use it", id == current, func() -> void:
 			_car.set_livery(id)
@@ -761,12 +829,15 @@ func _dirt_text() -> String:
 
 
 func _paint_name() -> String:
+	var coat := ""
+	if _car.finish != "":
+		coat = ", " + String(Garage.FINISHES.get(_car.finish, ["custom coat"])[0]).to_lower()
 	if not _car.has_custom_paint():
-		return "original (faded)"
+		return "original (faded)" + coat
 	for paint in Garage.PAINTS:
 		if _car.paint_color.is_equal_approx(Color(paint[1], 1.0)):
-			return paint[0]
-	return "custom"
+			return paint[0] + coat
+	return "custom" + coat
 
 
 func _needs_text(o: Dictionary) -> String:
