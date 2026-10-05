@@ -189,14 +189,15 @@ def tex_herringbone(name="herringbone", base="#9b4a36", seed=5, size=64):
     return C.make_image(name, size, size, px)
 
 
-def tex_boards(name, base, w=32, h=64, board_px=4, seed=3, gap=(0.18, 0.08, 0.06)):
-    """Timber strip flooring along V."""
+def tex_boards(name, base, w=32, h=64, board_px=4, seed=3, gap=(0.18, 0.08, 0.06), run=2, spread=0.35):
+    """Timber strip flooring along V. Each board is cut into `run` lengths
+    per random span; `spread` is how far the board tones vary."""
     rnd = random.Random(seed)
     base = C._hex(base)
     cols = w // board_px
     offsets = [rnd.randint(0, h) for _ in range(cols)]
     lens = [rnd.randint(h // 3, h) for _ in range(cols)]
-    tones = [[TX.mul(base, 0.8 + rnd.random() * 0.35) for _ in range(4)] for _ in range(cols)]
+    tones = [[TX.mul(base, 1 - spread * 0.57 + rnd.random() * spread) for _ in range(4)] for _ in range(cols)]
     grain = TX.value_noise(seed + 1, 32)
 
     def px(x, y):
@@ -204,8 +205,8 @@ def tex_boards(name, base, w=32, h=64, board_px=4, seed=3, gap=(0.18, 0.08, 0.06
         if x % board_px == 0:
             return gap
         yy = (y + offsets[c]) % h
-        seg = yy // max(lens[c] // 2, 1)
-        if yy % max(lens[c] // 2, 1) == 0:
+        seg = yy // max(lens[c] // run, 1)
+        if yy % max(lens[c] // run, 1) == 0:
             return gap
         return TX.mul(tones[c][seg % 4], 0.92 + grain(x / w, y / h * 4) * 0.16)
     return C.make_image(name, w, h, px)

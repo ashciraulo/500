@@ -62,13 +62,15 @@ PARTY = 0.2
 
 def mats():
     m = {}
-    m["render"] = C.mat("Render", image=A.tex_noise("render", "#e7d9b0", 0.06, 16, 3), rough=0.95)
-    m["render_n17"] = C.mat("RenderYellow", image=A.tex_noise("render17", "#ecd58e", 0.06, 16, 4), rough=0.95)
-    m["render_n13"] = C.mat("RenderCream", image=A.tex_noise("render13", "#efe6cf", 0.06, 16, 5), rough=0.95)
+    m["render"] = C.mat("Render", image=A.tex_noise("render", "#e7d9b0", 0.025, 16, 3), rough=0.95)
+    m["render_n17"] = C.mat("RenderYellow", image=A.tex_noise("render17", "#ecd58e", 0.025, 16, 4), rough=0.95)
+    m["render_n13"] = C.mat("RenderCream", image=A.tex_noise("render13", "#efe6cf", 0.025, 16, 5), rough=0.95)
     m["paint"] = C.mat("WallPaint", image=A.tex_noise("wallpaint", "#dfe2d6", 0.03, 16, 6), rough=0.9)
     m["ceiling"] = C.mat("Ceiling", "#f1efe8", rough=0.95)
     m["trim"] = C.mat("TrimWhite", "#f3f1ea", rough=0.6)
-    m["boards"] = C.mat("Jarrah", image=A.tex_boards("jarrah", "#6a2c1d"), rough=0.5)
+    # polished jarrah: narrow, long boards, dark seams and a glossy finish
+    m["boards"] = C.mat("Jarrah", image=A.tex_boards("jarrah", "#5e2617", 48, 192, 4, gap=(0.10, 0.035, 0.025),
+                                                     run=1, spread=0.16), rough=0.28)
     m["carpet"] = C.mat("Carpet", image=A.tex_carpet("carpet", "#b7aa98"), rough=1.0)
     m["tiles"] = C.mat("FloorTiles", image=A.tex_tiles("floortiles", "#d9d2c3", "#a59d8f", 4, 4), rough=0.6)
     m["mosaic"] = C.mat("Mosaic", image=A.tex_checker_mosaic(), rough=0.5)
@@ -87,7 +89,7 @@ def mats():
     m["timber"] = C.mat("Timber", image=A.tex_boards("timber", "#5b3f2a", 32, 32, 4, 5), rough=0.8)
     m["corrugated"] = C.mat("Corrugated", image=A.tex_corrugated("corrugated", "#9da3a6"), rough=0.6, metal=0.5)
     m["firebox"] = C.mat("Firebox", "#141210", rough=1.0)
-    m["dark_window"] = C.mat("DarkWindow", "#20262b", rough=0.2, metal=0.3)
+    m["dark_window"] = C.mat("DarkWindow", "#2b343b", rough=0.12, metal=0.4)
     m["warm_window"] = C.mat("WarmWindow", "#f2c27a", rough=0.6, emit="#f2c27a", emit_strength=0.8)
     m["concrete"] = C.mat("Concrete", image=A.tex_noise("concrete", "#a9a59c", 0.1, 16, 10), rough=1.0)
     m["post"] = C.mat("CarportPost", "#3a2a1e", rough=0.8)
@@ -701,6 +703,18 @@ def neighbour(x0, x1, M, render, seed):
                                  (x0 + 0.6, x0 + 1.6, 3.9, 5.3), (x0 + 2.2, x1 - 0.5, 3.16, 5.4)):
             lit = rnd.random() < 0.35
             A.block((a0, y - 0.01 * face, q0), (a1, y, q1), M["warm_window"] if lit else M["dark_window"], "Site")
+            # white frame, a mullion every metre or so and a transom bar on
+            # the tall openings, like the row's own French doors and sashes
+            t, fy0, fy1 = 0.06, min(y, y + 0.025 * face), max(y, y + 0.025 * face)
+            for lo, hi in (((a0 - t, q0), (a0, q1)), ((a1, q0), (a1 + t, q1)), ((a0 - t, q0 - t), (a1 + t, q0)),
+                           ((a0 - t, q1 - 0.01), (a1 + t, q1))):
+                A.block((lo[0], fy0, lo[1]), (hi[0], fy1, hi[1]), M["trim"], "Site")
+            n = max(1, round((a1 - a0) / 0.8))
+            for k in range(1, n):
+                xm = a0 + (a1 - a0) * k / n
+                A.block((xm - 0.025, fy0, q0), (xm + 0.025, fy1, q1), M["trim"], "Site")
+            if q1 - q0 > 1.8:
+                A.block((a0, fy0, q1 - 0.45), (a1, fy1, q1 - 0.4), M["trim"], "Site")
             A.block((a0 - 0.06, y - 0.03 * face if face < 0 else y, q1), (a1 + 0.06, y if face < 0 else y + 0.03, q1 + 0.08),
                     M["trim"], "Site")
     # front balcony with iron railing

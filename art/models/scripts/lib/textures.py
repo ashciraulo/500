@@ -87,7 +87,7 @@ def plate(text, name="plate", ink=(0.09, 0.16, 0.50), w=64, h=16):
 
 # ------------------------------------------------------------------ paint wear
 
-def worn_paint(name, base, zone, seed=500, w=128, h=64, fade=1.0):
+def worn_paint(name, base, zone, seed=500, w=256, h=128, fade=1.0):
     """Paint for the lofted shell UVs (u along the car, v round the profile).
 
     zone(u, v) -> (kind, lowness): kind is 'roof', 'bonnet', 'top' or 'side'
@@ -133,8 +133,8 @@ def worn_paint(name, base, zone, seed=500, w=128, h=64, fade=1.0):
             c = lerp(c, grime, low * 0.8 * fade)
         for su, sv, ln, slope in scratches:
             du = u - su
-            if 0 <= du <= ln and abs((v - sv) - du * slope) < 0.004:
-                c = lerp(c, (0.72, 0.72, 0.71), 0.3 * fade)
+            if 0 <= du <= ln and abs((v - sv) - du * slope) < 0.002:
+                c = lerp(c, (0.72, 0.72, 0.71), 0.12 * fade)
         return c
     return C.make_image(name, w, h, px)
 

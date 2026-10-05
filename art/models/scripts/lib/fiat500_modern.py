@@ -48,7 +48,7 @@ def materials(spec, st):
         paint_mat = C.mat("Paint", image=img, rough=0.4, metal=0.3)
     else:
         paint_mat = C.mat("Paint", paint, rough=0.35, metal=0.15)
-    satin = "#d8dadc" if spec.get("chrome") else "#4a4b4d"
+    satin = "#d8dadc" if spec.get("chrome") else "#9a9da1"
     cab = spec.get("roof") == "cabrio"
     return {
         "paint": paint_mat,
@@ -430,7 +430,16 @@ def _bonnet_line(ref, M):
         rays.append(fr(x, HEAD_Z + 0.055 * (1 - (x / half) ** 2)))
     over_lamp(1)
     wing(1, list(reversed(ys)))
-    return S.ribbon("bonnet_line", ref, rays, 0.010, M["seam"])
+    # four rays per step, so the strip follows the surface between the
+    # measured points instead of cutting through the facets in dashes
+    fine = []
+    for (o0, d0), (o1, d1) in zip(rays, rays[1:]):
+        for k in range(4):
+            t = k / 4
+            fine.append((tuple(a + (b - a) * t for a, b in zip(o0, o1)),
+                         tuple(a + (b - a) * t for a, b in zip(d0, d1))))
+    fine.append(rays[-1])
+    return S.ribbon("bonnet_line", ref, fine, 0.009, M["seam"], offset=0.005)
 
 
 def _front(ref, M, spec, abarth):
@@ -439,21 +448,22 @@ def _front(ref, M, spec, abarth):
     for sx in (1, -1):
         # big round headlamps set into the bonnet's corners, small round lamps below
         w = K.on_front(ref, sx * HEAD_X, HEAD_Z)
-        h = K.stick_disc("head", ref, w, HEAD_R - 0.01, 0.04, M["head"], segs=16, proud=-0.002)
+        h = K.stick_disc("head", ref, w, HEAD_R - 0.01, 0.04, M["head"], segs=28, proud=-0.002)
         h["lamp"] = "head"
-        out.append(K.stick_disc("head_ring", ref, w, HEAD_R, 0.03, M["chrome"], segs=16, proud=-0.004))
-        out.append(K.stick_disc("head_reflector", ref, w, 0.05, 0.04, M["reflector"], segs=12, proud=0.0))
+        out.append(K.stick_disc("head_ring", ref, w, HEAD_R, 0.03, M["chrome"], segs=28, proud=-0.004))
+        out.append(K.stick_disc("head_reflector", ref, w, 0.05, 0.04, M["reflector"], segs=20, proud=0.0))
         wl = K.on_front(ref, sx * DRL_X, DRL_Z)
-        lo = K.stick_disc("drl", ref, wl, DRL_R - 0.008, 0.04, M["head"], segs=10, proud=0.004)
+        lo = K.stick_disc("drl", ref, wl, DRL_R - 0.008, 0.04, M["head"], segs=16, proud=0.004)
         lo["lamp"] = "head"
-        out.append(K.stick_disc("drl_ring", ref, wl, DRL_R, 0.03, M["insert"], segs=10))
+        out.append(K.stick_disc("drl_ring", ref, wl, DRL_R, 0.03, M["insert"], segs=16))
         out += [h, lo]
         if abarth:
             continue
-        # moustache: a slim bar either side of the badge, rising slightly outward
-        for x in (0.11, 0.18, 0.25, 0.32):
-            out.append(K.stick_box("whisker", K.on_front(ref, sx * x, 0.668 + (x - 0.1) * 0.02),
-                                   (0.075, 0.017, 0.016), chrome))
+        # moustache: one unbroken bar either side of the badge, rising
+        # slightly and tapering toward its outer end
+        fr = K.front_frame()
+        wh = [fr(sx * x, 0.668 + (x - 0.06) * 0.03) for x in [0.06 + 0.3 * i / 12 for i in range(13)]]
+        out.append(S.ribbon("whisker", ref, wh, 0.016, chrome, offset=0.006))
     if abarth:
         out += _abarth_front(ref, M)
     else:
