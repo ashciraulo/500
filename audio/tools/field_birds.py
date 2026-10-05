@@ -418,6 +418,81 @@ def white_faced_heron(seed):
     return S.reverb(series([(0.02, y, 1.0)]), size_s=1.0, damp_hz=4000, wet=0.15, seed=seed).mean(axis=1)
 
 
+def rock_dove(seed):
+    """Rock dove (feral pigeon): a throaty, rolling 'oo-roo-coo', two or
+    three phrases, with a burr in the middle."""
+    r = np.random.default_rng(seed)
+    parts, at = [], 0.02
+    for k in range(int(r.integers(2, 4))):
+        f0 = r.uniform(300, 340)
+        a = coo(f0, 0.18, seed + 10 * k, f0 * 1.08)
+        b = coo(f0 * 1.05, 0.35, seed + 10 * k + 1, f0 * 0.9)
+        n = len(b)
+        b = b * (0.6 + 0.4 * np.sin(2 * np.pi * 28 * t_axis(n)))  # the burr
+        c = coo(f0 * 0.95, 0.4, seed + 10 * k + 2, f0 * 0.82)
+        parts += [(at, a, 0.8), (at + 0.2, b, 1.0), (at + 0.58, c, 0.9)]
+        at += 1.1 + r.uniform(0.1, 0.4)
+    return series(parts)
+
+
+def little_pied_cormorant(seed):
+    """Little pied cormorant: near silent away from the colony; a few soft,
+    low, guttural 'uk-uk' croaks."""
+    r = np.random.default_rng(seed)
+    parts, at = [], 0.02
+    for k in range(int(r.integers(2, 5))):
+        L = r.uniform(0.07, 0.12)
+        parts.append((at, croak(r.uniform(95, 125), L, seed + k, formants=((380, 2, 1.0), (820, 2.5, 0.5),
+                                                                          (1800, 3, 0.2)), drop=0.2, rough=0.7),
+                      r.uniform(0.6, 0.9)))
+        at += L + r.uniform(0.1, 0.25)
+    return series(parts)
+
+
+def australasian_darter(seed):
+    """Australasian darter: mostly silent; a dry, clicking, rattling
+    'kah-kah-kah' chatter, faster towards the end."""
+    r = np.random.default_rng(seed)
+    parts, at = [], 0.02
+    count = int(r.integers(6, 11))
+    for k in range(count):
+        L = r.uniform(0.04, 0.06)
+        parts.append((at, croak(r.uniform(160, 200), L, seed + k, formants=((900, 3, 1.0), (2000, 4, 0.6),
+                                                                           (3500, 5, 0.3)), drop=0.1, rough=1.0,
+                            attack=0.002), r.uniform(0.6, 1.0)))
+        at += L + 0.12 * (1 - 0.5 * k / count) + r.uniform(0, 0.02)
+    return series(parts)
+
+
+def great_egret(seed):
+    """Great egret: a loud, harsh, low 'kraak', the croak of a big heron
+    disturbed off the shallows."""
+    r = np.random.default_rng(seed)
+    parts, at = [], 0.02
+    for k in range(int(r.integers(1, 3))):
+        L = r.uniform(0.3, 0.5)
+        parts.append((at, croak(r.uniform(120, 150), L, seed + k, formants=((600, 2, 1.0), (1250, 2.5, 0.7),
+                                                                           (2600, 3.5, 0.35)), drop=0.25, rough=1.2),
+                      1.0))
+        at += L + r.uniform(0.4, 0.8)
+    return S.reverb(series(parts), size_s=1.1, damp_hz=4000, wet=0.15, seed=seed).mean(axis=1)
+
+
+def musk_duck(seed):
+    """Musk duck, the male's display: kicking back with both feet for a loud
+    'plonk' of water, then a shrill whistle and a deep grunt."""
+    r = np.random.default_rng(seed)
+    n = secs(0.35)
+    t = t_axis(n)
+    f = 170 * np.exp(-t / 0.25) + 90
+    plonk = np.sin(glide(f, n)) * np.exp(-t / 0.08)
+    splash = bp(r.standard_normal(n), 800, 6000, 1) * np.exp(-t / 0.05) * 0.4
+    whistle_ = whistle(r.uniform(2300, 2700), 0.3, seed + 1, r.uniform(1900, 2200), slur=0.1, harm=0.15)
+    grunt = croak(r.uniform(85, 105), 0.25, seed + 2, formants=((350, 2, 1.0), (750, 2.5, 0.5), (1600, 3, 0.2)),
+                  rough=0.8)
+    return series([(0.02, plonk + splash, 1.0), (0.32, whistle_, 0.6), (0.7, grunt, 0.7)])
+
+
 SPECIES = {
     "australian_white_ibis": australian_white_ibis, "white_faced_heron": white_faced_heron,
     "galah": galah, "little_corella": little_corella, "red_wattlebird": red_wattlebird,
@@ -429,4 +504,6 @@ SPECIES = {
     "nankeen_kestrel": nankeen_kestrel, "eastern_barn_owl": eastern_barn_owl,
     "nankeen_night_heron": nankeen_night_heron, "rainbow_bee_eater": rainbow_bee_eater,
     "splendid_fairywren": splendid_fairywren, "welcome_swallow": welcome_swallow,
+    "rock_dove": rock_dove, "little_pied_cormorant": little_pied_cormorant,
+    "australasian_darter": australasian_darter, "great_egret": great_egret, "musk_duck": musk_duck,
 }

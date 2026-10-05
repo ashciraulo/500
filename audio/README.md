@@ -57,7 +57,7 @@ Exhaust upgrades are their own sets: `fire12sport`, `fire12straight`.
 | `tyre/`, `impact/` | Rolling on each surface, skids, splashes, road features, crashes, street objects | [tyre](docs/tyre.md), [impact](docs/impact.md) |
 | `weather/` | Rain outside and on the roof, thunder, wind, cicadas, drips | [weather](docs/weather.md) |
 | `amb/` | Perth ambience beds by zone (day, night, rain, late night and dawn), place layers for points of interest (beach, lookout, bush, Elizabeth Quay, river bank, car park, jetty; day and night) and wildlife one-shots | [amb](docs/amb.md) |
-| `field/` | Bird-watching and fishing: 34 WA species' calls, six subtly wrong night calls, binoculars, focus dial, shutter, journal, casts, reel, line tension, splashes, esky | [field](docs/field.md) |
+| `field/` | Bird-watching and fishing: 39 WA species' calls, six subtly wrong night calls, binoculars, focus dial, shutter, journal, casts, reel, line tension, splashes, drag, esky | [field](docs/field.md) |
 | `oddity/` | Night oddities: the midnight station, static whispers, river lights | [oddity](docs/oddity.md) |
 | `home/`, `garage/` | The townhouse and garage/servo/car-wash activities | [home](docs/home.md), [garage](docs/garage.md) |
 | `ui/` | Menu, jobs, checkpoints, stingers, phone | [ui](docs/ui.md) |

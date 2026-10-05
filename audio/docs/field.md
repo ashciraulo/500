@@ -59,6 +59,11 @@ Drop a real file with the alias's name in `audio/field/` and it wins.
 | rainbow_bee_eater | 3 | spring, summer | Rolling liquid "prrp-prrp" high up |
 | splendid_fairywren | 2 | day | High reeling trill |
 | welcome_swallow | 3 | day | Quick cheerful twitter |
+| rock_dove | 3 | day | Throaty rolling "oo-roo-coo" with a burr |
+| little_pied_cormorant | 3 | day | Near silent: a few soft guttural "uk-uk" croaks |
+| australasian_darter | 3 | day | Dry clicking "kah-kah-kah" rattle |
+| great_egret | 3 | day | Loud harsh low "kraak" |
+| musk_duck | 3 | day | The male's display: a water "plonk", a shrill whistle, a grunt |
 
 Everything but the recordings is synthesised from field-guide descriptions
 (whistles, screeches, trills, coos and croaks): no CC0 recordings of those
@@ -105,6 +110,9 @@ Quiet, far off and soft-edged, never jumpy: for after midnight and the mystery.
 | landed_flop | no | A fish flopping on jetty boards |
 | bucket_drop | no | Into the bucket |
 | esky_lid | no | Lid creak, ice shifting, foam-dulled thump and latch |
+| drag_01..02 | no | The drag ratchet screaming as a fish starts a run, then tiring |
+| rod_out | no | Rod bag knock, tackle box rattle, the bail clicked over |
+| reel_in | no | A quick wind-in, the lure knocking up against the rod tip |
 
 Loops: `Audio.stream("field/reel_loop", true)`. Jetty ambience is
 `amb/place/place_jetty_loop` and `place_jetty_night_loop` (docs/amb.md),

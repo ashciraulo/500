@@ -645,7 +645,8 @@ func _test_field(audio: Node) -> void:
 	for id in ["rainbow_lorikeet", "carnabys_black_cockatoo", "southern_boobook", "tawny_frogmouth",
 			"black_swan", "silver_gull", "willie_wagtail", "australian_pelican", "australian_magpie",
 			"laughing_kookaburra", "australian_raven", "australian_white_ibis", "galah", "osprey",
-			"rainbow_bee_eater", "splendid_fairywren", "eastern_barn_owl"]:
+			"rainbow_bee_eater", "splendid_fairywren", "eastern_barn_owl", "rock_dove", "little_pied_cormorant",
+			"australasian_darter", "great_egret", "musk_duck"]:
 		check(audio.has("field/bird_" + id), "bird " + id)
 	check(audio.variant("field/bird_australian_magpie") != null, "aliased magpie resolves to the amb recording")
 	check(not audio.has("field/bird_dodo"), "unknown species is missing (the journal plays nothing)")
@@ -662,7 +663,8 @@ func _test_field(audio: Node) -> void:
 			"film_full", "journal_open", "journal_close", "journal_page", "journal_new_entry", "flush"]:
 		check(audio.has("field/" + n), "field ui " + n)
 	for n in ["cast", "lure_plop", "bite_nibble", "reel_loop", "reel", "line_tension_loop", "strike",
-			"splash_small", "splash", "splash_big", "line_snap", "landed_flop", "bucket_drop", "esky_lid"]:
+			"splash_small", "splash", "splash_big", "line_snap", "landed_flop", "bucket_drop", "esky_lid", "drag",
+			"rod_out", "reel_in"]:
 		check(audio.has("field/" + n), "fishing " + n)
 	check(audio.stream("field/reel", true) != null, "the reel alias loops")
 	check(audio.ambience.PLACE_TYPES.has("jetty") and audio.has("amb/place/place_jetty_loop")

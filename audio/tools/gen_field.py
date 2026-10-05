@@ -557,6 +557,55 @@ def esky_lid():
     return C.room(x, 0.15, 0.08, 5000, 9905)
 
 
+def drag(seed):
+    """The drag giving line as a fish starts a run: the clicker ratchets up
+    from a few clicks to a fast scream, holds, and slows as the run tires."""
+    dur = 1.8
+    n = secs(dur)
+    t = t_axis(n)
+    rate = 18 + 52 * np.clip(t / 0.35, 0, 1) * np.clip((dur - t) / 0.7, 0.35, 1)
+    ph = np.cumsum(rate / SR)
+    clicks = np.diff(np.floor(ph), prepend=0)
+    r = np.random.default_rng(seed)
+    clicks *= 0.7 + 0.3 * r.random(n)
+    y = S.resonator(clicks, 3300, 7) + 0.6 * S.resonator(clicks, 5200, 9) + 0.3 * S.resonator(clicks, 1400, 4)
+    y += bp(noise(n, seed + 1), 2000, 7000, 1) * 0.02 * np.clip(rate / 70, 0, 1)
+    return C.room(y * soft_env(n, 0.01, 0.4), 0.1, 0.05, 6000, seed + 2)
+
+
+def rod_out():
+    """Getting the rod and tackle out: the rod bag's soft knock, lures and
+    sinkers rattling in a plastic tackle box, a reel bail clicked over."""
+    r = np.random.default_rng(9920)
+    bag = C.add(lp(C.burst(0.12, 0.02, 9921), 400) * 0.9, C.modal(0.15, [(240, 0.03, 0.3)], 9922))
+    rattle = np.zeros(secs(0.6))
+    for k in range(14):
+        hit = C.modal(0.04, [(r.uniform(1800, 4200), 0.008, 0.4), (r.uniform(5000, 7500), 0.004, 0.2)], 9930 + k)
+        S.place(rattle, hit * r.uniform(0.2, 0.6), secs(r.uniform(0, 0.5)))
+    box = C.modal(0.1, [(700, 0.02, 0.4), (1600, 0.01, 0.2)], 9923)
+    x = C.mix(1.4, [(0.0, bag, 1.0), (0.2, box, 0.6), (0.22, rattle, 1.0),
+                    (1.05, C.plastic_click(9924, 0.6, 1800), 0.8)])
+    return C.room(x, 0.12, 0.06, 5000, 9925)
+
+
+def reel_in():
+    """A quick wind-in: a few fast handle turns, then the lure knocks up
+    against the rod tip."""
+    dur = 0.9
+    n = secs(dur)
+    t = t_axis(n)
+    f_handle = 4.0
+    gear = sum(a * np.sin(2 * np.pi * f_handle * m * t) for m, a in ((130, 0.12), (260, 0.06), (390, 0.03)))
+    y = gear * (0.75 + 0.25 * np.sin(2 * np.pi * f_handle * t))
+    for k in range(int(dur * f_handle * 8)):
+        S.place(y, C.tick(9000 + k % 7, 4200, 1800, 0.1), secs(k / (f_handle * 8)))
+    y = y * soft_env(n, 0.05, 0.12)
+    knock = C.add(C.modal(0.08, [(1900, 0.012, 0.5), (4300, 0.006, 0.25)], 9941),
+                  bp(C.burst(0.01, 0.001, 9942), 1500, 7000) * 0.4)
+    x = C.mix(1.3, [(0.0, y, 1.0), (0.92, knock, 0.8)])
+    return C.room(x, 0.1, 0.05, 6000, 9943)
+
+
 def render_fish():
     enc = dict(norm="peak", **FX_ENC)
     for i in range(3):
@@ -572,6 +621,10 @@ def render_fish():
     S.save("field/landed_flop", landed_flop(), **enc)
     S.save("field/bucket_drop", bucket_drop(), **enc)
     S.save("field/esky_lid", esky_lid(), **enc)
+    for i in range(2):
+        S.save(f"field/drag_{i + 1:02d}", drag(9950 + 10 * i), **enc)
+    S.save("field/rod_out", rod_out(), **enc)
+    S.save("field/reel_in", reel_in(), **enc)
 
 
 def main(argv):
