@@ -80,8 +80,43 @@
       "description": "Guildford Road from Mount Lawley through Maylands and Bassendean to the Guildford antique shops",
       "corridor": {"roads": ["Guildford Road", "James Street", "Meadow Street"], "buffer": 110, "bbox": [115.86, -31.94, 115.98, -31.885]},
       "extra_bbox": [115.963, -31.905, 115.978, -31.894]
+    },
+    "herdsman_lake": {
+      "stage": 5,
+      "description": "Herdsman Lake and its wetland paths, between Osborne Park and Wembley",
+      "bbox": [115.793, -31.931, 115.816, -31.906]
+    },
+    "point_walter": {
+      "stage": 5,
+      "description": "Point Walter sand spit and jetty in Bicton, off Canning Highway",
+      "bbox": [115.783, -32.018, 115.797, -32.008],
+      "corridor": {"roads": ["Point Walter Road", "Honour Avenue"], "buffer": 110, "bbox": [115.78, -32.03, 115.81, -32.005]}
+    },
+    "north_mole": {
+      "stage": 5,
+      "description": "Fremantle's North and South Moles at the harbour mouth",
+      "bbox": [115.722, -32.06, 115.742, -32.045]
+    },
+    "trigg": {
+      "stage": 5,
+      "description": "Trigg Beach and Trigg Island, north of Scarborough",
+      "bbox": [115.748, -31.886, 115.761, -31.865]
+    },
+    "bold_park": {
+      "stage": 5,
+      "description": "Bold Park bushland and Reabold Hill, between City Beach and Floreat",
+      "bbox": [115.767, -31.946, 115.786, -31.922]
+    },
+    "alfred_cove": {
+      "stage": 5,
+      "description": "Alfred Cove's reedy river flats in Attadale, off Canning Highway",
+      "bbox": [115.806, -32.038, 115.826, -32.024]
     }
   },
+  "hand_decks": [
+    {"name": "Cottesloe groyne", "kind": "groyne", "width": 8.0,
+     "line": [[-31.99612, 115.75112], [-31.99668, 115.75045], [-31.99672, 115.74985]]}
+  ],
   "cbd_bbox": [115.848, -31.962, 115.873, -31.9505],
   "pois": {
     "comment": "Hand-picked stops for the POI export (osm_import/pois.py). look_at is [lon, lat] of what the car faces. A pier spot names an OSM jetty or groyne way: the car parks at its shore end and at is its far end.",
@@ -100,7 +135,7 @@
       {"id": "fishing_mends_street_jetty", "kind": "fishing", "name": "Mends Street Jetty", "suburb": "South Perth", "pier": 8067081},
       {"id": "fishing_coode_street_jetty", "kind": "fishing", "name": "Coode Street Jetty", "suburb": "South Perth", "pier": 241155387},
       {"id": "fishing_elizabeth_quay_jetty", "kind": "fishing", "name": "Barrack Street Jetty", "suburb": "Perth", "pier": 396347489},
-      {"id": "fishing_claisebrook_cove", "kind": "fishing", "name": "Claisebrook Cove", "suburb": "East Perth", "lat": -31.9585, "lon": 115.876, "look_at": [115.87688, -31.95913]},
+      {"id": "fishing_claisebrook_cove", "kind": "fishing", "name": "Claisebrook Cove", "suburb": "East Perth", "lat": -31.95144, "lon": 115.8789, "snap": false, "look_at": [115.87907, -31.95216]},
       {"id": "fishing_matilda_bay", "kind": "fishing", "name": "Matilda Bay", "suburb": "Crawley", "pier": 8075825},
       {"id": "fishing_canning_bridge", "kind": "fishing", "name": "Canning Bridge", "suburb": "Applecross", "lat": -32.0063, "lon": 115.8478, "look_at": [115.85, -32.006]},
       {"id": "fishing_garratt_road_bridge", "kind": "fishing", "name": "Garratt Road Bridge", "suburb": "Bayswater", "pier": 300110699}

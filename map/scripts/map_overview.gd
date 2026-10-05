@@ -13,6 +13,10 @@ const TOWER_SHADER := preload("res://map/shaders/overview_towers.gdshader")
 
 ## The skyline blocks (null when the backdrop has none).
 var towers: MeshInstance3D
+## The sea past the streamed tiles (null when the backdrop has none).
+var sea: MeshInstance3D
+## Material for the sea; MapStreamer passes the tiles' water so it matches.
+var sea_material: Material
 
 
 func load_from(path: String) -> bool:
@@ -68,6 +72,8 @@ func load_from(path: String) -> bool:
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if data.has("tower_pos") and (data.tower_pos as PackedVector3Array).size() > 0:
 		_build_towers(data)
+	if data.has("sea_xz") and (data.sea_xz as PackedVector2Array).size() > 0:
+		_build_sea(data.sea_xz)
 	return true
 
 
@@ -100,3 +106,30 @@ func _build_towers(data: Dictionary) -> void:
 	towers.mesh = tower_mesh
 	towers.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(towers)
+
+
+func _build_sea(xz: PackedVector2Array) -> void:
+	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	verts.resize(xz.size())
+	uvs.resize(xz.size())
+	for i in xz.size():
+		verts[i] = Vector3(xz[i].x, 0.0, xz[i].y)
+		uvs[i] = xz[i] / 16.0
+	var normals := PackedVector3Array()
+	normals.resize(xz.size())
+	normals.fill(Vector3.UP)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	var sea_mesh := ArrayMesh.new()
+	sea_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	if sea_material:
+		sea_mesh.surface_set_material(0, sea_material)
+	sea = MeshInstance3D.new()
+	sea.name = "Sea"
+	sea.mesh = sea_mesh
+	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(sea)

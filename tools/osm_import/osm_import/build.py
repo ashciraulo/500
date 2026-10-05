@@ -27,6 +27,7 @@ from .common import (CACHE_DIR, MAP_DIR, TILES_DIR, Projector, TileKey, load_con
                      stable_rng, tiles_for_bbox)
 from .extract import extract
 from .overview import build_overview
+from .sea import sea_polygon
 from .heights import compute_node_heights, way_group
 from .meshbuild import (CellGrid, MeshBuilder, Surface, densify, drape, flat_cap,
                         offset_polyline, polygons_of, ribbon, triangulate, walls)
@@ -35,6 +36,9 @@ from .tilewriter import write_tile
 from .variant import pack_tile
 
 RIVER_LEVEL = 0.0
+SEA_NAME = "Indian Ocean"
+SEA_SHELF = 0.05   # sea floor drop per metre from the shore
+SEA_FLOOR = -6.0
 HOME_RAMP = 30.0        # roads ease to the townhouse's ground over this distance
 PIER_WIDTH = {"pier": 3.0, "breakwater": 6.0, "groyne": 5.0}  # metres, when OSM has no width
 ROAD_OFFSET = 0.02      # road surface above terrain
@@ -112,9 +116,13 @@ class World:
             self._level_to_home(src_ways, node_h)
         self.ways: list[LinearWay] = []
         self.decks = []        # piers and platforms: (polygon, kind, osm id)
+        coast = []
         for w in src_ways:
             g = way_group(w.tags)
             if not g:
+                if w.tags.get("natural") == "coastline":
+                    coast.append(LineString(w.coords))
+                    continue
                 mm = w.tags.get("man_made")
                 if mm in PIER_WIDTH and len(w.coords) > 1 and not np.allclose(w.coords[0], w.coords[-1]):
                     # Jetties and groynes drawn as a line: a deck of their usual width.
@@ -136,6 +144,13 @@ class World:
                 sidewalk = False
             self.ways.append(LinearWay(w.id, t, g, w.coords, h, w.nodes, width,
                                        styles.is_bridge(t), styles.is_tunnel(t), sidewalk))
+        # Hand-placed decks for jetties and groynes OSM draws as coastline, or not at all.
+        for i, d in enumerate(cfg.get("hand_decks", [])):
+            lat, lon = np.asarray(d["line"], dtype=float).T
+            e, n = proj.fwd(lon, lat)
+            width = d.get("width", PIER_WIDTH[d["kind"]])
+            self.decks.append((LineString(np.c_[e, n]).buffer(width / 2, cap_style=2),
+                               "pier" if d["kind"] == "pier" else "groyne", -(i + 1)))
         self.junctions = self._junction_nodes()
 
         self.water: list[WaterBody] = []
@@ -170,6 +185,10 @@ class World:
         if self.home:
             fp = self.home.footprint.buffer(0.5)
             self.buildings = [b for b in self.buildings if not fp.contains(b.geom.representative_point())]
+        self.coast = shapely.line_merge(shapely.union_all(coast)) if coast else None
+        sea = self._sea()
+        if sea is not None:
+            self.water.append(sea)
         self.water_union = shapely.union_all([w.geom for w in self.water]) if self.water else Polygon()
         # Hand-built landmarks replace whatever OSM buildings stand on them.
         self.landmarks = landmarks.collect(feats, self.ways)
@@ -252,6 +271,14 @@ class World:
         level = float(np.percentile(hb, 10)) - (0.4 if big else 0.0)
         return WaterBody(g, level, big, t.get("name", ""))
 
+    def _sea(self) -> WaterBody | None:
+        """The ocean, cut to this build's terrain."""
+        hf = self.hf
+        nj, ni = hf.H.shape
+        frame = sbox(hf.e0, hf.n0, hf.e0 + (ni - 1) * hf.step, hf.n0 + (nj - 1) * hf.step)
+        g = sea_polygon(self.coast, frame)
+        return WaterBody(g, RIVER_LEVEL, True, SEA_NAME) if g is not None else None
+
     def _resolve_building_parts(self):
         """Buildings drawn from building:part pieces skip their outline."""
         if not self.parts:
@@ -267,6 +294,20 @@ class World:
             keep.append(b)
         self.buildings = keep + self.parts
 
+    def _sculpt_sea(self, wb: WaterBody):
+        """The sea floor shelves gently away from the shore (no bank lip, so
+        beaches run into the water)."""
+        from scipy.ndimage import distance_transform_edt
+        hf = self.hf
+        es, ns = hf.node_coords()
+        E, N = np.meshgrid(es, ns)
+        wet = shapely.contains_xy(wb.geom, E, N)
+        if not wet.any():
+            return
+        dist = distance_transform_edt(wet) * hf.step
+        bed = np.maximum(-0.3 - SEA_SHELF * dist, SEA_FLOOR)
+        hf.H[wet] = np.minimum(hf.H[wet], bed[wet])
+
     def _sculpt_terrain(self):
         """Lower riverbeds and fit the ground to road and rail profiles."""
         hf = self.hf
@@ -275,6 +316,9 @@ class World:
         # Water: riverbeds under big water, a lip just above water level along banks.
         for wb in self.water:
             if not wb.big:
+                continue
+            if wb.name == SEA_NAME:
+                self._sculpt_sea(wb)
                 continue
             for p in polygons_of(wb.geom):
                 b = p.bounds

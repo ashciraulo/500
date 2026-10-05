@@ -9,12 +9,16 @@ import io
 import math
 
 import numpy as np
+import shapely
+from shapely.geometry import box as sbox
 from PIL import Image, ImageDraw
 
 from . import styles
 from .common import Projector
 from .extract import extract
 from .fetch import osm_pbf
+from .meshbuild import polygons_of, triangulate
+from .sea import merged_coast, sea_polygon
 from .terrain import build_heightfield
 from .variant import pack_tile
 
@@ -72,6 +76,9 @@ def build_overview(cfg: dict, proj: Projector, tiles: dict, out_path):
             covers.append((lc[1], lc[0], a.geom))
     for prio, mat, g in sorted(covers, key=lambda c: c[0]):
         fill(g, COLORS.get(mat, COLORS["urban"]))
+    sea = sea_polygon(merged_coast(feats.ways), sbox(e0, n0, e1, n1))
+    if sea is not None:
+        fill(sea, COLORS["water"])
     for a in feats.areas:
         if "building" in a.tags:
             lv = styles._num(a.tags.get("building:levels"), 1)
@@ -87,6 +94,7 @@ def build_overview(cfg: dict, proj: Projector, tiles: dict, out_path):
             draw.line(px(wy.coords), fill=COLORS["rail"], width=1)
 
     towers = _towers(cfg, proj, feats, hf)
+    sea_mesh = _sea_mesh(sea, tiles, size)
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     heights = hf.H.astype(np.float32)
@@ -106,10 +114,32 @@ def build_overview(cfg: dict, proj: Projector, tiles: dict, out_path):
         # (-1, -1) on roofs; colour alpha is a per-building seed for which
         # windows are lit at night.
         **towers,
+        # The sea surface past the streamed tiles (they draw their own), at
+        # height 0 and drawn near the camera too: triangle soup, Godot x/z.
+        **sea_mesh,
     }
     blob = pack_tile(data)
     out_path.write_bytes(blob)
     return len(blob)
+
+
+def _sea_mesh(sea, tiles: dict, size: float) -> dict:
+    if sea is None:
+        return {}
+    built = shapely.union_all([sbox(t["i"] * size, t["j"] * size, (t["i"] + 1) * size, (t["j"] + 1) * size)
+                               for t in tiles.values()])
+    rest = sea.difference(built).simplify(PX)
+    verts = []
+    for p in polygons_of(rest):
+        if p.area < 100:
+            continue
+        pv, pt = triangulate(p)
+        if len(pt):
+            verts.append(pv[np.asarray(pt).ravel()])
+    if not verts:
+        return {}
+    v = np.concatenate(verts)
+    return {"sea_xz": np.column_stack([v[:, 0], -v[:, 1]]).astype(np.float32)}
 
 
 def _towers(cfg, proj, feats, hf) -> dict:

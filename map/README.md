@@ -49,7 +49,8 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
   region covers them.
 - **Lakes**: `water_level_at(pos)` is the water surface height of the lake or
   pond under `pos`, or NAN; `get_lakes()` lists them (name, level, outline in
-  x/z). From `map/tiles/lakes.json`, one lake per line. Jetties and groynes
+  x/z). From `map/tiles/lakes.json`, one lake per line. The river and the sea
+  are at height 0 and aren't listed. Jetties and groynes
   OSM draws as a line are built as walkable decks like the ones drawn as
   areas.
 - **Landmarks**: the Bell Tower, Elizabeth Quay Bridge, Matagarup Bridge,
@@ -60,6 +61,13 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
   map screen or GPS later.
 
 ## What's built
+
+Stage 5 adds the places the field journal needs: Herdsman Lake, Bold Park,
+Point Walter, Alfred Cove, Trigg and Fremantle's North and South Moles
+(106 tiles, 647 in all). The Indian Ocean is built from OSM's coastline, with
+a sea floor that shelves away from the sand, and jetties or groynes OSM lacks
+can be placed by hand in `tools/osm_import/config.json` "hand_decks" (the
+Cottesloe groyne).
 
 Stage 2 adds Leederville, West Leederville, Subiaco, East Perth, Claisebrook,
 Optus Stadium, Victoria Park, Burswood and the Causeway (232 tiles in all).

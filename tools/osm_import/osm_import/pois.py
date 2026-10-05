@@ -120,7 +120,12 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
             g, kind = decks[spec["pier"]]
             ring = np.asarray(max(polygons_of(g), key=lambda q: q.area).exterior.coords)
             land = ring[int(np.argmax(hf.sample(ring[:, 0], ring[:, 1])))]
-            far = ring[int(np.argmax(np.hypot(*(ring - land).T)))]
+            # The far end, a step in from the edge so it is on the deck.
+            deck = max(polygons_of(g), key=lambda q: q.area)
+            inset = deck.buffer(-1.0)
+            inner = np.asarray(max(polygons_of(inset), key=lambda q: q.area).exterior.coords) \
+                if not inset.is_empty else ring
+            far = inner[int(np.argmax(np.hypot(*(inner - land).T)))]
             top, _ = deck_heights(hf, max(polygons_of(g), key=lambda q: q.area), kind)
             park, _ = park_near(float(land[0]), float(land[1]), SPOT_PARK)
             if park is None:
