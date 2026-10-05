@@ -124,6 +124,9 @@ class Lane:
 	var length := 0.0
 	## m/s
 	var speed := 13.9
+	## A temporary limit on top of `speed` (m/s, 0 = none): school zones in
+	## school hours (see TrafficSchools).
+	var zone_speed := 0.0
 	## For road lanes: connectors leaving the end. For connectors: [out lane].
 	var next: Array = []
 	var connector := false
@@ -166,6 +169,10 @@ class Lane:
 		pts = p
 		cum = TrafficGraph.cumulative(p)
 		length = cum[cum.size() - 1] if cum.size() > 0 else 0.0
+
+	## The limit traffic keeps to on this lane right now.
+	func limit() -> float:
+		return speed if zone_speed <= 0.0 else minf(speed, zone_speed)
 
 	func add_stop(s: float, gate: RefCounted) -> void:
 		stops.append({ "s": s, "gate": gate })
@@ -293,6 +300,8 @@ class PedEdge:
 	var node: GNode
 	## Footpaths: which PedNode sits at each end of the road (GNode -> PedNode).
 	var ends := {}
+	## Footways from the map can be named (the Matagarup Bridge).
+	var name := ""
 
 	func other(n: PedNode) -> PedNode:
 		return b if n == a else a
@@ -342,6 +351,8 @@ var bus_stops: Array = []
 var stations: Array = []
 ## Parking spots from the map: { pos, yaw, kind, seed }. See TrafficParking.
 var parking: Array = []
+## Schools from the map (OSM amenity=school): { pos, name }. See TrafficSchools.
+var schools: Array = []
 ## Boxes traffic mustn't stop in, like a driveway it would block: { pos, radius }.
 var keep_clear: Array = []
 ## Bus routes from the map: ref -> { ref, name, colour, roads: { road id: true } }.
@@ -446,6 +457,10 @@ func add_data(data: Dictionary) -> int:
 		_add_bus_route(r)
 	for k in data.get("keep_clear", []):
 		add_keep_clear(_vec(k.p), float(k.get("radius", 6.0)))
+	for sc in data.get("schools", []):
+		var sp := _vec(sc.p)
+		if not schools.any(func(o): return o.pos.distance_to(sp) < 30.0):
+			schools.append({ "pos": sp, "name": str(sc.get("name", "")) })
 	if not added.is_empty():
 		version += 1
 		_mark_minor_approaches(dirty.keys())
@@ -477,7 +492,9 @@ func add_data(data: Dictionary) -> int:
 			_link_footpaths(node)
 
 	for f in data.get("footways", []):
-		_add_footway(_points(f.pts))
+		var way := add_footway(_points(f.pts))
+		if way:
+			way.name = str(f.get("name", ""))
 	var rail_before := rail_edges.size()
 	for r in data.get("rail", []):
 		_add_rail(_points(r.pts))
@@ -852,8 +869,9 @@ func _assign_priority(c: Lane, node: GNode, rin: Road, rout: Road, majors: Dicti
 ## Signal junctions: cluster nearby signal nodes, give each approach a gate,
 ## and make right turns give way to oncoming traffic on the same green.
 func _build_signals(touched: Array) -> void:
+	var seen := {}
 	for node in touched:
-		if node.ctrl != &"signals" or node.signal_controller != null:
+		if node.ctrl != &"signals" or seen.has(node):
 			continue
 		# Signal nodes joined by short roads are one set of lights. Part of the
 		# set may already exist (it arrived with an earlier map tile).
@@ -881,11 +899,15 @@ func _build_signals(touched: Array) -> void:
 					for m in path:
 						if not cluster.has(m):
 							cluster.append(m)
+		for n in cluster:
+			seen[n] = true
 		var controller: SignalController = null
 		for n in cluster:
 			if n.signal_controller != null:
-				controller = n.signal_controller
-				break
+				if controller == null:
+					controller = n.signal_controller
+				elif n.signal_controller != controller:
+					_absorb_controller(controller, n.signal_controller)
 		if controller == null:
 			controller = SignalController.new()
 			signal_controllers.append(controller)
@@ -944,6 +966,25 @@ func _build_signals(touched: Array) -> void:
 				for ap in controller.approaches:
 					if ap.dir.dot(my_dir) < -0.7 and controller.group_for(ap.dir) == controller.group_for(my_dir):
 						c.yield_to.append(ap.lane)
+
+
+## Two sets of lights that turn out to be one junction (the short road
+## between them arrived with a later tile): run them as one, so they can't
+## hold each other's queues at red forever.
+func _absorb_controller(into: SignalController, other: SignalController) -> void:
+	for ap in other.approaches:
+		var lane: Lane = ap.lane
+		lane.stops = lane.stops.filter(func(st): return not (st.gate is SignalGate and st.gate.controller == other))
+		if lane.signal_gate != null and lane.signal_gate.controller == other:
+			lane.signal_gate = null
+	for n in other.nodes:
+		for c in n.connectors:
+			c.yield_to = c.yield_to.filter(func(l): return not other.approaches.any(func(ap): return ap.lane == l))
+		n.signal_controller = into
+		into.nodes.append(n)
+	other.nodes.clear()
+	other.approaches.clear()
+	signal_controllers.erase(other)
 
 
 func _index_road(road: Road) -> void:
@@ -1010,9 +1051,11 @@ func _link_footpaths(node: GNode) -> void:
 			edge.node = node
 
 
-func _add_footway(pts: PackedVector3Array) -> void:
+## A path for people only (the ends join footpaths ending within 1.5 m).
+func add_footway(pts: PackedVector3Array) -> PedEdge:
 	if pts.size() >= 2:
-		_add_ped_edge(pts)
+		return _add_ped_edge(pts)
+	return null
 
 
 func _add_ped_edge(pts: PackedVector3Array, a: PedNode = null, b: PedNode = null) -> PedEdge:
@@ -1050,6 +1093,103 @@ func _ped_node_at(p: Vector3) -> PedNode:
 		_ped_node_cells[key] = []
 	_ped_node_cells[key].append(pn)
 	return pn
+
+
+## The shortest walk from `from` to `to` along footpaths, crossings and
+## footways, as the PedEdges in order ([] when there's no way, or it's
+## further than `limit` metres).
+func ped_path(from: PedNode, to: PedNode, limit := 3000.0) -> Array:
+	if from == null or to == null:
+		return []
+	if from == to:
+		return []
+	var dist := { from: 0.0 }
+	var via := {}
+	var heap: Array = [[from.pos.distance_to(to.pos), 0.0, from]]
+	while not heap.is_empty():
+		var top: Array = _heap_pop(heap)
+		var n: PedNode = top[2]
+		var d: float = top[1]
+		if n == to:
+			break
+		if d > dist.get(n, INF) or d > limit:
+			continue
+		for e in n.edges:
+			var o: PedNode = e.other(n)
+			var nd: float = d + e.length
+			if nd < dist.get(o, INF):
+				dist[o] = nd
+				via[o] = e
+				_heap_push(heap, [nd + o.pos.distance_to(to.pos), nd, o])
+	if not via.has(to):
+		return []
+	var path: Array = []
+	var n := to
+	while n != from:
+		var e: PedEdge = via[n]
+		path.push_front(e)
+		n = e.other(n)
+	return path
+
+
+## The PedNode nearest p (within `radius`), or null.
+func ped_node_near(p: Vector3, radius := 60.0) -> PedNode:
+	var best: PedNode = null
+	var best_d := radius
+	var c0 := Vector2i(roundi((p.x - radius) / 2.0), roundi((p.z - radius) / 2.0))
+	var c1 := Vector2i(roundi((p.x + radius) / 2.0), roundi((p.z + radius) / 2.0))
+	if (c1.x - c0.x) * (c1.y - c0.y) > 4000:
+		for pn in ped_nodes:
+			var d := Vector2(pn.pos.x - p.x, pn.pos.z - p.z).length()
+			if d < best_d:
+				best_d = d
+				best = pn
+		return best
+	for x in range(c0.x, c1.x + 1):
+		for z in range(c0.y, c1.y + 1):
+			for pn in _ped_node_cells.get(Vector2i(x, z), []):
+				var d := Vector2(pn.pos.x - p.x, pn.pos.z - p.z).length()
+				if d < best_d:
+					best_d = d
+					best = pn
+	return best
+
+
+static func _heap_push(heap: Array, item: Array) -> void:
+	heap.append(item)
+	var i := heap.size() - 1
+	while i > 0:
+		var parent := (i - 1) / 2
+		if heap[parent][0] <= heap[i][0]:
+			break
+		var t: Array = heap[parent]
+		heap[parent] = heap[i]
+		heap[i] = t
+		i = parent
+
+
+static func _heap_pop(heap: Array) -> Array:
+	var top: Array = heap[0]
+	var last: Array = heap.pop_back()
+	if heap.is_empty():
+		return top
+	heap[0] = last
+	var i := 0
+	while true:
+		var l := i * 2 + 1
+		var r := l + 1
+		var m := i
+		if l < heap.size() and heap[l][0] < heap[m][0]:
+			m = l
+		if r < heap.size() and heap[r][0] < heap[m][0]:
+			m = r
+		if m == i:
+			break
+		var t: Array = heap[m]
+		heap[m] = heap[i]
+		heap[i] = t
+		i = m
+	return top
 
 
 # --- Rail ---------------------------------------------------------------------

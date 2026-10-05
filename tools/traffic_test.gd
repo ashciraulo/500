@@ -28,7 +28,11 @@ func _process(_delta: float) -> bool:
 
 
 func _setup() -> void:
+	# A save from playing (it's loaded before this runs) mustn't set the day,
+	# and the test mustn't write one: rush hour is a weekday thing.
+	root.get_node("SaveGame").enabled = false
 	var clock := root.get_node("GameClock")
+	clock.day = 1
 	clock.set_time(8.0)
 	clock.set_locked(true)
 	var weather := root.get_node("Weather")
@@ -51,6 +55,10 @@ func _setup() -> void:
 	_traffic.roadworks.site_chance = 0.0
 	# Couriers, taxi ranks and inspectors only when the kerbside step asks.
 	_traffic.kerbside.enabled = false
+	# No school zone until the schools step.
+	_traffic.schools.enabled = false
+	# No stadium in the sandbox until the game-day step puts one there.
+	_traffic.events.enabled = false
 	# A driveway on the avenue, inside the westbound queue for the Station
 	# Street lights: nobody may stop across it.
 	_graph.add_keep_clear(Vector3(-72, 0, 3.2), 5.0)
@@ -410,9 +418,155 @@ func _run_step() -> bool:
 				root.get_node("Wallet").earn(paid)
 				kb.clear()
 				kb.always_on = false
+				_next()
+		10:  # School zone: 40 km/h, the crossing guard stops traffic, parents double-park.
+			var sc: TrafficSchools = _traffic.schools
+			if _frame == 1:
+				var clock := root.get_node("GameClock")
+				clock.set_time(12.0)
+				_mark.lunch_zone = sc.zone_hours()
+				clock.set_time(8.0)
+				sc.always_on = true
+				sc.enabled = true
+				sc._timer = 0.0
+				_mark.school_fast = 0
+				_mark.school_hits = 0
+				_mark.school_parent = {}
+				_mark.parent_hits = 0
+				_mark.school_stopped = false
+			if _frame == 30:
+				var school: Dictionary = sc.schools[0] if not sc.schools.is_empty() else {}
+				_mark.school = school
+				if not school.is_empty():
+					# Cars heading for the guard's crossing, and a parent stopping.
+					var edge: TrafficGraph.PedEdge = school.edge
+					if edge:
+						for lane in edge.road.lanes_into(edge.node):
+							for s0 in [5.0, 25.0, 45.0]:
+								if s0 < lane.length - 10.0:
+									_traffic.spawn_vehicle_at(&"sedan", lane, s0, 11.0)
+					for lane in school.lanes:
+						if not _mark.school_parent.is_empty():
+							break
+						if edge and lane.road == edge.road:
+							continue
+						for f in [0.4, 0.5, 0.6]:
+							if _mark.school_parent.is_empty():
+								_mark.school_parent = sc.add_parent(lane, lane.length * f, 40.0)
+					if not _mark.school_parent.is_empty():
+						var pl: TrafficGraph.Lane = _mark.school_parent.lane
+						for s0 in [2.0, 12.0]:
+							_traffic.spawn_vehicle_at(&"hatch", pl, s0, 10.0)
+			if _frame > 30 and not _mark.school.is_empty():
+				var school: Dictionary = _mark.school
+				_mark.school_stopped = _mark.school_stopped or sc.guard_stopping(school)
+				var zone := {}
+				for lane in school.lanes:
+					zone[lane] = true
+				for v in _traffic.vehicles:
+					var l: TrafficGraph.Lane = v.route[0]
+					if _frame > 180 and not v.emergency and zone.has(l) and v.s > 35.0 and v.speed > TrafficSchools.ZONE_SPEED + 0.6:
+						_mark.school_fast += 1
+						if _mark.school_fast % 30 == 1:
+							print("    over 40: #%d %s %.1f m/s at s=%.0f of %.0f, zone %.1f, reason %d, lead %s" % [v.id, v.type, v.speed, v.s, l.length, l.zone_speed, v.reason, v.lifetime])
+					for o in _traffic.obstacles:
+						var rel: Vector3 = o.position - v.position
+						if absf(rel.dot(v.forward)) < v.length * 0.5 and absf(rel.dot(TrafficGraph.left_of(v.forward))) < v.width * 0.5:
+							_mark.school_hits += 1
+					var par: Dictionary = _mark.school_parent
+					if not par.is_empty() and parents_has(sc, par) and l == par.lane and absf(v.s - par.s) < 3.0 and not v.change_from:
+						_mark.parent_hits += 1
+			if _seconds() >= 70.0:
+				var school: Dictionary = _mark.school
+				_check(not _mark.lunch_zone, "no school zone at lunchtime")
+				_check(not school.is_empty() and school.lanes.size() >= 4 and school.lanes[0].zone_speed > 11.0 and school.lanes[0].zone_speed < 11.2,
+						"the streets round the school drop to 40 (%d lanes)" % (school.lanes.size() if not school.is_empty() else 0))
+				_check(not school.is_empty() and school.signs.size() >= 2, "flashing 40 signs on the way in (%d)" % (school.signs.size() if not school.is_empty() else 0))
+				_check(_mark.school_fast == 0, "traffic keeps to 40 in the zone (%d frames over)" % _mark.school_fast)
+				_check(not school.is_empty() and school.edge != null and not school.guard.is_empty(), "a crossing guard at the school crossing")
+				_check(_mark.school_stopped and sc.stats.kids >= 1, "the guard stops the traffic and sees the kids across (%d crossings, %d kids)" % [sc.stats.crossings, sc.stats.kids])
+				_check(_mark.school_hits == 0, "nobody drives into the guard or the kids (%d frames)" % _mark.school_hits)
+				var par: Dictionary = _mark.school_parent
+				_check(not par.is_empty() and _mark.parent_hits == 0, "a parent double-parks and nobody drives through them (%d frames)" % _mark.parent_hits)
+				var away: TrafficVehicle = null
+				if not par.is_empty() and parents_has(sc, par):
+					away = sc.parent_drive_off(par)
+				_check(par.is_empty() or away != null or not parents_has(sc, par), "the parent drives off")
+				sc.always_on = false
+				sc.clear()
+				_check(school.is_empty() or school.lanes[0].zone_speed == 0.0, "the zone lifts after school hours")
+				_next()
+		11:  # Game day: fans walk to the stadium, the roads and trains get busier.
+			var ev: TrafficEvents = _traffic.events
+			if _frame == 1:
+				var days := 0
+				var midweek := 0
+				var saturdays := 0
+				for day in range(1, 57):
+					var e: Dictionary = ev.event_on(day)
+					if not e.is_empty():
+						days += 1
+						if posmod(day - 1, 7) < 3:
+							midweek += 1
+						if posmod(day - 1, 7) == 5:
+							saturdays += 1
+				_mark.event_days = [days, midweek, saturdays]
+				ev.enabled = true
+				ev.force_event = true
+				ev.force_start = 9.0
+				ev.stadium = Vector3(140, 0.02, 160)
+				ev.gate_radius = 45.0
+				ev.station_name = "Sandbox"
+				# Watching from the street by the ground.
+				_focus.position = Vector3(140, 0, 230)
+				ev._timer = 0.0
+				_mark.fan_start = {}
+				_mark.fan_closer = 0
+				_mark.fan_further = 0
+			if _frame == 120:
+				_mark.car_factor = ev.car_factor(ev.stadium)
+				_mark.train_factor = ev.train_factor(ev.stadium)
+				_mark.phase_in = ev.phase
+			if _frame % 60 == 0:
+				for f in ev.fans:
+					# Edges still to walk: fewer as they get on with it.
+					var d: float = f.route.size() + (0.0 if f.leave_at_end > 0 else 99.0)
+					# People are pooled: the same one can be a new fan later.
+					var key := [f, f.get_meta(&"fan", -1)]
+					if not _mark.fan_start.has(key):
+						_mark.fan_start[key] = [d, _frame]
+					elif _frame - _mark.fan_start[key][1] >= 600:
+						if d < _mark.fan_start[key][0]:
+							_mark.fan_closer += 1
+						elif d > _mark.fan_start[key][0]:
+							_mark.fan_further += 1
+						_mark.fan_start[key] = [d, _frame]
+			if _seconds() >= 60.0 and not _mark.has("fans_in"):
+				_mark.fans_in = [ev.stats.fans, ev.fans.size(), ev.stats.arrived]
+				_mark.dressed = 0
+				for f in ev.fans:
+					if f.node.get_node_or_null("Body/Scarf") != null:
+						_mark.dressed += 1
+				# Final siren: everyone out.
+				root.get_node("GameClock").set_time(9.0 + TrafficEvents.FOOTY_HOURS + 0.1)
+				_mark.leave_from = ev.stats.fans
+				_mark.fan_start = {}
+			if _seconds() >= 80.0:
+				var days: Array = _mark.event_days
+				_check(days[0] >= 8 and days[0] <= 30 and days[1] == 0 and days[2] >= 3, "games most weekends, none early in the week (%d days in 8 weeks, %d on Saturdays)" % [days[0], days[2]])
+				_check(_mark.phase_in == TrafficEvents.Phase.ARRIVING and _mark.car_factor > 1.4 and _mark.train_factor > 1.0,
+						"the roads and trains get busier before the game (cars x%.2f, trains x%.1f)" % [_mark.car_factor, _mark.train_factor])
+				var fi: Array = _mark.fans_in
+				_check(fi[0] >= 20 and fi[1] >= 10, "fans stream in to the game (%d sent, %d walking)" % [fi[0], fi[1]])
+				_check(_mark.dressed >= fi[1] * 0.8, "fans wear their team's colours (%d of %d)" % [_mark.dressed, fi[1]])
+				_check(_mark.fan_closer > _mark.fan_further * 3 and fi[2] >= 3, "they head for the gates and go in (%d getting there, %d lost, %d in)" % [_mark.fan_closer, _mark.fan_further, fi[2]])
+				_check(ev.phase == TrafficEvents.Phase.LEAVING and ev.stats.fans > _mark.leave_from + 10, "after the siren they pour out again (%d)" % (ev.stats.fans - _mark.leave_from))
+				ev.force_event = false
+				ev.enabled = false
+				root.get_node("GameClock").set_time(8.0)
 				_root3d.queue_free()
 				_next()
-		11:  # The main scene gets traffic on the Perth map's roads.
+		12:  # The main scene gets traffic on the Perth map's roads.
 			if _main == null:
 				_main = load("res://scenes/main.tscn").instantiate()
 				root.add_child(_main)
@@ -425,7 +579,8 @@ func _run_step() -> bool:
 					if not traffic.graph.keep_clear_on(entry[0]).is_empty():
 						boxed += 1
 				_check(boxed >= 2, "James St keeps Little Shenton Lane clear (%d lane samples boxed)" % boxed)
-				_check(traffic.network_ms < 30.0, "map tiles join the road network without stalling a frame (worst %.1f ms)" % traffic.network_ms)
+				_check(traffic.network_ms < 30.0, "map tiles join the road network without stalling a frame (worst %.1f ms, %d pieces that frame; slowest piece %.1f ms: %s)" % [
+						traffic.network_ms, traffic.network_frame_pieces, traffic.network_piece_ms, traffic.network_worst])
 				var car = _main.get_node("LoFi/SubViewport/World/Car")
 				_check(car.collision_mask & 4 != 0, "the player's car collides with traffic")
 				# Wildlife: birds right by the player take off, ones further
@@ -440,7 +595,7 @@ func _run_step() -> bool:
 				_mark.roo = wild.spawn_group(TrafficWildlife.Kind.ROO, cp + Vector3(-9, 0, 0), 1, false)
 				_mark.roo_start = cp + Vector3(-9, 0, 0)
 				_next()
-		12:  # Wildlife reacts to the player.
+		13:  # Wildlife reacts to the player.
 			if _seconds() >= 3.0:
 				var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 				var wild: TrafficWildlife = traffic.wildlife
@@ -460,7 +615,7 @@ func _run_step() -> bool:
 				_check(hopped > 10.0, "the kangaroo bounds away (%.0f m)" % hopped)
 				wild.enabled = true
 				_next()
-		13:  # Boats on the Swan, and the ferry to Mends St.
+		14:  # Boats on the Swan, and the ferry to Mends St.
 			var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 			var boats: TrafficBoats = traffic.boats
 			if not boats.ready_for_boats() and _seconds() < 30.0:
@@ -488,7 +643,7 @@ func _run_step() -> bool:
 			_mark.boat_start = Vector3(1000, 0, 1750)
 			_mark.boat_dry_frames = 0
 			_next()
-		14:  # Boats sail about and keep off the land.
+		15:  # Boats sail about and keep off the land.
 			var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 			var boats: TrafficBoats = traffic.boats
 			for b in _mark.boats:
@@ -736,6 +891,10 @@ func _train_near(train, p: Vector3, radius: float) -> bool:
 		if car.global_position.distance_to(p) < radius + 12.0:
 			return true
 	return false
+
+
+func parents_has(sc, par: Dictionary) -> bool:
+	return sc.parents.has(par)
 
 
 func _seconds() -> float:

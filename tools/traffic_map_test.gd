@@ -15,6 +15,7 @@ const SPOTS := [
 	["Barrack St and St Georges Tce", Vector3(549.6, 48.0, 1089.5), 120.0],
 	["Mitchell Freeway ramps at Roe St", Vector3(-310, 20, 30), 100.0],
 	["Kwinana Freeway at the Narrows", Vector3(-1500, 40, 2300), 50.0],
+	["Highgate school zone (8am)", Vector3(1152, 25, -585), 90.0],
 ]
 
 var _failures: Array[String] = []
@@ -42,6 +43,8 @@ func _process(_delta: float) -> bool:
 		_car = _main.get_node("LoFi/SubViewport/World/Car")
 		_traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 		_traffic.random_seed = 500
+		# A Monday (a save loaded before this runs mustn't make it a weekend).
+		root.get_node("GameClock").day = 1
 		root.get_node("GameClock").set_time(8.0)
 		root.get_node("GameClock").set_locked(true)
 		root.get_node("Weather").set_state(0, true)
@@ -137,7 +140,7 @@ func _watch() -> void:
 						_lane_name(v.route[0]), _lane_name(o.route[0])])
 					if OS.get_environment("TRAFFIC_SOAK_DEBUG") != "":
 						for x in [v, o]:
-							print("    #%d lane %d s %.1f/%.1f speed %.1f life %.1f change_from %s reason %d fwd %s" % [x.id, x.route[0].id, x.s, x.route[0].length, x.speed, x.lifetime,
+							print("    #%d %s lane %d s %.1f/%.1f speed %.1f life %.1f change_from %s reason %d fwd %s" % [x.id, x.type, x.route[0].id, x.s, x.route[0].length, x.speed, x.lifetime,
 								x.change_from.id if x.change_from else -1, x.reason, x.forward.snapped(Vector3.ONE * 0.01)])
 
 
@@ -156,8 +159,32 @@ func _report(spot_name: String) -> void:
 		if v.reason == TrafficVehicle.Reason.STOP_LINE:
 			continue
 		stuck += 1
-		print("  stuck: #%d on %s for %ds (reason %d) at %s" % [v.id, _lane_name(v.route[0]),
-			(_frame - _mark.stopped[v]) / FPS, v.reason, v.position.snapped(Vector3.ONE * 0.1)])
+		var by = v.blocked_by
+		var by_text := "nothing"
+		if by is TrafficVehicle:
+			by_text = "#%d %s" % [by.id, by.type]
+		elif by is TrafficGraph.Lane:
+			by_text = _lane_name(by)
+			if by.connector:
+				var d := 0.0
+				var out: TrafficGraph.Lane = by.next[0]
+				var queue: Array = []
+				for o in out.vehicles:
+					queue.append("#%d s%.1f v%.1f r%d" % [o.id, o.s, o.speed, o.reason])
+				var conf: Array = []
+				for c in by.conflicts:
+					for o in c.vehicles:
+						conf.append("#%d on %s v%.1f r%d" % [o.id, _lane_name(c), o.speed, o.reason])
+					for o in c.in_lane.vehicles:
+						if o.commits.has(c):
+							conf.append("#%d committed to %s" % [o.id, _lane_name(c)])
+				by_text += " [clear %s free %s merge %s room %s; signal %s; out %s: %s; conflicts: %s; yield_wait %.0f]" % [
+					_traffic._junction_clear(by, v), _traffic._junction_free(by, v), _traffic._merge_turn(by, v, d), _traffic._room_beyond(v, [by]),
+					("%d ctrl %d live %s phase %d t %.0f" % [by.in_lane.signal_gate.state(), by.in_lane.signal_gate.controller.get_instance_id(), _traffic.graph.signal_controllers.has(by.in_lane.signal_gate.controller), by.in_lane.signal_gate.controller.phase, by.in_lane.signal_gate.controller.timer]) if by.in_lane.signal_gate else "none", _lane_name(out), queue, conf, v.yield_wait]
+		elif by != null:
+			by_text = str(by)
+		print("  stuck: #%d %s on %s for %ds (reason %d, held by %s) at %s" % [v.id, v.type, _lane_name(v.route[0]),
+			(_frame - _mark.stopped[v]) / FPS, v.reason, by_text, v.position.snapped(Vector3.ONE * 0.1)])
 	print("  %s: %d cars max, %.0f%% moving, %d overlaps, %d red runs, %d stuck, %.2f ms/frame, %d roads loaded" % [
 		spot_name, _mark.max_vehicles, moving * 100.0, _mark.overlaps, red, stuck, ms, _traffic.graph.roads.size()])
 	_totals.overlaps += _mark.overlaps

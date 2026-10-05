@@ -24,6 +24,13 @@ var waiting := false
 var wait_time := 0.0
 var phase := 0.0
 var startle_cooldown := 0.0
+## Somewhere to be (fans walking to the footy): the PedEdges still to walk,
+## in order; empty to wander as usual.
+var route: Array = []
+## When the route runs out: 0 wander on, 1 go once nobody's looking (onto
+## the train), 2 go anyway (in through the stadium gates).
+var leave_at_end := 0
+var arrived := false
 
 ## Fields shared with vehicles for the obstacle checks.
 var position := Vector3.ZERO

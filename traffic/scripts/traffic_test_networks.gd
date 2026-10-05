@@ -20,6 +20,7 @@ class Net:
 	var bus_stops: Array = []
 	var parking: Array = []
 	var bus_routes: Array = []
+	var schools: Array = []
 	var _ids := {}
 	var _next := 1
 
@@ -57,7 +58,7 @@ class Net:
 			road(points[i], points[i + 1], extra)
 
 	func data() -> Dictionary:
-		return { "nodes": nodes, "roads": roads, "rail": rail, "stations": stations, "bus_stops": bus_stops, "parking": parking, "bus_routes": bus_routes }
+		return { "nodes": nodes, "roads": roads, "rail": rail, "stations": stations, "bus_stops": bus_stops, "parking": parking, "bus_routes": bus_routes, "schools": schools }
 
 
 static func test_grid() -> Dictionary:
@@ -167,6 +168,9 @@ static func sandbox() -> Dictionary:
 		net.parking.append({ "pos": [-91.0, Y, -150.0 + k * 6.0], "yaw": PI, "kind": "street" })
 	net.parking.append({ "pos": [0.0, Y, -1.6], "yaw": PI * 0.5, "kind": "street" })
 	net.parking.append({ "pos": [20.0, Y, 4.8], "yaw": -PI * 0.5, "kind": "street" })
+
+	# A primary school by the residential street east of the avenue.
+	net.schools.append({ "p": [80.0, Y, 150.0], "name": "Sandbox Primary School" })
 
 	# Bus routes: the 950 runs the avenue and Station Street; the Blue CAT
 	# just the avenue.

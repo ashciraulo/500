@@ -50,6 +50,9 @@ func _init() -> void:
 		["kerbside_taxi_rank", 9.0, 0, 16.0, Vector3(390, 25, 560), 2.5, 10.0],
 		["kerbside_taxi_rank_night", 22.5, 0, 16.0, Vector3(390, 25, 560), 2.5, 10.0, 6],
 		["kerbside_inspector", 11.0, 0, 16.0, Vector3(400, 25, 700), 1.7, 7.0],
+		["school_guard", 8.3, 0, 16.0, Vector3(1152, 20, -585), 1.6, 6.5],
+		["school_run", 15.2, 0, 16.0, Vector3(1152, 20, -585), 1.8, 7.0],
+		["school_sign", 8.4, 0, 16.0, Vector3(1152, 20, -585), 1.7, 3.6],
 	]
 	if args.size() > 1:
 		# Optional second argument: render only the shots whose names contain it.
@@ -101,6 +104,8 @@ func _process(_delta: float) -> bool:
 			view = _river_view(shot[0], shot[5], shot[6])
 		elif shot[0].begins_with("kerbside"):
 			view = _kerbside_view(shot[0], shot[4], shot[5], shot[6])
+		elif shot[0].begins_with("school"):
+			view = _school_view(shot[0], shot[4], shot[5], shot[6])
 		elif shot[5] <= 12.0:
 			view = _junction_view(shot[4], shot[5], shot[6])
 		else:
@@ -147,6 +152,10 @@ func _next_shot() -> void:
 	_traffic.clear_all()
 	_cam.look_at_from_position(cam_pos, target)
 	_cam.current = true
+	# The on-foot player's prompt layer sits on the root window.
+	for layer in root.get_children():
+		if layer is CanvasLayer:
+			layer.visible = false
 
 
 ## Stand back along the busiest road into the junction nearest `near`.
@@ -339,6 +348,75 @@ func _kerbside_view(shot_name: String, near: Vector3, height: float, back: float
 		print("inspector at ", ins.node.position)
 		return [ins.node.position + out * 2.0 + along * back + Vector3(0, height, 0), ins.node.position + Vector3(0, 1.0, 0) - along * 1.5]
 	print("no parked street car near ", near)
+	return [near + Vector3(30, 30, 30), near]
+
+
+## A school near `near` in school hours: the crossing guard out with the
+## kids, a parent dropping off, or a 40 sign.
+func _school_view(shot_name: String, near: Vector3, height: float, back: float) -> Array:
+	var sc: TrafficSchools = _traffic.schools
+	var school: Dictionary = {}
+	for sch in sc.schools:
+		if not sch.lanes.is_empty() and (school.is_empty() or sch.pos.distance_to(near) < school.pos.distance_to(near)):
+			school = sch
+	if school.is_empty():
+		print("no school with streets near ", near, " (", sc.schools.size(), " schools)")
+		return [near + Vector3(30, 30, 30), near]
+	print("school: ", school.name, " lanes ", school.lanes.size(), " signs ", school.signs.size(), " crossing ", school.edge != null)
+	if "guard" in shot_name and not school.guard.is_empty():
+		var guard: Dictionary = school.guard
+		while guard.kids.size() < 3:
+			sc._add_kid(school)
+		guard.phase = &"hold"
+		guard.t = 0.0
+		sc._set_gates(guard, true)
+		for k in guard.kids.size():
+			guard.kids[k].walking = true
+			guard.kids[k].t = 0.25 + k * 0.12
+		var edge: TrafficGraph.PedEdge = school.edge
+		var a := sc._crossing_point(edge, guard.from_a, 0.0)
+		var b := sc._crossing_point(edge, guard.from_a, 1.0)
+		var mid := a.lerp(b, 0.5)
+		var across := (b - a)
+		across.y = 0.0
+		across = across.normalized()
+		var along: Vector3 = edge.road.direction_from(edge.node)
+		print("crossing ", a, " -> ", b, " node ", edge.node.pos, " guard ", guard.node.global_position)
+		return [mid + along * back + across * -1.0 + Vector3(0, height, 0), mid + Vector3(0, 0.9, 0)]
+	if "run" in shot_name:
+		for p in sc.parents.duplicate():
+			sc.remove_parent(p)
+		var best = null
+		for lane in school.lanes:
+			if lane.length < 60.0:
+				continue
+			var s: float = lane.length * 0.5
+			if sc.parent_fits(lane, s) and (best == null or lane.point(s).distance_to(school.pos) < best[0].point(best[1]).distance_to(school.pos)):
+				best = [lane, s]
+		if best == null:
+			print("no spot for a parent")
+			return [near + Vector3(30, 30, 30), near]
+		var par := sc.add_parent(best[0], best[1], 60.0)
+		par.school_pos = school.pos
+		par.kid_t = 2.6
+		var dir: Vector3 = par.dir
+		var side: Vector3 = par.kerb
+		return [par.pos + dir * back - side * 2.5 + Vector3(0, height, 0), par.pos + side * 1.5 + Vector3(0, 0.9, 0)]
+	if not school.signs.is_empty():
+		var board: Node3D = school.signs[0]
+		var face: Vector3 = board.global_basis.z
+		face.y = 0.0
+		face = face.normalized()
+		var p := board.global_position
+		var to_road := Vector3.ZERO
+		for entry in _traffic.graph.samples_near(p, 15.0):
+			var q: Vector3 = entry[0].point(TrafficGraph.closest_s(entry[0].pts, entry[0].cum, p))
+			if to_road == Vector3.ZERO or (q - p).length() < to_road.length():
+				to_road = q - p
+		to_road.y = 0.0
+		print("sign at ", p, " facing ", face, " road ", to_road)
+		return [p + face * back + to_road.normalized() * 2.0 + Vector3(0, height, 0), p + Vector3(0, 2.2, 0)]
+	print("no sign")
 	return [near + Vector3(30, 30, 30), near]
 
 

@@ -108,6 +108,28 @@ the old test grid get a network matching the grid's streets instead.
   of the Wallet, `parking_fines` goes up in Progression, the HUD shows it and
   a ticket sits under the wiper until the player gets back in. Never within
   90 m of home or 35 m of a job site.
+- **School zones** (`schools`, TrafficSchools). On school days, 7:30 to 9
+  and 2:30 to 4, the streets within about 110 m of each school drop to
+  40 km/h (`Lane.zone_speed`; `lane.limit()` is the limit right now), with
+  flashing 40 signs on the way in. At the nearest crossing without lights a
+  crossing guard waits with the kids, then steps out with the STOP lollipop
+  (traffic stops at the line) and sees them across. Parents stop in the kerb
+  lane with their hazards on while a kid hops out; on one-lane streets
+  traffic queues behind them. Schools come from the road data's `schools`.
+  `schools.zone_limit_at(p)` gives the zone limit at a point (0 when
+  none), for the HUD or a speeding fine.
+- **Game days** (`events`, TrafficEvents). Most weekends, and some Thursday
+  and Friday nights, there's footy (now and then a concert) at Optus
+  Stadium: `events.event_on(day)` gives the fixture. For two and a half
+  hours before the start, fans in their team's colours walk in from Perth
+  Stadium station, the Matagarup Bridge (when the road data has it as a
+  footway named "Matagarup Bridge") and the streets round Burswood, through
+  footways to the gates, and go in. Six-car trains run more often, event
+  buses turn up, and the roads within about 2 km get up to 90% busier. You
+  hear the crowd during the game; at the final siren it all goes the other
+  way. Fans are ordinary pedestrians with a route
+  (`manager.spawn_walker(route, s, dir, leave_at_end)`, with
+  `graph.ped_path(from, to)` for the route). Only on the Perth map.
 - **Driving** uses the intelligent driver model: each car keeps a safe gap to
   whatever is ahead (the car in front, a stop line, a person, the player).
   Cars slow for bends, change lanes to pass slow traffic, and drive a little
@@ -189,7 +211,8 @@ World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 	"rail": [{ "pts": [[x, y, z], ...] }],             # one entry per track; endpoints within 2 m join up
 	"stations": [{ "p": [x, y, z], "name": "Perth" }],   # railway=station/stop positions
 	"bus_stops": [{ "p": [x, y, z] }],                   # highway=bus_stop positions
-	"footways": [{ "pts": [[x, y, z], ...] }],           # optional extra paths for people
+	"footways": [{ "pts": [[x, y, z], ...], "name": "Matagarup Bridge" }],  # optional extra paths for people; name optional
+	"schools": [{ "p": [x, y, z], "name": "Highgate Primary School" }],     # optional; amenity=school, for school zones
 	# Optional parking spots, clear of footpaths, street lights and driveways.
 	# yaw: the way the nose points, radians about +Y (0 faces -Z).
 	"parking": [{ "pos": [x, y, z], "yaw": 1.57, "kind": "street" }],  # kind: "street" | "lot"
@@ -226,11 +249,19 @@ map doesn't need to.
 | `signals_changed(position: Vector3)` | A set of lights changed phase. |
 | `train_arrived(position: Vector3)` / `train_departed(position: Vector3)` | A train stopped at, or is leaving, a station (its front). |
 | `network_changed` | Road data was added. |
+| `walker_arrived(ped: TrafficPedestrian)` | Someone with a route (a fan) got there and went. |
 
 `boats` signals `ferry_departed(position)` (the ferry also has a `Horn`
 AudioStreamPlayer3D). `kerbside` signals `parking_ticket(fine: int, reason:
 String, position: Vector3)` and `taxi_departed(station: String, position:
-Vector3)`.
+Vector3)`. `schools` signals `zone_changed(active: bool)` and
+`guard_out(position: Vector3)`. `events` signals `event_changed(event_name:
+String, phase: int)` (TrafficEvents.Phase: NONE, ARRIVING, ON, LEAVING).
+
+Sounds the traffic plays when the audio thread adds them (all optional):
+`traffic/traffic_guard_whistle` (a crossing guard steps out),
+`traffic/traffic_crowd_roar_loop` and `traffic/traffic_crowd_cheer` (the
+stadium during a game).
 
 Each vehicle body has a child `Audio` (Node3D at the engine) with a `Horn`
 AudioStreamPlayer3D on the Vehicles bus playing a placeholder two-tone horn.
