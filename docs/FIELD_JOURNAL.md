@@ -37,7 +37,7 @@ tomorrow, or another one is.
 
 ## Birds
 
-About forty real Perth species, each tied to real places, times and weather:
+Forty-two real Perth species, each tied to real places, times and weather:
 magpies and ibis (the ones traffic already puts in the parks count too),
 rainbow lorikeets in the city trees, black swans on the river and Lake Monger,
 pelicans at Claisebrook Cove, Carnaby's black cockatoos coming in to Kings
@@ -45,6 +45,18 @@ Park at dusk, kookaburras at dawn, an osprey over Point Walter, tawny
 frogmouths and boobooks only at night, rainbow bee-eaters arriving for the
 spring. Common birds are everywhere; the rare ones need the right place, hour
 and luck.
+
+**Quiet places.** Nine spots nobody tells you about (the map's hidden
+birding POIs): the Herdsman Lake reedbeds, Monger Island, the Perry Lakes
+reeds, Floreat Lake, Kooyar Kep in Kings Park, the Heirisson Island marsh,
+the Burswood Park lakes, the Alfred Cove flats and the East Fremantle reeds.
+Nothing marks them on the map or in the journal. Walk within 60 m of one and
+it goes in the back of the journal (and on the map). Three birds live only in
+places like these: the Australian reed warbler in the reedbeds, the
+buff-banded rail at muddy edges at first and last light, and black-winged
+stilts on the flats. Two fishing spots are quiet too, the Point Walter
+sandbar and the Trigg Island rocks: no bait bucket and no blank page until
+you've stood there.
 
 **The shot (Dredge's fishing minigame, as a camera).** Press Enter / A with a
 bird in view. A dial appears round the viewfinder with one to three "sharp"
@@ -57,14 +69,17 @@ bird fills the frame. The photo is a real screenshot and goes in the album.
 
 ## Fish
 
-Eighteen real spots, placed on the map's own jetties and foreshores by
-`tools/field/place_spots.gd` (`data/field/fishing_spots.json`): the Mends
-Street and Coode Street jetties, Point Fraser, Heirisson Island, the East
-Perth and Burswood jetties, the Maylands foreshore, under the Garratt Road
-bridge, Elizabeth Quay, Canning Bridge, Claremont, Freshwater Bay, Mosman Bay,
-East Fremantle, Fremantle harbour, Leighton, the City Beach groynes and Trigg
-Point. (Claisebrook Cove, the Fishing Boat Harbour and Cottesloe groyne are in
-the data but the map has no footing there yet.) Walk within 30 m of one and it
+Twenty-three real spots, placed on the map's own jetties, foreshores and
+beaches by `tools/field/place_spots.gd` (`data/field/fishing_spots.json`):
+the Mends Street and Coode Street jetties, Point Fraser, Heirisson Island,
+Claisebrook Cove, the East Perth and Burswood jetties, the Maylands
+foreshore, the Barrack Street Jetty at Elizabeth Quay, Canning Bridge,
+Claremont, Freshwater Bay, Mosman Bay, the Point Walter jetty, East
+Fremantle, the Fishing Boat Harbour, Fremantle harbour, the North Mole,
+Leighton, the Cottesloe and City Beach groynes and Trigg Point. (Under the
+Garratt Road bridge is in the data, but the map isn't built that far up the
+river yet.) Sea spots only count the sea as water, not the hollows behind
+the dunes. Walk within 30 m of one and it
 goes in the journal; a bait bucket marks where to stand, and rings spread on
 the water while something worth catching is about.
 

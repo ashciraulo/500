@@ -1,5 +1,5 @@
 {
-	"_comment": "Fishing spots: real jetties, groynes and foreshores. near: [x, z] world metres, either a pier deck the map built from OSM (kind deck) or the real place (kind shore). stand: [x, y, z] where you fish from and yaw the way you face the water, both found in the map by tools/field/place_spots.gd. water picks the fish (data/field/fish.json); tags: jetty (pylons), crabs (crab net), flats (sand), snags, deep, rocks, beach, lights (under lights at night), hubcap.",
+	"_comment": "Fishing spots: real jetties, groynes and foreshores. near: [x, z] world metres, either a pier deck the map built from OSM (kind deck) or the real place (kind shore). stand: [x, y, z] where you fish from and yaw the way you face the water, both found in the map by tools/field/place_spots.gd. water picks the fish (data/field/fish.json); tags: jetty (pylons), crabs (crab net), flats (sand), snags, deep, rocks, beach, lights (under lights at night), hubcap. hidden: a quiet spot (map POI `poi`) left off the journal until you find it.",
 	"spots": [
 		{
 			"id": "mends_st_jetty",
@@ -173,6 +173,7 @@
 			"name": "Garratt Road bridge",
 			"water": "river",
 			"kind": "shore",
+			"reach": 120,
 			"near": [
 				6230.3,
 				-2190.8
@@ -181,34 +182,28 @@
 				"snags",
 				"deep"
 			],
-			"hint": "Under the Garratt Road bridge, up past Bayswater. Deep water: the locals fish it at night for mulloway.",
-			"stand": [
-				6338.3,
-				3.95,
-				-2002.8
-			],
-			"yaw": 2.36
+			"hint": "Under the Garratt Road bridge, up past Bayswater. Deep water: the locals fish it at night for mulloway."
 		},
 		{
 			"id": "elizabeth_quay",
 			"name": "Elizabeth Quay",
 			"water": "river",
-			"kind": "shore",
+			"kind": "deck",
 			"near": [
-				300,
-				1460
+				334.7,
+				1329.6
 			],
 			"tags": [
 				"deep",
 				"hubcap"
 			],
-			"hint": "The quay's edge in the city. Mostly blowies. People say things turn up off the old Esplanade.",
+			"hint": "The Barrack Street Jetty at Elizabeth Quay, in the city. Mostly blowies. People say things turn up off the old Esplanade.",
 			"stand": [
-				288,
-				0.55,
-				1456
+				320.7,
+				3.7,
+				1321.6
 			],
-			"yaw": 6.09
+			"yaw": 1.18
 		},
 		{
 			"id": "canning_bridge",
@@ -293,7 +288,51 @@
 				3.7,
 				6114
 			],
-			"yaw": 1.96
+			"yaw": 2.16
+		},
+		{
+			"id": "point_walter",
+			"name": "Point Walter jetty",
+			"water": "estuary",
+			"kind": "deck",
+			"near": [
+				-6283.5,
+				7184.2
+			],
+			"tags": [
+				"jetty",
+				"flats"
+			],
+			"hint": "The jetty at Point Walter, by the sandbar. Whiting on the flats on a warm day, tailor at dusk.",
+			"stand": [
+				-6283.5,
+				2.15,
+				7186.2
+			],
+			"yaw": 0
+		},
+		{
+			"id": "point_walter_sandbar",
+			"name": "Point Walter sandbar",
+			"water": "estuary",
+			"kind": "shore",
+			"near": [
+				-5948.6,
+				7437.8
+			],
+			"reach": 60,
+			"tags": [
+				"flats"
+			],
+			"hidden": true,
+			"poi": "fishing_point_walter_sandbar",
+			"hint": "Out along the sandbar at Point Walter, knee deep at low tide. Whiting and flathead on the sand, and nobody else.",
+			"stand": [
+				-5928.6,
+				1.05,
+				7441.8
+			],
+			"yaw": 0
 		},
 		{
 			"id": "east_fremantle",
@@ -310,9 +349,9 @@
 			],
 			"hint": "The jetties off East Fremantle, by the rowing clubs. Crabs in summer, tailor at dusk.",
 			"stand": [
-				-8730.6,
+				-8734.6,
 				1.2,
-				10169.1
+				10143.1
 			],
 			"yaw": 0
 		},
@@ -329,7 +368,13 @@
 				"jetty",
 				"lights"
 			],
-			"hint": "Fremantle's Fishing Boat Harbour. Squid under the lights at night."
+			"hint": "Fremantle's Fishing Boat Harbour. Squid under the lights at night.",
+			"stand": [
+				-10183.9,
+				1.2,
+				12684.2
+			],
+			"yaw": 2.75
 		},
 		{
 			"id": "fremantle_harbour",
@@ -347,11 +392,31 @@
 			],
 			"hint": "The harbour walls in Fremantle. Squid under the lights, tarwhine and skippy, snapper after dark.",
 			"stand": [
-				-10674.9,
+				-10686.9,
 				1.2,
-				12659.3
+				12645.3
 			],
-			"yaw": 2.55
+			"yaw": 2.16
+		},
+		{
+			"id": "north_mole",
+			"name": "North Mole",
+			"water": "ocean",
+			"kind": "shore",
+			"near": [
+				-11843.4,
+				11703.8
+			],
+			"tags": [
+				"rocks"
+			],
+			"hint": "The long North Mole at the river mouth, out past the port. Herring and skippy by day, tailor at the change of light.",
+			"stand": [
+				-11859.4,
+				0.15,
+				11703.8
+			],
+			"yaw": 0.2
 		},
 		{
 			"id": "leighton_beach",
@@ -367,26 +432,33 @@
 			],
 			"hint": "The beach north of the port. Herring, whiting and tailor off the sand.",
 			"stand": [
-				-9758.4,
-				0.25,
-				8822.4
+				-9834.4,
+				0.6,
+				8842.4
 			],
-			"yaw": 0.2
+			"yaw": 0.59
 		},
 		{
 			"id": "cottesloe_groyne",
 			"name": "Cottesloe groyne",
 			"water": "ocean",
 			"kind": "shore",
+			"reach": 40,
 			"near": [
-				-9801.2,
-				5507.5
+				-9790,
+				5628
 			],
 			"tags": [
 				"rocks",
 				"beach"
 			],
-			"hint": "The groyne at Cottesloe. Skippy and herring off the rocks, KGs over the sand."
+			"hint": "The groyne at Cottesloe. Skippy and herring off the rocks, KGs over the sand.",
+			"stand": [
+				-9794,
+				1.6,
+				5660
+			],
+			"yaw": 0.59
 		},
 		{
 			"id": "city_beach_groyne",
@@ -403,9 +475,9 @@
 			],
 			"hint": "The groynes at City Beach. Tailor at dawn and dusk, whiting off the sand.",
 			"stand": [
-				-9498.9,
-				0.2,
-				-943.5
+				-9418.9,
+				2.1,
+				-839.5
 			],
 			"yaw": 0.39
 		},
@@ -424,11 +496,34 @@
 			],
 			"hint": "The point at Trigg, all reef and wash. Herring, skippy and the odd KG whiting.",
 			"stand": [
-				-9721.6,
-				0.15,
-				-7997.9
+				-9713.6,
+				0.25,
+				-7757.9
 			],
-			"yaw": 0
+			"yaw": 0.2
+		},
+		{
+			"id": "trigg_island",
+			"name": "Trigg Island rocks",
+			"water": "ocean",
+			"kind": "shore",
+			"near": [
+				-9697.1,
+				-7816.6
+			],
+			"reach": 60,
+			"tags": [
+				"rocks"
+			],
+			"hidden": true,
+			"poi": "fishing_trigg_island",
+			"hint": "The limestone rocks off Trigg, where the swell breaks. Skippy and herring in the wash, tailor at dusk.",
+			"stand": [
+				-9677.1,
+				0.25,
+				-7856.6
+			],
+			"yaw": 0.98
 		}
 	]
 }

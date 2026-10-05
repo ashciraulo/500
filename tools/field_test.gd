@@ -80,7 +80,7 @@ func _process(_delta: float) -> bool:
 				_birds = _field.birds
 				_bino = _field.binoculars
 				_birds.auto_spawn = false
-				_check(_fj.bird_order.size() >= 39, "39 species (%d)" % _fj.bird_order.size())
+				_check(_fj.bird_order.size() >= 42, "42 species (%d)" % _fj.bird_order.size())
 				_check(_fj.habitats.size() >= 20, "real places (%d)" % _fj.habitats.size())
 				_check(_bino != null and _bino.is_inside_tree(), "binoculars ready")
 				# The binoculars start on the hook by the back door.
@@ -104,6 +104,7 @@ func _process(_delta: float) -> bool:
 				if is_instance_valid(feeder):
 					feeder.queue_free()
 				_fj.entries = saved
+				_check_quiet_places(disc)
 				_check(_field.journal.is_inside_tree() and _field.lab_screen.is_inside_tree(), "journal and lab screens ready")
 				# Hours wrap past midnight; dry birds skip the rain.
 				var frog: Dictionary = _fj.bird("tawny_frogmouth")
@@ -242,7 +243,7 @@ func _process(_delta: float) -> bool:
 				_aim(_target.birds[0].node)
 				if _fj.is_seen("wrong_cockatoos"):
 					_check(root.get_node("Discoveries").has("field/wrong_cockatoos"), "seeing one is a discovery")
-					_check(_fj.seen_count() == _seen_before and _fj.species_total() == 39, "they don't count as species (%d of %d)" % [_fj.seen_count(), _fj.species_total()])
+					_check(_fj.seen_count() == _seen_before and _fj.species_total() == 42, "they don't count as species (%d of %d)" % [_fj.seen_count(), _fj.species_total()])
 					_check(_target.birds.all(func(b: Dictionary) -> bool: return b.state == "perch"), "none of them flush")
 					_bino._start_shot()
 					_wait = 0
@@ -574,6 +575,35 @@ func _teleport(p: Vector3, yaw: float) -> void:
 	_car.global_transform = Transform3D(Basis(Vector3.UP, yaw), p + Vector3.UP * 0.8)
 	_car.linear_velocity = Vector3.ZERO
 	_car.angular_velocity = Vector3.ZERO
+
+
+## Quiet places: hidden until you walk into one, then in the journal, with
+## birds you won't see anywhere else.
+func _check_quiet_places(disc: Node) -> void:
+	var quiet: Array = _fj.quiet_places()
+	_check(quiet.size() == 9 and quiet.all(func(h: Dictionary) -> bool: return not disc.has(_fj.place_key(h))), "nine quiet places, none found yet (%d)" % quiet.size())
+	var reeds: Dictionary = _fj.habitat("quiet_herdsman_reedbeds")
+	var at: Vector3 = _fj.habitat_centre(reeds)
+	_check(_fj.place_name(at) != reeds.name, "an unfound quiet place has no name (%s)" % _fj.place_name(at))
+	_check(_ids(_fj.candidates(reeds, 7.0, 0.0)).has("australian_reed_warbler")
+		and not _ids(_fj.candidates(_fj.habitat("herdsman_lake"), 7.0, 0.0)).has("australian_reed_warbler"), "reed warblers only in the quiet reedbeds")
+	_check(_field.quiet.find_near(at + Vector3(80, 0, 0)).is_empty(), "walking past doesn't find it")
+	var found: Array = _field.quiet.find_near(at + Vector3(30, 0, 0))
+	_check(found.size() == 1 and found[0] == "Herdsman Lake reedbeds", "walking in finds it (%s)" % str(found))
+	_check(disc.has("places/birding_herdsman_reedbeds") and _fj.place_name(at) == reeds.name, "it's named once found (%s)" % _fj.place_name(at))
+	_field.journal._tab = "birds"
+	_field.journal._selected = "place:quiet_herdsman_reedbeds"
+	_field.journal.refresh()
+	var listed: bool = _field.journal._list.get_children().any(func(n: Node) -> bool: return n is Button and (n as Button).text == "Herdsman Lake reedbeds")
+	_check(listed and _fj.places_found() == 1, "the journal lists it under quiet places")
+	_field.journal._tab = "fish"
+	_field.journal._selected = ""
+	_field.journal.refresh()
+	var sandbar: bool = _field.journal._list.get_children().any(func(n: Node) -> bool: return n is Button and (n as Button).text == "Point Walter sandbar")
+	_check(_fj.spot("point_walter_sandbar").get("hidden", false) and not sandbar, "a quiet fishing spot isn't even a blank until found")
+	_field.journal._tab = "birds"
+	_field.journal._selected = ""
+	disc._found.erase("places/birding_herdsman_reedbeds")
 
 
 ## The first of a flock the binoculars have a clear line to (else the first).

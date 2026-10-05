@@ -228,7 +228,14 @@ func _update_spots() -> void:
 		var d := Vector2(s.x - focus.x, s.z - focus.z).length()
 		var id := String(sp.id)
 		if d < FIND_RANGE and Discoveries.discover("fishing/" + id):
-			Activities.say("Fishing spot: %s. It's in the journal." % sp.name)
+			if sp.get("hidden", false):
+				# A quiet spot: no bucket marks it until you've stood there.
+				Discoveries.discover(FieldJournal.place_key(sp))
+				Activities.say("A quiet spot: %s. Nobody fishes here. It's in the journal." % sp.name)
+			else:
+				Activities.say("Fishing spot: %s. It's in the journal." % sp.name)
+		if sp.get("hidden", false) and not Discoveries.has("fishing/" + id):
+			continue
 		if d < SHOW_RANGE and not _props.has(id):
 			_props[id] = _make_spot_props(sp)
 			add_child(_props[id])

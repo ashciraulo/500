@@ -473,6 +473,14 @@ after a map rebuild).
   `bird_feeder.glb` goes on `Feeder_Spot` (discovery `field/feeder`) with
   garden birds you've seen (`HomeField.FEEDER_BIRDS`) on its perches by day. The dash bird (10
   species) is the car's: `FieldJournal.seen_count()` and `species_seen`.
+- Quiet places (`FieldWorld.quiet`, `QuietPlaces`): habitats.json entries
+  with `"hidden": true` and fishing_spots.json spots with `"hidden": true`
+  name the map POI they come from (`poi`). Walking within 60 m (30 m for a
+  fishing spot) discovers `places/<poi id>` (`FieldJournal.place_key(h)`), so
+  the map can show a hidden POI once `Discoveries.has("places/" + poi.id)`.
+  `FieldJournal.places_found()` / `stat("places_found")` count them;
+  `field/quiet_place` plays on finding one (falls back to the new-species
+  music).
 - Music: `music/mus_field_journal` plays while the journal is open (only if
   no other music is), and `music/mus_field_new_species` on a new bird; both
   are skipped until the audio side ships them.

@@ -2022,6 +2022,186 @@
 			]
 		},
 		{
+			"id": "australian_reed_warbler",
+			"name": "Australian reed warbler",
+			"latin": "Acrocephalus australis",
+			"rarity": 3,
+			"value": 55,
+			"shy": 0.7,
+			"perch": "shore",
+			"habitats": [
+				"reeds"
+			],
+			"places": [
+				"quiet_herdsman_reedbeds",
+				"quiet_perry_lakes_reeds",
+				"quiet_east_fremantle_reeds",
+				"quiet_monger_island",
+				"quiet_kooyar_kep"
+			],
+			"hours": [
+				[
+					5.5,
+					10.0
+				],
+				[
+					16.0,
+					19.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.16,
+			"model": "songbird",
+			"like": "singing_honeyeater",
+			"colours": {
+				"body": "#8a7a5a",
+				"wing": "#7a6a4a",
+				"head": "#8a7a5a",
+				"belly": "#e4d8bc",
+				"beak": "#3a3228",
+				"accent": "#e8dcc0",
+				"tail": "#7a6a4a",
+				"legs": "#5a5048"
+			},
+			"shape": {
+				"tail": 1.1
+			},
+			"hint": "You hear it long before you see it. Thick reeds at a quiet lake edge, early or late.",
+			"note": "Plain brown, a pale eyebrow, and a song like someone winding a rusty clock. All spring it shouts from the reedbeds and never shows itself.",
+			"marks": [
+				[
+					"brow",
+					"#e8dcc0"
+				],
+				[
+					"throat",
+					"#f2ead8"
+				]
+			]
+		},
+		{
+			"id": "buff_banded_rail",
+			"name": "Buff-banded rail",
+			"latin": "Gallirallus philippensis",
+			"rarity": 3,
+			"value": 80,
+			"shy": 0.85,
+			"perch": "shore",
+			"habitats": [
+				"reeds"
+			],
+			"places": [
+				"quiet_alfred_cove",
+				"quiet_burswood_lakes",
+				"quiet_heirisson_marsh",
+				"quiet_floreat_lake"
+			],
+			"hours": [
+				[
+					5.0,
+					8.0
+				],
+				[
+					17.5,
+					20.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.3,
+			"model": "rail",
+			"like": "purple_swamphen",
+			"colours": {
+				"body": "#6a5a48",
+				"wing": "#5a4a3a",
+				"head": "#7a4a32",
+				"belly": "#d8d0c4",
+				"beak": "#4a4038",
+				"accent": "#c88a4a",
+				"tail": "#5a4a3a",
+				"legs": "#a89a7a"
+			},
+			"hint": "Out of the reeds for a moment at first light, then gone again. Quiet edges with mud.",
+			"note": "A barred, chestnut-browed rail that steps out of cover, flicks its tail, and walks straight back in. A good one to get.",
+			"marks": [
+				[
+					"brow",
+					"#e8dcc8"
+				],
+				[
+					"breast_band",
+					"#d89a5a"
+				],
+				[
+					"wing_panel",
+					"#8a7a6a"
+				]
+			]
+		},
+		{
+			"id": "black_winged_stilt",
+			"name": "Black-winged stilt",
+			"latin": "Himantopus himantopus",
+			"rarity": 2,
+			"value": 35,
+			"shy": 0.55,
+			"perch": "shore",
+			"habitats": [
+				"flats"
+			],
+			"places": [
+				"quiet_alfred_cove",
+				"quiet_heirisson_marsh",
+				"quiet_floreat_lake",
+				"quiet_burswood_lakes"
+			],
+			"hours": [
+				[
+					6.0,
+					18.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				2,
+				6
+			],
+			"size": 0.38,
+			"model": "wader",
+			"like": "pied_oystercatcher",
+			"colours": {
+				"body": "#f2f2ee",
+				"wing": "#1a1a1a",
+				"head": "#f2f2ee",
+				"belly": "#f6f6f2",
+				"beak": "#141414",
+				"accent": "#1a1a1a",
+				"tail": "#e8e8e4",
+				"legs": "#e86a8a",
+				"neck": "#f2f2ee"
+			},
+			"shape": {
+				"leg": 1.9,
+				"bill": 1.1,
+				"neck": 0.9
+			},
+			"hint": "Shallow mud and flats, in little groups. The legs give it away.",
+			"note": "Black and white, on absurd pink legs. Yaps like a small dog when you get too close.",
+			"marks": [
+				[
+					"nape",
+					"#1a1a1a"
+				]
+			]
+		},
+		{
 			"id": "wrong_frogmouth",
 			"name": "Frogmouth on the lane pole",
 			"latin": "Podargus strigoides?",
