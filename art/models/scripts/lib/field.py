@@ -1,13 +1,18 @@
 """Field gear for bird-watching and fishing: binoculars, a film camera and
-roll, a fishing rod with an Alvey sidecast reel, an esky and a tackle box.
+roll, a fishing rod with an Alvey sidecast reel, an esky and a tackle box,
+plus two journal milestone rewards: a courtyard bird feeder and a nodding
+willie wagtail for the dash.
 
 Every function returns (parts, sockets): parts authored like furniture.py
 (front toward -Y, origin at the base centre, metres) and sockets, a dict of
-empty name -> location (for example the rod tip the line hangs from).
+empty name -> location (for example the rod tip the line hangs from), or
+-> (location, turn about Z in degrees) for an empty that faces somewhere.
 Sizes are the real things': 7x50 porro binoculars, a 1970s manual SLR
 with a 50 mm lens, a 2.1 m spin rod, a 25 litre esky.
 """
 import math
+
+from mathutils import Vector
 
 from . import common as C
 from . import furniture as F
@@ -256,7 +261,99 @@ def tackle_lid():
     return p
 
 
-# name -> (parts and sockets, lid builder or None)
+def bird_feeder():
+    """A timber feeder on a post, the kind people knock up for a courtyard:
+    an open tray with a lip, four corner posts and a little gabled roof of
+    weathered tin, a perch dowel out of each side. 1.6 m to the ridge."""
+    wood = _m("FeederWood", "#8a6a4a", 0.9)
+    wood_dark = _m("FeederWoodDark", "#5e4630", 0.9)
+    tin = _m("FeederTin", "#7d8a84", 0.5, 0.4)
+    seed = _m("Seed", "#c9a466", 1.0)
+    p = []
+    # post on a cross foot
+    p.append(bx((-0.035, -0.035, 0.0), (0.035, 0.035, 1.36), wood))
+    p.append(bx((-0.25, -0.03, 0.0), (0.25, 0.03, 0.05), wood_dark))
+    p.append(bx((-0.03, -0.25, 0.0), (0.03, 0.25, 0.05), wood_dark))
+    for sx, sy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        # little braces from the foot up the post
+        b = bx((-0.012, -0.012, -0.11), (0.012, 0.012, 0.11), wood_dark)
+        b.rotation_euler = (math.radians(40 * sy), math.radians(-40 * sx), 0)
+        b.location = (sx * 0.1, sy * 0.1, 0.12)
+        p.append(b)
+    # tray with a lip, brackets under it
+    t, top = 0.21, 1.36
+    p.append(bx((-t, -t, top), (t, t, top + 0.025), wood))
+    for lo, hi in (((-t, -t), (t, -t + 0.02)), ((-t, t - 0.02), (t, t)),
+                   ((-t, -t), (-t + 0.02, t)), ((t - 0.02, -t), (t, t))):
+        p.append(bx((lo[0], lo[1], top + 0.025), (hi[0], hi[1], top + 0.055), wood))
+    for sx in (-1, 1):
+        p.append(bx((sx * 0.035 if sx > 0 else -0.09, -0.015, top - 0.06), (0.09 if sx > 0 else -0.035, 0.015, top),
+                    wood_dark))
+    # seed heaped in the middle
+    p.append(C.sphere("seed", 0.1, (0, 0, top + 0.025), seed, segs=10, rings=5, scale=(1.0, 1.0, 0.25)))
+    # corner posts and the gabled roof (ridge along X)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.append(bx((sx * 0.18 - 0.012, sy * 0.18 - 0.012, top + 0.025), (sx * 0.18 + 0.012, sy * 0.18 + 0.012, 1.53),
+                        wood))
+    ridge, eave, over = 1.62, 1.52, 0.26
+    for sy in (-1, 1):
+        run = math.hypot(over, ridge - eave)
+        r = bx((-0.27, -run / 2, -0.006), (0.27, run / 2, 0.006), tin)
+        r.rotation_euler = (math.atan2(ridge - eave, over) * (1 if sy < 0 else -1), 0, 0)
+        r.location = (0, sy * over / 2, (ridge + eave) / 2)
+        p.append(r)
+    p.append(cyl(0.012, 0.56, (0, 0, ridge), wood_dark, 6, axis="X"))
+    # a perch dowel out of each side of the tray
+    sockets = {"Seed": (0, 0, top + 0.03)}
+    for i, (dx, dy) in enumerate(((0, -1), (1, 0), (0, 1), (-1, 0))):
+        tip = Vector((dx, dy, 0)) * (t + 0.1)
+        p.append(cyl(0.006, 0.12, tuple((Vector((dx, dy, 0)) * (t + 0.04)) + Vector((0, 0, top + 0.012))), wood_dark, 6,
+                     axis="X" if dx else "Y"))
+        # an empty's -Y is Godot's +Z: turn it to face out along (dx, dy)
+        sockets["Perch_%d" % (i + 1)] = ((tip.x, tip.y, top + 0.02), math.degrees(math.atan2(dy, dx)) + 90)
+    return p, sockets
+
+
+def dash_bird():
+    """A nodding willie wagtail for the dash: black above, white belly and
+    eyebrow, long tail, on a spring and a round base. About 9 cm tall. The
+    head is its own part (dash_bird_head), pivoting at the neck."""
+    black = _m("WagtailBlack", "#151517", 0.5)
+    white = _m("WagtailWhite", "#efede6", 0.5)
+    base = _m("DashBase", "#2a2a2a", 0.6)
+    p = [cyl(0.026, 0.008, (0, 0, 0.004), base, 14),
+         cyl(0.008, 0.024, (0, 0, 0.02), _m("Spring", "#c4c6c8", 0.3, 0.9), 8),
+         C.sphere("body", 0.02, (0, 0.004, 0.05), black, segs=10, rings=6, scale=(0.85, 1.5, 1.0)),
+         C.sphere("belly", 0.016, (0, -0.008, 0.045), white, segs=10, rings=6, scale=(0.85, 1.35, 0.95))]
+    tail = bx((-0.006, 0.0, -0.0015), (0.006, 0.06, 0.0015), black)
+    fan = bx((-0.014, 0.035, -0.0015), (0.014, 0.06, 0.0015), black)
+    for o in (tail, fan):
+        o.rotation_euler = (math.radians(25), 0, 0)
+        o.location = (0, 0.028, 0.052)
+        p.append(o)
+    return p, {"Head": (0, -0.016, 0.064)}
+
+
+def dash_bird_head():
+    """Relative to the neck pivot: a black head with a white eyebrow and a
+    fine black bill."""
+    black = _m("WagtailBlack", "#151517", 0.5)
+    white = _m("WagtailWhite", "#efede6", 0.5)
+    p = [C.sphere("head", 0.014, (0, -0.006, 0.012), black, segs=10, rings=6),
+         cyl(0.0035, 0.013, (0, -0.025, 0.011), black, 6, r_top=0.0005, axis="Y")]
+    # the bill points -Y: flip the cone so its tip is forward
+    p[-1].rotation_euler = (math.pi, 0, 0)
+    for sx in (-1, 1):
+        p.append(bx((min(sx * 0.005, sx * 0.0115), -0.016, 0.0185),
+                    (max(sx * 0.005, sx * 0.0115), -0.006, 0.021), white))
+        p.append(C.sphere("eye", 0.0025, (sx * 0.0115, -0.014, 0.012), _m("Eye", "#050505", 0.2), segs=6, rings=4))
+    return p
+
+
+# name -> (parts and sockets, builder for a separate part or None). The
+# separate part is named after its socket ("Lid", "Head") and its origin is
+# the socket, so the game can turn it there.
 PROPS = {
     "binoculars": (binoculars, None),
     "camera": (camera, None),
@@ -264,4 +361,6 @@ PROPS = {
     "fishing_rod": (fishing_rod, None),
     "esky": (esky, esky_lid),
     "tackle_box": (tackle_box, tackle_lid),
+    "bird_feeder": (bird_feeder, None),
+    "dash_bird": (dash_bird, dash_bird_head),
 }

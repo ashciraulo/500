@@ -5,11 +5,14 @@
 Front toward -Y in Blender (+Z in Godot), origin at the base centre (the
 rod: at the butt, lying along -Y). Each prop is one mesh named after it;
 empties mark where things attach (`Tip` on the rod, `Eyepiece` on the
-binoculars, ...). The esky and tackle box have a separate `Lid` mesh whose
-origin is its hinge, to open by rotating about local X.
+binoculars, `Perch_1`..`Perch_4` and `Seed` on the feeder, the perches
+facing out along Godot +Z). The esky and tackle box have a separate `Lid`
+mesh whose origin is its hinge, to open by rotating about local X; the dash
+bird has a separate `Head` whose origin is the neck, to nod about local X.
 
     python3.11 art/models/scripts/build_field.py [--render out/prefix]
 """
+import math
 import os
 import sys
 
@@ -26,18 +29,23 @@ OUT = "art/models/props/field/"
 
 def build(name, pos=(0, 0, 0)):
     """The prop, its sockets and lid placed at pos; returns the objects."""
-    make, lid = FG.PROPS[name]
+    make, part = FG.PROPS[name]
     parts, sockets = make()
     title = "".join(w.capitalize() for w in name.split("_"))
     o = F.item(title, parts, pos)
     objs = [o]
     for nm, loc in sockets.items():
-        if nm == "Lid" and lid:
-            lo = F.item("Lid", lid(), tuple(a + b for a, b in zip(loc, pos)))
-            C.set_origin(lo, tuple(a + b for a, b in zip(loc, pos)))
+        turn = 0.0
+        if len(loc) == 2:
+            loc, turn = loc
+        at = tuple(a + b for a, b in zip(loc, pos))
+        if nm in ("Lid", "Head") and part:
+            lo = F.item(nm, part(), at)
+            C.set_origin(lo, at)
             objs.append(lo)
         else:
-            C.empty(nm, tuple(a + b for a, b in zip(loc, pos)), size=0.03)
+            e = C.empty(nm, at, size=0.03)
+            e.rotation_euler.z = math.radians(turn)
     return objs
 
 

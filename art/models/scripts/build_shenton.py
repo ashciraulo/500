@@ -42,6 +42,7 @@ from mathutils import Vector  # noqa: E402
 from lib import arch as A  # noqa: E402
 from lib import common as C  # noqa: E402
 from lib import furniture as F  # noqa: E402
+from lib import lived as L  # noqa: E402
 from lib import mystery as MY  # noqa: E402
 from lib import studio as S  # noqa: E402
 from lib import textures as TX  # noqa: E402
@@ -529,6 +530,64 @@ def interior(M):
     out.append(it("DeskLamp", F.table_lamp(), (W - 0.22, 9.55, z1 + 0.8)))     # on the bass amp
     out += deco_slots(z0)
     out += mystery_house(z0)
+    out += lived_in(z0, z1)
+    return out
+
+
+def lived_in(z0, z1):
+    """What's left lying about: things on the benches and bedside tables,
+    the bathroom's bits, the studio's floor, plus switches, power points and
+    smoke alarms. Purely set dressing (no collision); the layout audit
+    treats Dress_* as sitting on furniture or flat on the floor."""
+    out = []
+    bench, bar, side = z0 + 0.91, z0 + 1.09, z1 + 0.55
+    # kitchen: the back bench from the fridge end, then the sink run and the bar
+    out.append(it("Dress_Toaster", L.toaster(), (3.07, 6.85, bench)))
+    out.append(it("Dress_UtensilCrock", L.utensil_crock(), (3.68, 6.8, bench)))
+    out.append(it("Dress_KnifeBlock", L.knife_block(), (4.66, 6.8, bench)))
+    out.append(it("Dress_Canisters", L.canisters(), (5.2, 6.8, bench)))
+    out.append(it("Dress_DishSoap", L.dish_soap(), (5.2, 7.35, bench), 90))
+    out.append(it("Dress_TeaTowel", L.tea_towel(), (4.18, 7.28, z0 + 0.78), 180))
+    out.append(it("Dress_FruitBowl", L.fruit_bowl(), (3.62, 8.55, bar)))
+    out.append(it("Dress_ChoppingBoard", [F.bx((-0.18, -0.21, 0), (0.18, 0.21, 0.018), F.M("wood_light"))],
+                  (4.05, 8.56, bar), 90))
+    out.append(it("Dress_PowerPoint_Kitchen", L.power_point(), (5.05, 6.65, z0 + 1.2), 180))
+    # lounge
+    out.append(it("Dress_TVRemote", L.tv_remote(), (3.22, 2.72, z0 + 0.51), 20))
+    out.append(it("Dress_Mug_Lounge", L.mug("#2f6f6c"), (3.55, 2.7, z0 + 0.51)))
+    out.append(it("Dress_PowerPoint_Lounge", L.power_point(), (0.0, 3.12, z0 + 0.3), 90))
+    out.append(it("Dress_Switch_Front", L.switch_plate(2), (0.25, 0.0, z0 + 1.15), 180))
+    out.append(it("Dress_SmokeAlarm_Down", L.smoke_alarm(), (1.5, 6.0, CZ0)))
+    # main bedroom: prints over the bed, the bedside tables, the floor
+    out.append(it("Dress_Print_Bed_L", L.art_print(0.5, 0.65, ("#2f5f7a", "#d8c08a", "#9fc0c8"), 1), (W, 1.72, z1 + 1.5), -90))
+    out.append(it("Dress_Print_Bed_R", L.art_print(0.5, 0.65, ("#3c6e5a", "#c88a4a", "#e9d7a8"), 2), (W, 2.38, z1 + 1.5), -90))
+    out.append(it("Dress_AlarmClock", L.alarm_clock(), (5.12, 1.19, side)))
+    out.append(it("Dress_WaterGlass", L.water_glass(), (5.25, 2.95, side)))
+    out.append(it("Dress_Phone", L.phone(), (5.13, 3.25, side), 90))
+    out.append(it("Dress_Slippers", L.slippers(), (3.72, 3.1, z1)))
+    out.append(it("LaundryBasket", L.laundry_basket(), (2.85, 0.35, z1)))
+    out.append(it("Chair_Clothes", L.chair_with_clothes(), (2.1, 3.56, z1)))
+    out.append(it("Dress_PowerPoint_Bed", L.power_point(), (W, 0.6, z1 + 0.3), -90))
+    out.append(it("Dress_Switch_Bed1", L.switch_plate(), (1.82, 3.82, z1 + 1.15)))
+    out.append(it("Dress_SmokeAlarm_Up", L.smoke_alarm(), (1.5, 5.6, CZ1)))
+    # bathroom
+    out.append(it("Dress_ToothbrushCup", L.toothbrush_cup(), (5.27, 4.3, z1 + 0.84)))
+    out.append(it("Dress_SoapPump", L.soap_pump(), (5.27, 4.92, z1 + 0.84), -90))
+    out.append(it("Dress_BathMat", L.bath_mat(), (4.3, 5.5, z1)))
+    out.append(it("Dress_BathBottles", L.bath_bottles(), (5.23, 6.22, z1 + 0.55), 90))
+    out.append(it("Dress_BathScale", L.bathroom_scale(), (4.55, 4.45, z1), -90))
+    # studio
+    out.append(it("Rug_Studio", F.rug(2.2, 1.5, "rug_blue", "rug_cream"), (2.75, 9.75, z1)))
+    out.append(it("Beanbag", L.beanbag(), (1.7, 9.55, z1)))
+    out.append(it("MicStand", L.mic_stand(), (3.4, 10.75, z1), 180))
+    out.append(it("Dress_Headphones", L.headphones(), (5.24, 8.5, z1 + 0.53), 90))
+    out.append(it("Dress_Cable_Pedals", L.cable([(4.9, 8.75), (5.0, 8.62), (5.09, 8.55)]), (0, 0, z1)))
+    out.append(it("Dress_PowerPoint_Studio", L.power_point(), (W, 10.3, z1 + 0.3), -90))
+    out.append(it("Dress_Switch_Bed2", L.switch_plate(), (2.08, 8.05, z1 + 1.15), 180))
+    # the back door: M.'s binoculars hung here
+    out.append(it("Dress_BackDoor_Hooks", L.back_door_hook(), (4.1, D, z0 + 1.6)))
+    # where the field journal hangs the binoculars until you take them down
+    marker("Binoculars_Hook", (3.95, D - 0.08, z0 + 1.63))
     return out
 
 
@@ -721,6 +780,9 @@ def site(M):
     it("Court_Monstera", F.plant("monstera", 23, 1.1), (0.45, 13.4, 0))
     it("Court_Shrub", F.shrub(0.5, 24), (5.0, 15.2, 0))
     A.add(F.item("Court_Table", F.dining_table(0.9, 0.6), (2.0, 14.6, 0)), b)
+    # clear ground by the side wall, in view of the rear living window, where
+    # the field journal puts the bird feeder once you've seen 40 species
+    marker("Feeder_Spot", (0.9, 15.6, 0.02))
     for x, r in ((1.55, 90), (2.45, -90)):
         it("Court_Chair", F.chair("teal"), (x, 14.6, 0), r)
     # festoon lights strung across the courtyard

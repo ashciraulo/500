@@ -109,7 +109,6 @@ def gauges_tex(name="gauges_hd"):
         a = math.radians(_dial_angle(k / REV_MAX))
         cx, cy = (math.sin(a) * 0.36 + 1) * s / 2, (math.cos(a) * 0.36 + 1) * s / 2
         _put_text(px, s, s, str(k), cx, cy, red if k > 6 else white)
-    _put_text(px, s, s, "04712", s / 2, s / 2 + 1, (0.55, 0.85, 0.75))
     _put_text(px, s, s, "KM", s / 2, s / 2 - 7, (0.4, 0.65, 0.58))
     _put_text(px, s, s, "KMH", s / 2, s * 0.17, grey)
     return _image(name, s, s, px)
@@ -152,9 +151,27 @@ def dial_tex(name, vmax, label_step, face=(0.9, 0.87, 0.78), ink=(0.08, 0.08, 0.
         for y in range(int(s * 0.30), int(s * 0.38)):
             for x in range(int(s * 0.36), int(s * 0.64)):
                 px[y * s + x] = (0.05, 0.05, 0.05)
-        _put_text(px, s, s, "31415", s / 2, s * 0.34, (0.9, 0.9, 0.88))
     _put_text(px, s, s, units, s / 2, s * 0.6, ink)
     return _image(name, s, s, px)
+
+
+# Where dial_tex and gauges_tex leave the odometer window blank, as a
+# fraction of the dial radius up from its centre, and the digit height.
+ODO_Y_LCD, ODO_Y_DIAL, ODO_DIGIT = 0.0156, -0.3125, 5 / 64
+
+
+def odometer(m, r, y, lift):
+    """Empty at the centre of a blank odometer window on a dial of radius r
+    (frame m as for needle()), for the game to put the digits on. In Godot
+    its local X runs along the digits, Y up the dial and Z out toward the
+    driver, so a Label3D child reads the right way round. The name ends in
+    the digit height in mm."""
+    e = C.empty("Odometer_%d" % round(ODO_DIGIT * r * 1000), size=0.02)
+    rt, up, n = m.col[0].xyz, m.col[1].xyz, m.col[2].xyz
+    mm = Matrix((rt, -n, up)).transposed().to_4x4()
+    mm.translation = (m @ Matrix.Translation((0, y * r, lift))).translation
+    e.matrix_world = mm
+    return e
 
 
 def needle(name, m, r0, r1, w, mat, lift=0.0):
@@ -368,7 +385,8 @@ def cluster(M, X):
                      M["chrome"], segs=20))
     # warning-light strip below the dial, under the hood's shadow
     needles = [needle("Needle_Speed_%d" % SPEED_MAX, m, 0.86 * GAUGE_R, 0.97 * GAUGE_R, 0.005, X["needle"], 0.0075),
-               needle("Needle_Rev_%d" % REV_MAX, m, 0.43 * GAUGE_R, 0.58 * GAUGE_R, 0.004, X["needle"], 0.0075)]
+               needle("Needle_Rev_%d" % REV_MAX, m, 0.43 * GAUGE_R, 0.58 * GAUGE_R, 0.004, X["needle"], 0.0075),
+               odometer(m, GAUGE_R, ODO_Y_LCD, 0.0062)]
     return out, needles
 
 

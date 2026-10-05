@@ -37,7 +37,9 @@ FLAT = ("Rug", "Gallery", "Pendant", "TV_Screen", "Guitar_", "Poster_", "LPs", "
         "Herbs", "Succulent", "Plant_Bath", "Bar_Top", "porch_light", "Balcony_",
         # small mystery props that sit on furniture, hang or lie flat (the loose
         # brick is set into the fireplace on purpose)
-        "Oddity_", "Fireplace_Bricks")
+        "Oddity_", "Fireplace_Bricks",
+        # lived-in set dressing (build_shenton.lived_in)
+        "Dress_")
 
 
 # ------------------------------------------------------------------ 2D geometry

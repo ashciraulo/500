@@ -1176,6 +1176,8 @@ def interior(M, spec, g, cab):
             bits.append(CB._disc("gauge", 0.04, m, C.mat("Dial_" + tex, image=img, rough=0.4)))
             bits.append(CB._ring("bezel", 0.039, 0.046, 0.006, m @ Matrix.Translation((0, 0, -0.001)), M["chrome"]))
             needles.append(CB.needle(nname, m, -0.006, 0.036, 0.003, needle_mat, 0.0015))
+            if odo:
+                needles.append(CB.odometer(m, 0.04, CB.ODO_Y_DIAL, 0.0008))
     else:
         # the single round speedometer in the middle of the dash: cream face,
         # chrome pod and bezel, odometer, a red needle on a black boss
@@ -1187,6 +1189,7 @@ def interior(M, spec, g, cab):
         bits.append(CB._ring("bezel", 0.059, 0.068, 0.007, m @ Matrix.Translation((0, 0, -0.001)), M["chrome"]))
         bits.append(CB._place(C.cylinder("needle_boss", 0.008, 0.004, segs=10, loc=(0, 0, 0.003), material=M["knob"]), m))
         needles.append(CB.needle("Needle_Speed_120", m, -0.01, 0.054, 0.0035, needle_mat, 0.0015))
+        needles.append(CB.odometer(m, 0.06, CB.ODO_Y_DIAL, 0.0008))
     # ignition key beside the switches
     kx = 0.215 if not black else 0.24
     bits.append(C.cylinder("ign", 0.012, 0.012, segs=10, axis="Y", loc=(kx, -0.494 + dy, 0.79), material=M["chrome"]))
