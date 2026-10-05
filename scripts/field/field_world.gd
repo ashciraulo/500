@@ -10,8 +10,9 @@ extends Node3D
 
 ## The photo lab on Lake Street, Northbridge: [x, z, yaw] of the kerbside bay.
 const LAB := [346.3, 78.1, -0.49]
-## The bait and tackle shop on Mends Street, South Perth, up from the jetty.
-const TACKLE := [-111.0, 2916.4, -0.57]
+## The bait and tackle shop at the end of Mends Street, South Perth, on the
+## jetty forecourt: [x, z, yaw] of the kerbside bay (the shop is behind it).
+const TACKLE := [-65.0, 2840.6, 1.149]
 
 var birds: FieldBirds
 var lab: BirdLab

@@ -433,8 +433,9 @@ after a map rebuild).
   (`FieldBirds`, group `field_bird_spawner`), `lab` (`BirdLab` on Lake
   Street, group `photo_labs`), `binoculars`, `journal`, `lab_screen`,
   `fishing` (`FieldFishing`, group `fishing`: `is_busy()`, signals
-  `landed(catch)`, `lost(why)`), `tackle` (`TackleShop` on Mends Street,
-  group `tackle_shops`), `tackle_screen`, `fishing_screen`.
+  `landed(catch)`, `lost(why)`), `tackle` (`TackleShop` on the Mends Street
+  jetty forecourt, group `tackle_shops`: a walk-in room, `is_inside(p)`,
+  `at_counter(p)`, `on_scale()`, `brag_list()`), `tackle_screen`, `fishing_screen`.
 - `FishModels.build(fish)` / `sized(fish, cm)` makes a fish, crab, squid or
   hubcap (node `Body`), facing -Z.
   Birds are in group `field_birds` with meta `species`.
@@ -484,8 +485,10 @@ after a map rebuild).
 - Music: `music/mus_field_journal` plays while the journal is open (only if
   no other music is), and `music/mus_field_new_species` on a new bird; both
   are skipped until the audio side ships them.
-- Models: the shops put `shop_photo_lab` / `shop_tackle` on the building
-  line beside their bays; the rod in first person is `fishing_rod.glb` (line
+- Models: the photo lab puts `shop_photo_lab` on the building line beside
+  its bay; `shop_tackle` stands on its own 9 m back from its bay on a slab
+  (`Slab`, `Slab_Col`) that takes up the slope, with the best weigh-in fish
+  on `Scale` and cards on `BragBoard`; the rod in first person is `fishing_rod.glb` (line
   from `Tip`), and `esky.glb` sits beside you while fishing (`Lid` opens as a
   fish goes in).
 - Car: binoculars use `CarController.is_parked_for_viewing()` and
