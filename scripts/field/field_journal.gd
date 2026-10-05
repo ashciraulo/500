@@ -172,11 +172,31 @@ func habitats_near(p: Vector3, extra := 0.0) -> Array:
 	return out
 
 
+## Quiet places (`hidden` habitats): found by walking into them, and only
+## named in the journal once found.
+func quiet_places() -> Array:
+	return habitats.filter(func(h: Dictionary) -> bool: return h.get("hidden", false))
+
+
+static func place_key(h: Dictionary) -> String:
+	return "places/" + String(h.get("poi", h.get("id", "")))
+
+
+func is_place_found(h: Dictionary) -> bool:
+	return not h.get("hidden", false) or Discoveries.has(place_key(h))
+
+
+func places_found() -> int:
+	return quiet_places().filter(func(h: Dictionary) -> bool: return Discoveries.has(place_key(h))).size()
+
+
 ## The name of the place p is in, for the journal ("Kings Park bushland").
 func place_name(p: Vector3) -> String:
 	var best := ""
 	var best_d := INF
 	for h: Dictionary in habitats_near(p):
+		if not is_place_found(h):
+			continue
 		var c := habitat_centre(h)
 		var d := Vector2(p.x - c.x, p.z - c.z).length() / float(h.radius)
 		if d < best_d:
@@ -650,9 +670,12 @@ func upgrade_fishing(kind: String) -> bool:
 
 
 ## A career stat read live from the journal (Progression asks for these):
-## species_seen, species_photographed, prints_sold, fish_caught, fish_species.
+## species_seen, species_photographed, prints_sold, fish_caught, fish_species,
+## places_found (quiet places).
 func stat(stat_name: String) -> float:
 	match stat_name:
+		"places_found":
+			return float(places_found())
 		"species_seen":
 			return float(seen_count())
 		"species_photographed":

@@ -1,5 +1,5 @@
 {
-	"_comment": "Places birds (and later fish) live. lat/lon are the real place; x/z are world metres filled in by tools/field/gen_field.py. radius in metres. tags say what lives here (birds.json habitats). Lake levels come from the map (MapStreamer.water_level_at); the river and sea are at 0.",
+	"_comment": "Places birds (and later fish) live. lat/lon are the real place; x/z are world metres filled in by tools/field/gen_field.py. radius in metres. tags say what lives here (birds.json habitats). Lake levels come from the map (MapStreamer.water_level_at); the river and sea are at 0. hidden: a quiet place found by walking into it (map POI `poi`), not named in the journal until then. nudge [dx, dz] (m) moves x/z toward the shore where the map's water covers the real place.",
 	"habitats": [
 		{
 			"id": "northbridge",
@@ -330,6 +330,154 @@
 			],
 			"x": -10474.7,
 			"z": 12205.7
+		},
+		{
+			"id": "quiet_alfred_cove",
+			"name": "Alfred Cove flats",
+			"lat": -32.02764,
+			"lon": 115.814239,
+			"radius": 140,
+			"tags": [
+				"river",
+				"reeds",
+				"flats"
+			],
+			"hidden": true,
+			"poi": "birding_alfred_cove",
+			"x": -3769.8,
+			"z": 8942.7,
+			"nudge": [
+				-21.5,
+				-113.6
+			]
+		},
+		{
+			"id": "quiet_burswood_lakes",
+			"name": "Burswood Park lakes",
+			"lat": -31.9587,
+			"lon": 115.89168,
+			"radius": 140,
+			"tags": [
+				"lake",
+				"park",
+				"reeds"
+			],
+			"hidden": true,
+			"poi": "birding_burswood_lakes",
+			"x": 3569.8,
+			"z": 1411.7
+		},
+		{
+			"id": "quiet_east_fremantle_reeds",
+			"name": "East Fremantle reeds",
+			"lat": -32.03748,
+			"lon": 115.75856,
+			"radius": 140,
+			"tags": [
+				"river",
+				"reeds"
+			],
+			"hidden": true,
+			"poi": "birding_east_fremantle_reeds",
+			"x": -9007.1,
+			"z": 10150.7
+		},
+		{
+			"id": "quiet_floreat_lake",
+			"name": "Floreat Lake",
+			"lat": -31.91624,
+			"lon": 115.79987,
+			"radius": 140,
+			"tags": [
+				"lake",
+				"reeds"
+			],
+			"hidden": true,
+			"poi": "birding_floreat_lake",
+			"x": -5111.9,
+			"z": -3295.9
+		},
+		{
+			"id": "quiet_heirisson_marsh",
+			"name": "Heirisson Island marsh",
+			"lat": -31.96752,
+			"lon": 115.8798,
+			"radius": 140,
+			"tags": [
+				"river",
+				"reeds",
+				"flats"
+			],
+			"hidden": true,
+			"poi": "birding_heirisson_marsh",
+			"x": 2463.9,
+			"z": 2371.2,
+			"nudge": [
+				17.4,
+				-18.2
+			]
+		},
+		{
+			"id": "quiet_herdsman_reedbeds",
+			"name": "Herdsman Lake reedbeds",
+			"lat": -31.9212,
+			"lon": 115.7972,
+			"radius": 140,
+			"tags": [
+				"lake",
+				"reeds"
+			],
+			"hidden": true,
+			"poi": "birding_herdsman_reedbeds",
+			"x": -5364.1,
+			"z": -2745.7
+		},
+		{
+			"id": "quiet_kooyar_kep",
+			"name": "Kooyar Kep Wetland",
+			"lat": -31.95639,
+			"lon": 115.83933,
+			"radius": 140,
+			"tags": [
+				"lake",
+				"reeds",
+				"bush"
+			],
+			"hidden": true,
+			"poi": "birding_kooyar_kep",
+			"x": -1379.2,
+			"z": 1155.0
+		},
+		{
+			"id": "quiet_monger_island",
+			"name": "Monger Island",
+			"lat": -31.93209,
+			"lon": 115.82357,
+			"radius": 140,
+			"tags": [
+				"lake",
+				"reeds"
+			],
+			"hidden": true,
+			"poi": "birding_monger_island",
+			"x": -2869.9,
+			"z": -1539.2
+		},
+		{
+			"id": "quiet_perry_lakes_reeds",
+			"name": "Perry Lakes reeds",
+			"lat": -31.94497,
+			"lon": 115.785789,
+			"radius": 140,
+			"tags": [
+				"lake",
+				"reeds",
+				"bush"
+			],
+			"hidden": true,
+			"poi": "birding_perry_lakes_reeds",
+			"x": -6441.6,
+			"z": -109.4
 		}
 	]
 }

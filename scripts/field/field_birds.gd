@@ -182,14 +182,15 @@ func _perches(perch: String, species: Dictionary, h: Dictionary, p: Vector3) -> 
 	match perch:
 		"ground", "shore":
 			var g := ground(p)
-			if g.is_empty() or not GROUND_SURFACES.has(g.surface):
+			if g.is_empty() or not GROUND_SURFACES.has(g.surface) or _under_water(h, g.pos):
 				return []
 			if perch == "shore" and not _near_water(g.pos, 30.0) and not Array(h.get("tags", [])).has("beach"):
 				return []
 			out.append({"pos": g.pos, "kind": "ground"})
 			for i in 7:
 				var q := ground(g.pos + Vector3(_rng.randf_range(-3, 3), 0, _rng.randf_range(-3, 3)) * (1.0 + size))
-				if not q.is_empty() and GROUND_SURFACES.has(q.surface) and absf(q.pos.y - g.pos.y) < 0.8:
+				if not q.is_empty() and GROUND_SURFACES.has(q.surface) and absf(q.pos.y - g.pos.y) < 0.8 \
+						and not _under_water(h, q.pos):
 					out.append({"pos": q.pos, "kind": "ground"})
 		"water":
 			var level := water_level(h, p)
@@ -302,6 +303,16 @@ func water_level(h: Dictionary, p: Vector3) -> float:
 	if tags.has("river") or not tags.has("lake"):
 		return 0.0
 	return INF
+
+
+## The river bed or a lake floor: below the surface, so nowhere to stand
+## (a wader still stands in the shallows).
+func _under_water(h: Dictionary, p: Vector3) -> bool:
+	var level := water_level(h, p)
+	if level == INF:
+		# Off the water map but below the river and the sea: a bed all the same.
+		return p.y < -0.3
+	return p.y < level - 0.12
 
 
 func _near_water(p: Vector3, r: float) -> bool:
@@ -598,7 +609,8 @@ func _wander(b: Dictionary) -> void:
 	match b.kind:
 		"ground":
 			var g := ground(node.position + Vector3(_rng.randf_range(-2.5, 2.5), 0, _rng.randf_range(-2.5, 2.5)))
-			if not g.is_empty() and GROUND_SURFACES.has(g.surface) and absf(g.pos.y - node.position.y) < 0.6:
+			if not g.is_empty() and GROUND_SURFACES.has(g.surface) and absf(g.pos.y - node.position.y) < 0.6 \
+					and not _under_water(b.sighting.habitat, g.pos):
 				b.target = g.pos
 				b.state = "walk"
 		"water":

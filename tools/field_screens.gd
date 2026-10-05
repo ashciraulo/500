@@ -5,7 +5,8 @@ extends SceneTree
 ##   xvfb-run godot --path . --fixed-fps 60 --script res://tools/field_screens.gd -- --no-save shots=/tmp/field
 ##
 ## The last plate shows a few in flight. plates=only skips the in-game part,
-## plates=skip the plates; plates=fish shoots just the fish plate.
+## plates=skip the plates; plates=fish shoots just the fish plate; from=N
+## starts the in-game part at scene N.
 
 const PER_PLATE := 10
 ## [species, habitat, where the car stops, hour]
@@ -18,6 +19,9 @@ const SCENES := [
 	["carnabys_black_cockatoo", "kings_park_bush", Vector3(-2189.0, 48.0, 1822.0), 17.6],
 	["laughing_kookaburra", "kings_park_bush", Vector3(-2189.0, 48.0, 1822.0), 6.5],
 	["tawny_frogmouth", "russell_square", Vector3(150.0, 22.0, 30.0), 22.5],
+	# Quiet places (found by wandering) and the birds that only live there.
+	["australian_reed_warbler", "quiet_herdsman_reedbeds", Vector3(-5440.1, 13.1, -2697.7), 7.0],
+	["black_winged_stilt", "quiet_alfred_cove", Vector3(-3776.2, 0.6, 8908.3), 9.0],
 	# The wrong birds: no habitat; the car stops by their place (ZERO: home).
 	["wrong_frogmouth", "", Vector3.ZERO, 1.0],
 	["wrong_cockatoos", "", Vector3(-911.35, 68.4, 923.83), 3.0],
@@ -52,6 +56,8 @@ func _initialize() -> void:
 			_stage = 1
 		if arg == "plates=fish":
 			_stage = 5
+		if arg.begins_with("from="):
+			_scene = int(arg.trim_prefix("from=")) - 1
 	DirAccess.make_dir_recursive_absolute(_shots)
 
 
@@ -145,7 +151,7 @@ func _process(_delta: float) -> bool:
 				_step_to_the_edge(_sighting.birds[0].node)
 			elif _frames > 260 and _frames < 420:
 				_aim(_sighting.birds[0].node)
-				if _frames >= 328 and _frames <= 332:
+				if _frames >= 328 and _frames <= 332 and _field.binoculars._camera:
 					# The same view without zooming in, for where it is.
 					_field.binoculars._camera.fov = 32.0
 				if _frames == 332:
@@ -172,7 +178,11 @@ func _teleport(p: Vector3) -> void:
 
 func _spawn_visible(id: String, h: Dictionary, at: Vector3) -> Dictionary:
 	var birds: Node = _field.birds
+	# Out past where it would flush as the car settles.
+	var shy: float = _fj.bird(id).get("shy", 0.3)
 	for dist in [18.0, 25.0, 35.0, 50.0]:
+		if dist < 12.0 + shy * 16.0:
+			continue
 		for i in 16:
 			var a := TAU * i / 16.0
 			var s: Dictionary = birds.spawn(_fj.bird(id), h, at + Vector3(cos(a), 0, sin(a)) * dist)
@@ -271,7 +281,7 @@ func _report(node: Node3D) -> void:
 	var q := PhysicsRayQueryParameters3D.create(cam.global_position, node.global_position + Vector3.UP * 0.15, 1 | 2)
 	q.exclude = [_car.get_rid()]
 	var hit := _car.get_world_3d().direct_space_state.intersect_ray(q)
-	print("  bird %s at %s, camera %s, %.1f m, fov %.1f, car moved %.1f m, blocked %s" % [node.name, node.global_position,
+	print("  bird %s (%s) at %s, camera %s, %.1f m, fov %.1f, car moved %.1f m, blocked %s" % [node.name, _sighting.birds[0].state, node.global_position,
 		cam.global_position, cam.global_position.distance_to(node.global_position), cam.fov,
 		_car.global_position.distance_to(SCENES[_scene][2]), hit.get("position", "no")])
 

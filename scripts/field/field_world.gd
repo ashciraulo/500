@@ -3,7 +3,7 @@ extends Node3D
 ## The field journal's world side, added under World by the FieldJournal
 ## autoload once the player's car exists: bird sightings, the photo lab, and
 ## the fishing spots and the rod, the tackle shop, the binoculars' hook and
-## the feeder at home, and the screens
+## the feeder at home, the quiet places you find by wandering, and the screens
 ## (binoculars, the journal, the lab and tackle counters, the fishing view),
 ## which sit on the main scene at window resolution rather than inside the
 ## lo-fi viewport.
@@ -23,6 +23,7 @@ var tackle: TackleShop
 var tackle_screen: TackleScreen
 var fishing_screen: FishingScreen
 var home: HomeField
+var quiet: QuietPlaces
 
 var _ui: Array[Node] = []
 
@@ -47,6 +48,10 @@ func _ready() -> void:
 	home = HomeField.new()
 	home.name = "HomeField"
 	add_child(home)
+	quiet = QuietPlaces.new()
+	quiet.name = "QuietPlaces"
+	quiet.setup(birds)
+	add_child(quiet)
 	var host: Node = get_tree().current_scene if get_tree().current_scene else get_tree().root
 	binoculars = Binoculars.new()
 	binoculars.name = "Binoculars"

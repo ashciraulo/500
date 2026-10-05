@@ -1,7 +1,7 @@
 class_name JournalScreen
 extends CanvasLayer
-## The field journal (J): a page per species, birds in one half and fish in
-## the other (with the fishing spots you've found). Until you find one it's a
+## The field journal (J): a page per species, birds in one half (with the
+## quiet places you've found) and fish in the other (with the fishing spots). Until you find one it's a
 ## blank with a pencilled hint; then the name, the note, where and when you
 ## first saw or caught it and your best photo. The game pauses while it's open.
 
@@ -134,6 +134,9 @@ func refresh() -> void:
 	_summary.text = "%d of %d seen, %d photographed. Film: %d of %d left." % [
 		FieldJournal.seen_count(), FieldJournal.species_total(), FieldJournal.photographed_count(),
 		FieldJournal.film_left(), FieldJournal.roll_size()]
+	var quiet := FieldJournal.places_found()
+	if quiet > 0:
+		_summary.text += " %d quiet place%s." % [quiet, "" if quiet == 1 else "s"]
 	FieldUI.clear(_list)
 	var first: Button = null
 	var pages_header := false
@@ -159,6 +162,26 @@ func refresh() -> void:
 		_list.add_child(button)
 		if first == null or id == _selected:
 			first = button
+	# Quiet places you've stumbled on, at the back of the book.
+	var places := FieldJournal.quiet_places().filter(func(h: Dictionary) -> bool: return FieldJournal.is_place_found(h))
+	if not places.is_empty():
+		FieldUI.label(_list, "Quiet places", 14, ACCENT)
+		for h: Dictionary in places:
+			var key := "place:" + String(h.id)
+			var button := Button.new()
+			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			button.text = String(h.name)
+			button.pressed.connect(func() -> void:
+				_selected = key
+				_show(key))
+			_list.add_child(button)
+			if key == _selected:
+				first = button
+	if _selected.begins_with("place:"):
+		_show(_selected)
+		if first:
+			first.grab_focus()
+		return
 	if _selected == "" or FieldJournal.bird(_selected).is_empty():
 		_selected = FieldJournal.bird_order[0] if not FieldJournal.bird_order.is_empty() else ""
 	_show(_selected)
@@ -169,6 +192,9 @@ func refresh() -> void:
 func _show(id: String) -> void:
 	FieldUI.clear(_page)
 	_room_tone(false)
+	if id.begins_with("place:"):
+		_show_place(FieldJournal.habitat(id.trim_prefix("place:")))
+		return
 	var b := FieldJournal.bird(id)
 	if b.is_empty():
 		return
@@ -207,7 +233,7 @@ func _show(id: String) -> void:
 func _refresh_fish() -> void:
 	_summary.text = "%d of %d caught. Esky: %d of %d. %d of %d spots found." % [
 		FieldJournal.caught_count(), FieldJournal.fish_total(), FieldJournal.esky.size(), FieldJournal.esky_size(),
-		_spots_found(), FieldJournal.spots.size()]
+		_spots_found(), _spots_known()]
 	FieldUI.clear(_list)
 	var first: Button = null
 	for id: String in FieldJournal.fish_order:
@@ -221,6 +247,8 @@ func _refresh_fish() -> void:
 	FieldUI.label(_list, "Fishing spots", 14, ACCENT)
 	for sp: Dictionary in FieldJournal.spots:
 		var found := Discoveries.has("fishing/" + String(sp.id))
+		if sp.get("hidden", false) and not found:
+			continue  # a quiet spot: not even a blank until you find it
 		first = _list_button(String(sp.name) if found else "  ? ? ?   (a spot)", "spot:" + String(sp.id), not found, first)
 	if _selected == "" or (not _selected.begins_with("spot:") and FieldJournal.fish_species(_selected).is_empty()):
 		_selected = FieldJournal.fish_order[0] if not FieldJournal.fish_order.is_empty() else ""
@@ -240,6 +268,12 @@ func _list_button(text: String, id: String, dim: bool, first: Button) -> Button:
 		_show_fish(id))
 	_list.add_child(button)
 	return button if first == null or id == _selected else first
+
+
+## Spots the journal knows of: every ordinary one, and the quiet ones you've found.
+func _spots_known() -> int:
+	return FieldJournal.spots.filter(func(sp: Dictionary) -> bool:
+		return not sp.get("hidden", false) or Discoveries.has("fishing/" + String(sp.id))).size()
 
 
 func _spots_found() -> int:
@@ -297,6 +331,34 @@ func _show_wrong_fish(f: Dictionary, e: Dictionary) -> void:
 	_show_wrong(f, {"best_file": e.get("best_file", ""), "seen": e.get("first_day", 0), "time": e.get("time", ""),
 		"where": e.get("where", "")}, "caught")
 	FieldUI.label(_page, String(f.get("note", "")), 15, INK)
+
+
+## A quiet place: where it is and what you've seen there (the birds that
+## only live in places like it are pencilled in until you see them).
+func _show_place(h: Dictionary) -> void:
+	if h.is_empty():
+		return
+	FieldUI.label(_page, String(h.name), 24, INK)
+	FieldUI.label(_page, "A quiet place. You found it by wandering; nobody told you about it.", 14, INK.lightened(0.3))
+	var seen := PackedStringArray()
+	var unseen := 0
+	for id: String in FieldJournal.bird_order:
+		var b := FieldJournal.bird(id)
+		if b.get("wrong", false) or not Array(b.get("places", [])).has(String(h.id)):
+			continue
+		if FieldJournal.is_seen(id):
+			seen.append(String(b.name))
+		else:
+			unseen += 1
+	if not seen.is_empty():
+		FieldUI.label(_page, "Seen here and hardly anywhere else: %s." % ", ".join(seen), 16, INK)
+	if unseen > 0:
+		FieldUI.label(_page, "Something else lives here that you haven't seen yet. Come back early or late.", 16, INK)
+	var first := 0
+	for e: Dictionary in FieldJournal.entries.values():
+		if String(e.get("where", "")) == String(h.name):
+			first += 1
+	FieldUI.label(_page, "%d species first seen here." % first, 14, INK.lightened(0.2))
 
 
 func _show_spot(sp: Dictionary) -> void:

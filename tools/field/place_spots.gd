@@ -7,7 +7,9 @@ extends SceneTree
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/field/place_spots.gd
 ##
 ## Rerun after a map rebuild. Spots it can't place (off the built map) are
-## left without `stand` and don't appear in the game.
+## left without `stand` and don't appear in the game. A spot's `reach` (m)
+## overrides how far from `near` it may look; ONLY_SPOT=<substr> in the
+## environment places just the matching spots.
 
 const PATH := "res://data/field/fishing_spots.json"
 const WAIT := 150
@@ -19,6 +21,8 @@ var _doc: Dictionary
 var _spots: Array
 var _index := -1
 var _frames := 0
+## Placing a sea spot: only the sea counts as water, not the hollows behind the dunes.
+var _ocean := false
 
 
 func _process(_delta: float) -> bool:
@@ -40,6 +44,10 @@ func _process(_delta: float) -> bool:
 	if _index >= 0:
 		_place(_spots[_index])
 	_index += 1
+	# ONLY_SPOT=<substr> places just the matching spots.
+	var only := OS.get_environment("ONLY_SPOT")
+	while only != "" and _index < _spots.size() and not String(_spots[_index].id).contains(only):
+		_index += 1
 	if _index >= _spots.size():
 		var f := FileAccess.open(PATH, FileAccess.WRITE)
 		f.store_string(JSON.stringify(_doc, "\t", false) + "\n")
@@ -57,10 +65,12 @@ func _process(_delta: float) -> bool:
 func _place(spot: Dictionary) -> void:
 	var near := Vector3(float(spot.near[0]), 0.0, float(spot.near[1]))
 	var deck: bool = spot.kind == "deck"
+	_ocean = spot.water == "ocean"
 	var best := {}
 	var best_score := -INF
 	# The map's coast can sit a couple of hundred metres off the real beach.
 	var reach := 70.0 if deck else (320.0 if spot.water == "ocean" else 260.0)
+	reach = float(spot.get("reach", reach))
 	var step := 2.0 if deck else 4.0
 	var space := _car.get_world_3d().direct_space_state
 	var x := -reach
@@ -148,4 +158,7 @@ func _is_water(p: Vector3) -> bool:
 	# A jetty deck or a bank over the river mask is still in the way.
 	if not hit.is_empty() and hit.position.y > 0.25:
 		return false
+	if _ocean:
+		# Dune hollows dip below sea level too; the sea is on the water map.
+		return _boats.water_at(p, 0.0)
 	return hit.is_empty() or hit.position.y < -0.2 or _boats.water_at(p, 0.0)

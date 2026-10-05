@@ -109,7 +109,7 @@ func _view(it: Dictionary) -> void:
 		_cam.current = true
 		var hud := get_first_node_in_group(&"hud")
 		if hud:
-			(hud as CanvasItem).visible = false
+			hud.set("visible", false)
 	var yaw: float = float(it.yaw) if float(it.yaw) != INF else 0.0
 	var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
 	var p: Vector3 = it.p
