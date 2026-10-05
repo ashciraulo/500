@@ -39,6 +39,20 @@ Signals:
   in speed in m/s.
 - `surface_changed(surface: StringName)`
 - `headlights_changed(on: bool)`
+- `parked_changed(parked: bool)`: the driver stopped or moved off.
+
+Bird-watching and fishing from the car:
+
+- `is_parked_for_viewing()`: the driver is in the seat and the car is
+  stopped (under 2 km/h), so binoculars and the camera can be raised
+  without getting out. `driver_eye()` is the eye point as a world
+  `Transform3D` facing forward (-Z).
+- `set_field_gear(ids)`, `has_field_gear(id)`, `field_gear`: gear shown in
+  and on the car, from `art/models/props/field/<id>.glb`: `fishing_rod`
+  (on the roof rack; in the boot, unseen, without one), `esky`,
+  `tackle_box`, `binoculars`, `camera` (on the seats; the classics carry
+  the esky on the passenger seat). It follows the player to any car and is
+  saved with the car they're driving. Call it when gear is bought or sold.
 
 Attach car sounds to the car's `Audio` node (at the engine bay). The 3D
 listener is the active camera inside `LoFi/SubViewport`
@@ -61,6 +75,9 @@ them, are documented in [TRAFFIC.md](TRAFFIC.md). Sound hooks: the
 
 - `time_of_day` (0..24 hours), `day`, `locked`, `seconds_per_day` (2400 by default).
 - `daylight()` 0 night .. 1 day, smooth through dawn/dusk. `is_night()`.
+- `sun_phase()` `&"night"`, `&"dawn"`, `&"day"` or `&"dusk"` (dawn and dusk
+  are the hour or so around sunrise and sunset), `is_golden_hour()`, and the
+  `sun_phase_changed(phase)` signal. Birds, fish and challenges use these.
 - `sun_direction()` unit vector towards the sun (Perth, early October).
 - `time_string()` "HH:MM".
 - Signals: `hour_changed(hour)`, `day_started(day)`, `lock_changed(locked)`.
@@ -173,7 +190,9 @@ records).
 - `Progression.add_stat(stat, amount)` counts anything (deliveries, medals,
   night drives). Tiers and their challenges live in
   `data/progression/tiers.json`; each challenge names a stat from
-  `Progression.KNOWN_STATS` and a target. Reaching a tier lets you buy that
+  `Progression.KNOWN_STATS` and a target. Field journal stats
+  (`species_seen`, `species_photographed`, `prints_sold`, `fish_caught`,
+  `fish_species`) are read live from `FieldJournal.stat(name)`. Reaching a tier lets you buy that
   tier's cars. `python3 tools/pacing_model.py` estimates how many hours each
   tier takes; run it after changing tiers, car prices or delivery pay.
 - Deliveries taken in light rain pay 25% more and in a storm 50% more.

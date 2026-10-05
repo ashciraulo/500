@@ -41,6 +41,11 @@ BADGES = 60              # hidden 500 badges
 BADGE_HALF_LIFE_H = 25.0 # hours to stumble on half of them
 PHOTO_SPOTS = 30         # marked photo spots
 PHOTO_HALF_LIFE_H = 20.0 # hours to photograph half of them
+BIRDS = 39               # field journal species (birds)
+BIRD_SEEN_HALF_LIFE_H = 12.0   # hours to spot half of them
+BIRD_SHOT_HALF_LIFE_H = 22.0   # hours to photograph half of them
+FISH = 15                # fish species
+FISH_HALF_LIFE_H = 25.0  # hours to land half of them
 PARKING_BAYS = 10        # parking challenges
 PARKING_GOLD_HALF_LIFE_H = 30.0
 SCENIC_PER_HOUR = 0.12   # scenic drives finished per hour of play
@@ -78,7 +83,7 @@ def main():
         "fragile_perfect", "km_driven", "km_tier_car", "earned", "trials_medalled",
         "trials_silver", "trials_gold", "discoveries", "suburbs_delivered",
         "upgrades_fitted", "cars_owned", "washes", "badges", "photo_spots", "parking_gold",
-        "scenic_drives", "classics_restored"]}
+        "scenic_drives", "classics_restored", "species_seen", "species_photographed", "fish_species"]}
     stats["cars_owned"] = 1
     money = 400.0
     tier = 0
@@ -120,6 +125,9 @@ def main():
         stats["photo_spots"] = PHOTO_SPOTS * (1 - 0.5 ** (hour / PHOTO_HALF_LIFE_H))
         stats["parking_gold"] = PARKING_BAYS * (1 - 0.5 ** (hour / PARKING_GOLD_HALF_LIFE_H))
         stats["scenic_drives"] += SCENIC_PER_HOUR * step
+        stats["species_seen"] = BIRDS * (1 - 0.5 ** (hour / BIRD_SEEN_HALF_LIFE_H))
+        stats["species_photographed"] = BIRDS * (1 - 0.5 ** (hour / BIRD_SHOT_HALF_LIFE_H))
+        stats["fish_species"] = FISH * (1 - 0.5 ** (hour / FISH_HALF_LIFE_H))
         stats["classics_restored"] = max(0.0, (hour - CLASSIC_FIRST_H) / 12.0)
         money += (pay + trial_pay) * (1 - PARTS_SHARE) - km * FUEL_PER_KM
         parts_spend += (pay + trial_pay) * PARTS_SHARE

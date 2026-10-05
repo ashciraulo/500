@@ -12,6 +12,8 @@ extends Node
 signal hour_changed(hour: int)
 signal day_started(day: int)
 signal lock_changed(locked: bool)
+## The sun moved into a new part of the day (see `sun_phase()`).
+signal sun_phase_changed(phase: StringName)
 
 const PERTH_LATITUDE_DEG := -31.95
 ## Solar declination for early October (just after the spring equinox).
@@ -23,6 +25,7 @@ const DECLINATION_DEG := -4.6
 var time_of_day := 8.5
 var day := 1
 var locked := false
+var _phase: StringName = &""
 
 
 func _ready() -> void:
@@ -56,6 +59,10 @@ func advance(hours: float) -> void:
 		day = maxi(1, day - 1)
 	if int(time_of_day) != previous_hour:
 		hour_changed.emit(int(time_of_day))
+	var phase := sun_phase()
+	if phase != _phase:
+		_phase = phase
+		sun_phase_changed.emit(phase)
 
 
 func set_time(hours: float) -> void:
@@ -102,3 +109,22 @@ func is_night() -> bool:
 func time_string() -> String:
 	var minutes := int(time_of_day * 60.0) % (24 * 60)
 	return "%02d:%02d" % [minutes / 60, minutes % 60]
+
+
+## Which part of the day it is, from the sun: &"night", &"dawn", &"day" or
+## &"dusk". Dawn and dusk run from the sun about 7 degrees below the horizon to
+## about 12 above it, the hour or so when birds are busiest and the light goes
+## gold. Birds, fish and challenges read this rather than raw hours.
+func sun_phase() -> StringName:
+	var height := sun_height()
+	if height < -0.12:
+		return &"night"
+	if height < 0.2:
+		return &"dawn" if time_of_day < 12.0 else &"dusk"
+	return &"day"
+
+
+## The low, warm light just after sunrise and before sunset.
+func is_golden_hour() -> bool:
+	var height := sun_height()
+	return height > -0.02 and height < 0.2

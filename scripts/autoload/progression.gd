@@ -15,8 +15,8 @@ extends Node
 ##     (Discoveries count), upgrades_fitted (non-stock parts on the car you're
 ##     driving), suburbs_delivered (different suburbs you've delivered to),
 ##     cars_owned, badges (hidden 500 badges found)
-##   field journal (FieldJournal): species_seen, species_photographed,
-##     prints_sold, fish_caught, fish_species
+##   from the field journal (FieldJournal.stat(name), when it's there):
+##     species_seen, species_photographed, prints_sold, fish_caught, fish_species
 
 signal stat_changed(stat: String, value: float)
 signal challenge_completed(tier_index: int, challenge: Dictionary)
@@ -39,6 +39,8 @@ const KNOWN_STATS := [
 	"trains_raced", "trains_beaten", "parts_found",
 	"species_seen", "species_photographed", "prints_sold", "fish_caught", "fish_species",
 ]
+## Stats the field journal keeps (birds and fish); read live from it.
+const JOURNAL_STATS := ["species_seen", "species_photographed", "prints_sold", "fish_caught", "fish_species"]
 
 var tiers: Array = []
 var tier_index := 0
@@ -116,6 +118,10 @@ func get_stat(stat: String) -> float:
 		"upgrades_fitted":
 			var car := _car()
 			return car.parts.size() if car else 0.0
+	if stat in JOURNAL_STATS:
+		var journal := get_node_or_null(^"/root/FieldJournal")
+		if journal and journal.has_method("stat"):
+			return float(journal.stat(stat))
 	return _stats.get(stat, 0.0)
 
 

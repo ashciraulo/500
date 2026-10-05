@@ -9,13 +9,31 @@ extends Node
 
 signal changed
 
+## Filter strengths offered in the pause menu, harshest first. Each sets the
+## framebuffer height, colour depth, dither, vertex wobble, affine warp and
+## how much the big pixels are softened at their edges.
+const PRESETS := [
+	{"name": "Strong", "target_height": 240, "color_levels": 32.0, "dither_strength": 1.0,
+		"vertex_snap_scale": 0.5, "affine_strength": 0.6, "softness": 0.0},
+	{"name": "Medium", "target_height": 300, "color_levels": 48.0, "dither_strength": 0.6,
+		"vertex_snap_scale": 0.75, "affine_strength": 0.4, "softness": 0.3},
+	{"name": "Soft", "target_height": 360, "color_levels": 64.0, "dither_strength": 0.35,
+		"vertex_snap_scale": 1.0, "affine_strength": 0.25, "softness": 0.5},
+	{"name": "Light", "target_height": 480, "color_levels": 128.0, "dither_strength": 0.15,
+		"vertex_snap_scale": 1.0, "affine_strength": 0.1, "softness": 0.65},
+]
+const DEFAULT_PRESET := 2
+
 ## Target height of the low-res framebuffer, in pixels.
-@export var target_height := 240
+@export var target_height := 360
 ## 1.0 snaps vertices to every low-res pixel; lower values exaggerate the wobble.
-@export var vertex_snap_scale := 0.5
-@export_range(0.0, 1.0) var affine_strength := 0.6
-@export var color_levels := 32.0
+@export var vertex_snap_scale := 1.0
+@export_range(0.0, 1.0) var affine_strength := 0.25
+@export var color_levels := 64.0
 @export var dither_enabled := true
+@export_range(0.0, 2.0) var dither_strength := 0.35
+## 0 = hard-edged pixels, 1 = fully smoothed between them.
+@export_range(0.0, 1.0) var softness := 0.5
 
 var lofi_enabled := true
 

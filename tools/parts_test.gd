@@ -3,7 +3,8 @@ extends SceneTree
 ## wheels, exhaust, roof rack and spotlights show on the car at its Mount_*
 ## empties; parts you can't buy are out in the city, can't be fitted until
 ## you find them, and are yours once you do; the classics get their own
-## wheels; and what you've earned shows around the townhouse.
+## wheels; field gear (rod, esky, binoculars) rides in and on the car; and
+## what you've earned shows around the townhouse.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/parts_test.gd -- --no-save
 ##
@@ -32,6 +33,8 @@ func _process(_delta: float) -> bool:
 		_found_parts()
 	elif _frames == 62:
 		_classic()
+	elif _frames == 63:
+		_field_gear()
 	elif _frames == 64:
 		_decor_earned()
 	elif _frames == 70:
@@ -123,6 +126,60 @@ func _classic() -> void:
 		_car.load_vehicle_state(state)
 		_check(_car.roof_open and open_roof.visible, "and comes back open")
 	_car.load_vehicle_state({"car_id": "pop_12"})
+
+
+func _field_gear() -> void:
+	var body := _car.get_node("Body") as Node3D
+	var all := PackedStringArray(["fishing_rod", "esky", "tackle_box", "binoculars", "camera", "kayak"])
+	_car.set_field_gear(all)
+	_check(not _car.has_field_gear("kayak"), "unknown gear is skipped")
+	for id: String in ["esky", "tackle_box", "binoculars", "camera"]:
+		var model := body.get_node_or_null(NodePath("Gear_" + id)) as Node3D
+		_check(model != null, "%s in the Pop" % id.replace("_", " "))
+		if model:
+			_check(model.position.y > 0.2 and model.position.y < 1.0, "on a seat, not on the road or roof (%s)" % model.position)
+	_check(body.get_node_or_null(^"Gear_fishing_rod") == null, "no rack, so the rod's in the boot")
+	_car.install_part(load("res://scripts/vehicle/parts_catalogue.gd").get_part(&"roof_surf_rack"))
+	var rod := body.get_node_or_null(^"Gear_fishing_rod") as Node3D
+	_check(rod != null and rod.position.y > 1.3, "with a rack the rod rides on the roof")
+	var saved: Dictionary = _car.save_state()
+	_car.set_field_gear(PackedStringArray())
+	_check(body.get_children().filter(func(n: Node) -> bool:
+		return n.name.begins_with("Gear_") and not n.is_queued_for_deletion()).is_empty(), "gear comes out")
+	_car.load_state(saved)
+	_check(_car.has_field_gear("esky") and _car.get_node("Body").get_node_or_null(^"Gear_esky") != null, "gear is saved")
+	_car.load_vehicle_state({"car_id": "classic_nuova"})
+	_check(_car.get_node("Body").get_node_or_null(^"Gear_esky") != null, "the gear moves to the next car")
+	_car.set_field_gear(PackedStringArray())
+	_car.load_vehicle_state({"car_id": "pop_12"})
+	_car.remove_part(&"roof")
+	# Parked, from the driver's seat.
+	_check(_car.is_parked_for_viewing(), "stopped in the carport counts as parked")
+	var eye: Transform3D = _car.driver_eye()
+	_check(eye.origin.distance_to(_car.global_position) < 1.5 and eye.origin.y > _car.global_position.y,
+		"the driver's eye is in the car")
+	# The time of day, for birds.
+	var clock := root.get_node("GameClock")
+	var phases := {}
+	for hour in [2.0, 5.8, 12.0, 17.8, 22.0]:
+		clock.set_time(hour)
+		phases[hour] = clock.sun_phase()
+	_check(phases[2.0] == &"night" and phases[5.8] == &"dawn" and phases[12.0] == &"day"
+		and phases[17.8] == &"dusk" and phases[22.0] == &"night", "dawn, day, dusk and night (%s)" % phases)
+	clock.set_time(10.0)
+	# Journal stats come from the field journal when it's there.
+	var progression := root.get_node("Progression")
+	if root.get_node_or_null(^"FieldJournal") == null:
+		var stub := Node.new()
+		var script := GDScript.new()
+		script.source_code = "extends Node\nfunc stat(name: String) -> float:\n\treturn 7.0 if name == \"species_photographed\" else 0.0\n"
+		script.reload()
+		stub.set_script(script)
+		stub.name = "FieldJournal"
+		root.add_child(stub)
+		_check(progression.get_stat("species_photographed") == 7.0, "career reads species photographed from the journal")
+		root.remove_child(stub)
+		stub.free()
 
 
 func _decor_earned() -> void:

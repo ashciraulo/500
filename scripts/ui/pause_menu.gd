@@ -16,6 +16,8 @@ var _freeze: CheckBox
 var _day_length: OptionButton
 var _gearbox: OptionButton
 var _lofi: CheckBox
+var _strength: OptionButton
+var _softness: HSlider
 var _pixels: HSlider
 var _dither: CheckBox
 var _wobble: HSlider
@@ -152,6 +154,16 @@ func _build() -> void:
 	_lofi = _check(right, "Lo-fi filter", func(on: bool) -> void:
 		Settings.lofi_enabled = on
 		Settings.apply())
+	var strengths: Array[String] = []
+	for preset in RenderSettings.PRESETS:
+		strengths.append(preset.name)
+	_strength = _option(right, "Filter strength", strengths, func(i: int) -> void:
+		Settings.use_lofi_preset(i)
+		Settings.apply()
+		_sync_from_settings())
+	_softness = _slider(right, "Pixel edges (soft to sharp)", 0.0, 1.0, 0.05, func(v: float) -> void:
+		Settings.softness = 1.0 - v
+		Settings.apply())
 	_pixels = _slider(right, "Chunkiness (lower = chunkier)", 160, 480, 20, func(v: float) -> void:
 		Settings.lofi_target_height = int(v)
 		Settings.apply())
@@ -199,6 +211,8 @@ func _sync_from_settings() -> void:
 	_gearbox.select(1 if Settings.automatic_gearbox else 0)
 	_mouse.value = Settings.mouse_sensitivity
 	_lofi.button_pressed = Settings.lofi_enabled
+	_strength.select(Settings.lofi_preset)
+	_softness.value = 1.0 - Settings.softness
 	_pixels.value = Settings.lofi_target_height
 	_dither.button_pressed = Settings.dither_enabled
 	_wobble.value = 1.1 - Settings.vertex_snap_scale

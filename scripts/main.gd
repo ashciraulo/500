@@ -35,4 +35,6 @@ func _apply_render_settings() -> void:
 	_lofi.stretch_shrink = RenderSettings.shrink_for(int(window_size.y))
 	_post.set_shader_parameter("dither_enabled", RenderSettings.dither_enabled and RenderSettings.lofi_enabled)
 	_post.set_shader_parameter("color_levels", RenderSettings.color_levels if RenderSettings.lofi_enabled else 256.0)
+	_post.set_shader_parameter("dither_strength", RenderSettings.dither_strength)
+	_post.set_shader_parameter("softness", RenderSettings.softness if RenderSettings.lofi_enabled else 0.0)
 	RenderSettings.set_framebuffer_size(Vector2i(window_size) / _lofi.stretch_shrink)

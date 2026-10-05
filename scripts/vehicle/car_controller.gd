@@ -37,6 +37,9 @@ signal car_changed(id: String)
 signal fuel_low
 ## The tank ran dry; the engine cuts out until someone brings fuel.
 signal fuel_empty
+## The driver stopped (true) or moved off (false): binoculars and the camera
+## can be raised from the seat while parked. See `is_parked_for_viewing()`.
+signal parked_changed(parked: bool)
 
 enum Transmission { MANUAL, AUTOMATIC }
 
@@ -99,6 +102,30 @@ const STEP_PROBES: Array[float] = [0.8, 0.55, 0.3]
 const STEP_CLIMB := 0.9
 ## Fastest you can fold or raise the roof (km/h).
 const ROOF_MAX_KMH := 12.0
+## Below this the driver counts as stopped for looking out of the window.
+const PARKED_MAX_KMH := 2.0
+## Field gear the car can carry and show: the rod on a roof rack, the rest on
+## the seats. Models are art/models/props/field/<id>.glb.
+const FIELD_GEAR_PATH := "res://art/models/props/field/%s.glb"
+const FIELD_GEAR := [&"fishing_rod", &"esky", &"tackle_box", &"binoculars", &"camera"]
+## Where each piece sits in the modern cars, from the passenger's hip point:
+## [offset, yaw, on the driver's side]. Cushions are 11 cm below the hip; the
+## back seat is 55 to 85 cm behind it.
+const FIELD_GEAR_MODERN := {
+	&"esky": [Vector3(0.0, -0.1, 0.68), 0.0],
+	&"tackle_box": [Vector3(0.02, -0.11, 0.7), 0.2, true],
+	&"binoculars": [Vector3(0.03, -0.1, 0.1), 0.5],
+	&"camera": [Vector3(-0.12, -0.11, 0.0), -0.3],
+}
+## The classics have no room behind the front seats: the esky rides on the
+## passenger seat with the binoculars on its lid, the tackle box and camera
+## in the footwell.
+const FIELD_GEAR_CLASSIC := {
+	&"esky": [Vector3(0.0, -0.08, -0.17), 0.0],
+	&"binoculars": [Vector3(0.0, 0.33, -0.17), 0.5],
+	&"tackle_box": [Vector3(0.0, -0.23, -0.55), 0.0],
+	&"camera": [Vector3(0.0, -0.03, -0.55), -0.3],
+}
 @export var spring_strength := 26000.0
 @export var damper_strength := 2400.0
 @export var anti_roll_strength := 4500.0
@@ -165,6 +192,10 @@ var steer_angle := 0.0
 var is_player_inside := false
 ## The folding roof is back (500C, canvas-topped classics). Saved with the car.
 var roof_open := false
+## Field gear in or on the car (ids from FIELD_GEAR). It's the
+## player's, not the car's: it moves to whichever car they drive.
+var field_gear: PackedStringArray = []
+var _parked := false
 ## Engine torque multiplier from installed parts.
 var torque_multiplier := 1.0
 ## How much rain hurts grip (1 = stock tyres).
@@ -285,6 +316,9 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if player_controlled:
 		_read_player_input(delta)
+	if is_parked_for_viewing() != _parked:
+		_parked = not _parked
+		parked_changed.emit(_parked)
 	_update_transmission_logic(delta)
 	if fuel_litres <= 0.0:
 		throttle = 0.0
@@ -526,6 +560,85 @@ func _apply_roof() -> void:
 		body.ready.connect(_apply_roof, CONNECT_ONE_SHOT)
 
 
+## The driver is in the seat and the car is stopped: a moment to look out of
+## the window (binoculars, the camera) without getting out.
+func is_parked_for_viewing() -> bool:
+	return player_controlled and speed_kmh() < PARKED_MAX_KMH and grounded_wheels >= 3
+
+
+## The driver's eye in world space (the interior camera's point), facing
+## forward (-Z). Binoculars raised from the seat look out from here.
+func driver_eye() -> Transform3D:
+	var seat := get_node_or_null("DriverSeat") as Node3D
+	if seat:
+		return seat.global_transform.orthonormalized()
+	return global_transform.translated_local(Vector3(0.36, 0.72, 0.22)).orthonormalized()
+
+
+## Show this field gear in or on the car (replaces what was shown).
+## Unknown ids are skipped.
+func set_field_gear(ids: PackedStringArray) -> void:
+	field_gear = PackedStringArray()
+	for id in ids:
+		if FIELD_GEAR.has(StringName(id)) and not field_gear.has(id):
+			field_gear.append(id)
+	_apply_field_gear()
+
+
+func has_field_gear(id: String) -> bool:
+	return field_gear.has(id)
+
+
+## Put the gear models where they go on this body: the rod on the roof rack
+## (when one's fitted), the rest on the seats (see FIELD_GEAR_MODERN and
+## FIELD_GEAR_CLASSIC).
+func _apply_field_gear() -> void:
+	var body := get_node_or_null("Body") as Node3D
+	if body == null:
+		return
+	for old in body.get_children():
+		if old.name.begins_with("Gear_"):
+			body.remove_child(old)
+			old.queue_free()
+	for id in field_gear:
+		var path := FIELD_GEAR_PATH % id
+		if not ResourceLoader.exists(path):
+			continue
+		var spot: Variant = _field_gear_spot(body, StringName(id))
+		if spot == null:
+			continue
+		var model := (load(path) as PackedScene).instantiate() as Node3D
+		model.name = "Gear_" + id
+		model.transform = spot
+		body.add_child(model)
+		PS1Model.apply(model)
+
+
+func _field_gear_spot(body: Node3D, id: StringName) -> Variant:
+	if id == &"fishing_rod":
+		# Only on a rack: a 2.1 m rod is longer than a 500's roof. Without one
+		# it travels in the boot, out of sight.
+		var mount := body.find_child(PART_MOUNTS[&"roof"], true, false) as Node3D
+		if mount == null or body.get_node_or_null(^"Part_roof") == null:
+			return null
+		# Butt forward along +Z, the blank resting on the rack's bars beside
+		# the board, the reel hanging just ahead of the front bar.
+		return Transform3D(Basis.IDENTITY, _in_body_space(body, mount).origin + Vector3(-0.43, -0.03, -1.05))
+	# Everything else sits on the seats or the floor, placed from the
+	# passenger's hip point (Seat_L): measured off the cushions of each body
+	# family so nothing floats or sinks in.
+	var seat := body.find_child("Seat_L", true, false) as Node3D
+	var hip := _in_body_space(body, seat).origin if seat else Vector3(-0.36, 0.55, 0.25)
+	var spots: Dictionary = FIELD_GEAR_CLASSIC if CarCatalogue.get_car(car_id).get("ladder", "") == "classic" else FIELD_GEAR_MODERN
+	if not spots.has(id):
+		return null
+	var spot: Array = spots[id]
+	var offset: Vector3 = spot[0]
+	if spot.size() > 2 and spot[2]:
+		offset.x -= hip.x * 2.0  # The driver's side.
+	return Transform3D(Basis(Vector3.UP, spot[1]), hip + offset)
+
+
 ## Put the car back on its wheels a little above where it is now.
 func reset_upright() -> void:
 	var forward := -global_basis.z
@@ -688,6 +801,7 @@ func load_vehicle_state(data: Dictionary) -> void:
 
 func save_state() -> Dictionary:
 	var state := vehicle_state()
+	state["field_gear"] = Array(field_gear)
 	state["position"] = SaveGame.vec3_to_array(global_position)
 	state["yaw"] = global_rotation.y
 	return state
@@ -701,6 +815,7 @@ func load_state(data: Dictionary) -> void:
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
 	load_vehicle_state(data)
+	set_field_gear(PackedStringArray(data.get("field_gear", [])))
 
 
 ## Headline numbers for menus and the garage.
@@ -934,6 +1049,7 @@ func _apply_part_visuals() -> void:
 		PS1Model.apply(model)
 		if slot == &"lights":
 			_add_spotlights(model)
+	_apply_field_gear()
 
 
 ## Two lamps for the period spotlights, on with the headlights.
