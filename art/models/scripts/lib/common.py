@@ -81,7 +81,7 @@ _MATS = {}
 
 
 def mat(name, color="#ffffff", rough=0.8, metal=0.0, emit=None, emit_strength=1.0,
-        image=None, alpha=None, uv_scale=None):
+        image=None, alpha=None, uv_scale=None, emit_image=False):
     """Principled material. `image` is a bpy image (nearest filtered)."""
     if name in _MATS:
         return _MATS[name]
@@ -101,6 +101,9 @@ def mat(name, color="#ffffff", rough=0.8, metal=0.0, emit=None, emit_strength=1.
     if emit is not None:
         bsdf.inputs["Emission Color"].default_value = (*srgb_to_linear(_hex(emit)), 1)
         bsdf.inputs["Emission Strength"].default_value = emit_strength
+        if emit_image and image is not None:
+            # the texture glows (a lit dial or display), not a flat colour
+            nt.links.new(tex.outputs["Color"], bsdf.inputs["Emission Color"])
     if alpha is not None:
         bsdf.inputs["Alpha"].default_value = alpha
         m.blend_method = "BLEND"

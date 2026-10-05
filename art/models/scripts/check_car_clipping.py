@@ -106,7 +106,21 @@ gaiter-gear_stick gear_stick-gear_knob post-headrest rear_back_up-rear_headrest 
 rear_back-rear_back_up stack-gaiter stack-hvac stack-console stack-radio vent_ring-vent hub-hub_ring
 hub-spoke hub_ring-sw_badge rim rim-spoke phone_clip-phone_cradle column-hub floor-mat floor-footwell
 tunnel-gear_stick tunnel-gaiter tunnel-choke dash-speedo_pod dash-switch speedo_pod-gauge pedal-pedal_arm
-cushion-piping hub-horn floor-floor_r floor_r-tunnel floor-tunnel floor-seat_leg parcel_tray-parcel_lip binnacle-gauge dash-binnacle
+cushion-piping hub-horn floor-floor_r
+logo cushion back gaiter gear_pattern cushion-seat_rail cushion-seat_side post-headrest_rim headrest-headrest_rim
+vent_c-vane_c vent_c_in-vane_c vent_c-vent_c_in dash-vent_c_in dash-vane_c vane_c-phone_clip vane-vent_knob
+stack-hvac_ring hvac_ring-hvac climate-hvac_ring climate-hvac radio-radio_knob radio_face-radio_knob
+gear_badge-gear_pattern gear_knob-gear_badge dash-pedal_arm dash-glove_line dash-glove_catch cup-cup_rim
+console-win_switch console-cup console-lock_switch console-hb_gaiter console-handbrake handbrake-hb_gaiter
+handbrake-hb_button buckle-buckle_btn belt-retractor belt-belt_tongue belt-belt_ring rim-spoke_low horn-spoke_low
+horn-spoke stalk_wipe-stalk_wipe_tip stalk_ind-stalk_ind_tip shroud-stalk_wipe shroud-stalk_ind dash-shroud
+column-shroud rear_mirror-rear_mirror_glass rear_mirror-mirror_stem key-key_fob dome_base-dome gauge-bezel
+dash-gauge dash-bezel binnacle-bezel binnacle-dial_ring dash-cowl binnacle-cowl ign-key shroud-ign
+speaker-speaker_ring speaker-speaker_cone speaker_ring-speaker_cone speaker_cone armrest-armrest_top
+armrest-pull lever_recess-door_lever pocket-pocket_lip buckle_stalk-buckle seat_rail seat_side
+hinge_cover-cushion hinge_cover-back dial_ring-gauge binnacle-gauge
+dash-vane vent_ring-vane vent-vane vent-vent_knob glove_line hvac-hvac_mark floor_r-tunnel floor-tunnel floor-seat_leg parcel_tray-parcel_lip binnacle-gauge dash-binnacle
+tunnel-starter tunnel-heater choke-choke_knob starter-starter_knob heater-heater_knob dash-dash_strip back-rib_back back-back_piping
 """.split()}
 
 

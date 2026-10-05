@@ -27,6 +27,7 @@ import bpy  # noqa: I001  (bpy must load before bmesh)
 import bmesh
 from mathutils import Vector
 
+from . import cabin as CB
 from . import carkit as K
 from . import common as C
 from . import fiat500_shell as S
@@ -166,6 +167,7 @@ def build(spec):
     _headliner(body, M)
     root_objs = [body, C.join(glass["panes"], "Glass")]
 
+    X = CB.mats(spec)
     for side, sx in (("L", 1), ("R", -1)):
         door = parts["Door_" + side]
         if gen2:
@@ -173,7 +175,7 @@ def build(spec):
         else:
             handle = K.stick_box("handle", K.on_side(ref, sx, 0.33, 0.85), (0.19, 0.028, 0.03),
                                  M["chrome"] if spec.get("chrome", True) else M["trim"])
-        card = _door_card(door, sx, M)
+        card = CB.door_card(door, sx, M, X, _seat_mats(spec)["rear"]["back"])
         # with a real shut gap; the 2020 door's frame runs up a raked pillar
         # onto the roof's turn, so up there it gets a wider gap and less levelling
         gap = (lambda co: 0.008 if co.z > 1.0 else 0.005) if gen2 else 0.005
@@ -205,8 +207,8 @@ def build(spec):
         stack = C.join(roof_open, "Roof_Open")
         stack["hidden"] = True          # shown when the hood is folded back
         root_objs.append(stack)
-    interior, wheel_obj = _interior(M, spec, cab)
-    root_objs += [interior, wheel_obj]
+    interior, wheel_obj, needles = _interior(M, spec, cab, X)
+    root_objs += [interior, wheel_obj] + needles
     # where a pair of period spotlights clamps on, just proud of the bumper
     spot, _ = K.on_front(ref, 0, 0.40)
     bpy.data.objects.remove(ref, do_unlink=True)
@@ -379,16 +381,6 @@ def _mirror(ref, sx, M):
     glass = K.lamp_disc("mirror_glass", 0.072, 0.01, head + Vector((0, 0.047, 0)), (0, 1, 0),
                         M["reflector"], segs=10, sx=1.05, sz=0.72)
     return C.join([arm, cap, glass], "Mirror")
-
-
-def _door_card(door, sx, M):
-    """Round speaker, armrest and pull on the inside of the door."""
-    loc, nor = K.hit(door, (0, -0.35, 0.45), (sx, 0, 0))
-    spk = K.stick_disc("speaker", door, (loc, -nor), 0.085, 0.02, M["dark"], segs=12, proud=0.045)
-    loc2, nor2 = K.hit(door, (0, 0.05, 0.72), (sx, 0, 0))
-    arm = C.box("armrest", (0.06, 0.40, 0.05), loc2 - nor2 * 0.07, M["cabin"])
-    pull = C.box("pull", (0.03, 0.12, 0.02), loc2 - nor2 * 0.075 + Vector((0, -0.1, 0.12)), M["chrome"])
-    return [spk, arm, pull]
 
 
 HEAD_X, HEAD_Z, HEAD_R = 0.555, 0.775, 0.098   # big round lamps at the bonnet's front corners
@@ -786,18 +778,19 @@ def _cabrio_stack(M):
 
 # ------------------------------------------------------------------ interior
 
-def _interior(M, spec, cab):
+def _interior(M, spec, cab, X):
     """Cabin fitted inside the shell: everything stays clear of the wheel
-    tubs (front inner wall x 0.44, rear 0.53), the glass and the doors."""
+    tubs (front inner wall x 0.44, rear 0.53), the glass and the doors.
+    The detail (cluster, vents, radio, stalks, pedals...) is in lib/cabin.py."""
     bits = []
-    # floor between the tubs (the rear floor steps up over the axle)
-    bits.append(C.box_minmax("floor", (-0.66, -0.775, 0.222), (0.66, 0.775, 0.25), M["cabin"]))
-    bits.append(C.box_minmax("footwell", (-0.42, -0.86, 0.222), (0.42, -0.775, 0.25), M["cabin"]))
-    bits.append(C.box_minmax("floor_r", (-0.49, 0.775, 0.25), (0.49, 1.44, 0.27), M["cabin"]))
+    # carpeted floor between the tubs (the rear floor steps up over the axle)
+    bits.append(C.box_minmax("floor", (-0.66, -0.775, 0.222), (0.66, 0.775, 0.25), X["carpet"]))
+    bits.append(C.box_minmax("footwell", (-0.42, -0.86, 0.222), (0.42, -0.775, 0.25), X["carpet"]))
+    bits.append(C.box_minmax("floor_r", (-0.49, 0.775, 0.25), (0.49, 1.44, 0.27), X["carpet"]))
     for x in (-0.36, 0.36):
         bits.append(C.box_minmax("mat", (x - 0.21, -0.78, 0.25), (x + 0.21, -0.25, 0.26), M["rubber"]))
         bits.append(C.box_minmax("mat_r", (x - 0.18, 0.64, 0.25), (x + 0.18, 0.77, 0.26), M["rubber"]))
-    bits.append(C.box_minmax("firewall", (-0.42, -0.90, 0.25), (0.42, -0.86, 0.66), M["cabin"]))
+    bits.append(C.box_minmax("firewall", (-0.42, -0.90, 0.25), (0.42, -0.86, 0.66), X["carpet"]))
     # dashboard: one profile from the foot of the windscreen back to the
     # fascia, as wide as the cabin allows. Fuzzy dash mat on top, the
     # painted fascia band facing the driver, dark plastic underneath.
@@ -807,63 +800,47 @@ def _interior(M, spec, cab):
                            [0, 0, 0, 1, 1, 1, 2, 2, 2, 2], margin=0.02, cap=0.72)
     K.planar_uv(dash, 0, 1)
     bits.append(dash)
-    # round vents at each end and a pair in the middle
-    for x in (-0.64, 0.64):
-        bits.append(K.lamp_disc("vent_ring", 0.055, 0.03, (x, -0.555, 0.79), (0, 1, 0), M["chrome"], segs=10))
-        bits.append(K.lamp_disc("vent", 0.042, 0.03, (x, -0.548, 0.79), (0, 1, 0), M["dark"], segs=10))
-    bits.append(C.box_minmax("vent_c", (-0.14, -0.57, 0.86), (0.14, -0.55, 0.92), M["dark"]))
-    # "500" logo on the passenger side of the fascia
-    for i in range(3):
-        bits.append(K.lamp_disc("logo", 0.016, 0.01, (0.30 + i * 0.04, -0.556, 0.76), (0, 1, 0), M["chrome"], segs=6))
-    # instrument binnacle in front of the driver (RHD: -X)
-    bits.append(C.cylinder("binnacle", 0.10, 0.13, segs=12, axis="Y", loc=(-0.36, -0.63, 0.975), material=M["cabin"]))
-    face = K.lamp_disc("gauge", 0.087, 0.01, (-0.36, -0.562, 0.975), (0, 1, 0.12), M["gauge"], segs=12)
-    K.planar_uv(face, 0, 2)
-    bits.append(face)
-    # centre stack: radio, hazard button, climate pod, then the high gear lever
-    bits.append(C.box_minmax("radio", (-0.12, -0.555, 0.75), (0.12, -0.545, 0.84), M["dark"]))
-    bits.append(K.lamp_disc("hazard", 0.015, 0.01, (0, -0.545, 0.725), (0, 1, 0), M["badge"], segs=6))
+    gauge_bits, needles = CB.cluster(M, X)
+    bits += gauge_bits
+    bits += CB.fascia_details(M, X, spec)
+    # centre pod under the radio: climate controls, then the high gear lever
     bits.append(C.box_minmax("stack", (-0.13, -0.80, 0.30), (0.13, -0.50, 0.70), M["cabin"]))
-    for x in (-0.07, 0.0, 0.07):
-        bits.append(K.lamp_disc("hvac", 0.025, 0.03, (x, -0.49, 0.64), (0, 1, 0.3), M["knob"], segs=8))
-    gaiter = C.cylinder("gaiter", 0.06, 0.08, segs=8, loc=(0, -0.44, 0.50), material=M["knob"], r_top=0.025)
-    gaiter.rotation_euler = (math.radians(-40), 0, 0)
-    C.apply_transform(gaiter)
-    lever = C.cylinder("gear_stick", 0.012, 0.12, segs=6, loc=(0, -0.40, 0.56), material=M["trim"])
-    lever.rotation_euler = (math.radians(-40), 0, 0)
-    C.apply_transform(lever)
-    bits += [gaiter, lever, C.sphere("gear_knob", 0.034, (0, -0.37, 0.61), M["knob"], segs=8, rings=5)]
+    bits += CB.climate(M, X)
+    bits += CB.gear_lever(M, X)
     bits.append(C.box_minmax("console", (-0.10, -0.50, 0.26), (0.10, 0.20, 0.40), M["cabin"]))
-    hb = C.box("handbrake", (0.04, 0.25, 0.04), (0, 0.05, 0.45), M["trim"])
-    hb.rotation_euler = (math.radians(12), 0, 0)
-    C.apply_transform(hb)
-    bits.append(hb)
+    bits += CB.console_bits(M, X)
     if spec.get("phone_holder"):
         bits.append(C.box_minmax("phone_clip", (-0.03, -0.54, 0.86), (0.03, -0.50, 0.90), M["knob"]))
         bits.append(C.box_minmax("phone_cradle", (-0.07, -0.50, 0.89), (0.07, -0.48, 0.96), M["knob"]))
-    for x in (-0.48, -0.38, -0.27):
-        bits.append(C.box("pedal", (0.06, 0.02, 0.08), (x, -0.76, 0.36), M["trim"]))
+    bits += CB.pedals(M, X)
     # seats
     sm = _seat_mats(spec)
-    bits += _seat(-0.36, 0.20, sm["driver"], sm["head"], M)
-    bits += _seat(0.36, 0.20, sm["passenger"], sm["head"], M)
+    bits += CB.seat(-0.36, 0.20, sm["driver"], sm["head"], M, X, driver=True, inboard=1)
+    bits += CB.seat(0.36, 0.20, sm["passenger"], sm["head"], M, X, inboard=-1)
     bits += _rear_bench(sm["rear"], sm["head"])
+    bits += CB.seatbelts(M, X, lambda y, z: _half_width(cab, y, z, margin=0.0, cap=0.8))
     # parcel shelf from the back of the rear seat to the tailgate
     sy = 1.34
     hw = min(_half_width(cab, sy, 0.94), _half_width(cab, 1.42, 0.94))
     bits.append(C.box_minmax("parcel_shelf", (-hw, sy, 0.93), (hw, 1.42, 0.95), M["cabin"]))
-    # sun visors folded up flat under the headliner behind the header rail
+    # sun visors folded up under the headliner behind the header rail,
+    # each on a hinge rod with a clip at the inboard end
     for x in (-0.36, 0.36):
         y0, y1, half = -0.22, -0.06, 0.15
         top = min(_roof_z(cab, x + dx, yy) for dx in (-half, 0, half) for yy in (y0, y1)) - 0.008
-        bits.append(C.box_minmax("visor", (x - half, y0, top - 0.012), (x + half, y1, top), M["headliner"]))
+        bits.append(CB._rbox("visor", (x - half, y0, top - 0.016), (x + half, y1, top - 0.002), M["headliner"], 0.03))
+        bits.append(C.box_minmax("visor_clip", (-0.008 + x * 0.25, y0 + 0.01, top - 0.012),
+                                 (0.008 + x * 0.25, y0 + 0.04, top), M["cabin"]))
+    bits += CB.headliner_bits(M, X, cab, lambda x, y: _roof_z(cab, x, y))
     # rear-view mirror on a short stalk glued to the top of the windscreen
-    bits.append(C.box("rear_mirror", (0.21, 0.03, 0.06), (0, -0.30, 1.325), M["knob"]))
+    bits.append(CB._rbox("rear_mirror", (-0.105, -0.322, 1.295), (0.105, -0.285, 1.355), M["knob"], 0.025))
+    bits.append(C.box_minmax("rear_mirror_glass", (-0.098, -0.2852, 1.301), (0.098, -0.2842, 1.349), M["reflector"]))
     hit = cab.ray_cast(Vector((0, -0.31, 1.37)), Vector((0, -1, 0)), 0.5)
     gy = hit[0].y + 0.004 if hit[0] is not None else -0.36
     bits.append(C.box_minmax("mirror_stem", (-0.015, gy, 1.35), (0.015, -0.315, 1.37), M["knob"]))
     interior = C.join(bits, "Interior")
-    return _steering_wheel(M, interior)
+    interior, sw = _steering_wheel(M, interior, spec, X)
+    return interior, sw, needles
 
 
 def _seat_mats(spec):
@@ -903,47 +880,6 @@ def _seat_mats(spec):
     }
 
 
-def _seat(x, y, sm, head_mat, M):
-    """500 seat: rounded backrest (dark top panel), big round headrest on posts.
-
-    Texture u runs across the seat from the car's right (-X) to its left, so
-    the driver's outboard bolster (where the tape is) sits at u ~ 0.
-    """
-    out = []
-    cush = C.box_minmax("cushion", (x - 0.24, y - 0.08, 0.26), (x + 0.24, y + 0.42, 0.40), sm["cushion"])
-    bol = C.box_minmax("bolster", (x - 0.25, y - 0.06, 0.38), (x + 0.25, y + 0.40, 0.44), sm["cushion"])
-    for o in (cush, bol):
-        K.planar_uv(o, 0, 1)
-    out += [cush, bol]
-    pts = []
-    for i in range(13):
-        a = math.pi * i / 12
-        pts.append((math.cos(a) * 0.24, 0.40 + math.sin(a) * 0.20))
-    outline = [(0.24, 0.0)] + pts + [(-0.24, 0.0)]
-    verts, faces = [], []
-    n = len(outline)
-    for yy in (-0.06, 0.06):
-        for px, pz in outline:
-            verts.append((px, yy, pz))
-    faces.append(tuple(range(n)))
-    faces.append(tuple(reversed(range(n, 2 * n))))
-    for i in range(n):
-        j = (i + 1) % n
-        faces.append((i, j, n + j, n + i))
-    back = C.mesh_obj("back", verts, faces, sm["back"])
-    K.planar_uv(back, 0, 2)
-    back.rotation_euler = (math.radians(-14), 0, 0)
-    back.location = (x, y + 0.46, 0.38)
-    C.apply_transform(back)
-    out.append(back)
-    head_y, head_z = y + 0.62, 1.10
-    for px in (-0.06, 0.06):
-        out.append(C.cylinder("post", 0.007, 0.12, segs=5, loc=(x + px, head_y - 0.02, head_z - 0.12),
-                              material=M["post"]))
-    out.append(C.cylinder("headrest", 0.12, 0.08, segs=12, axis="Y", loc=(x, head_y, head_z), material=head_mat))
-    return out
-
-
 def _leaned_box(name, size, base, h, lean, mat):
     """Box whose centre sits h up a line leaning back by lean degrees from base (y, z)."""
     a = math.radians(lean)
@@ -972,28 +908,9 @@ def _rear_bench(sm, head_mat):
     return out
 
 
-def _steering_wheel(M, interior):
+def _steering_wheel(M, interior, spec, X):
     """Built in the XZ plane facing the driver, then tilted to the column angle."""
-    rim_r, tube = 0.185, 0.022
-    segs = 16
-    bits = []
-    for i in range(segs):
-        a = 2 * math.pi * (i + 0.5) / segs
-        seg = C.cylinder("rim", tube, 2 * math.pi * rim_r / segs * 1.08, segs=6, axis="X", material=M["knob"],
-                         cap=False)
-        seg.rotation_euler = (0, -a - math.pi / 2, 0)
-        seg.location = (math.cos(a) * rim_r, 0, math.sin(a) * rim_r)
-        C.apply_transform(seg)
-        bits.append(seg)
-    bits.append(C.cylinder("hub", 0.075, 0.06, segs=12, axis="Y", material=M["knob"]))
-    bits.append(K.lamp_disc("hub_ring", 0.05, 0.01, (0, 0.035, 0), (0, 1, 0), M["chrome"], segs=12))
-    bits.append(K.lamp_disc("sw_badge", 0.032, 0.01, (0, 0.042, 0), (0, 1, 0), M["badge"], segs=10))
-    for a in (0, math.pi, -math.pi / 2):
-        sp = C.box("spoke", (rim_r - 0.05, 0.03, 0.05),
-                   (math.cos(a) * (rim_r / 2 + 0.03), 0, math.sin(a) * (rim_r / 2 + 0.03)), M["knob"])
-        sp.rotation_euler = (0, -a, 0)
-        C.apply_transform(sp)
-        bits.append(sp)
+    bits = CB.steering_wheel(M, spec)
     # the column rises 24 degrees toward the driver; the wheel sits square
     # on it (top leaning away from the driver)
     tilt = math.radians(24)
@@ -1002,10 +919,10 @@ def _steering_wheel(M, interior):
     sw = C.join(bits, "SteeringWheel")
     sw.rotation_euler = (tilt, 0, 0)
     sw.location = hub
-    column = C.cylinder("column", 0.035, 0.30, segs=6, axis="Y", loc=hub - axis * 0.17, material=M["cabin"])
+    column = C.cylinder("column", 0.035, 0.16, segs=8, axis="Y", loc=hub - axis * 0.10, material=M["cabin"])
     column.rotation_euler = (tilt, 0, 0)
     C.apply_transform(column)
-    interior = C.join([interior, column], "Interior")
+    interior = C.join([interior, column] + CB.column(M, X), "Interior")
     return interior, sw
 
 

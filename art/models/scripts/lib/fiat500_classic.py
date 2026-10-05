@@ -41,8 +41,9 @@ import math
 
 import bpy  # noqa: I001  (bpy must load before bmesh)
 import bmesh
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
+from . import cabin as CB
 from . import carkit as K
 from . import common as C
 from . import fiat500_shell as S
@@ -319,7 +320,8 @@ def materials(spec):
         "vinyl_plain": C.mat("SeatVinylPlain", seat, rough=0.55),
         "piping": C.mat("SeatPiping", spec.get("seat_piping", "#e8e2d2"), rough=0.5),
         "wheel": C.mat("SteeringBakelite", spec.get("wheel_color", "#e9e1cc"), rough=0.3),
-        "rubber": C.mat("FloorMat", image=TX.carpet("floormat", "#1a1a1a", 4, 8), rough=0.9),
+        "rubber": C.mat("FloorMatRibbed", image=CB.ribbed_mat_tex(), rough=0.9),
+        "rubber_pad": C.mat("PedalRubber", image=TX.carpet("pedal_rubber", "#141415", 5, 8), rough=0.95),
         "gauge": C.mat("Gauges", image=_speedo("speedo", spec.get("dash") == "black"), rough=0.4,
                        emit="#302a20", emit_strength=0.15),
         "knob": C.mat("KnobBlack", "#0e0e0f", rough=0.25),
@@ -1113,6 +1115,20 @@ def _seat_front(x, y, M, wicker=False):
     if not wicker:
         out.append(C.box_minmax("piping", (x - 0.202, y - 0.205, 0.335), (x + 0.202, y - 0.185, 0.352),
                                 M["piping"]))
+        # tuck-and-roll: raised ribs running front to back on the cushion
+        # and up the backrest, piped round the edge
+        for i in range(5):
+            rx = x - 0.12 + i * 0.06
+            out.append(C.box_minmax("rib", (rx - 0.022, y - 0.17, 0.35), (rx + 0.022, y + 0.20, 0.362), cov))
+            rib = _leaned_box("rib_back", (0.044, 0.012, 0.42), (y + 0.25, 0.33), 0.29, 14, cov)
+            rib.location.x += rx
+            rib.location.y -= 0.039
+            C.apply_transform(rib)
+            out.append(rib)
+        top = _leaned_box("back_piping", (0.404, 0.074, 0.016), (y + 0.25, 0.33), 0.53, 14, M["piping"])
+        top.location.x += x
+        C.apply_transform(top)
+        out.append(top)
     for dx in (-0.17, 0.17):
         for dy in (-0.15, 0.17):
             out.append(C.box_minmax("seat_leg", (x + dx - 0.012, y + dy - 0.012, 0.20), (x + dx + 0.012,
@@ -1144,28 +1160,47 @@ def interior(M, spec, g, cab):
     hw = min(_half_width(cab, -0.60 + dy, 0.68, 0.03), _half_width(cab, -0.47 + dy, 0.68, 0.03), 0.56)
     bits.append(C.box_minmax("parcel_tray", (-0.17, -0.60 + dy, 0.66), (hw, -0.47 + dy, 0.675), M["cabin"]))
     bits.append(C.box_minmax("parcel_lip", (-0.17, -0.48 + dy, 0.675), (hw, -0.465 + dy, 0.70), M["cabin"]))
+    needle_mat = C.mat("Needle", "#c8281a", rough=0.4)
+    needles = []
     if black:
-        # 500 L: rectangular binnacle in front of the driver, two round dials
+        # 500 L: rectangular binnacle in front of the driver, a speedo and a
+        # fuel gauge in chrome bezels
         bits.append(C.box_minmax("binnacle", (DRIVER_X - 0.15, -0.53 + dy, 0.79), (DRIVER_X + 0.15, -0.49 + dy, 0.88),
                                  M["dash_black"]))
-        for dx in (-0.065, 0.065):
-            face = K.lamp_disc("gauge", 0.04, 0.008, (DRIVER_X + dx, -0.487 + dy, 0.835), (0, 1, 0), M["gauge"],
-                               segs=12)
-            K.planar_uv(face, 0, 2)
-            bits.append(face)
+        dials = ((-0.065, "speedo_l", 140, 20, "KMH", True, "Needle_Speed_140"),
+                 (0.065, "fuel_l", 1, 1, "FUEL", False, "Needle_Fuel_1"))
+        for dx, tex, vmax, step, units, odo, nname in dials:
+            m = CB._frame((DRIVER_X + dx, -0.4885 + dy, 0.835), (-1, 0, 0), (0, 0, 1))
+            img = CB.dial_tex(tex, vmax, step, face=(0.05, 0.05, 0.055), ink=(0.9, 0.9, 0.86),
+                              tick_step=step / 4, units=units, odo=odo)
+            bits.append(CB._disc("gauge", 0.04, m, C.mat("Dial_" + tex, image=img, rough=0.4)))
+            bits.append(CB._ring("bezel", 0.039, 0.046, 0.006, m @ Matrix.Translation((0, 0, -0.001)), M["chrome"]))
+            needles.append(CB.needle(nname, m, -0.006, 0.036, 0.003, needle_mat, 0.0015))
     else:
-        # the single round speedometer in the middle of the dash
-        bits.append(C.cylinder("speedo_pod", 0.068, 0.05, segs=14, axis="Y", loc=(0, -0.495 + dy, 0.815),
+        # the single round speedometer in the middle of the dash: cream face,
+        # chrome pod and bezel, odometer, a red needle on a black boss
+        bits.append(C.cylinder("speedo_pod", 0.068, 0.05, segs=16, axis="Y", loc=(0, -0.495 + dy, 0.815),
                                material=M["chrome"]))
-        face = K.lamp_disc("gauge", 0.06, 0.008, (0, -0.468 + dy, 0.815), (0, 1, 0), M["gauge"], segs=14)
-        K.planar_uv(face, 0, 2)
-        bits.append(face)
-    for i, x in enumerate((0.09, 0.14, 0.19) if black else (-0.16, -0.11, 0.11, 0.16)):
-        bits.append(C.cylinder("switch", 0.008, 0.03, segs=6, axis="Y", loc=(x, -0.488 + dy, 0.79),
-                               material=M["ivory"] if not black else M["knob"]))
+        m = CB._frame((0, -0.469 + dy, 0.815), (-1, 0, 0), (0, 0, 1))
+        img = CB.dial_tex("speedo_nuova", 120, 20, face=(0.9, 0.87, 0.78), ink=(0.08, 0.08, 0.08), tick_step=5)
+        bits.append(CB._disc("gauge", 0.06, m, C.mat("Dial_speedo_nuova", image=img, rough=0.4)))
+        bits.append(CB._ring("bezel", 0.059, 0.068, 0.007, m @ Matrix.Translation((0, 0, -0.001)), M["chrome"]))
+        bits.append(CB._place(C.cylinder("needle_boss", 0.008, 0.004, segs=10, loc=(0, 0, 0.003), material=M["knob"]), m))
+        needles.append(CB.needle("Needle_Speed_120", m, -0.01, 0.054, 0.0035, needle_mat, 0.0015))
+    # ignition key beside the switches
+    kx = 0.215 if not black else 0.24
+    bits.append(C.cylinder("ign", 0.012, 0.012, segs=10, axis="Y", loc=(kx, -0.494 + dy, 0.79), material=M["chrome"]))
+    bits.append(C.box("key", (0.008, 0.03, 0.018), (kx, -0.475 + dy, 0.79), M["chrome"]))
+    bits.append(C.box("key_fob", (0.022, 0.006, 0.04), (kx, -0.462 + dy, 0.765), M["knob"]))
+    # chrome strip along the front edge of the dash shelf
+    hw_s = min(_half_width(cab, -0.503 + dy, 0.85, 0.03), 0.58)
+    # it stops either side of the speedo pod (or the 500 L binnacle)
+    gx0, gx1 = (DRIVER_X - 0.16, DRIVER_X + 0.16) if black else (-0.075, 0.075)
+    for sx0, sx1 in ((-hw_s, gx0), (gx1, hw_s)):
+        bits.append(C.box_minmax("dash_strip", (sx0, -0.507 + dy, 0.842), (sx1, -0.501 + dy, 0.852), M["chrome"]))
     # pedals hang just behind the front axle, squeezed inboard by the wheel arch
     for x in (-0.27, -0.19, -0.11):
-        bits.append(C.box("pedal", (0.05, 0.015, 0.07), (x, -0.56 + dy, 0.30), M["trim"]))
+        bits.append(C.box("pedal", (0.05, 0.015, 0.07), (x, -0.56 + dy, 0.30), M["rubber_pad"]))
         bits.append(C.box_minmax("pedal_arm", (x - 0.006, -0.575 + dy, 0.30), (x + 0.006, -0.562 + dy, 0.45),
                                  M["trim"]))
     # floor gear lever and handbrake between the seats
@@ -1178,6 +1213,12 @@ def interior(M, spec, g, cab):
     hb = _tube("handbrake", (0, 0.02 + dy, 0.27), (0, 0.22 + dy, 0.34), 0.012, M["trim"], segs=6)
     bits.append(hb)
     bits.append(_tube("choke", (0.03, -0.05 + dy, 0.26), (0.03, 0.0 + dy, 0.31), 0.005, M["chrome"], segs=5))
+    # starter and heater pull levers beside the choke, ahead of the handbrake, with ivory knobs
+    for nm, lx, ly in (("starter", -0.03, -0.05), ("heater", 0.0, -0.13)):
+        a, b = (lx, ly + dy, 0.26), (lx, ly + 0.045 + dy, 0.305)
+        bits.append(_tube(nm, a, b, 0.005, M["chrome"], segs=5))
+        bits.append(C.sphere(nm + "_knob", 0.009, b, M["ivory"], segs=6, rings=4))
+    bits.append(C.sphere("choke_knob", 0.009, (0.03, 0.0 + dy, 0.31), M["ivory"], segs=6, rings=4))
     # seats
     bits += _seat_front(DRIVER_X, 0.12 + dy, M, wicker)
     bits += _seat_front(-DRIVER_X, 0.12 + dy, M, wicker)
@@ -1215,6 +1256,7 @@ def interior(M, spec, g, cab):
                                      M["headliner"]))
     interior_obj = C.join(bits, "Interior")
     wheel, column = _steering_wheel(M, dy)
+    mounts_needles = needles
     interior_obj = C.join([interior_obj, column], "Interior")
     mounts = {
         "Cam_Cockpit": (DRIVER_X, 0.24 + dy, 1.06),
@@ -1226,22 +1268,13 @@ def interior(M, spec, g, cab):
         mounts["Mount_Mirror"] = mirror
     else:
         mounts["Mount_Mirror"] = (0, -0.47 + dy, 1.08)   # Jolly: top rail of the low windscreen
-    return interior_obj, wheel, mounts
+    return interior_obj, wheel, mounts, mounts_needles
 
 
 def _steering_wheel(M, dy):
     """Big thin two-spoke wheel, nearly upright on a long column."""
     rim_r, tube = 0.19, 0.011
-    segs = 18
-    bits = []
-    for i in range(segs):
-        a = 2 * math.pi * (i + 0.5) / segs
-        seg = C.cylinder("rim", tube, 2 * math.pi * rim_r / segs * 1.08, segs=6, axis="X", material=M["wheel"],
-                         cap=False)
-        seg.rotation_euler = (0, -a - math.pi / 2, 0)
-        seg.location = (math.cos(a) * rim_r, 0, math.sin(a) * rim_r)
-        C.apply_transform(seg)
-        bits.append(seg)
+    bits = [CB.torus_rim("rim", rim_r, tube, 32, M["wheel"], ts=6)]
     bits.append(C.cylinder("hub", 0.038, 0.05, segs=10, axis="Y", material=M["wheel"]))
     bits.append(K.lamp_disc("horn", 0.028, 0.01, (0, 0.028, 0), (0, 1, 0), M["chrome"], segs=10))
     for a in (-0.30, math.pi + 0.30):
@@ -1274,6 +1307,17 @@ def _door_card(door, sx, M, g):
     out.append(C.sphere("winder_knob", 0.014, (xi - sx * 0.035, ym + 0.12, 0.58), M["ivory"], segs=6, rings=4))
     out.append(_tube("pull", (xi - sx * 0.02, ym - 0.12, 0.70), (xi - sx * 0.02, ym + 0.02, 0.70), 0.008, M["chrome"],
                      segs=6))
+    # pleated panel across the lower half, a chrome strip along the top
+    # edge and a little chrome opening lever toward the back
+    xp = sorted((xi, xi - sx * 0.006))
+    for k in range(4):
+        z = 0.43 + k * 0.045
+        out.append(C.box_minmax("card_pleat", (xp[0], y0 + 0.09, z), (xp[1], y1 - 0.09, z + 0.03), M["vinyl"]))
+    xs = sorted((xi, xi - sx * 0.008))
+    out.append(C.box_minmax("card_strip", (xs[0], y0 + 0.07, 0.722), (xs[1], y1 - 0.07, 0.732), M["chrome"]))
+    out.append(C.box_minmax("card_piping", (xp[0], y0 + 0.07, 0.405), (xp[1], y1 - 0.07, 0.415), M["piping"]))
+    xl = sorted((xi, xi - sx * 0.018))
+    out.append(C.box_minmax("door_lever", (xl[0], y1 - 0.20, 0.645), (xl[1], y1 - 0.11, 0.66), M["chrome"]))
     return out
 
 
@@ -1478,8 +1522,8 @@ def build(spec):
         root.append(rolled)
 
     cab = _cabin_bvh([o for o in root if o.name != "Roof_Open"])
-    inter, wheel_obj, mounts = interior(M, spec, g, cab)
-    root += [inter, wheel_obj]
+    inter, wheel_obj, mounts, needles = interior(M, spec, g, cab)
+    root += [inter, wheel_obj] + needles
 
     ws = spec.get("wheels", "classic12")
     body["wheels"] = ws

@@ -54,7 +54,8 @@ fuzzy dash mat, phone holder, and gaffer tape on the driver's seat bolster.
 | `Seat_L`, `Seat_R` | Hip points on the front seats, facing forward (-Z). `Seat_R` is the driver's. |
 | `Exit_L`, `Exit_R` | On the ground between the open door and the body, about 0.4 m clear of each, facing away from the car (-Z points out). Where to stand the player on getting out. |
 | `SteeringWheel` | Turns about its local Z (the column axis). |
-| `Interior` | Dash, seats, console, mats, headliner. |
+| `Interior` | Dash, seats, console, mats, headliner. The cabin detail on the modern cars (instrument cluster, vents, radio, climate panel, stalks and key, gear lever, handbrake, pedals, belts, door trim) is built by `lib/cabin.py`. |
+| `Needle_<dial>_<full scale>` | Gauge needles, separate so the game can move them: `Needle_Speed_200` and `Needle_Rev_7` on the modern cars (km/h and thousands of rpm), `Needle_Speed_120` on the Nuova-style classics, and `Needle_Speed_140` plus `Needle_Fuel_1` on the black-dash 500 L. Each rests on its dial's zero, pivots on the dial centre, and turns about its local Y axis: clockwise (a negative angle) through 240 degrees from zero to the full-scale value in its name. |
 | `Lights_Head`, `Lights_Tail` | Lamp lenses; materials `LampHead` / `LampTail` are driven by `car_body.gd`. |
 | `Cam_Cockpit` | Driver's eye point. |
 | `Mount_Exhaust`, `Mount_Roof` | Where exhaust and roof parts attach. |
