@@ -132,7 +132,8 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
                 continue
             at = (float(far[0]), float(far[1]))
             add(spec["id"], spec["kind"], spec["name"], at, park,
-                godot_yaw(at[0] - park[0], at[1] - park[1]), suburb=spec.get("suburb", ""))
+                godot_yaw(at[0] - park[0], at[1] - park[1]), suburb=spec.get("suburb", ""),
+                hidden=spec.get("hidden", False))
             if spec["id"] in out:
                 out[spec["id"]]["at"][1] = round(top, 2)
             continue
@@ -150,7 +151,8 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
                 at = edge[:2]
         if "look_at" in spec or spec["kind"] == "fishing":
             yaw = godot_yaw(at[0] - park[0], at[1] - park[1])
-        add(spec["id"], spec["kind"], spec["name"], at, park, yaw, suburb=spec.get("suburb", ""))
+        add(spec["id"], spec["kind"], spec["name"], at, park, yaw, suburb=spec.get("suburb", ""),
+            hidden=spec.get("hidden", False))
         if spec["kind"] == "fishing" and spec["id"] in out:
             out[spec["id"]]["at"][1] = round(edge[2], 2) if edge is not None else max(out[spec["id"]]["at"][1], 0.0)
         seen.append((e, n))

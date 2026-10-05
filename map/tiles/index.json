@@ -187,7 +187,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": 2.07,
    "hmax": 52.57,
-   "bytes": 632839,
+   "bytes": 489846,
    "traffic": "-20_-25.p5r"
   },
   "-19_-25": {
@@ -2686,8 +2686,8 @@
    "file": "-4_-5.p5t",
    "region": "first_slice",
    "hmin": 10.56,
-   "hmax": 84.1,
-   "bytes": 318830,
+   "hmax": 84.83,
+   "bytes": 258535,
    "traffic": "-4_-5.p5r"
   },
   "-3_-5": {
@@ -3137,7 +3137,7 @@
    "region": "first_slice",
    "hmin": -2.5,
    "hmax": 204.93,
-   "bytes": 517918,
+   "bytes": 518980,
    "traffic": "1_-3.p5r"
   },
   "2_-3": {
@@ -3576,8 +3576,8 @@
    "file": "-1_-1.p5t",
    "region": "first_slice",
    "hmin": 7.49,
-   "hmax": 71.93,
-   "bytes": 569027,
+   "hmax": 59.69,
+   "bytes": 573297,
    "traffic": "-1_-1.p5r"
   },
   "0_-1": {
@@ -6056,8 +6056,8 @@
    "file": "-19_11.p5t",
    "region": "coast_road",
    "hmin": -6.0,
-   "hmax": 99.18,
-   "bytes": 317682,
+   "hmax": 90.73,
+   "bytes": 317954,
    "traffic": "-19_11.p5r"
   },
   "-18_11": {
@@ -6489,17 +6489,20 @@
   "name": "Little Shenton Lane townhouses, Northbridge"
  },
  "materials": [
+  "arena_panels",
   "asphalt",
   "ballast",
   "bush",
   "concrete",
   "copper",
+  "council_tees",
   "dirt",
   "facade_apartment",
   "facade_brick",
   "facade_carpark",
   "facade_glass",
   "facade_heritage",
+  "facade_market",
   "facade_office",
   "facade_render",
   "facade_shed",
@@ -6508,6 +6511,7 @@
   "facade_warehouse",
   "grass",
   "ground_urban",
+  "hotel_white",
   "kerb",
   "light_head",
   "light_pole",
@@ -7888,6 +7892,168 @@
    "suburb": "Trigg"
   },
   {
+   "id": "birding_alfred_cove",
+   "kind": "birding",
+   "name": "Alfred Cove flats",
+   "p": [
+    -3893.25,
+    0.45,
+    8800.23
+   ],
+   "yaw": -2.6263,
+   "at": [
+    -3748.25,
+    -2.5,
+    9056.29
+   ],
+   "suburb": "Attadale",
+   "hidden": true
+  },
+  {
+   "id": "birding_burswood_lakes",
+   "kind": "birding",
+   "name": "Burswood Park lakes",
+   "p": [
+    3546.35,
+    1.73,
+    1419.06
+   ],
+   "yaw": -1.2659,
+   "at": [
+    3569.77,
+    0.31,
+    1411.69
+   ],
+   "suburb": "Burswood",
+   "hidden": true
+  },
+  {
+   "id": "birding_east_fremantle_reeds",
+   "kind": "birding",
+   "name": "East Fremantle reeds",
+   "p": [
+    -8984.13,
+    4.04,
+    10039.82
+   ],
+   "yaw": 2.9375,
+   "at": [
+    -9007.09,
+    5.63,
+    10150.7
+   ],
+   "suburb": "East Fremantle",
+   "hidden": true
+  },
+  {
+   "id": "birding_floreat_lake",
+   "kind": "birding",
+   "name": "Floreat Lake",
+   "p": [
+    -5190.97,
+    5.52,
+    -3298.56
+   ],
+   "yaw": -1.6049,
+   "at": [
+    -5111.88,
+    0.97,
+    -3295.86
+   ],
+   "suburb": "Floreat",
+   "hidden": true
+  },
+  {
+   "id": "birding_heirisson_marsh",
+   "kind": "birding",
+   "name": "Heirisson Island marsh",
+   "p": [
+    2431.59,
+    -0.07,
+    2461.38
+   ],
+   "yaw": -0.2037,
+   "at": [
+    2446.46,
+    -4.43,
+    2389.38
+   ],
+   "suburb": "Perth",
+   "hidden": true
+  },
+  {
+   "id": "birding_herdsman_reedbeds",
+   "kind": "birding",
+   "name": "Herdsman Lake reedbeds",
+   "p": [
+    -5445.44,
+    11.6,
+    -2730.18
+   ],
+   "yaw": -1.3817,
+   "at": [
+    -5364.12,
+    1.7,
+    -2745.74
+   ],
+   "suburb": "Wembley",
+   "hidden": true
+  },
+  {
+   "id": "birding_kooyar_kep",
+   "kind": "birding",
+   "name": "Kooyar Kep Wetland",
+   "p": [
+    -1296.96,
+    57.85,
+    1052.84
+   ],
+   "yaw": 2.4639,
+   "at": [
+    -1379.19,
+    55.81,
+    1155.01
+   ],
+   "suburb": "Kings Park",
+   "hidden": true
+  },
+  {
+   "id": "birding_monger_island",
+   "kind": "birding",
+   "name": "Monger Island",
+   "p": [
+    -2946.26,
+    19.22,
+    -1349.02
+   ],
+   "yaw": -0.382,
+   "at": [
+    -2869.87,
+    17.66,
+    -1539.2
+   ],
+   "suburb": "Wembley",
+   "hidden": true
+  },
+  {
+   "id": "birding_perry_lakes_reeds",
+   "kind": "birding",
+   "name": "Perry Lakes reeds",
+   "p": [
+    -6316.75,
+    13.76,
+    -127.19
+   ],
+   "yaw": 1.7126,
+   "at": [
+    -6441.55,
+    5.72,
+    -109.37
+   ],
+   "suburb": "Floreat",
+   "hidden": true
+  },
+  {
    "id": "drive_thru_1046370661",
    "kind": "drive_thru",
    "name": "coffee shot",
@@ -8223,6 +8389,24 @@
    "suburb": "Bicton"
   },
   {
+   "id": "fishing_point_walter_sandbar",
+   "kind": "fishing",
+   "name": "Point Walter sandbar",
+   "p": [
+    -5944.56,
+    -2.2,
+    7422.85
+   ],
+   "yaw": 2.879,
+   "at": [
+    -5948.58,
+    0.0,
+    7437.8
+   ],
+   "suburb": "Bicton",
+   "hidden": true
+  },
+  {
    "id": "fishing_south_cottesloe_groyne",
    "kind": "fishing",
    "name": "South Cottesloe Groyne",
@@ -8238,6 +8422,24 @@
     6776.56
    ],
    "suburb": "Cottesloe"
+  },
+  {
+   "id": "fishing_trigg_island",
+   "kind": "fishing",
+   "name": "Trigg Island rocks",
+   "p": [
+    -9647.74,
+    1.77,
+    -7808.34
+   ],
+   "yaw": 1.4052,
+   "at": [
+    -9697.07,
+    0.0,
+    -7816.58
+   ],
+   "suburb": "Trigg",
+   "hidden": true
   },
   {
    "id": "landmark_bell_tower",
@@ -8257,6 +8459,40 @@
    "suburb": "Perth"
   },
   {
+   "id": "landmark_council_house",
+   "kind": "landmark",
+   "name": "Council House",
+   "p": [
+    651.97,
+    32.83,
+    1212.55
+   ],
+   "yaw": 0.09,
+   "at": [
+    649.48,
+    30.49,
+    1184.99
+   ],
+   "suburb": "Perth"
+  },
+  {
+   "id": "landmark_dna_tower",
+   "kind": "landmark",
+   "name": "DNA Tower",
+   "p": [
+    -1657.18,
+    66.03,
+    2027.96
+   ],
+   "yaw": 1.5838,
+   "at": [
+    -1673.23,
+    68.46,
+    2028.17
+   ],
+   "suburb": "Kings Park"
+  },
+  {
    "id": "landmark_elizabeth_quay_bridge",
    "kind": "landmark",
    "name": "Elizabeth Quay Bridge",
@@ -8272,6 +8508,23 @@
     1469.74
    ],
    "suburb": "Perth"
+  },
+  {
+   "id": "landmark_fremantle_markets",
+   "kind": "landmark",
+   "name": "Fremantle Markets",
+   "p": [
+    -9887.39,
+    8.2,
+    12150.17
+   ],
+   "yaw": -2.8253,
+   "at": [
+    -9867.01,
+    11.24,
+    12212.47
+   ],
+   "suburb": "Fremantle"
   },
   {
    "id": "landmark_indiana_tea_house",
@@ -8323,6 +8576,40 @@
     567.12
    ],
    "suburb": "Burswood"
+  },
+  {
+   "id": "landmark_rac_arena",
+   "kind": "landmark",
+   "name": "RAC Arena",
+   "p": [
+    -93.06,
+    24.68,
+    437.74
+   ],
+   "yaw": 0.4414,
+   "at": [
+    -176.08,
+    18.48,
+    262.02
+   ],
+   "suburb": "Perth"
+  },
+  {
+   "id": "landmark_rendezvous_scarborough",
+   "kind": "landmark",
+   "name": "Rendezvous Observation City",
+   "p": [
+    -9202.79,
+    16.33,
+    -5605.38
+   ],
+   "yaw": -0.1338,
+   "at": [
+    -9174.93,
+    21.32,
+    -5812.43
+   ],
+   "suburb": "Scarborough"
   },
   {
    "id": "landmark_round_house",

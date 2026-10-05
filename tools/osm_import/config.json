@@ -138,7 +138,18 @@
       {"id": "fishing_claisebrook_cove", "kind": "fishing", "name": "Claisebrook Cove", "suburb": "East Perth", "lat": -31.95144, "lon": 115.8789, "snap": false, "look_at": [115.87907, -31.95216]},
       {"id": "fishing_matilda_bay", "kind": "fishing", "name": "Matilda Bay", "suburb": "Crawley", "pier": 8075825},
       {"id": "fishing_canning_bridge", "kind": "fishing", "name": "Canning Bridge", "suburb": "Applecross", "lat": -32.0063, "lon": 115.8478, "look_at": [115.85, -32.006]},
-      {"id": "fishing_garratt_road_bridge", "kind": "fishing", "name": "Garratt Road Bridge", "suburb": "Bayswater", "pier": 300110699}
+      {"id": "fishing_garratt_road_bridge", "kind": "fishing", "name": "Garratt Road Bridge", "suburb": "Bayswater", "pier": 300110699},
+      {"id": "fishing_point_walter_sandbar", "kind": "fishing", "name": "Point Walter sandbar", "suburb": "Bicton", "lat": -32.0129, "lon": 115.791, "snap": false, "hidden": true},
+      {"id": "fishing_trigg_island", "kind": "fishing", "name": "Trigg Island rocks", "suburb": "Trigg", "lat": -31.87587, "lon": 115.75099, "hidden": true},
+      {"id": "birding_floreat_lake", "kind": "birding", "name": "Floreat Lake", "suburb": "Floreat", "lat": -31.91624, "lon": 115.79987, "look_at": [115.79987, -31.91624], "hidden": true},
+      {"id": "birding_herdsman_reedbeds", "kind": "birding", "name": "Herdsman Lake reedbeds", "suburb": "Wembley", "lat": -31.92134, "lon": 115.79634, "snap": false, "look_at": [115.7972, -31.9212], "hidden": true},
+      {"id": "birding_monger_island", "kind": "birding", "name": "Monger Island", "suburb": "Wembley", "lat": -31.93209, "lon": 115.82357, "look_at": [115.82357, -31.93209], "hidden": true},
+      {"id": "birding_perry_lakes_reeds", "kind": "birding", "name": "Perry Lakes reeds", "suburb": "Floreat", "lat": -31.94481, "lon": 115.78711, "snap": false, "look_at": [115.78579, -31.94497], "hidden": true},
+      {"id": "birding_kooyar_kep", "kind": "birding", "name": "Kooyar Kep Wetland", "suburb": "Kings Park", "lat": -31.95639, "lon": 115.83933, "look_at": [115.83933, -31.95639], "hidden": true},
+      {"id": "birding_heirisson_marsh", "kind": "birding", "name": "Heirisson Island marsh", "suburb": "Perth", "lat": -31.96752, "lon": 115.8798, "look_at": [115.8798, -31.96752], "hidden": true},
+      {"id": "birding_burswood_lakes", "kind": "birding", "name": "Burswood Park lakes", "suburb": "Burswood", "lat": -31.9587, "lon": 115.89168, "look_at": [115.89168, -31.9587], "hidden": true},
+      {"id": "birding_alfred_cove", "kind": "birding", "name": "Alfred Cove flats", "suburb": "Attadale", "lat": -32.02764, "lon": 115.81424, "look_at": [115.81424, -32.02764], "hidden": true},
+      {"id": "birding_east_fremantle_reeds", "kind": "birding", "name": "East Fremantle reeds", "suburb": "East Fremantle", "lat": -32.03748, "lon": 115.75856, "look_at": [115.75856, -32.03748], "hidden": true}
     ]
   }
 }

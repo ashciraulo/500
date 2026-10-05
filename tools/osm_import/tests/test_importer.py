@@ -223,7 +223,10 @@ def test_landmarks_build_closed_solid_shapes():
     hf = flat_field(10.0)
     foot = {"bell_tower": Point(0, 0).buffer(9), "obelisk": box(-4, -4, 4, 4),
             "stadium": Point(0, 0).buffer(130).intersection(box(-150, -110, 150, 110)),
-            "round_house": Point(0, 0).buffer(6), "tea_house": box(-20, -12, 20, 12)}
+            "round_house": Point(0, 0).buffer(6), "tea_house": box(-20, -12, 20, 12),
+            "council_house": box(-31, -11, 31, 11), "dna_tower": Point(0, 0).buffer(2.7),
+            "arena": Point(0, 0).buffer(70), "markets": box(-60, -30, 60, 30).difference(box(0, 0, 60, 30)),
+            "hotel_tower": box(-16, -34, 16, 34)}
     for kind, geom in foot.items():
         mb = MeshBuilder()
         lm = landmarks.Landmark(kind, kind, kind, ("area", 1), geom=geom)

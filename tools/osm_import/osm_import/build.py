@@ -207,6 +207,8 @@ class World:
         self.control_nodes = feats.control_nodes
         self.bus_routes = getattr(feats, "bus_routes", [])
         self.poi_nodes = getattr(feats, "poi_nodes", [])
+        # Wetlands and beaches for the field journal's birds (habitats.json).
+        self.habitats = [a for a in feats.areas if a.tags.get("natural") in ("wetland", "beach")]
         self.poi_areas = [a for a in feats.areas if a.tags.get("natural") == "beach"
                           or a.tags.get("amenity") in ("fuel", "fast_food", "school") or a.tags.get("tourism") == "zoo"]
         self._sculpt_terrain()
@@ -1186,9 +1188,38 @@ def _write_index(cfg, proj, world: World, index: dict, path: Path, region_of: di
             sorted(kept + list(lakes.values()), key=lambda l: (l["name"], l["outline"][0]))]
     lakes_path.write_text("[\n" + ",\n".join(rows) + "\n]\n")
     index.pop("lakes", None)
+    _write_habitats(world, path.with_name("habitats.json"), inside_hf, owned)
     _write_places(cfg, proj, world, index, inside_hf, region_of)
     index["tiles"] = dict(sorted(index["tiles"].items(), key=lambda kv: (kv[1]["j"], kv[1]["i"])))
     path.write_text(json.dumps(index, indent=1) + "\n")
+
+
+def _write_habitats(world: World, path: Path, inside_hf, owned):
+    """Wetland and beach outlines (OSM natural=wetland / beach) where the bird
+    thread spawns reed birds and shorebirds. Ids are `<kind>_<osm id>`, stable
+    across builds; like lakes, each belongs to the stage owning its tile."""
+    fresh = {}
+    for a in world.habitats:
+        t = a.tags
+        kind = t["natural"]
+        for k, poly in enumerate(sorted(polygons_of(a.geom), key=lambda q: -q.area)):
+            c = poly.representative_point()
+            if poly.area < 400 or not inside_hf(c.x, c.y):
+                continue
+            ring = np.asarray(poly.exterior.simplify(3.0).coords)[:-1]
+            if len(ring) < 3:
+                continue
+            hid = f"{kind}_{a.id}" + (f"_{k + 1}" if k else "")
+            h = {"id": hid, "kind": kind, "name": t.get("name", ""), "area": round(poly.area),
+                 "outline": [[round(float(e), 1), round(float(-n), 1)] for e, n in ring]}
+            if kind == "wetland" and t.get("wetland"):
+                h["wetland"] = t["wetland"]
+            if owned(h["outline"]):
+                fresh[hid] = h
+    old = json.loads(path.read_text()) if path.exists() else []
+    kept = [h for h in old if h["id"] not in fresh and not owned(h["outline"])]
+    rows = [json.dumps(h, separators=(",", ":")) for h in sorted(kept + list(fresh.values()), key=lambda h: h["id"])]
+    path.write_text("[\n" + ",\n".join(rows) + "\n]\n")
 
 
 def _write_places(cfg, proj, world: World, index: dict, inside_hf, region_of: dict):

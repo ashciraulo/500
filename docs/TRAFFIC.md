@@ -222,7 +222,8 @@ World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 	"rail": [{ "pts": [[x, y, z], ...] }],             # one entry per track; endpoints within 2 m join up
 	"stations": [{ "p": [x, y, z], "name": "Perth" }],   # railway=station/stop positions
 	"bus_stops": [{ "p": [x, y, z] }],                   # highway=bus_stop positions
-	"footways": [{ "pts": [[x, y, z], ...], "name": "Matagarup Bridge" }],  # optional extra paths for people; name optional
+	"footways": [{ "pts": [[x, y, z], ...], "name": "Matagarup Bridge" }],  # optional extra paths for people (event paths, CBD and Northbridge malls and footpaths; malls have "kind": "mall"); name optional
+	"cycleways": [{ "pts": [[x, y, z], ...], "name": "Kwinana Freeway PSP" }],  # optional bike and shared paths; name optional
 	"schools": [{ "p": [x, y, z], "name": "Highgate Primary School" }],     # optional; amenity=school, for school zones
 	# Optional parking spots, clear of footpaths, street lights and driveways.
 	# yaw: the way the nose points, radians about +Y (0 faces -Z).

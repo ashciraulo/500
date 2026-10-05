@@ -57,6 +57,12 @@ CATALOGUE = [
     Landmark("indiana_tea_house", "Indiana Tea House", "tea_house", ("area", 44961447), "Cottesloe"),
     Landmark("elizabeth_quay_bridge", "Elizabeth Quay Bridge", "eq_bridge", ("way", 396347498), "Perth"),
     Landmark("matagarup_bridge", "Matagarup Bridge", "matagarup", ("way", 404705281), "East Perth"),
+    Landmark("council_house", "Council House", "council_house", ("area", 48439640), "Perth"),
+    Landmark("dna_tower", "DNA Tower", "dna_tower", ("area", 1274392791), "Kings Park", params={"clear": 2.0}),
+    Landmark("rac_arena", "RAC Arena", "arena", ("area", 150405797), "Perth", params={"clear": 3.0}),
+    Landmark("fremantle_markets", "Fremantle Markets", "markets", ("area", 34911431), "Fremantle"),
+    Landmark("rendezvous_scarborough", "Rendezvous Observation City", "hotel_tower", ("area", 308885088),
+             "Scarborough", params={"clear": 1.5}),
 ]
 
 
@@ -411,7 +417,194 @@ def _matagarup(mb, lm, hf):
         _hangers(mb, np.array(path), deck_h, every=2)
 
 
+def _face_up(surf: Surface, a, b, c, d, u0=0.0, u1=1.0, v0=0.0, v1=1.0, down=False):
+    """A roof quad, wound so it faces the sky (or the ground) whatever order it came in."""
+    a, b, c, d = (np.asarray(x, float) for x in (a, b, c, d))
+    if (np.cross(b - a, (c + d) / 2 - a)[2] < 0) != down:
+        a, b, c, d = b, a, d, c
+    _quad(surf, a, b, c, d, u0, u1, v0, v1)
+
+
+def _rot(pts, c, ang):
+    """Plan points rotated by ang about c."""
+    pts = np.asarray(pts, float)
+    ca, sa = math.cos(ang), math.sin(ang)
+    d = pts[..., :2] - c
+    out = pts.copy()
+    out[..., 0] = c[0] + d[..., 0] * ca - d[..., 1] * sa
+    out[..., 1] = c[1] + d[..., 0] * sa + d[..., 1] * ca
+    return out
+
+
+def _council_house(mb, lm, hf):
+    """Council House (1963): a slab of dark glass behind white T-shaped
+    sunshades, lifted on a recessed, colonnaded ground floor."""
+    g = _ground(hf, lm.geom)
+    poly = lm.geom.simplify(0.4)
+    tees = mb.surface(MESH, "council_tees", "buildings")
+    glass = mb.surface(MESH, "facade_glass", "buildings")
+    concrete = mb.surface(MESH, "concrete", "buildings")
+    ring = _ccw(np.asarray(poly.exterior.coords)[:-1])
+    core = poly.buffer(-2.2, join_style=2)
+    core_ring = _ccw(np.asarray(core.exterior.coords)[:-1])
+    prism(glass, core_ring, g, g + 5.4, 3.2, 5.4)
+    # Columns along the open ground floor, every two bays.
+    ext = LineString(np.vstack([ring, ring[:1]]))
+    for s in np.arange(0.0, ext.length, 6.4):
+        p = np.asarray(ext.interpolate(s).coords[0])
+        prism(concrete, circle(*p, 0.45, 0, k=4, rot=math.pi / 4)[:, :2], g, g + 5.4, 2.0, 2.0)
+    # The slab: soffit, T-patterned walls, roof and plant room.
+    lo = np.column_stack([ring, np.full(len(ring), g + 5.4)])
+    hi = np.column_stack([ring, np.full(len(ring), g + 44.0)])
+    cap(concrete, lo, 4.0, down=True)
+    loft(tees, lo, hi, 3.2, 3.4)
+    cap(mb.surface(MESH, "roof_flat", "buildings"), hi, 6.0)
+    plant = poly.buffer(-5.0, join_style=2)
+    if not plant.is_empty:
+        prism(concrete, _ccw(np.asarray(plant.exterior.coords)[:-1]), g + 44.0, g + 48.0, 4.0, 4.0)
+
+
+def _helix(surf, c, r0, r1, h0, h1, a0, turns, step=0.35):
+    """A spiral stair as a sloping ribbon (top and underside)."""
+    k = max(8, int(abs(turns) * math.tau / step))
+    a = a0 + np.linspace(0.0, turns * math.tau, k + 1)
+    h = np.linspace(h0, h1, k + 1)
+    inner = np.column_stack([c[0] + r0 * np.cos(a), c[1] + r0 * np.sin(a), h])
+    outer = np.column_stack([c[0] + r1 * np.cos(a), c[1] + r1 * np.sin(a), h])
+    for i in range(k):
+        _face_up(surf, inner[i], outer[i], outer[i + 1], inner[i + 1], 0, 1, i / 6, (i + 1) / 6)
+        # Underside a little lower, facing down.
+        lo = [p - [0, 0, 0.25] for p in (inner[i], outer[i], outer[i + 1], inner[i + 1])]
+        _face_up(surf, *lo, 0, 1, i / 6, (i + 1) / 6, down=True)
+    return outer
+
+
+def _dna_tower(mb, lm, hf):
+    """Kings Park's DNA Tower: two white spiral stairs wound round a mast,
+    101 steps up to a lookout over the river."""
+    g = _ground(hf, lm.geom) + 0.3
+    c = np.array(lm.center)
+    r = max(2.4, min(3.4, math.sqrt(lm.geom.area / math.pi)))
+    white = mb.surface(MESH, "steel_white", "buildings")
+    concrete = mb.surface(MESH, "concrete", "buildings")
+    det = mb.surface(DETAIL, "steel_white", None)
+    top = g + 15.0
+    prism(concrete, circle(*c, r + 1.2, 0, k=16)[:, :2], g - 0.4, g + 0.2, 3.0, 3.0)
+    prism(white, circle(*c, 0.45, 0, k=8)[:, :2], g + 0.2, top + 2.4, 2.0, 2.0)
+    for a0 in (0.0, math.pi):
+        outer = _helix(white, c, 0.45, r, g + 0.2, top - 0.1, a0, 3.0)
+        # Handrail on the outside edge, posts every few steps.
+        rail = outer + [0, 0, 1.0]
+        tube(det, rail, 0.06)
+        for k in range(0, len(outer), 6):
+            tube(det, [outer[k], rail[k]], 0.05)
+    # Lookout platform with a ring rail.
+    prism(white, circle(*c, r + 0.2, 0, k=16)[:, :2], top - 0.1, top + 0.1, 3.0, 3.0)
+    ring = circle(*c, r + 0.15, top + 1.1, k=16)
+    tube(det, np.vstack([ring, ring[:1]]), 0.06)
+    for p in ring:
+        tube(det, [p - [0, 0, 1.0], p], 0.05)
+
+
+def _arena(mb, lm, hf):
+    """RAC Arena: a box wrapped in folded, jigsaw-cut panels that glow at night."""
+    g = _ground(hf, lm.geom)
+    poly = lm.geom.buffer(-0.5).convex_hull
+    c = np.array(poly.centroid.coords[0])
+    ring = _ccw(_resample_ring(poly, 36))
+    panels = mb.surface(MESH, "arena_panels", "buildings")
+    roof = mb.surface(MESH, "roof_metal", "buildings")
+    glass = mb.surface(MESH, "facade_glass", "buildings")
+    rng = np.random.default_rng(7)
+    # A glazed ground floor, then the panelled skin folding in and out.
+    lo = np.column_stack([ring, np.full(len(ring), g)])
+    base = np.column_stack([ring, np.full(len(ring), g + 5.0)])
+    loft(glass, scaled(lo, c, 0.985), scaled(base, c, 0.985), 4.0, 5.0)
+    cap(mb.surface(MESH, "concrete", "buildings"), scaled(base, c, 1.0), 6.0, down=True)
+    fold = np.where(np.arange(len(ring)) % 2 == 0, 1.02, 0.995)
+    mid = scaled(np.column_stack([ring, np.full(len(ring), g + 20.0)]), c, 1.0)
+    mid[:, :2] = c + (mid[:, :2] - c) * fold[:, None]
+    hs = g + 34.0 + 6.0 * np.sin(np.linspace(0, math.tau, len(ring), endpoint=False) * 2) + rng.uniform(-1.5, 1.5, len(ring))
+    top = np.column_stack([ring, hs])
+    top[:, :2] = c + (top[:, :2] - c) * fold[::-1, None]
+    loft(panels, base, mid, 7.5, 7.5)
+    loft(panels, mid, top, 7.5, 7.5)
+    # The roof slopes in from the panel tops to a flat crown.
+    crown = scaled(top, c, 0.8, g + 41.0)
+    loft(roof, top, crown, 8.0, 8.0)
+    cap(roof, crown, 8.0)
+
+
+def _markets(mb, lm, hf):
+    """Fremantle Markets (1897): limestone walls under rows of gabled
+    corrugated-iron roofs."""
+    g = _ground(hf, lm.geom)
+    poly = lm.geom.simplify(0.6)
+    walls = mb.surface(MESH, "facade_market", "buildings")
+    roof = mb.surface(MESH, "roof_metal", "buildings")
+    eave = g + 6.0
+    ring = _ccw(np.asarray(poly.exterior.coords)[:-1])
+    lo = np.column_stack([ring, np.full(len(ring), g)])
+    hi = np.column_stack([ring, np.full(len(ring), eave)])
+    loft(walls, lo, hi, 4.0, 6.0)
+    cap(mb.surface(MESH, "roof_flat", "buildings"), hi, 6.0)
+    # Gabled bays across the long axis, each over its own strip of the hall.
+    ang = _axis(poly)
+    c = np.array(poly.centroid.coords[0])
+    flat = shapely_rotate(poly, -ang, c)
+    x0, y0, x1, y1 = flat.bounds
+    width = (x1 - x0) / max(1, round((x1 - x0) / 11.0))
+    for xa in np.arange(x0, x1 - 0.5, width):
+        strip = flat.intersection(Polygon([(xa, y0), (xa + width, y0), (xa + width, y1), (xa, y1)]))
+        for piece in polygons_of(strip):
+            bx0, by0, bx1, by1 = piece.bounds
+            if piece.area < 40 or piece.area / ((bx1 - bx0) * (by1 - by0)) < 0.75 or bx1 - bx0 < 5:
+                continue
+            ridge = eave + 0.45 * (bx1 - bx0) / 2
+            xm = (bx0 + bx1) / 2
+            corners = np.array([[bx0, by0, eave], [bx1, by0, eave], [bx1, by1, eave], [bx0, by1, eave],
+                                [xm, by0, ridge], [xm, by1, ridge]])
+            P = _rot(corners, c, ang)
+            span = by1 - by0
+            _face_up(roof, P[0], P[3], P[5], P[4], 0, span / 4, 0, (ridge - eave) * 1.8 / 4)
+            _face_up(roof, P[2], P[1], P[4], P[5], 0, span / 4, 0, (ridge - eave) * 1.8 / 4)
+            # Gable ends: limestone triangles at either end of the ridge.
+            for a, b, t in ((P[0], P[1], P[4]), (P[2], P[3], P[5])):
+                _quad(walls, a, b, t, t, 0, (bx1 - bx0) / 4, 0, (ridge - eave) / 6)
+
+
+def shapely_rotate(poly, ang, c):
+    ext = _rot(np.asarray(poly.exterior.coords), c, ang)
+    holes = [_rot(np.asarray(h.coords), c, ang) for h in poly.interiors]
+    return Polygon(ext, holes)
+
+
+def _hotel_tower(mb, lm, hf):
+    """Scarborough's Rendezvous Observation City: a white balconied tower
+    stepping back as it rises over the beachfront."""
+    g = _ground(hf, lm.geom)
+    poly = lm.geom.simplify(0.5)
+    white = mb.surface(MESH, "hotel_white", "buildings")
+    flat = mb.surface(MESH, "roof_flat", "buildings")
+    concrete = mb.surface(MESH, "concrete", "buildings")
+    h = g
+    for inset, storeys in ((0.0, 17), (2.5, 4), (5.0, 2)):
+        tier = poly.buffer(-inset, join_style=2) if inset else poly
+        tier = max(polygons_of(tier), key=lambda p: p.area) if not tier.is_empty else None
+        if tier is None or tier.area < 40:
+            break
+        ring = _ccw(np.asarray(tier.exterior.coords)[:-1])
+        prism(white, ring, h, h + storeys * 3.1, 4.0, 3.1, top_surf=flat)
+        h += storeys * 3.1
+    core = poly.buffer(-8.0, join_style=2)
+    if not core.is_empty:
+        core = max(polygons_of(core), key=lambda p: p.area)
+        prism(concrete, _ccw(np.asarray(core.exterior.coords)[:-1]), h, h + 3.5, 4.0, 3.5)
+
+
 BUILDERS = {
     "bell_tower": _bell_tower, "obelisk": _obelisk, "stadium": _stadium, "round_house": _round_house,
     "tea_house": _tea_house, "eq_bridge": _eq_bridge, "matagarup": _matagarup,
+    "council_house": _council_house, "dna_tower": _dna_tower, "arena": _arena, "markets": _markets,
+    "hotel_tower": _hotel_tower,
 }

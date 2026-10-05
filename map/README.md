@@ -42,11 +42,17 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
   ones), `beach` (stop in its car park), `servo`, `drive_thru`, `quiet_spot`
   (hand-picked places to park and watch the city), `fishing` (hand-picked
   jetties, groynes and foreshores; `at` is the jetty's far end or the water's
-  edge) and `landmark` (the hand-built ones below). Each has a stable `id`,
+  edge), `birding` (reedbeds, lake edges and marshes; `at` is the habitat)
+  and `landmark` (the hand-built ones below). Each has a stable `id`,
   `name`, `suburb`, `p` (where to stop the car), `yaw` (facing there) and
   `at` (the feature). Hand-picked stops live in
   `tools/osm_import/config.json` "pois"; ones off the built map appear when a
-  region covers them.
+  region covers them. Spots with `"hidden": true` are for the player to find:
+  the field journal keeps them off its map until you are close.
+- **Habitats**: `map/tiles/habitats.json` lists OSM wetlands and beaches, one
+  per line: `id` (`wetland_<osm id>` or `beach_<osm id>`, stable), `kind`,
+  `name` (may be empty), `wetland` (reedbed, marsh, swamp, tidalflat... when
+  OSM says), `area` (m²) and `outline` (x/z), for the birds that live there.
 - **Lakes**: `water_level_at(pos)` is the water surface height of the lake or
   pond under `pos`, or NAN; `get_lakes()` lists them (name, level, outline in
   x/z). From `map/tiles/lakes.json`, one lake per line. The river and the sea
@@ -54,9 +60,11 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
   OSM draws as a line are built as walkable decks like the ones drawn as
   areas.
 - **Landmarks**: the Bell Tower, Elizabeth Quay Bridge, Matagarup Bridge,
-  Optus Stadium, the State War Memorial, the Round House and the Indiana Tea
-  House are low-poly models built by `tools/osm_import/osm_import/landmarks.py`
-  on their OSM footprints, in the tiles' `landmarks` mesh.
+  Optus Stadium, the State War Memorial, the Round House, the Indiana Tea
+  House, Council House, the DNA Tower (its spiral stairs are walkable), RAC
+  Arena, Fremantle Markets and Scarborough's Rendezvous tower are low-poly
+  models built by `tools/osm_import/osm_import/landmarks.py` on their OSM
+  footprints, in the tiles' `landmarks` mesh.
 - `get_landmarks()` returns suburb and square names with XZ positions, for a
   map screen or GPS later.
 
