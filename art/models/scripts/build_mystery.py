@@ -3,6 +3,11 @@ their ids in data/progression/mystery.json (lib/mystery.py CLUES):
 
   art/models/home/mystery/tape_1.glb .. shed_key.glb
 
+and shed_reveal.glb, M.'s broadcasting table under the dust sheet in the
+shed (lib/shed_reveal.py): origin at the table's footprint centre on the
+floor, the wall toward -Y (Godot +Z), empties DeckLight, TxLight, Valve
+and Bulb.
+
 Origin at the prop's base centre, front toward -Y in Blender (+Z in Godot),
 the same way round as the townhouse models.
 
@@ -18,6 +23,7 @@ import bpy  # noqa: E402,F401
 from lib import common as C  # noqa: E402
 from lib import furniture as F  # noqa: E402
 from lib import mystery as MY  # noqa: E402
+from lib import shed_reveal as SR  # noqa: E402
 
 OUT = "art/models/home/mystery/"
 
@@ -34,6 +40,15 @@ def main():
         o = F.item(name, build(), (0, 0, 0))
         print(name, "triangles:", C.tri_count([o]))
         C.export_glb(OUT + name + ".glb")
+    # what's under the sheet in the shed, with empties for its lamps
+    C.reset()
+    C.clear_material_cache()
+    parts, sockets = SR.reveal()
+    o = F.item("ShedReveal", parts, (0, 0, 0))
+    for nm, loc in sockets.items():
+        C.empty(nm, loc, size=0.05)
+    print("shed_reveal triangles:", C.tri_count([o]))
+    C.export_glb(OUT + "shed_reveal.glb")
     if "--render" in sys.argv:
         prefix = sys.argv[sys.argv.index("--render") + 1]
         C.reset()

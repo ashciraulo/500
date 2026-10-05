@@ -1,0 +1,65 @@
+"""Stage 5 landmarks for the map (lib/coast_landmarks.py), one glb each:
+
+  art/models/props/landmarks/mole_light_north.glb, mole_light_south.glb,
+  herdsman_hide.glb, trigg_surf_club.glb
+
+Origin on the ground at the anchor, front toward -Y in Blender (Godot +Z).
+Each has a `<Name>_Col` static body (from `-colonly`) of plain boxes and
+empties for its sockets.
+
+    python3.11 art/models/scripts/build_landmarks.py [--render out/prefix]
+"""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import bpy  # noqa: E402,F401
+
+from lib import coast_landmarks as LM  # noqa: E402
+from lib import common as C  # noqa: E402
+from lib import furniture as F  # noqa: E402
+
+OUT = "art/models/props/landmarks/"
+
+
+def build(name):
+    parts, sockets, col = LM.LANDMARKS[name]()
+    title = "".join(w.capitalize() for w in name.split("_"))
+    objs = [F.item(title, parts, (0, 0, 0))]
+    cmat = C.mat("Collision", "#ff00ff")
+    cobj = F.item(title + "_Col-colonly", [F.bx(lo, hi, cmat) for lo, hi in col], (0, 0, 0))
+    for nm, loc in sockets.items():
+        C.empty(nm, loc, size=0.2)
+    return objs, cobj
+
+
+VIEWS = {   # camera, target, lens: front three-quarter and a closer look
+    "mole_light_north": [((-9, -14, 6), (0, 0, 4.6), 40), ((-2.5, -4.5, 9.5), (0, 0, 8.2), 40)],
+    "mole_light_south": [((9, -14, 6), (0, 0, 4.6), 40)],
+    "herdsman_hide": [((-9, -9, 5), (0.5, 3.0, 1.2), 32), ((1.0, 6.0, 2.4), (0.0, -1.0, 1.4), 30),
+                      ((1.0, 0.9, 1.95), (-0.4, -1.2, 1.45), 22)],
+    "trigg_surf_club": [((-26, -30, 10), (0, 0, 4.0), 32), ((22, -18, 5), (4, -6, 4.5), 32)],
+}
+
+
+def main():
+    for name in LM.LANDMARKS:
+        C.reset()
+        C.clear_material_cache()
+        objs, cobj = build(name)
+        print(name, "triangles:", C.tri_count(objs))
+        C.export_glb(OUT + name + ".glb")
+        if "--render" in sys.argv:
+            prefix = sys.argv[sys.argv.index("--render") + 1]
+            cobj.hide_render = True
+            C.render_setup((960, 640), 24, world="#c9d6e0", strength=0.9)
+            C.sun(rot=(50, 10, 210), energy=3.5)
+            for i, (cam, tgt, lens) in enumerate(VIEWS[name]):
+                C.camera_look(cam, tgt, lens=lens)
+                C.render("%s_%s_%d.png" % (prefix, name, i))
+
+
+if __name__ == "__main__":
+    main()
+    C.done()
