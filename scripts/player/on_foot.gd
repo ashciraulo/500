@@ -6,6 +6,12 @@ extends CharacterBody3D
 ## on the driver's side; walk around the townhouse, open doors, try the shed,
 ## go to bed; walk back to the car and press interact to get in again.
 ##
+## Anything else you can use on foot (the cat, the cuttings) joins the group
+## "interactables" with three methods:
+##   interact_point() -> Vector3       where it is
+##   interact_hint() -> String         "Feed the cat" (or "" when there's nothing to do)
+##   interact() -> void                do it
+##
 ## Moves with the driving actions (accelerate/brake = forward/back,
 ## steer = strafe, handbrake = hurry), looks with the mouse or the right
 ## stick. Climbs stairs by stepping up small ledges.
@@ -443,7 +449,9 @@ func interact() -> void:
 			if not home.toggle_door(door_name):
 				_note("Locked. The key must be somewhere." if door_name == &"Shed_Door" else "It won't budge.")
 		["bed", _]:
-			_sleep()
+			_ask_when_to_wake()
+		["thing", var thing]:
+			thing.interact()
 
 
 func _hint() -> String:
@@ -465,10 +473,12 @@ func _hint() -> String:
 			return "F  %s" % ("Close" if home.is_door_open(door_name) else "Open")
 		["bed", _]:
 			return "F  Sleep"
+		["thing", var thing]:
+			return "F  %s" % thing.interact_hint()
 	return ""
 
 
-## What the player can act on right now: ["car" | "door" | "bed" | "", detail].
+## What the player can act on right now: ["car" | "door" | "bed" | "thing" | "", detail].
 func _target() -> Array:
 	var home := _home()
 	var from := _camera.global_position
@@ -484,6 +494,9 @@ func _target() -> Array:
 			n = n.get_parent()
 	if _car and _driver_door().distance_to(global_position) < CAR_REACH:
 		return ["car", null]
+	var thing := _nearest_thing()
+	if thing:
+		return ["thing", thing]
 	if home == null:
 		return ["", null]
 	if home.has_marker(&"Bed"):
@@ -491,6 +504,26 @@ func _target() -> Array:
 		if absf(bed.y - global_position.y) < 0.8 and Vector2(bed.x - global_position.x, bed.z - global_position.z).length() < 1.4:
 			return ["bed", null]
 	return ["", null]
+
+
+## The closest interactable within reach that you're looking towards and that
+## has something to do.
+func _nearest_thing() -> Node:
+	var eye := _camera.global_position
+	var look := -_camera.global_basis.z
+	var best: Node = null
+	var best_d := reach + 0.4
+	for node in get_tree().get_nodes_in_group(&"interactables"):
+		var at: Vector3 = node.interact_point()
+		var to := at - eye
+		var d := to.length()
+		if d > best_d or (d > 0.6 and look.dot(to / d) < 0.55):
+			continue
+		if String(node.interact_hint()) == "":
+			continue
+		best = node
+		best_d = d
+	return best
 
 
 func _driver_door() -> Vector3:
@@ -505,12 +538,58 @@ func _home() -> HomeBase:
 	return null
 
 
-func _sleep() -> void:
+## Morning or dusk? Waking at dusk is also how you move between day and night
+## with the clock frozen.
+func _ask_when_to_wake() -> void:
+	_busy = true
+	_prompt.text = ""
+	var box := VBoxContainer.new()
+	box.name = "WakeChoice"
+	box.anchor_left = 0.5
+	box.anchor_right = 0.5
+	box.anchor_top = 1.0
+	box.anchor_bottom = 1.0
+	box.offset_left = -170.0
+	box.offset_right = 170.0
+	box.offset_top = -190.0
+	box.offset_bottom = -72.0
+	box.add_theme_constant_override("separation", 4)
+	_ui.add_child(box)
+	var choices := [
+		["Sleep till morning", HomeBase.WAKE_HOUR],
+		["Sleep till dusk", HomeBase.DUSK_HOUR],
+		["Not yet", -1.0],
+	]
+	var buttons: Array[Button] = []
+	for choice in choices:
+		var button := Button.new()
+		button.text = choice[0]
+		var hour: float = choice[1]
+		button.pressed.connect(func() -> void:
+			box.queue_free()
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			_hold_armed = false
+			if hour < 0.0:
+				_busy = false
+			else:
+				_sleep(hour))
+		box.add_child(button)
+		buttons.append(button)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	buttons[0].grab_focus.call_deferred()
+
+
+## True while the wake-up choice is on screen (tests press its buttons).
+func wake_choice() -> Control:
+	return _ui.get_node_or_null(^"WakeChoice") as Control
+
+
+func _sleep(wake_hour := HomeBase.WAKE_HOUR) -> void:
 	var home := _home()
 	_busy = true
 	var tween := create_tween()
 	tween.tween_property(_fade, "color:a", 1.0, 1.2)
-	tween.tween_callback(home.sleep)
+	tween.tween_callback(home.sleep.bind(wake_hour))
 	tween.tween_interval(1.6)
 	tween.tween_property(_fade, "color:a", 0.0, 1.6)
 	tween.tween_callback(func() -> void: _busy = false)

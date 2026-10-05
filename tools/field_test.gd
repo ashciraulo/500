@@ -352,6 +352,7 @@ func _process(_delta: float) -> bool:
 				_shot("10_tackle")
 				_field.tackle_screen.close()
 				_check(not paused, "closing the tackle counter unpauses")
+				_check_walk_in(shop, _field.tackle_screen._last_result)
 				# The crab net went on the journal directly back at the jetty.
 				_check(_car.field_gear.has("esky") and _car.field_gear.has("fishing_rod"), "the rod and esky ride in the car")
 				_fj.gear_changed.emit()
@@ -640,6 +641,35 @@ func _shot(name: String) -> void:
 	if _shots == "" or DisplayServer.get_name() == "headless":
 		return
 	root.get_texture().get_image().save_png(_shots.path_join(name + ".png"))
+
+
+## The shop is a room you can walk into: clear of the map's buildings, a
+## floor to stand on, the counter reachable on foot, the weigh-in on the scale
+## and your catches on the brag board.
+func _check_walk_in(shop: Node3D, result: Dictionary) -> void:
+	var room: Node3D = shop.get_node_or_null("Shopfront")
+	_check(room != null, "the tackle shop has its room")
+	if room == null:
+		return
+	var space := _car.get_world_3d().direct_space_state
+	var door := room.to_global(Vector3(-0.5, 1.2, 0.6))
+	var q := PhysicsRayQueryParameters3D.create(door, room.to_global(Vector3(-0.5, 1.2, -6.6)), 2)
+	var wall := space.intersect_ray(q)
+	_check(wall.is_empty(), "no map building inside the shop (%s)" % wall.get("collider"))
+	q = PhysicsRayQueryParameters3D.create(room.to_global(Vector3(-1.0, 1.0, -2.0)), room.to_global(Vector3(-1.0, -1.0, -2.0)), 1)
+	var floor_hit := space.intersect_ray(q)
+	_check(not floor_hit.is_empty() and absf(floor_hit.position.y - room.global_position.y) < 0.3, "a floor to stand on inside the shop")
+	var counter: Node3D = room.find_child("Counter", true, false)
+	_check(shop.at_counter(room.to_global(room.to_local(counter.global_position) + Vector3(-0.9, 0.1, 0.6))), "on foot at the counter is in reach")
+	_check(not shop.at_counter(shop.global_position), "the bay isn't the counter on foot")
+	var heaviest := 0.0
+	for f: Dictionary in result.fish:
+		heaviest = maxf(heaviest, float(f.kg))
+	var on_scale: Node3D = shop.on_scale()
+	_check(on_scale != null and on_scale.scale.x > 0.05, "the weigh-in's best fish lies on the scale (%.2f kg)" % heaviest)
+	var best: Array = shop.brag_list()
+	var cards: Node = room.find_child("Cards", true, false)
+	_check(not best.is_empty() and cards != null and cards.get_child_count() == best.size(), "your biggest catches are on the brag board (%d)" % best.size())
 
 
 func _finish() -> bool:

@@ -1,0 +1,8 @@
+{
+	"_comment": "Rare plants to take a cutting of and grow at home (scripts/world/home_life.gd, scripts/world/cutting_spot.gd). `near` and `offset` work like data/world/found_parts.json: a job site (site:<id>) or photo spot (photo:<id>), then metres east, up and south. Walk up to the plant and press F to take a cutting. `rumour` shows in the phone's Leads tab until you have it.",
+	"cuttings": [
+		{"id": "kangaroo_paw", "name": "Kangaroo paw", "near": "photo:kings_park_fraser", "offset": [6.0, 0.0, 5.0], "rumour": "A clump of red-and-green kangaroo paw grows by the path off Fraser Avenue in Kings Park. Nobody would miss one cutting."},
+		{"id": "geraldton_wax", "name": "Geraldton wax", "near": "site:fremantle_markets", "offset": [-8.0, 0.0, 6.0], "rumour": "The little nursery by the Fremantle Markets lets you snip a bit of their Geraldton wax if you ask."},
+		{"id": "frangipani", "name": "Frangipani", "near": "photo:bulwer_street", "offset": [5.0, 0.0, -6.0], "rumour": "A frangipani has gone wild on a neglected verge along Bulwer Street. A stick of it would root in a pot."}
+	]
+}

@@ -119,9 +119,40 @@ Player choices from the pause menu, saved to `user://settings.cfg`:
 `automatic_gearbox`, `mouse_sensitivity`, `day_length_minutes`,
 `weather_choice` (-1 natural, else a `Weather.State`), `clock_frozen`,
 `lofi_enabled`, `lofi_target_height`, `dither_enabled`, `vertex_snap_scale`,
-`show_help`. Change values, then call `apply()`; `save_settings()` writes them.
+`show_help`, `cozy_mode` (no oddities at home). Change values, then call
+`apply()`; `save_settings()` writes them.
 The pause menu (`scripts/ui/pause_menu.gd`) pauses the tree, so anything that
 should keep running while paused needs `process_mode = PROCESS_MODE_ALWAYS`.
+
+## Title screen (`TitleScreen`, `scripts/ui/title_screen.gd`)
+
+`main.gd` adds it on a normal run: the camera drifts round the parked car,
+the HUD and car controls are off and `SaveGame.hold` stops autosaves until
+you pick Continue or New game (`started` fires). It is skipped under
+`--script` (the tests) and with `-- --no-title`. New game with a save on
+disk deletes it and restarts the game with `-- --fresh`, so every autoload
+starts from its defaults. `TitleScreen.is_showing(tree)` tells other menus to
+stand back. Settings opens the pause menu over it (Back instead of Resume).
+
+## Home life and home oddities
+
+On foot, anything in the group `interactables` with `interact_point()`,
+`interact_hint()` ("" = nothing to do) and `interact()` gets an F prompt
+when you're close and looking at it (`scripts/player/on_foot.gd`). The bed
+asks whether to wake in the morning or at dusk (`home.sleep(HomeBase.DUSK_HOUR)`).
+
+`HomeLife` (`scripts/world/home_life.gd`, saved as "home_life"): the cat
+(`feed_cat()`, `cat_place()` = "" / "bowl" / "courtyard" / "rug" / "bed",
+`pat_cat()`; discovery "home/cat") and the cuttings (`found_cuttings()`,
+`stage(id)` 1..3, `water()`, signal `watered(grown)`). Cuttings are found in
+the city at `CuttingSpot`s from `data/world/cuttings.json` (discovery
+"cutting/<id>").
+
+`HomeOddities` (`scripts/world/home_oddities.gd`) shows the house's
+`Oddity_*` props: one odd thing some days (`roll()`, `today`), the intercom
+after midnight, tapping on storm nights, headlights across the bedroom
+ceiling. Discoveries "oddity/home_<id>". All off in cozy mode, which also
+quiets the shed's knocking back and the upstairs toilet light's flicker.
 
 ## Parts and upgrades
 
@@ -433,8 +464,9 @@ after a map rebuild).
   (`FieldBirds`, group `field_bird_spawner`), `lab` (`BirdLab` on Lake
   Street, group `photo_labs`), `binoculars`, `journal`, `lab_screen`,
   `fishing` (`FieldFishing`, group `fishing`: `is_busy()`, signals
-  `landed(catch)`, `lost(why)`), `tackle` (`TackleShop` on Mends Street,
-  group `tackle_shops`), `tackle_screen`, `fishing_screen`.
+  `landed(catch)`, `lost(why)`), `tackle` (`TackleShop` on the Mends Street
+  jetty forecourt, group `tackle_shops`: a walk-in room, `is_inside(p)`,
+  `at_counter(p)`, `on_scale()`, `brag_list()`), `tackle_screen`, `fishing_screen`.
 - `FishModels.build(fish)` / `sized(fish, cm)` makes a fish, crab, squid or
   hubcap (node `Body`), facing -Z.
   Birds are in group `field_birds` with meta `species`.
@@ -484,8 +516,10 @@ after a map rebuild).
 - Music: `music/mus_field_journal` plays while the journal is open (only if
   no other music is), and `music/mus_field_new_species` on a new bird; both
   are skipped until the audio side ships them.
-- Models: the shops put `shop_photo_lab` / `shop_tackle` on the building
-  line beside their bays; the rod in first person is `fishing_rod.glb` (line
+- Models: the photo lab puts `shop_photo_lab` on the building line beside
+  its bay; `shop_tackle` stands on its own 9 m back from its bay on a slab
+  (`Slab`, `Slab_Col`) that takes up the slope, with the best weigh-in fish
+  on `Scale` and cards on `BragBoard`; the rod in first person is `fishing_rod.glb` (line
   from `Tip`), and `esky.glb` sits beside you while fishing (`Lid` opens as a
   fish goes in).
 - Car: binoculars use `CarController.is_parked_for_viewing()` and

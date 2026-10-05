@@ -13,6 +13,19 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_apply_render_settings)
 	_apply_render_settings()
 	Settings.apply()
+	if _wants_title():
+		var title := TitleScreen.new()
+		title.name = "TitleScreen"
+		add_child(title)
+
+
+## The title screen shows when the game is played, not under a test script
+## (`--script`) and not straight after New game restarted it (`-- --fresh`).
+func _wants_title() -> bool:
+	if OS.get_cmdline_user_args().has("--fresh") or OS.get_cmdline_user_args().has("--no-title"):
+		return false
+	var args := OS.get_cmdline_args()
+	return not (args.has("--script") or args.has("-s"))
 
 
 func _unhandled_input(event: InputEvent) -> void:

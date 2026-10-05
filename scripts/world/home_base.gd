@@ -10,6 +10,7 @@ extends Node3D
 ##   home.toggle_door(&"Door_Front")      # opens or closes; false if locked
 ##   home.spawn_transform(&"Spawn_Car")   # where the Pop is parked
 ##   home.sleep()                         # bed: skip to 7:00 the next day
+##   home.sleep(HomeBase.DUSK_HOUR)       # or sleep through to dusk
 ##   home.unlock_shed()                   # once the player has found the key
 
 signal door_toggled(door_name: StringName, open: bool)
@@ -26,6 +27,8 @@ const DOOR_OPEN_ANGLE := deg_to_rad(100.0)
 const OPEN_CLOCKWISE := [&"Door_French_R", &"Door_Balcony_R", &"Shed_Door"]
 const SLIDE_DISTANCE := 1.05
 const WAKE_HOUR := 7.0
+## Sleeping through the day: wake as the light goes (Perth dusk is about 7).
+const DUSK_HOUR := 18.5
 ## An invisible ramp over the stair nosings so walking up and down is smooth,
 ## in house coordinates (Blender: x across, y back from the street, z up).
 ## Keep in step with the stairs in build_shenton.py.
@@ -73,7 +76,8 @@ func _process(_delta: float) -> void:
 	for lamp in _lamps:
 		lamp.visible = on
 	if _flicker and on:
-		_flicker.light_energy = 0.15 if randf() < 0.04 else 1.0
+		var cozy: bool = Settings.cozy_mode if get_node_or_null(^"/root/Settings") else false
+		_flicker.light_energy = 0.15 if not cozy and randf() < 0.04 else 1.0
 
 
 func toggle_door(door_name: StringName) -> bool:
@@ -130,11 +134,12 @@ func has_marker(marker_name: StringName) -> bool:
 	return _markers.has(marker_name)
 
 
-## Go to bed: the clock jumps to WAKE_HOUR the next morning.
-func sleep() -> void:
+## Go to bed: the clock jumps to `wake_hour` (WAKE_HOUR, the next morning, or
+## DUSK_HOUR to sleep the day away), at least half an hour on.
+func sleep(wake_hour := WAKE_HOUR) -> void:
 	var clock := get_node_or_null(^"/root/GameClock")
 	if clock:
-		var hours := fposmod(WAKE_HOUR - clock.time_of_day, 24.0)
+		var hours := fposmod(wake_hour - clock.time_of_day, 24.0)
 		clock.advance(hours if hours > 0.5 else hours + 24.0)
 		slept.emit(clock.day)
 

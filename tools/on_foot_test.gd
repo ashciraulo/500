@@ -127,15 +127,85 @@ func _process(delta: float) -> bool:
 				_day = root.get_node("GameClock").day
 				root.get_node("GameClock").set_locked(false)
 				_player.interact()
+				var choice: Control = _player.wake_choice()
+				_check(choice != null and choice.get_child_count() == 3, "the bed asks when to wake")
+				if choice:
+					(choice.get_child(0) as Button).pressed.emit()  # till morning
 			if _t > 6.0:
 				var clock := root.get_node("GameClock")
 				_check(clock.day == _day + 1 and absf(clock.time_of_day - 7.0) < 0.5,
 					"sleeping ends the day (day %d, %.1f h)" % [clock.day, clock.time_of_day])
+				_check(_player.wake_choice() == null, "the choice goes away")
+				_next()
+		7:  # and again, waking at dusk this time
+			if _t > 0.3 and _t - delta <= 0.3:
+				_day = root.get_node("GameClock").day
+				_player.interact()
+				var choice: Control = _player.wake_choice()
+				if choice:
+					(choice.get_child(1) as Button).pressed.emit()  # till dusk
+			if _t > 6.0:
+				var clock := root.get_node("GameClock")
+				_check(clock.day == _day and absf(clock.time_of_day - 18.5) < 0.5,
+					"you can sleep through to dusk (day %d, %.1f h)" % [clock.day, clock.time_of_day])
 				clock.set_time(17.5)
 				clock.set_locked(true)
+				_put(Vector3(2.35, 7.75, FZ0), Vector3(2.35, 8.35, FZ0 + 0.1))
+				_next()
+		8:  # the cat
+			if _t > 0.5 and _t - delta <= 0.5:
+				var life := _main.find_child("HomeLife", true, false)
+				_check(life != null, "home life is running")
+				var target: Array = _player._target()
+				_check(target[0] == "thing" and _player._hint().contains("food"), "the cat bowl is in reach (%s)" % _player._hint())
+				_player.interact()
+				_check(life.bowl_full(), "putting food out fills the bowl")
+				root.get_node("GameClock").advance(0.5)
+			if _t > 1.8 and _t - delta <= 1.8:
+				var life := _main.find_child("HomeLife", true, false)
+				var cat := _home.find_child("HomeLife_Cat", false, false) as Node3D
+				_check(life.cat_place() == "bowl" and cat != null and cat.visible, "a cat turns up to eat (%s)" % life.cat_place())
+				_shot("10_cat")
+				_check(_player._hint() == "F  Pat the cat", "you can pat it (%s)" % _player._hint())
+				_player.interact()
+				_check(root.get_node("Discoveries").has("home/cat"), "patting the cat counts as a find")
+				root.get_node("GameClock").set_time(23.0)
+				life.refresh()
+				_check(life.cat_place() == "bed" and cat.visible, "at night it sleeps on the bed")
+				root.get_node("GameClock").set_time(17.5)
+				_put(Vector3(2.05, 10.6, FZ0), Vector3(1.2, 10.6, FZ0 + 0.7))
+				_next()
+		9:  # the cuttings and the odd things
+			if _t > 0.5 and _t - delta <= 0.5:
+				var life := _main.find_child("HomeLife", true, false)
+				_check(_main.get_tree().get_nodes_in_group(&"interactables").filter(
+					func(n: Node) -> bool: return n.has_method("taken")).size() == 3, "three cuttings to find in the city")
+				_check(_player._hint() == "", "nothing to water before you've a cutting")
+				root.get_node("Discoveries").discover("cutting/kangaroo_paw")
+				life.refresh()
+				_check(_player._hint() == "F  Water the cuttings", "a cutting on the table wants water (%s)" % _player._hint())
+				_player.interact()
+				_check(life.needs_water().is_empty() and life.stage("kangaroo_paw") == 1, "watered once a day")
+				life.cuttings["kangaroo_paw"] = {"days": 7, "last": -1}
+				life.water()
+				_check(life.stage("kangaroo_paw") == 3, "watered for days, it flowers")
+				_shot("11_cutting")
+				var odd := _main.find_child("HomeOddities", true, false)
+				var plant := _home.find_child("Oddity_Plant", true, false) as Node3D
+				var rest := plant.rotation.y
+				odd.roll("plant")
+				_check(absf(absf(plant.rotation.y - rest) - PI) < 0.01, "an odd day: the plant turns to the door")
+				root.get_node("Settings").cozy_mode = true
+				odd._process(2.0)
+				_check(odd.today == "" and is_equal_approx(plant.rotation.y, rest), "cozy mode puts it back")
+				odd.buzz_intercom()
+				_check(odd._answer != null, "the intercom buzzes (outside cozy mode, after midnight)")
+				odd.answer_intercom()
+				_check(root.get_node("Discoveries").has("oddity/home_intercom"), "answering it is an oddity found")
+				root.get_node("Settings").cozy_mode = false
 				_put_at_shed()
 				_next()
-		7:  # the shed is locked
+		10:  # the shed is locked
 			if _t > 0.6 and _t - delta <= 0.6:
 				_check(_player._target() == ["door", &"Shed_Door"], "looking at the shed door (%s)" % [_player._target()])
 				_player.interact()
@@ -146,7 +216,7 @@ func _process(delta: float) -> bool:
 				var side := _car.global_basis * Vector3(1.4, 0, 0.1)
 				_player.teleport(_ground(_car.global_position + side), _car.global_position + Vector3.UP * 0.8)
 				_next()
-		8:  # back in the car
+		11:  # back in the car
 			if _t > 0.6 and _t - delta <= 0.6:
 				_check(_player._target() == ["car", null], "the car is in reach")
 				_shot("09_back_to_car")

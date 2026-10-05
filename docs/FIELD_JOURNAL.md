@@ -118,9 +118,12 @@ Undersized fish and blowies can't be kept; the hubcap goes home for the shed
 wall.
 
 **The esky and the tackle shop.** Kept fish go in the esky (4, 8 or 14). The
-bait and tackle shop on Mends Street, South Perth (pull into its bay, or walk
-up to the board) weighs them in for the anglers' club's prize money: kilos x
-the species' rate, with a bonus the first time a species goes on the board.
+bait and tackle shop at the end of Mends Street, South Perth, on the jetty
+forecourt (pull into its bay, or walk in to the counter) weighs them in for
+the anglers' club's prize money: kilos x the species' rate, with a bonus the
+first time a species goes on the board. The best fish of the weigh-in stays on
+the scale's tray, and your biggest of each species is pinned to the brag
+board behind the counter (your photo if you took one).
 Fish go soft out of the ice: a bag ($5) keeps the esky cold for 8 game hours;
 after that a fish loses value over 4 hours, down to 40%. The shop sells the
 graphite rod ($380), the surf rod and Alvey reel ($1100), the family and chest

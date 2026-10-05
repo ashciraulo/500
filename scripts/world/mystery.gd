@@ -350,8 +350,8 @@ func _on_shed_tried() -> void:
 		_home.unlock_shed()
 		Activities.say("The key turns, stiff, then all at once.")
 		return
-	# Nobody's there. Something knocks back anyway.
-	if is_night():
+	# Nobody's there. Something knocks back anyway (not in cozy mode).
+	if is_night() and not Settings.cozy_mode:
 		knocks += 1
 		var audio := _audio()
 		var knock := "oddity/odd_shed_knock" if audio and audio.has("oddity/odd_shed_knock") else "home/home_odd_wall_tapping"
@@ -389,12 +389,14 @@ func _reveal(story: bool) -> void:
 	var sheet := _home.find_child("Shed_Sheeted", true, false) as MeshInstance3D
 	if sheet == null:
 		return
-	var box := sheet.global_transform * sheet.get_aabb()
+	# The sheet's own frame: x along the table, +Z toward the back wall.
+	var box := sheet.get_aabb()
+	var base := Vector3(box.get_center().x, box.position.y, box.get_center().z)
 	sheet.visible = false
-	_shed_props = MysteryProps.build_shed(box.size)
+	_shed_props = MysteryProps.build_shed(box.size * sheet.global_basis.get_scale())
 	_shed_props.name = "ShedReveal"
 	add_child(_shed_props)
-	_shed_props.global_position = Vector3(box.get_center().x, box.position.y, box.get_center().z)
+	_shed_props.global_transform = Transform3D(sheet.global_basis.orthonormalized(), sheet.global_transform * base)
 	_shed_props.add_child(_loop_player("oddity/odd_shed_interior_loop", 4.0, -6.0, &"Ambience"))
 	if not story:
 		return

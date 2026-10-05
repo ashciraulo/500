@@ -29,6 +29,10 @@ var dither_strength := 0.35
 var affine_strength := 0.25
 var softness := 0.5
 var show_help := true
+## Cozy mode: nothing odd happens at home (no intercom after midnight, no
+## knocking back from the shed, no plant turned round). The main mystery
+## still runs; its things still turn up in the cupboard.
+var cozy_mode := false
 ## Volume sliders, 0..1 (1 = as mixed). The Audio autoload applies them.
 var volume_master := 1.0
 var volume_music := 1.0
@@ -112,6 +116,6 @@ func _keys() -> PackedStringArray:
 		"automatic_gearbox", "mouse_sensitivity", "day_length_minutes", "weather_choice",
 		"clock_frozen", "lofi_enabled", "lofi_target_height", "dither_enabled",
 		"vertex_snap_scale", "lofi_preset", "color_levels", "dither_strength", "affine_strength",
-		"softness", "show_help",
+		"softness", "show_help", "cozy_mode",
 		"volume_master", "volume_music", "volume_radio", "volume_effects",
 	])
