@@ -22,6 +22,8 @@ var _strength: OptionButton
 var _softness: HSlider
 var _pixels: HSlider
 var _dither: CheckBox
+var _fullscreen: CheckBox
+var _ui_size: OptionButton
 var _wobble: HSlider
 var _mouse: HSlider
 var _volumes := {}
@@ -33,6 +35,8 @@ var _heading: Label
 var _was_paused := false
 var _game_only: Array[Button] = []  # hidden when opened from the title screen
 var _save_button: Button
+var _actions: HBoxContainer  # save, unstick and quit: hidden from the title screen
+var _subtitle: Label
 var _syncing := false
 
 
@@ -68,7 +72,9 @@ func open() -> void:
 	_save_button.text = "Save game"
 	for button in _game_only:
 		button.visible = not _from_title
-	_resume.text = "Back" if _from_title else "Resume"
+	_actions.visible = not _from_title
+	_subtitle.visible = not _from_title
+	_resume.text = "Back" if _from_title else "Back to the road"
 	_heading.text = "Settings" if _from_title else "Paused"
 	_resume.grab_focus()
 
@@ -87,7 +93,9 @@ func is_open() -> bool:
 
 func _process(_delta: float) -> void:
 	if _panel.visible:
-		_time_label.text = "Time  %s" % GameClock.time_string()
+		_time_label.text = "Time of day: %s" % GameClock.time_string()
+		_subtitle.text = "Day %d, %s  ·  %s  ·  %s  ·  $%s" % [GameClock.day, Garage.weekday(), GameClock.time_string(),
+			Weather.state_name(), UiStyle.number(Wallet.balance)]
 
 
 func _build() -> void:
@@ -96,40 +104,26 @@ func _build() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	_dim = ColorRect.new()
-	_dim.color = Color(0, 0, 0, 0.5)
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim = UiStyle.backdrop()
 	_dim.visible = false
 	root.add_child(_dim)
 
-	_panel = PanelContainer.new()
-	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.07, 0.09, 0.92)
-	style.border_color = Color(0.95, 0.85, 0.5)
-	style.set_border_width_all(2)
-	style.set_content_margin_all(18)
-	_panel.add_theme_stylebox_override("panel", style)
-	root.add_child(_panel)
+	var card := UiStyle.centred_card(root, Vector2(820, 0))
+	_panel = card[0]
+	var box: VBoxContainer = card[1]
 
-	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(760, 0)
-	box.add_theme_constant_override("separation", 8)
-	_panel.add_child(box)
-
-	var title := Label.new()
-	_heading = title
-	title.text = "Paused"
-	title.add_theme_font_size_override("font_size", 26)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
-
-	_resume = _button(box, "Resume", close)
+	var head: Array = UiStyle.header(box, "Paused", "car", " ", "")
+	_heading = head[0]
+	_subtitle = head[1]
+	_resume = Button.new()
+	_resume.text = "Back to the road"
+	_resume.theme_type_variation = &"PrimaryButton"
+	_resume.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_resume.pressed.connect(close)
+	(head[3] as HBoxContainer).add_child(_resume)
 
 	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 24)
+	columns.add_theme_constant_override("separation", 36)
 	box.add_child(columns)
 	var left := VBoxContainer.new()
 	var right := VBoxContainer.new()
@@ -142,24 +136,26 @@ func _build() -> void:
 	_weather = _option(left, "Weather", ["Natural", "Clear", "Light rain", "Storm"], func(i: int) -> void:
 		Settings.weather_choice = i - 1
 		Settings.apply())
-	_time_label = Label.new()
-	left.add_child(_time_label)
+	_time_label = UiStyle.label(left, "", "NoteLabel")
 	var presets := HFlowContainer.new()
+	presets.add_theme_constant_override("h_separation", 5)
+	presets.add_theme_constant_override("v_separation", 5)
 	left.add_child(presets)
 	for preset in TIME_PRESETS:
 		var hours: float = preset[1]
-		_button(presets, preset[0], func() -> void: GameClock.set_time(hours))
-	_freeze = _check(left, "Freeze the clock", func(on: bool) -> void:
+		var chip := _button(presets, preset[0], func() -> void: GameClock.set_time(hours))
+		chip.add_theme_font_size_override("font_size", 13)
+	_freeze = _check(left, "Stop the clock", func(on: bool) -> void:
 		Settings.clock_frozen = on
 		Settings.apply())
 	var lengths: Array[String] = []
 	for minutes in Settings.DAY_LENGTHS:
 		lengths.append("%d min" % minutes)
-	_day_length = _option(left, "Day length (real time)", lengths, func(i: int) -> void:
+	_day_length = _option(left, "A day lasts", lengths, func(i: int) -> void:
 		Settings.day_length_minutes = Settings.DAY_LENGTHS[i]
 		Settings.apply())
 
-	_cozy = _check(left, "Cozy mode (nothing odd at home)", func(on: bool) -> void:
+	_cozy = _check(left, "Cozy mode: nothing odd at home", func(on: bool) -> void:
 		Settings.cozy_mode = on
 		Settings.apply())
 
@@ -167,10 +163,19 @@ func _build() -> void:
 	_gearbox = _option(left, "Gearbox", ["Manual", "Automatic"], func(i: int) -> void:
 		Settings.automatic_gearbox = i == 1
 		Settings.apply())
-	_mouse = _slider(left, "Mouse look speed", 0.0005, 0.006, 0.0005, func(v: float) -> void:
+	_mouse = _slider(left, "Mouse look", 0.0005, 0.006, 0.0005, func(v: float) -> void:
 		Settings.mouse_sensitivity = v)
 
 	_section(right, "Look")
+	_fullscreen = _check(right, "Full screen (F11)", func(on: bool) -> void:
+		Settings.fullscreen = on
+		Settings.apply())
+	var sizes: Array[String] = []
+	for size in Settings.UI_SIZES:
+		sizes.append(size[0])
+	_ui_size = _option(right, "Menu and HUD size", sizes, func(i: int) -> void:
+		Settings.ui_size = i
+		Settings.apply())
 	_lofi = _check(right, "Lo-fi filter", func(on: bool) -> void:
 		Settings.lofi_enabled = on
 		Settings.apply())
@@ -181,22 +186,22 @@ func _build() -> void:
 		Settings.use_lofi_preset(i)
 		Settings.apply()
 		_sync_from_settings())
-	_softness = _slider(right, "Pixel edges (soft to sharp)", 0.0, 1.0, 0.05, func(v: float) -> void:
+	_softness = _slider(right, "Pixel edges (soft to crisp)", 0.0, 1.0, 0.05, func(v: float) -> void:
 		Settings.softness = 1.0 - v
 		Settings.apply())
-	_pixels = _slider(right, "Chunkiness (lower = chunkier)", 160, 480, 20, func(v: float) -> void:
+	_pixels = _slider(right, "Detail (chunky to fine)", 160, 480, 20, func(v: float) -> void:
 		Settings.lofi_target_height = int(v)
 		Settings.apply())
 	_dither = _check(right, "Dithering", func(on: bool) -> void:
 		Settings.dither_enabled = on
 		Settings.apply())
-	_wobble = _slider(right, "Vertex wobble", 0.1, 1.0, 0.05, func(v: float) -> void:
+	_wobble = _slider(right, "Wobble", 0.1, 1.0, 0.05, func(v: float) -> void:
 		# Lower snap scale = coarser grid = more wobble, so invert the slider.
 		Settings.vertex_snap_scale = 1.1 - v
 		Settings.apply())
 
 	_section(right, "Sound")
-	for pair in [["volume_master", "Volume"], ["volume_effects", "Car and world"],
+	for pair in [["volume_master", "Everything"], ["volume_effects", "Effects"],
 			["volume_music", "Music"], ["volume_radio", "Radio"]]:
 		var key: String = pair[0]
 		_volumes[key] = _slider(right, pair[1], 0.0, 1.0, 0.05, func(v: float) -> void:
@@ -207,19 +212,28 @@ func _build() -> void:
 		if audio:
 			audio.radio.open_music_folder())
 
-	_section(right, "")
 	var car_reset := func() -> void:
 		var car := get_tree().get_first_node_in_group(&"player_car") as CarController
 		if car:
 			car.reset_upright()
 		close()
-	var save_button := _button(right, "Save game", func() -> void: pass)
+	var rule := HSeparator.new()
+	box.add_child(rule)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
+	box.add_child(actions)
+	var save_button := _button(actions, "Save game", func() -> void: pass)
 	save_button.pressed.connect(func() -> void:
 		save_button.text = "Saved" if SaveGame.save_game() else "Saving is off (--no-save)")
 	_save_button = save_button
 	_game_only.append(save_button)
-	_game_only.append(_button(right, "Put the car back on its wheels", car_reset))
-	_game_only.append(_button(right, "Save and quit to desktop", func() -> void:
+	_actions = actions
+	actions.visibility_changed.connect(func() -> void: rule.visible = actions.visible)
+	_game_only.append(_button(actions, "Unstick the car", car_reset))
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_child(spacer)
+	_game_only.append(_button(actions, "Save and quit to desktop", func() -> void:
 		Settings.save_settings()
 		SaveGame.quit_cleanly()))
 
@@ -233,6 +247,8 @@ func _sync_from_settings() -> void:
 	_gearbox.select(1 if Settings.automatic_gearbox else 0)
 	_mouse.value = Settings.mouse_sensitivity
 	_lofi.button_pressed = Settings.lofi_enabled
+	_fullscreen.button_pressed = Settings.fullscreen
+	_ui_size.select(clampi(Settings.ui_size, 0, Settings.UI_SIZES.size() - 1))
 	_strength.select(Settings.lofi_preset)
 	_softness.value = 1.0 - Settings.softness
 	_pixels.value = Settings.lofi_target_height
@@ -244,12 +260,11 @@ func _sync_from_settings() -> void:
 
 
 func _section(parent: Control, text: String) -> void:
-	parent.add_child(HSeparator.new())
-	if text != "":
-		var label := Label.new()
-		label.text = text
-		label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5))
-		parent.add_child(label)
+	if parent.get_child_count() > 0:
+		var gap := Control.new()
+		gap.custom_minimum_size.y = 6
+		parent.add_child(gap)
+	UiStyle.section(parent, text)
 
 
 func _button(parent: Control, text: String, action: Callable) -> Button:
@@ -262,10 +277,9 @@ func _button(parent: Control, text: String, action: Callable) -> Button:
 
 func _row(parent: Control, text: String) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	var label := Label.new()
-	label.text = text
+	var label := UiStyle.label(row, text)
+	label.add_theme_color_override("font_color", UiStyle.INK_2)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(label)
 	parent.add_child(row)
 	return row
 
@@ -274,7 +288,7 @@ func _option(parent: Control, text: String, items: Array, action: Callable) -> O
 	var option := OptionButton.new()
 	for item in items:
 		option.add_item(item)
-	option.custom_minimum_size.x = 160
+	option.custom_minimum_size.x = 170
 	option.item_selected.connect(func(i: int) -> void:
 		if not _syncing:
 			action.call(i))
@@ -297,7 +311,8 @@ func _slider(parent: Control, text: String, min_value: float, max_value: float, 
 	slider.min_value = min_value
 	slider.max_value = max_value
 	slider.step = step
-	slider.custom_minimum_size.x = 160
+	slider.custom_minimum_size.x = 170
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	slider.value_changed.connect(func(v: float) -> void:
 		if not _syncing:
 			action.call(v))

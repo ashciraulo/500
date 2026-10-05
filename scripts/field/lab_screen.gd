@@ -3,7 +3,7 @@ extends CanvasLayer
 ## The counter at the Lake Street photo lab: develop the roll and sell the
 ## prints, and buy better binoculars and cameras. The game pauses while it's open.
 
-const ACCENT := Color(0.95, 0.6, 0.78)
+const ACCENT := Color("a8456d")
 
 var _panel: PanelContainer
 var _dim: ColorRect
@@ -19,22 +19,17 @@ func _ready() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
-	_dim = ColorRect.new()
-	_dim.color = Color(0, 0, 0, 0.5)
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim = UiStyle.backdrop()
 	root.add_child(_dim)
 	_panel = FieldUI.panel(ACCENT)
 	root.add_child(_panel)
 	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(620, 500)
+	box.custom_minimum_size = Vector2(600, 480)
 	_panel.add_child(box)
-	var header := HBoxContainer.new()
-	box.add_child(header)
-	FieldUI.label(header, "Lake Street Photo Lab", 22, ACCENT).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_close = Button.new()
-	_close.text = "Close"
+	var head: Array = UiStyle.header(box, "Lake Street Photo Lab", "camera", "Film, prints and binoculars")
+	(head[0] as Label).add_theme_color_override("font_color", ACCENT)
+	_close = head[2]
 	_close.pressed.connect(close)
-	header.add_child(_close)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -76,55 +71,47 @@ func refresh() -> void:
 	FieldUI.clear(_list)
 	var roll := FieldJournal.roll
 	if not _last_result.is_empty():
-		FieldUI.label(_list, "Your prints", 18, ACCENT)
+		UiStyle.section(_list, "Your prints", ACCENT)
 		for p: Dictionary in _last_result.prints:
-			var stars := "*".repeat(int(p.stars))
+			var stars := UiStyle.stars(int(p.stars))
 			if p.wrong:
-				FieldUI.label(_list, "  %s  %s: came out blank. \"Odd, that. The rest of the roll's fine.\"" % [p.name, stars], 14, Color(0.75, 0.7, 0.8))
+				FieldUI.shop_row(_list, "%s  ·  %s" % [p.name, stars], "Came out blank. \"Odd, that. The rest of the roll's fine.\"")
 			else:
-				FieldUI.label(_list, "  %s  %s   $%d%s" % [p.name, stars, p.pay, "   (first print of one: the magazine pays extra)" if p.first else ""], 14)
-		FieldUI.label(_list, "Developing $%d. You take home $%d." % [_last_result.fee, _last_result.pay], 16, Color(1, 0.9, 0.6))
-		_list.add_child(HSeparator.new())
-	FieldUI.label(_list, "The roll in your camera", 18, ACCENT)
+				FieldUI.shop_row(_list, "%s  ·  %s  ·  $%d" % [p.name, stars, p.pay], "First print: the magazine pays extra" if p.first else "")
+		var paid := UiStyle.label(_list, "Paid $%d, after $%d developing" % [_last_result.pay, _last_result.fee], "", 18)
+		paid.add_theme_font_override("font", UiStyle.BOLD_FONT)
+		paid.add_theme_color_override("font_color", UiStyle.GOOD)
+
+	UiStyle.section(_list, "Your film", ACCENT)
 	if roll.is_empty():
-		FieldUI.label(_list, "Nothing on it yet. %d frames to fill: find birds, raise the binoculars (B) and take your time." % FieldJournal.roll_size())
+		FieldUI.shop_row(_list, "Nothing on it yet", "%d frames. Raise the binoculars (B) at a bird" % FieldJournal.roll_size())
 	else:
 		var value := 0
 		for frame: Dictionary in roll:
 			value += FieldJournal.print_value(frame)
-		FieldUI.label(_list, "%d of %d frames used. Roughly $%d in prints, before the first-print bonuses." % [roll.size(), FieldJournal.roll_size(), value])
-		var develop := Button.new()
-		develop.text = "Develop and sell the prints ($%d to develop)" % FieldJournal.DEVELOP_PRICE
+		var develop := FieldUI.shop_row(_list, "%d of %d frames" % [roll.size(), FieldJournal.roll_size()],
+			"About $%d in prints" % value, "Develop  $%d" % FieldJournal.DEVELOP_PRICE)
+		develop.theme_type_variation = &"PrimaryButton"
 		develop.pressed.connect(func() -> void:
 			_last_result = FieldJournal.develop()
 			Activities.say("Prints sold: $%d." % _last_result.pay)
 			refresh())
-		_list.add_child(develop)
-	_list.add_child(HSeparator.new())
-	FieldUI.label(_list, "Gear", 18, ACCENT)
+
+	UiStyle.section(_list, "Behind the counter", ACCENT)
 	_gear_row("binoculars", FieldJournal.BINOCULARS, FieldJournal.binoculars,
-		func(g: Dictionary) -> String: return "sees birds to %d m, zooms to %.0fx" % [int(g.range), 72.0 / float(g.fov)])
+		func(g: Dictionary) -> String: return "See birds to %d m, %.0fx zoom" % [int(g.range), 72.0 / float(g.fov)])
 	_gear_row("camera", FieldJournal.CAMERAS, FieldJournal.camera,
-		func(g: Dictionary) -> String: return "%d frames a roll, an easier focus dial" % int(g.frames))
-	_list.add_child(HSeparator.new())
-	FieldUI.label(_list, "Journal: %d of %d species seen, %d photographed. $%d from prints so far." % [
-		FieldJournal.seen_count(), FieldJournal.species_total(), FieldJournal.photographed_count(), FieldJournal.money_from_prints], 14, Color(0.8, 0.8, 0.78))
+		func(g: Dictionary) -> String: return "%d frames a roll, easier to focus" % int(g.frames))
 
 
 func _gear_row(kind: String, list: Array, level: int, describe: Callable) -> void:
-	FieldUI.label(_list, "%s: %s" % [kind.capitalize(), list[level].name], 15)
 	if level + 1 >= list.size():
-		FieldUI.label(_list, "  The best they've got.", 13, Color(0.7, 0.7, 0.68))
+		FieldUI.shop_row(_list, list[level].name, "%s: the best they've got" % kind.capitalize())
 		return
 	var next: Dictionary = list[level + 1]
-	var row := HBoxContainer.new()
-	FieldUI.label(row, "  Next: %s, %s." % [next.name, describe.call(next)], 13, Color(0.8, 0.8, 0.78)).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var buy := Button.new()
-	buy.text = "Buy $%d" % int(next.price)
-	buy.disabled = not Wallet.can_afford(int(next.price))
+	var buy := FieldUI.shop_row(_list, next.name, "%s: %s" % [kind.capitalize(), describe.call(next).to_lower()],
+		"$%d" % int(next.price), Wallet.can_afford(int(next.price)))
 	buy.pressed.connect(func() -> void:
 		if FieldJournal.upgrade(kind):
 			Activities.say("New %s: %s." % [kind, next.name])
 		refresh())
-	row.add_child(buy)
-	_list.add_child(row)

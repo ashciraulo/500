@@ -8,9 +8,10 @@ var _tabs: TabContainer
 var _jobs_list: VBoxContainer
 var _progress_list: VBoxContainer
 var _leads_list: VBoxContainer
-var _stats_label: Label
+var _stats_box: VBoxContainer
 var _close: Button
 var _roadside: Button
+var _clock: Label
 
 
 func _ready() -> void:
@@ -58,38 +59,44 @@ func _build() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
-	_dim = ColorRect.new()
-	_dim.color = Color(0, 0, 0, 0.45)
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim = UiStyle.backdrop()
 	root.add_child(_dim)
 
+	# The handset: a dark bezel round a cream screen.
 	_panel = PanelContainer.new()
 	_panel.set_anchors_preset(Control.PRESET_CENTER)
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.09, 0.1, 0.96)
-	style.border_color = Color(0.6, 0.85, 0.8)
-	style.set_border_width_all(3)
-	style.set_corner_radius_all(14)
-	style.set_content_margin_all(16)
-	_panel.add_theme_stylebox_override("panel", style)
+	var bezel := UiStyle.box(UiStyle.NIGHT, UiStyle.INK, 3, 34, 12)
+	bezel.content_margin_top = 14
+	bezel.content_margin_bottom = 22
+	bezel.shadow_color = UiStyle.SHADOW
+	bezel.shadow_offset = Vector2(6, 8)
+	bezel.shadow_size = 1
+	_panel.add_theme_stylebox_override("panel", bezel)
 	root.add_child(_panel)
+	var screen := PanelContainer.new()
+	screen.add_theme_stylebox_override("panel", UiStyle.box(UiStyle.PAPER, Color.TRANSPARENT, 0, 22, 14))
+	_panel.add_child(screen)
 
 	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(640, 520)
-	_panel.add_child(box)
-	var header := HBoxContainer.new()
-	box.add_child(header)
-	var title := Label.new()
-	title.text = "Phone"
-	title.add_theme_font_size_override("font_size", 22)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-	_close = Button.new()
-	_close.text = "Close"
+	box.custom_minimum_size = Vector2(520, 600)
+	box.add_theme_constant_override("separation", 8)
+	screen.add_child(box)
+	# Status bar: the time, then signal and battery.
+	var bar := HBoxContainer.new()
+	box.add_child(bar)
+	_clock = UiStyle.label(bar, "", "", 13)
+	_clock.add_theme_font_override("font", UiStyle.BOLD_FONT)
+	_clock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var network := UiStyle.label(bar, "4G", "", 12)
+	network.add_theme_font_override("font", UiStyle.BOLD_FONT)
+	network.autowrap_mode = TextServer.AUTOWRAP_OFF
+	bar.add_child(UiStyle.icon_rect("signal", 16))
+	bar.add_child(UiStyle.icon_rect("battery", 16, UiStyle.INK, UiStyle.GOOD))
+	var head: Array = UiStyle.header(box, "Phone", "phone", "Jobs, leads and how you're going", "Close")
+	_close = head[2]
 	_close.pressed.connect(toggle)
-	header.add_child(_close)
 
 	_tabs = TabContainer.new()
 	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -98,11 +105,12 @@ func _build() -> void:
 	_progress_list = _scroll_tab("Progress")
 	_leads_list = _scroll_tab("Leads & fun")
 	var stats_tab := _scroll_tab("Car & stats")
-	_stats_label = Label.new()
-	_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stats_tab.add_child(_stats_label)
+	_stats_box = VBoxContainer.new()
+	_stats_box.add_theme_constant_override("separation", 4)
+	stats_tab.add_child(_stats_box)
 	_roadside = Button.new()
 	_roadside.text = "Call roadside assist ($%d, brings %d L)" % [Garage.ROADSIDE_PRICE, Garage.ROADSIDE_LITRES]
+	_roadside.theme_type_variation = &"PrimaryButton"
 	_roadside.visible = false
 	_roadside.pressed.connect(func() -> void:
 		var car := get_tree().get_first_node_in_group(&"player_car") as CarController
@@ -127,6 +135,7 @@ func _scroll_tab(title: String) -> VBoxContainer:
 func _refresh() -> void:
 	if not _panel.visible:
 		return
+	_clock.text = GameClock.time_string()
 	_refresh_jobs()
 	_refresh_progress()
 	_refresh_leads()
@@ -136,20 +145,26 @@ func _refresh() -> void:
 func _refresh_jobs() -> void:
 	_clear(_jobs_list)
 	if not Jobs.active.is_empty():
-		_text(_jobs_list, "Current job", 18, Color(0.6, 0.85, 0.8))
+		_text(_jobs_list, "Current job", 18, UiStyle.TEAL)
 		_text(_jobs_list, Jobs.objective_text())
 		var abandon := Button.new()
-		abandon.text = "Give up this job"
+		abandon.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		abandon.text = "Drop this job"
 		abandon.pressed.connect(func() -> void:
 			Jobs.abandon()
 			_refresh())
 		_jobs_list.add_child(abandon)
 		_jobs_list.add_child(HSeparator.new())
-	_text(_jobs_list, "On offer", 18, Color(0.6, 0.85, 0.8))
+	_text(_jobs_list, "On offer", 18, UiStyle.TEAL)
 	if Jobs.offers.is_empty():
-		_text(_jobs_list, "Nothing right now. Check back in a few hours.")
+		_text(_jobs_list, "Nothing going right now. Check back later.", 15, UiStyle.INK_2)
 	for job in Jobs.offers:
+		var well := PanelContainer.new()
+		well.theme_type_variation = &"WellPanel"
+		_jobs_list.add_child(well)
 		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		well.add_child(row)
 		var label := Label.new()
 		label.text = Jobs.describe(job)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -160,8 +175,8 @@ func _refresh_jobs() -> void:
 		take.pressed.connect(func() -> void:
 			Jobs.accept(job)
 			toggle())
+		take.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(take)
-		_jobs_list.add_child(row)
 
 
 func _refresh_progress() -> void:
@@ -170,84 +185,102 @@ func _refresh_progress() -> void:
 	if tier.is_empty():
 		_text(_progress_list, "Every tier done. Perth is yours; just drive.")
 		return
-	_text(_progress_list, "Tier %d: %s" % [Progression.tier_index + 1, tier.title], 18, Color(0.6, 0.85, 0.8))
+	_text(_progress_list, "Tier %d: %s" % [Progression.tier_index + 1, tier.title], 18, UiStyle.TEAL)
 	_text(_progress_list, tier.blurb)
 	var next_cars := Progression.cars_unlocked_at(Progression.tier_index + 1)
 	if not next_cars.is_empty():
 		var names := PackedStringArray()
 		for car in next_cars:
 			names.append("%s ($%s)" % [car.name, _number(car.price)])
-		_text(_progress_list, "Finish this tier and the car yard will sell you: %s." % ", ".join(names), 14, Color(1.0, 0.88, 0.55))
+		_text(_progress_list, "Unlocks at the car yard: %s" % ", ".join(names), 14, UiStyle.RED)
 	for challenge in tier.challenges:
 		var done := Progression.is_done(challenge)
 		var value := Progression.get_stat(challenge.stat)
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 10)
+		line.add_child(UiStyle.icon_rect("check_on" if done else "check_off", 22, UiStyle.INK, UiStyle.GOOD))
 		var row := VBoxContainer.new()
-		var label := Label.new()
-		label.text = "%s %s: %s  (%s / %s)" % [
-			"[x]" if done else "[ ]", challenge.title, challenge.description,
-			_number(minf(value, challenge.target)), _number(challenge.target)]
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_child(label)
+		row.add_theme_constant_override("separation", 2)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(row)
+		var title := UiStyle.label(row, challenge.title)
+		title.add_theme_font_override("font", UiStyle.BOLD_FONT)
+		UiStyle.label(row, "%s  (%s of %s)" % [challenge.description,
+			_number(minf(value, challenge.target)), _number(challenge.target)], "NoteLabel")
 		var bar := ProgressBar.new()
 		bar.max_value = 1.0
 		bar.value = Progression.progress(challenge)
 		bar.show_percentage = false
-		bar.custom_minimum_size.y = 6
+		bar.custom_minimum_size.y = 8
 		row.add_child(bar)
-		_progress_list.add_child(row)
+		_progress_list.add_child(line)
 
 
 func _refresh_leads() -> void:
 	_clear(_leads_list)
-	var accent := Color(0.6, 0.85, 0.8)
-	_text(_leads_list, "Barn-find rumours", 18, accent)
 	var leads := Classics.open_leads()
+	_text(_leads_list, "Barn finds  ·  %d of %d" % [Classics.found_count(), Classics.barn_finds().size()], 18)
 	if leads.is_empty():
-		_text(_leads_list, "No leads right now. People talk at the Friday and Saturday night meet (Roe Street car park, 8 pm to 2 am), and word gets around as your career grows.")
+		_text(_leads_list, "No whispers yet. Try the Roe Street meet on Friday or Saturday night.", 14, UiStyle.INK_2)
 	for lead: Dictionary in leads:
 		var car := CarCatalogue.get_car(lead.car)
-		_text(_leads_list, "%s: \"%s\"" % [String(lead.where)[0].to_upper() + String(lead.where).substr(1), lead.rumour])
-		_text(_leads_list, "  Probably a %s. Stop next to it to claim it." % car.get("name", "classic"), 13, Color(0.7, 0.7, 0.68))
-	_text(_leads_list, "Classics found: %d of %d" % [Classics.found_count(), Classics.barn_finds().size()], 14)
+		_rumour(_leads_list, String(lead.rumour), "%s. Probably a %s." % [String(lead.where).left(1).to_upper() + String(lead.where).substr(1), car.get("name", "classic")])
 
 	var parts := FoundPart.entries()
 	var found := 0
-	_text(_leads_list, "Parts you can't buy", 18, accent)
 	for entry: Dictionary in parts:
 		if Discoveries.has("part/" + String(entry.part)):
 			found += 1
-		else:
-			_text(_leads_list, "\"%s\"" % entry.get("rumour", ""))
-	_text(_leads_list, "Found: %d of %d. Stop next to one (or walk up to it) to take it home." % [found, parts.size()], 14)
+	_text(_leads_list, "Rare parts  ·  %d of %d" % [found, parts.size()], 18)
+	for entry: Dictionary in parts:
+		if not Discoveries.has("part/" + String(entry.part)):
+			_rumour(_leads_list, String(entry.get("rumour", "")), "")
 
 	var cuttings := HomeLife.cutting_entries()
 	var taken := 0
-	_text(_leads_list, "Cuttings to grow at home", 18, accent)
 	for entry: Dictionary in cuttings:
 		if Discoveries.has("cutting/" + String(entry.id)):
 			taken += 1
-		else:
-			_text(_leads_list, "\"%s\"" % entry.get("rumour", ""))
-	_text(_leads_list, "Taken: %d of %d. Walk up to the plant and take a cutting; water it at home every day." % [taken, cuttings.size()], 14)
+	_text(_leads_list, "Cuttings  ·  %d of %d" % [taken, cuttings.size()], 18)
+	for entry: Dictionary in cuttings:
+		if not Discoveries.has("cutting/" + String(entry.id)):
+			_rumour(_leads_list, String(entry.get("rumour", "")), "")
+	_text(_leads_list, "Take one from the plant, then water it at home each day.", 14, UiStyle.INK_2)
 
-	_text(_leads_list, "Things to do", 18, accent)
-	_text(_leads_list, "Photo spots: %d of %d. Press P for photo mode near a blue PHOTO sign. %d photos in the album." % [
-		Activities.photo_spots_found(), Activities.PHOTO_SPOTS_TOTAL, Activities.photos.size()])
+	_text(_leads_list, "Out and about", 18)
 	var golds := 0
 	for record: Dictionary in Activities.parking.values():
 		if record.get("medal", "") == "gold":
 			golds += 1
-	_text(_leads_list, "Parking challenges: %d tried, %d gold. Look for the yellow PARK signs." % [Activities.parking.size(), golds])
-	_text(_leads_list, "Scenic drives done: %d. Green SCENIC DRIVE signs start them." % Progression.get_stat("scenic_drives"))
-	_text(_leads_list, "Lifts given: %d. Passengers show up on the job board." % Progression.get_stat("lifts_given"))
-	_text(_leads_list, "Trains beaten: %d of %d raced. Drive alongside a moving train and get past the front." % [Progression.get_stat("trains_beaten"), Progression.get_stat("trains_raced")])
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 6)
+	_leads_list.add_child(grid)
+	for row: Array in [
+		["camera", "Photo spots", "%d of %d" % [Activities.photo_spots_found(), Activities.PHOTO_SPOTS_TOTAL], "Blue PHOTO signs, then P · %d in the album" % Activities.photos.size()],
+		["car", "Parking", "%d gold" % golds, "Yellow PARK signs"],
+		["flag", "Scenic drives", str(Progression.get_stat("scenic_drives")), "Green SCENIC DRIVE signs"],
+		["pin", "Lifts given", str(Progression.get_stat("lifts_given")), "On the job board"],
+		["star", "Trains beaten", "%d of %d" % [Progression.get_stat("trains_beaten"), Progression.get_stat("trains_raced")], "Get past the front of one"],
+	]:
+		grid.add_child(UiStyle.icon_rect(row[0], 22, UiStyle.INK, UiStyle.TEAL))
+		var names := VBoxContainer.new()
+		names.add_theme_constant_override("separation", -2)
+		names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(names)
+		UiStyle.label(names, row[1]).add_theme_font_override("font", UiStyle.BOLD_FONT)
+		UiStyle.label(names, row[3], "NoteLabel", 13)
+		var value := UiStyle.label(grid, row[2])
+		value.autowrap_mode = TextServer.AUTOWRAP_OFF
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var mystery := get_tree().root.find_child("Mystery", true, false)
 	if mystery and mystery.has_method("notes"):
-		_text(_leads_list, "After midnight", 18, accent)
+		_text(_leads_list, "After midnight", 18)
 		for line in mystery.notes():
 			_text(_leads_list, line, 13 if line.begins_with("  ") else 15)
 	var relaxed := CheckButton.new()
-	relaxed.text = "Relaxed cruising (lighter traffic, no jobs)"
+	relaxed.text = "Relaxed cruising: lighter traffic, no jobs"
 	relaxed.button_pressed = Activities.relaxed
 	relaxed.toggled.connect(func(on: bool) -> void:
 		Activities.set_relaxed(on)
@@ -255,37 +288,83 @@ func _refresh_leads() -> void:
 	_leads_list.add_child(relaxed)
 
 
+## Something someone said, in pencil, with a printed note under it.
+func _rumour(parent: Control, said: String, note: String) -> void:
+	var well := PanelContainer.new()
+	well.theme_type_variation = &"WellPanel"
+	parent.add_child(well)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	well.add_child(box)
+	var hand := UiStyle.label(box, "\"%s\"" % said, "HandLabel", 21)
+	hand.add_theme_color_override("font_color", UiStyle.INK)
+	if note != "":
+		UiStyle.label(box, note, "NoteLabel", 13)
+
+
 func _refresh_stats() -> void:
+	_clear(_stats_box)
 	var car := get_tree().get_first_node_in_group(&"player_car") as CarController
-	var lines := PackedStringArray()
-	lines.append("Money: $%s   (earned $%s all up)" % [_number(Wallet.balance), _number(Wallet.total_earned)])
-	lines.append("Day %d, %s" % [GameClock.day, GameClock.time_string()])
-	lines.append("Places discovered: %d" % Progression.get_stat("discoveries"))
-	lines.append("500 badges found: %d of %d" % [Collectible.found_count(), Collectible.TOTAL])
-	lines.append("Driven in all: %s km" % _number(Progression.get_stat("km_driven")))
+	_text(_stats_box, "You", 18)
+	var rows := [
+		["Money", "$%s" % _number(Wallet.balance)],
+		["Earned all up", "$%s" % _number(Wallet.total_earned)],
+		["Driven", "%s km" % _number(Progression.get_stat("km_driven"))],
+		["Deliveries", str(Progression.get_stat("deliveries"))],
+		["Places found", str(Progression.get_stat("discoveries"))],
+		["500 badges", "%d of %d" % [Collectible.found_count(), Collectible.TOTAL]],
+	]
 	var next := Progression.next_mileage_reward()
 	if not next.is_empty():
-		lines.append("Next mileage reward at %s km: %s" % [_number(next.km), next.title])
-	lines.append("Deliveries: %d" % Progression.get_stat("deliveries"))
+		rows.append(["At %s km" % _number(next.km), next.title])
+	_stat_rows(rows)
 	if car:
 		var stats := car.get_stats()
-		lines.append("")
 		var info := CarCatalogue.get_car(car.car_id)
-		lines.append("%s (%s), %.0f km on the clock" % [info.get("name", car.car_id), info.get("years", ""), car.odometer_km])
-		lines.append("%.0f kW, %.0f Nm, %.0f kg" % [stats.power_kw, stats.torque_nm, stats.mass_kg])
+		_text(_stats_box, String(info.get("name", car.car_id)), 18)
+		var car_rows := [
+			["Odometer", "%s km" % _number(car.odometer_km)],
+			["Power", "%.0f kW, %.0f Nm" % [stats.power_kw, stats.torque_nm]],
+			["Weight", "%.0f kg" % stats.mass_kg],
+		]
 		if car.is_electric:
-			lines.append("Battery %.1f of %d kWh" % [car.fuel_litres, roundi(car.tank_litres)])
+			car_rows.append(["Battery", "%.1f of %d kWh" % [car.fuel_litres, roundi(car.tank_litres)]])
 		else:
-			lines.append("Fuel %.1f of %d L, unleaded $%.2f today (%s)" % [
-				car.fuel_litres, roundi(car.tank_litres), Garage.fuel_price(), Garage.weekday()])
+			car_rows.append(["Fuel", "%.1f of %d L" % [car.fuel_litres, roundi(car.tank_litres)]])
+			car_rows.append(["Unleaded today", "$%.2f a litre" % Garage.fuel_price()])
+		_stat_rows(car_rows)
+		var fitted := PackedStringArray()
 		for part in car.parts.values():
-			lines.append("  %s" % part.display_name)
-	_stats_label.text = "\n".join(lines)
+			fitted.append(part.display_name)
+		if not fitted.is_empty():
+			_text(_stats_box, "Fitted: " + ", ".join(fitted), 13, UiStyle.INK_2)
 	if _roadside:
 		_roadside.visible = car != null and car.fuel_litres < 1.0
 
 
-func _text(parent: Control, text: String, size := 15, color := Color.WHITE) -> void:
+func _stat_rows(rows: Array) -> void:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 2)
+	_stats_box.add_child(grid)
+	for row: Array in rows:
+		var key := UiStyle.label(grid, row[0])
+		key.add_theme_color_override("font_color", UiStyle.INK_2)
+		key.custom_minimum_size.x = 150
+		var value := UiStyle.label(grid, row[1])
+		value.add_theme_font_override("font", UiStyle.BOLD_FONT)
+		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+func _text(parent: Control, text: String, size := 15, color := UiStyle.INK) -> void:
+	if size >= 18:  # a heading
+		if parent.get_child_count() > 0:
+			var gap := Control.new()
+			gap.custom_minimum_size.y = 4
+			parent.add_child(gap)
+		UiStyle.section(parent, text, UiStyle.RED if color == UiStyle.TEAL else color)
+		return
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

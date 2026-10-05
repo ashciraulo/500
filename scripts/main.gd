@@ -39,15 +39,29 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameClock.toggle_locked()
 	elif event.is_action_pressed("toggle_lofi"):
 		RenderSettings.toggle_lofi()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
+		Settings.fullscreen = not Settings.fullscreen
+		Settings.apply()
+		Settings.save_settings()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _apply_render_settings() -> void:
-	var window_size := get_viewport().get_visible_rect().size
-	_lofi.stretch_shrink = RenderSettings.shrink_for(int(window_size.y))
+	# The UI is laid out for 720p and scaled to the window (canvas_items
+	# stretch), but the lo-fi framebuffer is sized from the window's real
+	# pixels so each low-res pixel stays a whole number of screen pixels.
+	var logical := get_viewport().get_visible_rect().size
+	var physical := Vector2(get_window().size) if get_window().size.y > 0 else logical
+	var shrink := RenderSettings.shrink_for(int(physical.y))
+	var framebuffer := Vector2i((physical / shrink).floor())
+	_lofi.stretch_shrink = 1
+	_lofi.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_lofi.position = Vector2.ZERO
+	_lofi.size = Vector2(framebuffer)
+	_lofi.scale = logical / Vector2(framebuffer)
 	_post.set_shader_parameter("dither_enabled", RenderSettings.dither_enabled and RenderSettings.lofi_enabled)
 	_post.set_shader_parameter("color_levels", RenderSettings.color_levels if RenderSettings.lofi_enabled else 256.0)
 	_post.set_shader_parameter("dither_strength", RenderSettings.dither_strength)
 	_post.set_shader_parameter("softness", RenderSettings.softness if RenderSettings.lofi_enabled else 0.0)
-	RenderSettings.set_framebuffer_size(Vector2i(window_size) / _lofi.stretch_shrink)
+	RenderSettings.set_framebuffer_size(framebuffer)

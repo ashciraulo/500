@@ -10,6 +10,8 @@ signal changed
 const PATH := "user://settings.cfg"
 ## Real minutes per in-game day offered in the menu.
 const DAY_LENGTHS := [20, 40, 60, 90, 120]
+## Menu and HUD size options: [name, scale on top of fitting the window].
+const UI_SIZES := [["Small", 0.85], ["Normal", 1.0], ["Large", 1.2]]
 
 var automatic_gearbox := false
 var mouse_sensitivity := 0.0025
@@ -29,6 +31,9 @@ var dither_strength := 0.35
 var affine_strength := 0.25
 var softness := 0.5
 var show_help := true
+var fullscreen := false
+## Index into UI_SIZES: how big the menus and HUD are drawn.
+var ui_size := 1
 ## Cozy mode: nothing odd happens at home (no intercom after midnight, no
 ## knocking back from the shed, no plant turned round). The main mystery
 ## still runs; its things still turn up in the cupboard.
@@ -61,6 +66,13 @@ func apply() -> void:
 	RenderSettings.dither_strength = dither_strength
 	RenderSettings.affine_strength = affine_strength
 	RenderSettings.softness = softness
+	var window := get_tree().root if is_inside_tree() else null
+	if window and DisplayServer.get_name() != "headless":
+		if fullscreen and window.mode != Window.MODE_FULLSCREEN:
+			window.mode = Window.MODE_FULLSCREEN
+		elif not fullscreen and window.mode == Window.MODE_FULLSCREEN:
+			window.mode = Window.MODE_WINDOWED
+		window.content_scale_factor = float(UI_SIZES[clampi(ui_size, 0, UI_SIZES.size() - 1)][1])
 	RenderSettings.apply()
 	var car := get_tree().get_first_node_in_group(&"player_car") as CarController
 	if car:
@@ -116,6 +128,6 @@ func _keys() -> PackedStringArray:
 		"automatic_gearbox", "mouse_sensitivity", "day_length_minutes", "weather_choice",
 		"clock_frozen", "lofi_enabled", "lofi_target_height", "dither_enabled",
 		"vertex_snap_scale", "lofi_preset", "color_levels", "dither_strength", "affine_strength",
-		"softness", "show_help", "cozy_mode",
+		"softness", "show_help", "fullscreen", "ui_size", "cozy_mode",
 		"volume_master", "volume_music", "volume_radio", "volume_effects",
 	])

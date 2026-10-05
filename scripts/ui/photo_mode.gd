@@ -32,6 +32,7 @@ var _filter := 0
 var _open := false
 var _ui: Control
 var _info: Label
+var _filter_label: Label
 var _flash: ColorRect
 
 
@@ -42,13 +43,56 @@ func _ready() -> void:
 	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_ui)
-	_info = Label.new()
-	_info.add_theme_font_size_override("font_size", 15)
-	_info.add_theme_color_override("font_outline_color", Color.BLACK)
-	_info.add_theme_constant_override("outline_size", 6)
-	_info.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_info.position = Vector2(16, -64)
-	_ui.add_child(_info)
+	# A viewfinder: corner brackets and a centre mark (hidden for the shot).
+	var finder := Control.new()
+	finder.set_anchors_preset(Control.PRESET_FULL_RECT)
+	finder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	finder.draw.connect(func() -> void:
+		var m := 36.0
+		var l := 46.0
+		var col := Color(UiStyle.CREAM_TEXT, 0.8)
+		var r := Rect2(Vector2(m, m), finder.size - Vector2(m, m) * 2.0)
+		for corner in [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
+			var sx := 1.0 if corner.x < finder.size.x * 0.5 else -1.0
+			var sy := 1.0 if corner.y < finder.size.y * 0.5 else -1.0
+			finder.draw_polyline(PackedVector2Array([corner + Vector2(0, l * sy), corner, corner + Vector2(l * sx, 0)]), col, 3.0, true)
+		var c := finder.size * 0.5
+		finder.draw_line(c - Vector2(12, 0), c + Vector2(12, 0), Color(col, 0.6), 2.0, true)
+		finder.draw_line(c - Vector2(0, 12), c + Vector2(0, 12), Color(col, 0.6), 2.0, true))
+	finder.resized.connect(finder.queue_redraw)
+	_ui.add_child(finder)
+	# The controls along the bottom, on a chip.
+	var chip := PanelContainer.new()
+	chip.theme_type_variation = &"ChipPanel"
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.anchor_left = 0.5
+	chip.anchor_right = 0.5
+	chip.anchor_top = 1.0
+	chip.anchor_bottom = 1.0
+	chip.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	chip.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	chip.offset_top = -52
+	chip.offset_bottom = -52
+	_ui.add_child(chip)
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 2)
+	chip.add_child(rows)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	rows.add_child(row)
+	row.add_child(UiStyle.icon_rect("camera", 22))
+	UiStyle.label(row, "Photo mode", "SectionLabel").autowrap_mode = TextServer.AUTOWRAP_OFF
+	_filter_label = UiStyle.label(row, "")
+	_filter_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	for pair in [["T", "Filter"], ["Enter", "Take"], ["P", "Back"]]:
+		var gap := Control.new()
+		gap.custom_minimum_size.x = 6
+		row.add_child(gap)
+		row.add_child(UiStyle.keycap(pair[0], 12))
+		UiStyle.label(row, pair[1], "NoteLabel").autowrap_mode = TextServer.AUTOWRAP_OFF
+	_info = UiStyle.label(rows, "", "NoteLabel")
+	_info.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_flash = ColorRect.new()
 	_flash.color = Color(1, 1, 1, 0)
 	_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -180,5 +224,6 @@ func _process(delta: float) -> void:
 func _update_info(extra := "") -> void:
 	var spot := PhotoSpot.nearest(get_tree(), _camera.global_position) if _camera else null
 	var where := ("Photo spot: %s%s" % [spot.title, " (taken)" if spot.is_taken() else ""]) if spot else ""
-	_info.text = "PHOTO MODE   Filter: %s (T / Y)   Enter / A: take   P / Esc: back\n%s%s" % [
-		FILTERS[_filter].name, where, ("   " + extra) if extra != "" else ""]
+	_filter_label.text = "· %s" % FILTERS[_filter].name
+	_info.text = "%s%s" % [where, ("   " + extra) if extra != "" and where != "" else extra]
+	_info.visible = _info.text != ""

@@ -5,7 +5,7 @@ extends CanvasLayer
 ## better rods, bigger eskies and a crab net are on the wall. The game pauses
 ## while it's open.
 
-const ACCENT := Color(0.45, 0.78, 0.95)
+const ACCENT := UiStyle.TEAL
 
 var _panel: PanelContainer
 var _list: VBoxContainer
@@ -20,22 +20,17 @@ func _ready() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.5)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := UiStyle.backdrop()
 	root.add_child(dim)
 	_panel = FieldUI.panel(ACCENT)
 	root.add_child(_panel)
 	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(620, 500)
+	box.custom_minimum_size = Vector2(600, 560)
 	_panel.add_child(box)
-	var header := HBoxContainer.new()
-	box.add_child(header)
-	FieldUI.label(header, "Mends Street Bait & Tackle", 22, ACCENT).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_close = Button.new()
-	_close.text = "Close"
+	var head: Array = UiStyle.header(box, "Mends Street Bait & Tackle", "fish", "Bait, ice and a set of scales")
+	(head[0] as Label).add_theme_color_override("font_color", ACCENT)
+	_close = head[2]
 	_close.pressed.connect(close)
-	header.add_child(_close)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -76,83 +71,67 @@ func _input(event: InputEvent) -> void:
 func refresh() -> void:
 	FieldUI.clear(_list)
 	if not _last_result.is_empty():
-		FieldUI.label(_list, "The weigh-in", 18, ACCENT)
+		UiStyle.section(_list, "Weigh-in", ACCENT)
 		for f: Dictionary in _last_result.fish:
-			var fresh := float(f.fresh)
-			var note := "" if fresh >= 0.99 else ("   (gone soft: %d%%)" % roundi(fresh * 100.0))
-			FieldUI.label(_list, "  %s  %.1f cm  %.2f kg   $%d%s%s" % [f.name, float(f.cm), float(f.kg), int(f.pay),
-				"   (new to the club's board: bonus)" if f.first else "", note], 14)
-		FieldUI.label(_list, "The club pays you $%d." % _last_result.pay, 16, Color(1, 0.9, 0.6))
-		_list.add_child(HSeparator.new())
-	FieldUI.label(_list, "Your esky", 18, ACCENT)
+			var tags := PackedStringArray()
+			if f.first:
+				tags.append("new to the board!")
+			if float(f.fresh) < 0.99:
+				tags.append("gone soft")
+			var note := ", ".join(tags)
+			FieldUI.shop_row(_list, "%s  ·  %.0f cm, %.2f kg  ·  $%d" % [f.name, float(f.cm), float(f.kg), int(f.pay)],
+				note.left(1).to_upper() + note.substr(1))
+		var paid := UiStyle.label(_list, "Paid $%d" % _last_result.pay, "", 18)
+		paid.add_theme_font_override("font", UiStyle.BOLD_FONT)
+		paid.add_theme_color_override("font_color", UiStyle.GOOD)
+
+	UiStyle.section(_list, "Your esky", ACCENT)
 	var esky := FieldJournal.esky
 	if esky.is_empty():
-		FieldUI.label(_list, "Empty. %d fish fit in the %s. Legal-size fish only; the club checks." % [FieldJournal.esky_size(), FieldJournal.gear_esky().name.to_lower()])
+		FieldUI.shop_row(_list, "Empty", "Room for %d legal-size fish" % FieldJournal.esky_size())
 	else:
 		var value := 0
 		for f: Dictionary in esky:
 			value += FieldJournal.fish_value(f)
-		FieldUI.label(_list, "%d of %d. Roughly $%d on the scales, before the new-species bonuses." % [esky.size(), FieldJournal.esky_size(), value])
-		var weigh := Button.new()
-		weigh.text = "Weigh in and sell the catch"
-		weigh.pressed.connect(func() -> void:
+		var sell := FieldUI.shop_row(_list, "%d of %d fish" % [esky.size(), FieldJournal.esky_size()], "About $%d at the scales" % value,
+			"Sell the catch", true)
+		sell.theme_type_variation = &"PrimaryButton"
+		sell.pressed.connect(func() -> void:
 			_last_result = FieldJournal.weigh_in()
 			Activities.say("Weighed in: $%d." % _last_result.pay)
 			refresh())
-		_list.add_child(weigh)
 	var ice := FieldJournal.ice_left_hours()
-	var ice_row := HBoxContainer.new()
-	FieldUI.label(ice_row, "Ice: %s" % ("%.0f hours left in the esky" % ice if ice > 0.0 else "none. Fish go soft without it."), 15,
-		Color(0.8, 0.9, 1.0) if ice > 0.0 else Color(1, 0.7, 0.55)).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var buy_ice := Button.new()
-	buy_ice.text = "Bag of ice $%d" % FieldJournal.ICE_PRICE
-	buy_ice.disabled = not Wallet.can_afford(FieldJournal.ICE_PRICE)
+	var buy_ice := FieldUI.shop_row(_list, "Ice: %.0f hours left" % ice if ice > 0.0 else "No ice",
+		"" if ice > 0.0 else "Fish go soft without it", "Bag of ice  $%d" % FieldJournal.ICE_PRICE,
+		Wallet.can_afford(FieldJournal.ICE_PRICE))
 	buy_ice.pressed.connect(func() -> void:
 		if FieldJournal.buy_ice():
 			Activities.say("Ice in the esky: good for %.0f hours." % FieldJournal.ice_left_hours())
 		refresh())
-	ice_row.add_child(buy_ice)
-	_list.add_child(ice_row)
-	_list.add_child(HSeparator.new())
-	FieldUI.label(_list, "On the wall", 18, ACCENT)
+
+	UiStyle.section(_list, "On the wall", ACCENT)
 	_gear_row("rod", FieldJournal.RODS, FieldJournal.rod,
-		func(g: Dictionary) -> String: return "holds %d%% harder fish, casts %d m" % [roundi(float(g.strength) * 100.0 - 100.0),
-			roundi(FieldFishing.CAST_MAX[FieldJournal.RODS.find(g)])])
+		func(g: Dictionary) -> String: return "Stronger line, casts %d m" % roundi(FieldFishing.CAST_MAX[FieldJournal.RODS.find(g)]))
 	_gear_row("esky", FieldJournal.ESKIES, FieldJournal.esky_level,
-		func(g: Dictionary) -> String: return "holds %d fish" % int(g.size))
+		func(g: Dictionary) -> String: return "Holds %d fish" % int(g.size))
 	if FieldJournal.has_crab_net:
-		FieldUI.label(_list, "Crab net: yours. Drop it off a river jetty and come back in an hour.", 15)
+		FieldUI.shop_row(_list, "Crab net", "Yours. Drop it off a river jetty")
 	else:
-		var row := HBoxContainer.new()
-		FieldUI.label(row, "Crab net: drop it off a river jetty, pull it an hour later. Blue mannas.", 15).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var buy := Button.new()
-		buy.text = "Buy $%d" % FieldJournal.CRAB_NET_PRICE
-		buy.disabled = not Wallet.can_afford(FieldJournal.CRAB_NET_PRICE)
+		var buy := FieldUI.shop_row(_list, "Crab net", "Blue mannas, off a river jetty", "$%d" % FieldJournal.CRAB_NET_PRICE,
+			Wallet.can_afford(FieldJournal.CRAB_NET_PRICE))
 		buy.pressed.connect(func() -> void:
 			if FieldJournal.upgrade_fishing("crab_net"):
 				Activities.say("A crab net. Summer on the river.")
 			refresh())
-		row.add_child(buy)
-		_list.add_child(row)
-	_list.add_child(HSeparator.new())
-	FieldUI.label(_list, "Journal: %d of %d fish caught. %d weighed in, $%d from the club so far." % [
-		FieldJournal.caught_count(), FieldJournal.fish_total(), FieldJournal.fish_weighed, FieldJournal.money_from_fish], 14, Color(0.8, 0.8, 0.78))
 
 
 func _gear_row(kind: String, list: Array, level: int, describe: Callable) -> void:
-	FieldUI.label(_list, "%s: %s" % [kind.capitalize(), list[level].name], 15)
 	if level + 1 >= list.size():
-		FieldUI.label(_list, "  Best in the shop.", 13, Color(0.7, 0.7, 0.68))
+		FieldUI.shop_row(_list, list[level].name, "Best in the shop")
 		return
 	var next: Dictionary = list[level + 1]
-	var row := HBoxContainer.new()
-	FieldUI.label(row, "  Next: %s, %s." % [next.name, describe.call(next)], 13, Color(0.8, 0.8, 0.78)).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var buy := Button.new()
-	buy.text = "Buy $%d" % int(next.price)
-	buy.disabled = not Wallet.can_afford(int(next.price))
+	var buy := FieldUI.shop_row(_list, next.name, describe.call(next), "$%d" % int(next.price), Wallet.can_afford(int(next.price)))
 	buy.pressed.connect(func() -> void:
 		if FieldJournal.upgrade_fishing(kind):
 			Activities.say("New %s: %s." % [kind, next.name])
 		refresh())
-	row.add_child(buy)
-	_list.add_child(row)

@@ -36,7 +36,7 @@ func _ready() -> void:
 	mat.shader = shader
 	_mask.material = mat
 	add_child(_mask)
-	_font = ThemeDB.fallback_font
+	_font = UiStyle.BODY_FONT
 
 
 func _process(delta: float) -> void:
@@ -76,15 +76,19 @@ func _draw() -> void:
 			lines.append("Too far to make out (%d m)" % roundi(t.dist))
 		else:
 			lines.append("...")
-	var y := centre.y + reticle + 34.0
-	for line in lines:
-		_text(line, Vector2(centre.x, y), 20, Color(1, 0.96, 0.82))
-		y += 26.0
+	var y := centre.y + reticle + 40.0
+	for i in lines.size():
+		# The name in the serif, the rest in the body face.
+		var title := i == 0 and b.is_identified()
+		_text(lines[i], Vector2(centre.x, y), 30 if title else 18, UiStyle.CREAM_TEXT if title else Color(UiStyle.SUN_LIGHT, 0.95),
+			UiStyle.TITLE_FONT if title else _font)
+		y += 34.0 if title else 26.0
 
 	# Film and zoom.
 	var film := "FILM %d / %d" % [FieldJournal.film_left(), FieldJournal.roll_size()]
-	_text(film, Vector2(centre.x + r_view * 0.95, size.y - 40.0), 15, Color(1, 0.9, 0.6) if FieldJournal.film_left() > 3 else Color(1, 0.5, 0.4))
-	_text("%.0fx" % (72.0 / fov), Vector2(centre.x - r_view * 0.95, size.y - 40.0), 15, ink)
+	# Like the camera's own little amber counter.
+	_text(film, Vector2(centre.x + r_view * 0.95, size.y - 40.0), 24, UiStyle.LCD if FieldJournal.film_left() > 3 else UiStyle.RED.lightened(0.2), UiStyle.LCD_FONT)
+	_text("%.0fx" % (72.0 / fov), Vector2(centre.x - r_view * 0.95, size.y - 40.0), 24, UiStyle.LCD, UiStyle.LCD_FONT)
 
 	if b.state == Binoculars.State.FOCUS:
 		_draw_dial(centre, r_view * 0.62)
@@ -131,9 +135,11 @@ func _draw_dial(centre: Vector2, r: float) -> void:
 	draw_arc(centre, r - 20.0, -PI * 0.5, -PI * 0.5 + TAU * wait, 64, Color(1, 1, 1, 0.25), 2.0, true)
 
 
-func _text(text: String, at: Vector2, font_size: int, color: Color) -> void:
-	var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size).x
+func _text(text: String, at: Vector2, font_size: int, color: Color, font: Font = null) -> void:
+	if font == null:
+		font = _font
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size).x
 	var pos := at - Vector2(w * 0.5, 0)
 	for o in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, -1), Vector2(0, 1), Vector2(1, 1)]:
-		draw_string(_font, pos + o * 1.5, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0, 0, 0, 0.8 * color.a))
-	draw_string(_font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+		draw_string(font, pos + o * 1.5, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0, 0, 0, 0.8 * color.a))
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)

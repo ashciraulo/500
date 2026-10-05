@@ -104,10 +104,7 @@ func _process(_delta: float) -> bool:
 				_field.birds.auto_spawn = false
 				var hud := get_first_node_in_group(&"hud")
 				if hud:
-					for c in hud.get_children():
-						for l in c.get_children():
-							if l is Label and l.text.begins_with("W/S"):
-								l.visible = false
+					hud.hide_help()
 				_stage = 2
 				_frames = 0
 		2:

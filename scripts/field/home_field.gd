@@ -23,7 +23,7 @@ var _hanging: Node3D
 var _feeder: Node3D
 var _visitors: Array[Node3D] = []
 var _visit_day := -1
-var _prompt: Label
+var _prompt: PromptChip
 var _prompt_layer: CanvasLayer
 var _check := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -33,18 +33,8 @@ func _ready() -> void:
 	_rng.randomize()
 	_prompt_layer = CanvasLayer.new()
 	_prompt_layer.layer = 5
-	_prompt = Label.new()
-	_prompt.anchor_left = 0.5
-	_prompt.anchor_right = 0.5
-	_prompt.anchor_top = 1.0
-	_prompt.anchor_bottom = 1.0
-	_prompt.offset_left = -200.0
-	_prompt.offset_right = 200.0
-	_prompt.offset_top = -126.0
-	_prompt.offset_bottom = -102.0
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.add_theme_color_override("font_outline_color", Color.BLACK)
-	_prompt.add_theme_constant_override("outline_size", 5)
+	_prompt = PromptChip.new()
+	_prompt.place_bottom(112.0)
 	_prompt_layer.add_child(_prompt)
 	add_child(_prompt_layer)
 

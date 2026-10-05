@@ -4,12 +4,12 @@ extends CanvasLayer
 ## meter, the fight's tension and line, the esky count, and the catch card
 ## (keep it, let it go, take its photo).
 
-const ACCENT := Color(0.55, 0.8, 0.95)
+const ACCENT := UiStyle.TEAL
 
 var fishing: FieldFishing
 
 var _overlay: Control
-var _prompt: Label
+var _prompt: PromptChip
 var _card: PanelContainer
 var _card_box: VBoxContainer
 var _card_note: Label
@@ -28,25 +28,16 @@ func _ready() -> void:
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay.draw.connect(_draw_overlay)
 	add_child(_overlay)
-	_prompt = Label.new()
-	_prompt.anchor_left = 0.5
-	_prompt.anchor_right = 0.5
-	_prompt.anchor_top = 1.0
-	_prompt.anchor_bottom = 1.0
-	_prompt.offset_left = -240.0
-	_prompt.offset_right = 240.0
-	_prompt.offset_top = -126.0
-	_prompt.offset_bottom = -102.0
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
-	_prompt.add_theme_color_override("font_outline_color", Color.BLACK)
-	_prompt.add_theme_constant_override("outline_size", 5)
+	_prompt = PromptChip.new()
+	_prompt.place_bottom(112.0)
 	add_child(_prompt)
 	_card = FieldUI.panel(ACCENT)
 	_card.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	_card.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_card.offset_left = -400.0
 	_card.offset_right = -40.0
+	_card.offset_top = -70.0
+	_card.offset_bottom = -70.0  # clear of the dash dial
 	_card_box = VBoxContainer.new()
 	_card_box.custom_minimum_size = Vector2(340, 0)
 	_card_box.add_theme_constant_override("separation", 6)
@@ -76,28 +67,28 @@ func open_card(c: Dictionary) -> void:
 	var junk: bool = c.get("junk", false)
 	FieldUI.label(_card_box, String(f.get("name", c.species)), 24, ACCENT)
 	if String(f.get("latin", "")) != "":
-		FieldUI.label(_card_box, String(f.latin), 13, Color(0.75, 0.75, 0.7))
+		FieldUI.label(_card_box, String(f.latin), 13, UiStyle.INK_2)
 	if junk:
 		FieldUI.label(_card_box, String(f.get("note", "")), 15)
 	else:
 		var size_text := "%.1f cm across the shell" % float(c.cm) if String(f.get("method", "")) == "net" else "%.1f cm" % float(c.cm)
-		FieldUI.label(_card_box, "%s   %.2f kg" % [size_text, float(c.kg)], 18)
+		FieldUI.label(_card_box, "%s   %.2f kg" % [size_text, float(c.kg)], 20).add_theme_font_override("font", UiStyle.BOLD_FONT)
 		var legal := float(f.get("legal", 0))
 		if legal > 0.0:
 			var ok: bool = c.get("legal", false)
 			FieldUI.label(_card_box, ("Legal size (%.0f cm)" if ok else "Undersize (needs %.0f cm)") % legal, 14,
-				Color(0.7, 0.95, 0.7) if ok else Color(1, 0.65, 0.5))
+				UiStyle.GOOD if ok else UiStyle.RED)
 		if c.get("first", false):
-			FieldUI.label(_card_box, "First one in the journal.", 15, Color(1, 0.9, 0.6))
+			FieldUI.label(_card_box, "First one in the journal.", 15, UiStyle.RED_DARK)
 		var e: Dictionary = FieldJournal.catches.get(String(c.species), {})
 		if not c.get("first", false) and not e.is_empty() and float(c.cm) >= float(e.biggest_cm):
-			FieldUI.label(_card_box, "Your biggest yet.", 15, Color(1, 0.9, 0.6))
+			FieldUI.label(_card_box, "Your biggest yet.", 15, UiStyle.RED_DARK)
 		var pay := int(f.get("pay", 0))
 		if pay > 0:
 			FieldUI.label(_card_box, "About $%d at the weigh-in, kept on ice." % FieldJournal.fish_value(
-				{"species": c.species, "kg": c.kg, "caught_at": FieldJournal.now_minutes()}), 14, Color(0.85, 0.85, 0.8))
-		FieldUI.label(_card_box, String(f.get("note", "")), 13, Color(0.82, 0.82, 0.78))
-	_card_note = FieldUI.label(_card_box, "", 14, Color(1, 0.9, 0.6))
+				{"species": c.species, "kg": c.kg, "caught_at": FieldJournal.now_minutes()}), 14, UiStyle.INK_2)
+		FieldUI.label(_card_box, String(f.get("note", "")), 13, UiStyle.INK_2)
+	_card_note = FieldUI.label(_card_box, "", 14, UiStyle.RED_DARK)
 	var why := fishing.keep_blocked(c)
 	if why != "":
 		_card_note.text = why
@@ -172,18 +163,18 @@ func _draw_overlay() -> void:
 	var hint := ""
 	match fishing.state:
 		FieldFishing.State.READY:
-			hint = "Hold F / A to swing back, let go to cast where you're looking.    Esc / B  put the rod away"
+			hint = "Hold F / A to cast, let go to throw    Esc / B  rod away"
 		FieldFishing.State.CHARGING:
 			_meter(Vector2(centre.x, size.y * 0.78), 260.0, fishing.power, Color(0.95, 0.85, 0.5), "Cast")
 			hint = "Let go to cast"
 		FieldFishing.State.WAITING:
-			hint = "Watch the float. When it goes under: F / A to strike.    Esc / B  wind in"
+			hint = "Wait for the float to go under    Esc / B  wind in"
 		FieldFishing.State.BITE:
 			_text("!", Vector2(centre.x, centre.y - 40.0), 64, Color(1, 0.85, 0.4))
 			hint = "Strike!  F / A"
 		FieldFishing.State.FIGHT:
 			_draw_fight(size)
-			hint = "Hold F / A to reel, let go to give it line. Ease off when the rod tip shivers."
+			hint = "Hold F / A to reel. Ease off when the rod shivers."
 	# Above the status bar along the bottom.
 	_text(hint, Vector2(centre.x, size.y - 54.0), 14, Color(0.88, 0.9, 0.9, 0.85))
 	# The esky, in the corner.

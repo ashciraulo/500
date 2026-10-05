@@ -534,10 +534,7 @@ func _hide_help() -> void:
 	var hud := get_first_node_in_group(&"hud")
 	if hud == null or _shots == "":
 		return
-	for c in hud.get_children():
-		for l in c.get_children():
-			if l is Label and l.text.begins_with("W/S"):
-				l.visible = false
+	hud.hide_help()
 
 
 ## Make sure `id` is what bites next, straight away.

@@ -4,7 +4,7 @@ extends CanvasLayer
 ## depends on the spot: your carport does parts and tuning, the spray shop
 ## paint, servos fuel and the car wash. The game pauses while it's open.
 
-const ACCENT := Color(0.6, 0.85, 0.8)
+const ACCENT := UiStyle.RED
 const SLOT_NAMES := {
 	"engine": "Engine", "intake": "Intake", "exhaust": "Exhaust", "gearbox": "Gearbox",
 	"suspension": "Suspension", "tyres": "Tyres", "wheels": "Wheels", "brakes": "Brakes",
@@ -28,7 +28,7 @@ const TAP_SECONDS := 0.4
 
 var _car: CarController
 var _spot: WorkshopSpot
-var _prompt: Label
+var _prompt: PromptChip
 var _panel: PanelContainer
 var _dim: ColorRect
 var _title: Label
@@ -148,57 +148,35 @@ func _build() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	_prompt = Label.new()
-	_prompt.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_prompt.offset_left = -300
-	_prompt.offset_right = 300
-	_prompt.offset_top = -170
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.add_theme_font_size_override("font_size", 18)
-	_prompt.add_theme_color_override("font_color", ACCENT)
-	_prompt.add_theme_color_override("font_outline_color", Color.BLACK)
-	_prompt.add_theme_constant_override("outline_size", 6)
+	_prompt = PromptChip.new()
+	_prompt.place_bottom(112.0)
 	root.add_child(_prompt)
 
-	_dim = ColorRect.new()
-	_dim.color = Color(0, 0, 0, 0.5)
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim = UiStyle.backdrop()
 	root.add_child(_dim)
 
-	_panel = PanelContainer.new()
-	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.09, 0.08, 0.07, 0.96)
-	style.border_color = Color(0.85, 0.65, 0.4)
-	style.set_border_width_all(3)
-	style.set_content_margin_all(16)
-	_panel.add_theme_stylebox_override("panel", style)
-	root.add_child(_panel)
+	var card := UiStyle.centred_card(root, Vector2(1000, 590))
+	_panel = card[0]
+	var box: VBoxContainer = card[1]
 
-	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(980, 580)
-	box.add_theme_constant_override("separation", 10)
-	_panel.add_child(box)
-
-	var header := HBoxContainer.new()
-	box.add_child(header)
-	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 24)
-	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(_title)
-	_money = Label.new()
-	_money.add_theme_font_size_override("font_size", 18)
-	_money.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55))
-	header.add_child(_money)
-	var gap := Control.new()
-	gap.custom_minimum_size.x = 16
-	header.add_child(gap)
-	_close = Button.new()
-	_close.text = "Done"
+	var head: Array = UiStyle.header(box, "", "wrench", "", "Done")
+	_title = head[0]
+	var header: HBoxContainer = head[3]
+	_close = head[2]
 	_close.pressed.connect(close)
-	header.add_child(_close)
+	# Money as a little cream tag by the Done button.
+	var purse := PanelContainer.new()
+	purse.theme_type_variation = &"WellPanel"
+	purse.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var purse_row := HBoxContainer.new()
+	purse_row.add_theme_constant_override("separation", 6)
+	purse.add_child(purse_row)
+	purse_row.add_child(UiStyle.icon_rect("money", 20, UiStyle.INK, UiStyle.GOOD))
+	_money = UiStyle.label(purse_row, "")
+	_money.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_money.add_theme_font_override("font", UiStyle.BOLD_FONT)
+	header.add_child(purse)
+	header.move_child(purse, header.get_child_count() - 2)
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -217,14 +195,17 @@ func _build() -> void:
 	_restore_list = _scroll_tab("Restore")
 	_extras_list = _scroll_tab("Extras")
 
+	var side_panel := PanelContainer.new()
+	side_panel.theme_type_variation = &"WellPanel"
+	side_panel.custom_minimum_size.x = 280
+	body.add_child(side_panel)
 	var side := VBoxContainer.new()
-	side.custom_minimum_size.x = 270
 	side.add_theme_constant_override("separation", 10)
-	body.add_child(side)
+	side_panel.add_child(side)
 	var heading := Label.new()
 	_car_name = heading
-	heading.add_theme_font_size_override("font_size", 18)
-	heading.add_theme_color_override("font_color", ACCENT)
+	heading.theme_type_variation = &"TitleLabel"
+	heading.add_theme_font_size_override("font_size", 22)
 	side.add_child(heading)
 	_stats = GridContainer.new()
 	_stats.columns = 2
@@ -232,7 +213,7 @@ func _build() -> void:
 	side.add_child(_stats)
 	_change = Label.new()
 	_change.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_change.add_theme_color_override("font_color", Color(0.75, 0.95, 0.6))
+	_change.add_theme_color_override("font_color", UiStyle.GOOD)
 	side.add_child(_change)
 
 
@@ -284,7 +265,7 @@ func _refresh_stats() -> void:
 	]:
 		var key := Label.new()
 		key.text = row[0]
-		key.add_theme_color_override("font_color", Color(0.7, 0.7, 0.68))
+		key.add_theme_color_override("font_color", UiStyle.INK_2)
 		_stats.add_child(key)
 		var value := Label.new()
 		value.text = row[1]
@@ -302,7 +283,7 @@ func _refresh_parts() -> void:
 			continue
 		_heading(_parts_list, SLOT_NAMES.get(String(slot), String(slot).capitalize()))
 		if choices.size() <= 1 and slot in [&"roof", &"lights"]:
-			_text(_parts_list, "Nothing yet. Some parts can't be bought; they turn up around the city.")
+			_text(_parts_list, "Nothing yet. Some parts turn up around the city.")
 			continue
 		for part: CarPart in choices:
 			var is_fitted := (fitted == null and part.is_stock()) or (fitted != null and fitted.id == part.id)
@@ -317,7 +298,7 @@ func _refresh_parts() -> void:
 			desc.text = part.description
 			desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			desc.add_theme_font_size_override("font_size", 13)
-			desc.add_theme_color_override("font_color", Color(0.7, 0.7, 0.68))
+			desc.add_theme_color_override("font_color", UiStyle.INK_2)
 			text.add_child(desc)
 			row.add_child(text)
 			var button := Button.new()
@@ -337,7 +318,7 @@ func _refresh_parts() -> void:
 
 func _refresh_tuning() -> void:
 	_clear(_tuning_list)
-	_text(_tuning_list, "Small tweaks, free to try. Some need the right parts fitted first.")
+	_text(_tuning_list, "Free to fiddle with. Some need parts fitted first.")
 	var ids := _car.get_part_ids()
 	for o in CarTuning.OPTIONS:
 		var available := CarTuning.is_available(o, ids)
@@ -369,11 +350,11 @@ func _refresh_tuning() -> void:
 		high.custom_minimum_size.x = 170
 		high.add_theme_font_size_override("font_size", 13)
 		if not available:
-			high.add_theme_color_override("font_color", Color(0.85, 0.55, 0.45))
+			high.add_theme_color_override("font_color", UiStyle.RED)
 		row.add_child(high)
 		_tuning_list.add_child(row)
 	_heading(_tuning_list, "Saved setups")
-	_text(_tuning_list, "Keep a setup for each kind of drive and swap between them here.")
+	_text(_tuning_list, "One for each kind of drive.")
 	for i in CarController.SETUP_NAMES.size():
 		var slot := i
 		var row := HBoxContainer.new()
@@ -385,7 +366,7 @@ func _refresh_tuning() -> void:
 		info.text = _setup_summary(_car.setups[i]) if _car.has_setup(i) else "Empty"
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		info.add_theme_font_size_override("font_size", 13)
-		info.add_theme_color_override("font_color", Color(0.7, 0.7, 0.68))
+		info.add_theme_color_override("font_color", UiStyle.INK_2)
 		row.add_child(info)
 		var save := Button.new()
 		save.text = "Overwrite" if _car.has_setup(i) else "Save here"
@@ -403,7 +384,7 @@ func _refresh_tuning() -> void:
 		row.add_child(use)
 		_tuning_list.add_child(row)
 	var reset := Button.new()
-	reset.text = "Back to the default setup"
+	reset.text = "Reset to standard"
 	reset.pressed.connect(func() -> void:
 		_car.set_tuning({})
 		_refresh())
@@ -421,7 +402,7 @@ func _setup_summary(values: Dictionary) -> String:
 
 func _refresh_paint() -> void:
 	_clear(_paint_list)
-	_text(_paint_list, "A full respray takes most of a day (%s h) and covers the sun-faded paint for good." % _hours(Garage.RESPRAY_HOURS))
+	_text(_paint_list, "A full respray takes %s hours." % _hours(Garage.RESPRAY_HOURS))
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 10)
@@ -433,16 +414,12 @@ func _refresh_paint() -> void:
 		button.text = "%s\n$%s" % [paint[0], _number(paint[2])]
 		button.custom_minimum_size = Vector2(200, 64)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		var swatch := StyleBoxFlat.new()
-		swatch.bg_color = Color(0.15, 0.14, 0.13)
-		swatch.border_color = paint[1]
-		swatch.border_width_left = 26
-		swatch.set_border_width(SIDE_TOP, 2)
-		swatch.set_border_width(SIDE_BOTTOM, 2)
-		swatch.set_border_width(SIDE_RIGHT, 2)
-		swatch.content_margin_left = 34
+		# A paint chip: the colour down the left, on a cream card.
+		var swatch := UiStyle.box(UiStyle.PAPER_2, paint[1], 2, 8, 8)
+		swatch.border_width_left = 30
+		swatch.content_margin_left = 40
 		var hover := swatch.duplicate() as StyleBoxFlat
-		hover.bg_color = Color(0.28, 0.26, 0.22)
+		hover.bg_color = UiStyle.SUN_LIGHT
 		button.add_theme_stylebox_override("normal", swatch)
 		button.add_theme_stylebox_override("hover", hover)
 		button.add_theme_stylebox_override("focus", hover)
@@ -460,7 +437,7 @@ func _refresh_paint() -> void:
 
 func _refresh_finishes() -> void:
 	_heading(_paint_list, "Clear coat")
-	_text(_paint_list, "A new coat over whatever colour it is. Gloss shines up in the sun and the rain, matte doesn't shine at all.")
+	_text(_paint_list, "Gloss shines in the sun and rain. Matte never does.")
 	for id: String in Garage.FINISHES:
 		var coat: Array = Garage.FINISHES[id]
 		var on: bool = _car.finish == id
@@ -472,7 +449,7 @@ func _refresh_finishes() -> void:
 
 func _refresh_liveries() -> void:
 	_heading(_paint_list, "Stripes and numbers")
-	_text(_paint_list, "Painted over the colour. Pick a colour (and a door number for the roundels), then the job.")
+	_text(_paint_list, "Pick a colour and a door number, then the job.")
 	var colours := HBoxContainer.new()
 	colours.add_theme_constant_override("separation", 6)
 	_paint_list.add_child(colours)
@@ -482,17 +459,17 @@ func _refresh_liveries() -> void:
 		chip.text = shade[0]
 		chip.toggle_mode = true
 		chip.button_pressed = i == _livery_colour
-		var look := StyleBoxFlat.new()
-		look.bg_color = Color(0.15, 0.14, 0.13)
-		look.border_color = shade[1] if i != _livery_colour else ACCENT
+		var look := UiStyle.box(UiStyle.SUN_LIGHT if i == _livery_colour else UiStyle.PAPER_2,
+			shade[1], 2, 6, 4)
 		look.border_width_left = 16
-		look.set_border_width(SIDE_BOTTOM, 3 if i == _livery_colour else 1)
-		look.set_border_width(SIDE_TOP, 1)
-		look.set_border_width(SIDE_RIGHT, 1)
 		look.content_margin_left = 22
 		look.content_margin_right = 8
-		for state: String in ["normal", "hover", "pressed", "focus"]:
+		if i == _livery_colour:
+			look.border_width_bottom = 4
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
 			chip.add_theme_stylebox_override(state, look)
+		chip.add_theme_color_override("font_pressed_color", UiStyle.INK)
+		chip.add_theme_color_override("font_hover_pressed_color", UiStyle.INK)
 		chip.pressed.connect(func() -> void:
 			_livery_colour = i
 			_refresh_after_action())
@@ -530,7 +507,7 @@ func _refresh_fuel() -> void:
 		var note := "cheap day" if is_equal_approx(price, cheapest) else (
 			"prices jumped today" if price >= 2.0 else "")
 		_heading(_fuel_list, "Unleaded 91   $%.2f a litre" % price)
-		_text(_fuel_list, "%s%s. Prices here run on a weekly cycle." % [Garage.weekday(),
+		_text(_fuel_list, "%s%s. Cheapest early in the week." % [Garage.weekday(),
 			(", " + note) if note != "" else ""])
 	var gauge := ProgressBar.new()
 	gauge.max_value = 1.0
@@ -585,7 +562,7 @@ func _refresh_cars() -> void:
 		row.add_child(button)
 		_cars_list.add_child(row)
 	if not _spot.offers("dealer"):
-		_text(_cars_list, "New cars come from the car yard once your career opens them up.")
+		_text(_cars_list, "The car yard opens up as your career grows.")
 		return
 	for tier in range(0, 5):
 		var for_sale := CarCatalogue.for_sale().filter(func(c: Dictionary) -> bool: return int(c.tier) == tier)
@@ -603,7 +580,7 @@ func _refresh_cars() -> void:
 			blurb.text = car.blurb
 			blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			blurb.add_theme_font_size_override("font_size", 13)
-			blurb.add_theme_color_override("font_color", Color(0.7, 0.7, 0.68))
+			blurb.add_theme_color_override("font_color", UiStyle.INK_2)
 			text.add_child(blurb)
 			row.add_child(text)
 			var button := Button.new()
@@ -624,7 +601,7 @@ func _refresh_restore() -> void:
 	_clear(_restore_list)
 	if Classics.projects.is_empty():
 		_heading(_restore_list, "Restoration bench")
-		_text(_restore_list, "Nothing on the bench. Classic 500s turn up as rumours: at the Friday and Saturday night meet, and as your career grows. Find the wreck and it comes here.")
+		_text(_restore_list, "Nothing on the bench. Chase a barn-find rumour.")
 	for id: String in Classics.projects:
 		var car := CarCatalogue.get_car(id)
 		_heading(_restore_list, "%s (%s)  %d%% restored%s" % [car.get("name", id), car.get("years", ""),
@@ -634,9 +611,9 @@ func _refresh_restore() -> void:
 			var done := Classics.is_stage_done(id, stage.id)
 			var row := HBoxContainer.new()
 			var label := Label.new()
-			label.text = "%s %s%s" % ["[done]" if done else "[    ]", stage.title, "" if done else "   $%s, %s" % [_number(Classics.stage_price(id, stage)), _hours(stage.hours) + " h work"]]
+			label.text = "%s %s%s" % ["Done:" if done else "To do:", stage.title, "" if done else "   $%s, %s" % [_number(Classics.stage_price(id, stage)), _hours(stage.hours) + " h work"]]
 			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.62) if done else Color.WHITE)
+			label.add_theme_color_override("font_color", UiStyle.INK_3 if done else UiStyle.INK)
 			row.add_child(label)
 			if not done and not next.is_empty() and next.id == stage.id:
 				var button := Button.new()
@@ -683,7 +660,7 @@ func _refresh_extras() -> void:
 	var trinkets := Progression.earned_cosmetics("trinket")
 	if liveries.is_empty() and trinkets.is_empty() and _car.custom_livery.is_empty():
 		_heading(_extras_list, "Extras")
-		_text(_extras_list, "Nothing yet. Trinkets and liveries come from kilometres on the clock and nights at the car meet. Next at %s km." % _number(float(Progression.next_mileage_reward().get("km", 0))))
+		_text(_extras_list, "Nothing yet. Keep driving: the next one comes at %s km." % _number(float(Progression.next_mileage_reward().get("km", 0))))
 		return
 	_heading(_extras_list, "Livery")
 	var current: String = _car.cosmetics.get("livery", "")
@@ -697,7 +674,7 @@ func _refresh_extras() -> void:
 			_change.text = "Livery: %s." % item.title.to_lower()))
 	if not trinkets.is_empty():
 		_heading(_extras_list, "Trinkets")
-		_text(_extras_list, "One per spot: the mirror, the dash, the parcel shelf, the gear lever and the glovebox.")
+		_text(_extras_list, "One for the mirror, dash, shelf, gear lever and glovebox.")
 	for item: Dictionary in trinkets:
 		var id: String = item.id
 		var fitted := _car.has_trinket(id)
@@ -728,7 +705,7 @@ func _extra_row(title: String, action: String, disabled: bool, on_press: Callabl
 func _refresh_wash() -> void:
 	_clear(_wash_list)
 	_heading(_wash_list, "Drive-through wash   $%d" % Garage.WASH_PRICE)
-	_text(_wash_list, "Your car is %s. Customers tip a little more when the car's clean." % _dirt_text())
+	_text(_wash_list, "It's %s. A clean car gets better tips." % _dirt_text())
 	var meter := ProgressBar.new()
 	meter.max_value = 1.0
 	meter.value = _car.dirt
@@ -736,7 +713,7 @@ func _refresh_wash() -> void:
 	meter.custom_minimum_size.y = 14
 	_wash_list.add_child(meter)
 	var button := Button.new()
-	button.text = "Run it through the wash"
+	button.text = "Wash it"
 	button.disabled = _car.dirt < 0.02 or not Wallet.can_afford(Garage.WASH_PRICE)
 	button.pressed.connect(func() -> void:
 		if Garage.wash(_car):
@@ -749,7 +726,7 @@ func _refresh_wash() -> void:
 func _refresh_service() -> void:
 	_clear(_service_list)
 	_heading(_service_list, "Servicing")
-	_text(_service_list, "Tyres wear quicker when you slide them, pads when you brake hard. Old oil takes the edge off the engine. Doing it yourself takes a while.")
+	_text(_service_list, "Slides wear tyres, hard stops wear pads, old oil slows you.")
 	for item: String in Garage.SERVICES:
 		if item == "oil" and _car.is_electric:
 			continue
@@ -762,7 +739,7 @@ func _refresh_service() -> void:
 		name_label.text = "%s: %s" % [item.capitalize(), _wear_text(item, worn)]
 		name_label.custom_minimum_size.x = 230
 		name_label.add_theme_color_override("font_color",
-			Color(1.0, 0.6, 0.45) if worn >= CarController.WEAR_DUE else Color.WHITE)
+			UiStyle.RED if worn >= CarController.WEAR_DUE else UiStyle.INK)
 		row.add_child(name_label)
 		var meter := ProgressBar.new()
 		meter.max_value = 1.0
@@ -893,19 +870,18 @@ func _needs_text(o: Dictionary) -> String:
 
 
 func _heading(parent: Control, text: String) -> void:
-	parent.add_child(HSeparator.new())
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", 17)
-	label.add_theme_color_override("font_color", ACCENT)
-	parent.add_child(label)
+	if parent.get_child_count() > 0:
+		var gap := Control.new()
+		gap.custom_minimum_size.y = 6
+		parent.add_child(gap)
+	UiStyle.section(parent, text)
 
 
 func _text(parent: Control, text: String) -> void:
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.78))
+	label.add_theme_color_override("font_color", UiStyle.INK_2)
 	parent.add_child(label)
 
 

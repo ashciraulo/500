@@ -1,114 +1,99 @@
 extends CanvasLayer
-## Minimal driving HUD: speed, gear, rev bar, gearbox mode, clock and weather.
-## F1 shows the controls.
+## The driving HUD: the round dash dial (bottom right), a cream status strip
+## with money, day, clock and weather (bottom left), the job card (top right),
+## messages as little cards that drop in at the top, and the controls card
+## (F1).
 
 @export var car_path: NodePath
 
-const HELP := """W/S or triggers: throttle / brake    A/D or stick: steer    Space / B: handbrake
-E/Q or bumpers: gear up / down    G / Select: manual <-> auto    C / Y: camera
-L: headlights    O: roof (convertibles)    R / D-pad down: reset car    Mouse click: look around (interior)
-F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
-F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)
-F / A: use a workshop, servo or spray shop when parked in its bay    P / L3: photo mode
-Hold F / A: get out of the car    On foot: WASD walk, Space hurry, F open doors, sleep, get in
-Radio: . / , station    / on-off    M next track    N next playlist (My Music)    H: horn
-B / R3: binoculars (stopped, or on foot), Enter / A to photograph    J: field journal"""
+## [keyboard, gamepad, what it does], in columns of sections.
+const HELP := [
+	[["Driving", [
+		["W / S", "RT / LT", "Throttle and brake"],
+		["A / D", "L stick", "Steer"],
+		["Space", "B", "Handbrake"],
+		["E / Q", "RB / LB", "Gear up and down"],
+		["G", "Select", "Manual or automatic"],
+		["C", "Y", "Chase or interior camera"],
+		["L", "D-pad up", "Headlights"],
+		["O", "", "Roof (convertibles)"],
+		["H", "", "Horn"],
+		["R", "D-pad down", "Put the car back upright"],
+	]], ["Radio", [
+		["/", "", "On and off"],
+		[". / ,", "", "Next or last station"],
+		["M", "", "Next track"],
+		["N", "", "Next playlist (My Music)"],
+	]]],
+	[["Out and about", [
+		["Hold F", "Hold A", "Get out of the car"],
+		["F", "A", "Use, open, get in, sleep"],
+		["W A S D", "L stick", "Walk (Space to hurry)"],
+		["Tab", "X", "Phone: jobs and leads"],
+		["P", "L3", "Photo mode"],
+		["B", "R3", "Binoculars (stopped or on foot)"],
+		["Enter", "A", "Take the photo"],
+		["J", "", "Field journal"],
+	]], ["The world", [
+		["F5 / F6", "D-pad right", "Next weather / hold it"],
+		["F7 / F8", "D-pad left", "An hour on / stop the clock"],
+		["F9", "", "Lo-fi filter on and off"],
+		["F11", "", "Full screen"],
+		["Esc", "Start", "Pause and settings"],
+		["F1", "", "Hide this card"],
+	]]],
+]
+
+const TOAST_TOP := 18.0
+const TOAST_SECONDS := 4.5
 
 var _car: CarController
-var _speed: Label
-var _gear: Label
-var _status: Label
-var _help: Label
-var _rev_bar: ColorRect
-var _gauges: Control
-var _rev_back: ColorRect
-var _objective: Label
-var _fuel_bar: ColorRect
-var _fuel_label: Label
-var _toast: Label
+var _root: Control
+var _dash: DashCluster
+var _strip: PanelContainer
+var _money: Label
+var _day: Label
+var _clock: Label
+var _clock_lock: TextureRect
+var _weather_icon: TextureRect
+var _weather: Label
+var _weather_lock: TextureRect
+var _weather_key := ""
+var _help: PanelContainer
+var _help_pad := false
+var _objective: PanelContainer
+var _objective_text: Label
+var _toast: PanelContainer
+var _toast_icon: TextureRect
+var _toast_label: Label
 var _toast_queue: PackedStringArray = []
 var _toast_time := 0.0
-
-const TOAST_TOP := 150.0
+var _night := 0.0
 
 
 func _ready() -> void:
 	_car = get_node_or_null(car_path) as CarController
-	var root := Control.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(root)
+	_root = Control.new()
+	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_root)
 
-	# Speed, gear, revs and fuel: hidden while the player is out of the car.
-	_gauges = Control.new()
-	_gauges.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_gauges.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(_gauges)
-	_speed = _label(_gauges, 40, Vector2(-220, -110))
-	var unit := _label(_gauges, 14, Vector2(-140, -92))
-	unit.text = "km/h"
-	_gear = _label(_gauges, 40, Vector2(-80, -110))
-	_rev_back = ColorRect.new()
-	_rev_back.color = Color(0, 0, 0, 0.45)
-	_rev_back.size = Vector2(200, 10)
-	_rev_back.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_rev_back.position = Vector2(-220, -50)
-	_gauges.add_child(_rev_back)
-	_rev_bar = ColorRect.new()
-	_rev_bar.size = Vector2(0, 10)
-	_rev_back.add_child(_rev_bar)
-	_fuel_label = _label(_gauges, 13, Vector2(-220, -136))
-	_fuel_label.text = "FUEL"
-	var fuel_back := ColorRect.new()
-	fuel_back.color = Color(0, 0, 0, 0.45)
-	fuel_back.size = Vector2(150, 6)
-	fuel_back.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	fuel_back.position = Vector2(-170, -128)
-	_gauges.add_child(fuel_back)
-	_fuel_bar = ColorRect.new()
-	_fuel_bar.size = Vector2(150, 6)
-	fuel_back.add_child(_fuel_bar)
-	_status = _label(root, 16, Vector2.ZERO)
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_status.offset_left = -520
-	_status.offset_right = -16
-	_status.offset_top = -36
-	_status.offset_bottom = -12
+	# The dial: hidden while the player is out of the car.
+	_dash = DashCluster.new()
+	_dash.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_dash.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_dash.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_dash.offset_left = -_dash.custom_minimum_size.x - 14.0
+	_dash.offset_top = -_dash.custom_minimum_size.y - 10.0
+	_dash.offset_right = -14.0
+	_dash.offset_bottom = -10.0
+	_root.add_child(_dash)
 
-	_help = Label.new()
-	_help.text = HELP
-	_help.position = Vector2(16, 12)
-	_help.add_theme_font_size_override("font_size", 14)
-	_help.add_theme_color_override("font_outline_color", Color.BLACK)
-	_help.add_theme_constant_override("outline_size", 4)
+	_build_strip()
+	_build_objective()
+	_build_toast()
+	_build_help()
 	_help.visible = Settings.show_help
-	root.add_child(_help)
-
-	_objective = Label.new()
-	_objective.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_objective.offset_left = -620
-	_objective.offset_right = -16
-	_objective.offset_top = 12
-	_objective.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_objective.add_theme_font_size_override("font_size", 16)
-	_objective.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55))
-	_objective.add_theme_color_override("font_outline_color", Color.BLACK)
-	_objective.add_theme_constant_override("outline_size", 5)
-	root.add_child(_objective)
-
-	_toast = Label.new()
-	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_toast.offset_left = -360
-	_toast.offset_right = 360
-	_toast.offset_top = TOAST_TOP
-	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast.add_theme_font_size_override("font_size", 20)
-	_toast.add_theme_color_override("font_outline_color", Color.BLACK)
-	_toast.add_theme_constant_override("outline_size", 6)
-	_toast.modulate.a = 0.0
-	root.add_child(_toast)
 
 	Jobs.job_started.connect(func(job: Dictionary) -> void: toast(job.title))
 	Jobs.job_completed.connect(func(_job: Dictionary, _pay: int, summary: String) -> void: toast(summary))
@@ -132,7 +117,7 @@ func _ready() -> void:
 	Classics.rumour_heard.connect(func(_car: String, _text: String) -> void:
 		toast("New barn-find rumour. Check Leads on your phone (Tab / X)."))
 	Classics.wreck_found.connect(func(car_id: String) -> void:
-		toast("Found it: a %s, rotten but complete. It's waiting on the restoration bench at home." % CarCatalogue.get_car(car_id).get("name", "classic")))
+		toast("Found a %s! It's on the bench at home." % CarCatalogue.get_car(car_id).get("name", "classic")))
 	Classics.restored.connect(func(car_id: String, _finish: String) -> void:
 		toast("The %s is finished. Take it out from the Cars tab at home." % CarCatalogue.get_car(car_id).get("name", "classic")))
 	Discoveries.discovered.connect(func(id: String) -> void:
@@ -142,13 +127,18 @@ func _ready() -> void:
 		if id.begins_with("badge/"):
 			toast("Found a 500 badge (%d of %d)" % [Collectible.found_count(), Collectible.TOTAL]))
 	if _car:
-		_car.fuel_low.connect(func() -> void: toast("Fuel's getting low. Time to find a servo."))
+		_car.fuel_low.connect(func() -> void: toast("Fuel's low. Find a servo."))
 		_car.fuel_empty.connect(func() -> void:
-			toast("Out of fuel. Call roadside assist from your phone (Tab / X)."))
+			toast("Out of fuel. Call roadside assist on your phone."))
 		_car.service_due.connect(func(item: String) -> void:
-			toast({"tyres": "The tyres are getting bald. New ones at the carport workshop.",
-				"brakes": "The brakes have started to squeal. Pads are due.",
-				"oil": "The oil's due for a change. Do it at the carport."}.get(item, "Something's due for a service.")))
+			toast({"tyres": "Tyres are going bald",
+				"brakes": "Brakes are squealing",
+				"oil": "Oil change due"}.get(item, "Something's due for a service")))
+
+
+## Tuck the controls card away (screenshot tools).
+func hide_help() -> void:
+	_help.visible = false
 
 
 ## Show a message for a few seconds. Messages queue up.
@@ -157,51 +147,265 @@ func toast(text: String) -> void:
 
 
 func _process(delta: float) -> void:
-	_objective.text = Jobs.objective_text()
+	var objective := Jobs.objective_text()
+	_objective.visible = objective != ""
+	_objective_text.text = objective
+
 	_toast_time -= delta
 	if _toast_time <= 0.0 and not _toast_queue.is_empty():
-		_toast.text = _toast_queue[0]
+		_show_toast(_toast_queue[0])
 		_toast_queue.remove_at(0)
-		_toast_time = 4.5
-	_toast.modulate.a = clampf(_toast_time / 0.6, 0.0, 1.0) if _toast_time < 0.6 else 1.0
-	# Messages sit under the controls list while it's showing, not over it.
-	_toast.offset_top = (_help.position.y + _help.size.y + 24.0) if _help.visible else TOAST_TOP
+		_toast_time = TOAST_SECONDS
+	var shown := TOAST_SECONDS - _toast_time
+	var fade_in := clampf(shown / 0.25, 0.0, 1.0)
+	_toast.modulate.a = minf(fade_in, clampf(_toast_time / 0.6, 0.0, 1.0))
+	_toast.visible = _toast.modulate.a > 0.0
+	# Drop in from just above; sit beside the controls card while it's up.
+	_toast.offset_top = TOAST_TOP - 14.0 * (1.0 - ease(fade_in, 0.4))
+	_toast.offset_bottom = _toast.offset_top
+	if _help.visible:
+		_toast.anchor_left = 0.0
+		_toast.anchor_right = 0.0
+		_toast.grow_horizontal = Control.GROW_DIRECTION_END
+		_toast.offset_left = _help.position.x + _help.size.x + 16.0
+	else:
+		_toast.anchor_left = 0.5
+		_toast.anchor_right = 0.5
+		_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_toast.offset_left = 0.0
+	_toast.offset_right = _toast.offset_left
+
 	if Input.is_action_just_pressed("toggle_help"):
 		_help.visible = not _help.visible
 		Settings.show_help = _help.visible
+	if _help.visible and _help_pad != UiStyle.using_pad:
+		_fill_help()
+	_update_strip()
 	if not _car:
+		_dash.visible = false
 		return
-	_gauges.visible = _car.player_controlled
-	_speed.text = "%3d" % roundi(_car.speed_kmh())
+	_dash.visible = _car.player_controlled
+	if not _dash.visible:
+		return
+	_night = move_toward(_night, 1.0 if _car.headlights_on else 0.0, delta * 2.5)
+	_dash.night = _night
+	_dash.speed_kmh = _car.speed_kmh()
+	_dash.rpm = _car.rpm
+	_dash.redline_rpm = _car.redline_rpm
+	_dash.limiter_rpm = _car.limiter_rpm
 	match _car.gear:
-		-1: _gear.text = "R"
-		0: _gear.text = "N"
-		_: _gear.text = str(_car.gear)
+		-1: _dash.gear_text = "R"
+		0: _dash.gear_text = "N"
+		_: _dash.gear_text = str(_car.gear)
 	if _car.is_shifting:
-		_gear.text = "-"
-	var rev := clampf((_car.rpm - 0.0) / _car.limiter_rpm, 0.0, 1.0)
-	_rev_bar.size.x = 200.0 * rev
-	_rev_bar.color = Color(0.95, 0.3, 0.2) if _car.rpm > _car.redline_rpm else Color(0.95, 0.85, 0.5)
-	var fuel := _car.fuel_fraction()
-	_fuel_bar.size.x = 150.0 * fuel
-	var low := fuel < CarController.LOW_FUEL_FRACTION
-	_fuel_bar.color = Color(0.95, 0.3, 0.2) if low else Color(0.85, 0.85, 0.8)
-	_fuel_label.modulate.a = 0.4 + 0.6 * absf(sin(Time.get_ticks_msec() / 300.0)) if low else 1.0
-	var lock := " [locked]"
-	_status.text = "$%d  |  Day %d  |  %s  |  %s%s  |  %s%s" % [
-		Wallet.balance, GameClock.day,
-		"AUTO" if _car.transmission == CarController.Transmission.AUTOMATIC else "MANUAL",
-		GameClock.time_string(), lock if GameClock.locked else "",
-		Weather.state_name(), lock if Weather.locked else "",
-	]
+		_dash.gear_text = "-"
+	_dash.automatic = _car.transmission == CarController.Transmission.AUTOMATIC
+	_dash.fuel = _car.fuel_fraction()
+	_dash.fuel_low = _dash.fuel < CarController.LOW_FUEL_FRACTION
 
 
-func _label(parent: Control, font_size: int, offset: Vector2) -> Label:
-	var label := Label.new()
-	label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	label.position = offset
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 6)
-	parent.add_child(label)
-	return label
+# --- the status strip ---------------------------------------------------------------------
+
+func _build_strip() -> void:
+	_strip = PanelContainer.new()
+	_strip.theme_type_variation = &"ChipPanel"
+	_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_strip.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_strip.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_strip.offset_left = 16
+	_strip.offset_top = -16
+	_strip.offset_bottom = -16
+	_root.add_child(_strip)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_strip.add_child(row)
+	row.add_child(UiStyle.icon_rect("money", 20, UiStyle.INK, UiStyle.GOOD))
+	_money = _strip_label(row, true)
+	_strip_gap(row)
+	row.add_child(UiStyle.icon_rect("calendar", 20))
+	_day = _strip_label(row)
+	_strip_gap(row)
+	row.add_child(UiStyle.icon_rect("clock", 20))
+	_clock = _strip_label(row)
+	_clock_lock = UiStyle.icon_rect("lock", 14, UiStyle.INK, UiStyle.SUN)
+	row.add_child(_clock_lock)
+	_strip_gap(row)
+	_weather_icon = UiStyle.icon_rect("sun", 22, UiStyle.INK, UiStyle.SUN)
+	row.add_child(_weather_icon)
+	_weather = _strip_label(row)
+	_weather_lock = UiStyle.icon_rect("lock", 14, UiStyle.INK, UiStyle.SUN)
+	row.add_child(_weather_lock)
+
+
+func _strip_label(row: HBoxContainer, bold := false) -> Label:
+	var l := UiStyle.label(row, "")
+	l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	if bold:
+		l.add_theme_font_override("font", UiStyle.BOLD_FONT)
+	return l
+
+
+func _strip_gap(row: HBoxContainer) -> void:
+	var dot := UiStyle.label(row, "·", "NoteLabel")
+	dot.autowrap_mode = TextServer.AUTOWRAP_OFF
+	dot.add_theme_color_override("font_color", UiStyle.INK_3)
+
+
+func _update_strip() -> void:
+	_money.text = "$" + UiStyle.number(Wallet.balance)
+	_day.text = "Day %d, %s" % [GameClock.day, Garage.weekday().left(3)]
+	_clock.text = GameClock.time_string()
+	_clock_lock.visible = GameClock.locked
+	_weather.text = Weather.state_name()
+	_weather_lock.visible = Weather.locked
+	var key: String = ["moon" if GameClock.is_night() else "sun", "rain", "storm"][clampi(int(Weather.state), 0, 2)]
+	if Weather.state == Weather.State.CLEAR and Weather.cloud_cover > 0.45:
+		key = "cloud"
+	if key != _weather_key:
+		_weather_key = key
+		_weather_icon.texture = UiStyle.icon(key, 22, UiStyle.INK, Vector2.ZERO,
+			UiStyle.SUN if key in ["sun", "moon"] else UiStyle.TEAL)
+
+
+# --- the job card ---------------------------------------------------------------------------
+
+func _build_objective() -> void:
+	_objective = PanelContainer.new()
+	_objective.theme_type_variation = &"ChipPanel"
+	_objective.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_objective.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_objective.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_objective.offset_left = -16
+	_objective.offset_right = -16
+	_objective.offset_top = 16
+	_root.add_child(_objective)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_objective.add_child(row)
+	var tag := PanelContainer.new()
+	var tag_box := UiStyle.box(UiStyle.RED, Color.TRANSPARENT, 0, 5, 0)
+	tag_box.content_margin_left = 7
+	tag_box.content_margin_right = 7
+	tag.add_theme_stylebox_override("panel", tag_box)
+	tag.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var tag_label := UiStyle.label(tag, "JOB", "SectionLabel")
+	tag_label.add_theme_color_override("font_color", UiStyle.CREAM_TEXT)
+	tag_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	row.add_child(tag)
+	_objective_text = UiStyle.label(row, "")
+	_objective_text.custom_minimum_size.x = 300
+	_objective_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+
+# --- messages -----------------------------------------------------------------------------
+
+## Which icon and colour a message gets, from what it says.
+const TOAST_KINDS := [
+	["Discovered", "pin", UiStyle.TEAL],
+	["Challenge done", "star", UiStyle.SUN],
+	["Tier complete", "flag", UiStyle.RED],
+	["Photo spot", "camera", UiStyle.TEAL],
+	["Scenic drive", "flag", UiStyle.TEAL],
+	["Fuel", "fuel", UiStyle.RED],
+	["Out of fuel", "fuel", UiStyle.RED],
+	["Found a 500 badge", "badge", UiStyle.RED],
+	["Found a ", "car", UiStyle.SUN],
+	["New barn-find", "car", UiStyle.SUN],
+	["Tyres", "wrench", UiStyle.RED],
+	["Brakes", "wrench", UiStyle.RED],
+	["Oil", "wrench", UiStyle.RED],
+	["Something's due", "wrench", UiStyle.RED],
+	["Your binoculars", "binoculars", UiStyle.TEAL],
+]
+
+
+func _build_toast() -> void:
+	_toast = PanelContainer.new()
+	_toast.theme_type_variation = &"ChipPanel"
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast.anchor_left = 0.5
+	_toast.anchor_right = 0.5
+	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast.offset_top = TOAST_TOP
+	_toast.modulate.a = 0.0
+	_root.add_child(_toast)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast.add_child(row)
+	_toast_icon = UiStyle.icon_rect("note", 26)
+	row.add_child(_toast_icon)
+	_toast_label = UiStyle.label(row, "")
+	_toast_label.add_theme_font_size_override("font_size", 17)
+
+
+func _show_toast(text: String) -> void:
+	var icon_name := "note"
+	var accent := UiStyle.SUN
+	for kind: Array in TOAST_KINDS:
+		if text.begins_with(kind[0]):
+			icon_name = kind[1]
+			accent = kind[2]
+			break
+	_toast_icon.texture = UiStyle.icon(icon_name, 26, UiStyle.INK, Vector2.ZERO, accent)
+	_toast_label.text = text
+	# Short ones on one line; long ones wrap at a comfortable width.
+	var font := UiStyle.BODY_FONT
+	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
+	_toast_label.autowrap_mode = TextServer.AUTOWRAP_OFF if width < 520 else TextServer.AUTOWRAP_WORD_SMART
+	_toast_label.custom_minimum_size.x = 0.0 if width < 520 else 520.0
+
+
+# --- the controls card --------------------------------------------------------------------
+
+func _build_help() -> void:
+	_help = PanelContainer.new()
+	_help.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_help.position = Vector2(16, 16)
+	var style := UiStyle.card(14)
+	style.bg_color = Color(UiStyle.PAPER, 0.95)
+	_help.add_theme_stylebox_override("panel", style)
+	_root.add_child(_help)
+	_fill_help()
+
+
+func _fill_help() -> void:
+	_help_pad = UiStyle.using_pad
+	for child in _help.get_children():
+		_help.remove_child(child)
+		child.queue_free()
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 6)
+	_help.add_child(outer)
+	var title := UiStyle.label(outer, "Controls", "TitleLabel", 24)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 22)
+	outer.add_child(columns)
+	for column: Array in HELP:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 3)
+		columns.add_child(col)
+		for section: Array in column:
+			UiStyle.section(col, section[0])
+			var grid := GridContainer.new()
+			grid.columns = 2
+			grid.add_theme_constant_override("h_separation", 10)
+			grid.add_theme_constant_override("v_separation", 3)
+			col.add_child(grid)
+			for entry: Array in section[1]:
+				var keys: String = entry[1] if _help_pad and entry[1] != "" else entry[0]
+				var caps := HBoxContainer.new()
+				caps.add_theme_constant_override("separation", 3)
+				caps.custom_minimum_size.x = 92
+				for k in keys.split(" / "):
+					for part in ([k] if k.begins_with("Hold") or k.begins_with("D-pad") or k.begins_with("L stick") else k.split(" ")):
+						caps.add_child(UiStyle.keycap(part, 12))
+				grid.add_child(caps)
+				var what := UiStyle.label(grid, entry[2], "", 14)
+				what.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var hint := UiStyle.label(outer, "F1 hides this. Your gamepad's buttons show here once you use it." if not _help_pad
+		else "Keyboard keys show here when you go back to the keyboard.", "NoteLabel", 12)
+	hint.autowrap_mode = TextServer.AUTOWRAP_OFF

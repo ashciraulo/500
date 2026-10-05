@@ -65,7 +65,7 @@ var _shape: CollisionShape3D
 var _yaw := 0.0
 var _pitch := 0.0
 var _bob := 0.0
-var _prompt: Label
+var _prompt: PromptChip
 var _ui: CanvasLayer
 var _fade: ColorRect
 var _note_timer := 0.0
@@ -111,20 +111,8 @@ func _ready() -> void:
 	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(_fade)
-	_prompt = Label.new()
-	_prompt.anchor_left = 0.5
-	_prompt.anchor_right = 0.5
-	_prompt.anchor_top = 1.0
-	_prompt.anchor_bottom = 1.0
-	_prompt.offset_left = -160.0
-	_prompt.offset_right = 160.0
-	_prompt.offset_top = -96.0
-	_prompt.offset_bottom = -72.0
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.add_theme_color_override("font_color", Color(1.0, 0.95, 0.85))
-	_prompt.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	_prompt.add_theme_constant_override("shadow_offset_x", 1)
-	_prompt.add_theme_constant_override("shadow_offset_y", 1)
+	_prompt = PromptChip.new()
+	_prompt.place_bottom(64.0)
 	ui.add_child(_prompt)
 
 	_footsteps = FootstepAudio.new()
@@ -543,36 +531,55 @@ func _home() -> HomeBase:
 func _ask_when_to_wake() -> void:
 	_busy = true
 	_prompt.text = ""
+	# A small cream card over the bed: the three choices, the first one red.
+	var card := PanelContainer.new()
+	card.name = "WakeCard"
+	card.anchor_left = 0.5
+	card.anchor_right = 0.5
+	card.anchor_top = 1.0
+	card.anchor_bottom = 1.0
+	card.offset_top = -72.0
+	card.offset_bottom = -72.0
+	card.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	card.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ui.add_child(card)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 10)
+	card.add_child(outer)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	outer.add_child(head)
+	head.add_child(UiStyle.icon_rect("moon", 24, UiStyle.INK, UiStyle.RED))
+	UiStyle.label(head, "Wake up when?", "TitleLabel", 24).autowrap_mode = TextServer.AUTOWRAP_OFF
 	var box := VBoxContainer.new()
 	box.name = "WakeChoice"
-	box.anchor_left = 0.5
-	box.anchor_right = 0.5
-	box.anchor_top = 1.0
-	box.anchor_bottom = 1.0
-	box.offset_left = -170.0
-	box.offset_right = 170.0
-	box.offset_top = -190.0
-	box.offset_bottom = -72.0
-	box.add_theme_constant_override("separation", 4)
-	_ui.add_child(box)
+	box.add_theme_constant_override("separation", 8)
+	outer.add_child(box)
 	var choices := [
-		["Sleep till morning", HomeBase.WAKE_HOUR],
-		["Sleep till dusk", HomeBase.DUSK_HOUR],
-		["Not yet", -1.0],
+		["In the morning", HomeBase.WAKE_HOUR, "sun"],
+		["At dusk", HomeBase.DUSK_HOUR, "moon"],
+		["Not yet", -1.0, ""],
 	]
 	var buttons: Array[Button] = []
 	for choice in choices:
 		var button := Button.new()
 		button.text = choice[0]
+		button.custom_minimum_size = Vector2(260, 42)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if choice[2] != "":
+			button.icon = UiStyle.icon(choice[2], 20, UiStyle.CREAM_TEXT if buttons.is_empty() else UiStyle.INK, Vector2.ZERO, UiStyle.SUN)
+		if buttons.is_empty():
+			button.theme_type_variation = &"PrimaryButton"
 		var hour: float = choice[1]
 		button.pressed.connect(func() -> void:
-			box.queue_free()
+			card.queue_free()
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			_hold_armed = false
 			if hour < 0.0:
 				_busy = false
 			else:
 				_sleep(hour))
+		button.mouse_entered.connect(button.grab_focus)
 		box.add_child(button)
 		buttons.append(button)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -581,7 +588,8 @@ func _ask_when_to_wake() -> void:
 
 ## True while the wake-up choice is on screen (tests press its buttons).
 func wake_choice() -> Control:
-	return _ui.get_node_or_null(^"WakeChoice") as Control
+	var card := _ui.get_node_or_null(^"WakeCard")
+	return null if card == null or card.is_queued_for_deletion() else card.find_child("WakeChoice", true, false) as Control
 
 
 func _sleep(wake_hour := HomeBase.WAKE_HOUR) -> void:

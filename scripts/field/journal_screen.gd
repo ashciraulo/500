@@ -5,9 +5,13 @@ extends CanvasLayer
 ## blank with a pencilled hint; then the name, the note, where and when you
 ## first saw or caught it and your best photo. The game pauses while it's open.
 
-const ACCENT := Color(0.85, 0.78, 0.55)
-const PAPER := Color(0.93, 0.89, 0.8)
-const INK := Color(0.16, 0.14, 0.12)
+const ACCENT := UiStyle.RED
+const PAPER := Color("f4ecda")
+const INK := UiStyle.INK
+## The cloth cover, a deep bottle green.
+const COVER := Color("2d4a42")
+const RULE := Color(0.35, 0.5, 0.7, 0.16)
+const MARGIN := Color(0.78, 0.3, 0.25, 0.35)
 
 var _list: VBoxContainer
 var _page: VBoxContainer
@@ -17,6 +21,7 @@ var _selected := ""
 ## "birds" or "fish".
 var _tab := "birds"
 var _tab_buttons := {}
+var _group: ButtonGroup
 ## Room tone while one of M.'s pages is open.
 var _room: AudioStreamPlayer
 
@@ -28,58 +33,71 @@ func _ready() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.5)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_child(dim)
-	var panel := FieldUI.panel(ACCENT)
-	root.add_child(panel)
-	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(900, 560)
-	panel.add_child(box)
+	root.add_child(UiStyle.backdrop())
+	# The notebook: a cloth cover with two ruled pages open on it.
+	var cover := PanelContainer.new()
+	cover.set_anchors_preset(Control.PRESET_CENTER)
+	cover.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	cover.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var cloth := UiStyle.box(COVER, UiStyle.INK, 2, 16, 12)
+	cloth.shadow_color = UiStyle.SHADOW
+	cloth.shadow_offset = Vector2(6, 8)
+	cloth.shadow_size = 1
+	cover.add_theme_stylebox_override("panel", cloth)
+	root.add_child(cover)
+	var spread := HBoxContainer.new()
+	spread.custom_minimum_size = Vector2(980, 590)
+	spread.add_theme_constant_override("separation", 0)
+	cover.add_child(spread)
+
+	# Left page: the title, the Birds / Fish bookmarks and the index.
+	var left := _paper(true)
+	left.custom_minimum_size.x = 360
+	spread.add_child(left)
+	var index := VBoxContainer.new()
+	index.add_theme_constant_override("separation", 6)
+	left.add_child(index)
 	var header := HBoxContainer.new()
-	box.add_child(header)
-	FieldUI.label(header, "Field journal", 22, ACCENT).autowrap_mode = TextServer.AUTOWRAP_OFF
+	index.add_child(header)
+	var title := FieldUI.label(header, "Field journal", 26, INK)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_close = Button.new()
+	_close.text = "Close"
+	_close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_close.pressed.connect(close)
+	header.add_child(_close)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	index.add_child(tabs)
 	for tab: String in ["birds", "fish"]:
 		var b := Button.new()
 		b.text = tab.capitalize()
+		b.icon = UiStyle.icon("bird" if tab == "birds" else "fish", 20, UiStyle.INK, Vector2.ZERO, UiStyle.TEAL)
 		b.toggle_mode = true
 		b.pressed.connect(func() -> void:
 			if _tab != tab:
 				_tab = tab
 				_selected = ""
 			refresh())
-		header.add_child(b)
+		tabs.add_child(b)
 		_tab_buttons[tab] = b
-	_summary = FieldUI.label(header, "", 15, Color(0.8, 0.78, 0.7))
-	_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_summary.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_summary.clip_text = true
-	_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_close = Button.new()
-	_close.text = "Close"
-	_close.pressed.connect(close)
-	header.add_child(_close)
-	var body := HBoxContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", 14)
-	box.add_child(body)
+	_summary = FieldUI.label(index, "", 15, INK.lightened(0.25))
+	_summary.theme_type_variation = &"HandLabel"
+	_summary.add_theme_font_size_override("font_size", 20)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(300, 0)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	body.add_child(scroll)
+	index.add_child(scroll)
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list.add_theme_constant_override("separation", 1)
 	scroll.add_child(_list)
-	# The page: paper coloured, ink text.
-	var page_panel := PanelContainer.new()
+
+	# Right page: the entry.
+	var page_panel := _paper(false)
 	page_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var style := StyleBoxFlat.new()
-	style.bg_color = PAPER
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(18)
-	page_panel.add_theme_stylebox_override("panel", style)
-	body.add_child(page_panel)
+	spread.add_child(page_panel)
 	var page_scroll := ScrollContainer.new()
 	page_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	page_panel.add_child(page_scroll)
@@ -92,6 +110,36 @@ func _ready() -> void:
 
 func is_open() -> bool:
 	return visible
+
+
+## A page of the notebook: cream paper with faint blue rules, a red margin on
+## the right-hand page, and the shadow of the spine along the inside edge.
+func _paper(left_page: bool) -> PanelContainer:
+	var page := PanelContainer.new()
+	var paper := UiStyle.box(PAPER, Color.TRANSPARENT, 0, 0, 18)
+	if left_page:
+		paper.corner_radius_top_left = 8
+		paper.corner_radius_bottom_left = 8
+		paper.content_margin_right = 26
+	else:
+		paper.corner_radius_top_right = 8
+		paper.corner_radius_bottom_right = 8
+		paper.content_margin_left = 40
+	page.add_theme_stylebox_override("panel", paper)
+	page.draw.connect(func() -> void:
+		var w := page.size.x
+		var h := page.size.y
+		var y := 64.0
+		while y < h - 8.0:
+			page.draw_line(Vector2(10, y), Vector2(w - 10, y), RULE, 1.0)
+			y += 28.0
+		if not left_page:
+			page.draw_line(Vector2(28, 0), Vector2(28, h), MARGIN, 1.5)
+		# The spine: a soft shadow into the fold.
+		for i in 12:
+			var x := w - 1.0 - i if left_page else float(i)
+			page.draw_line(Vector2(x, 0), Vector2(x, h), Color(0.25, 0.18, 0.1, 0.16 * (1.0 - i / 12.0)), 1.0))
+	return page
 
 
 func _input(event: InputEvent) -> void:
@@ -138,6 +186,7 @@ func refresh() -> void:
 	if quiet > 0:
 		_summary.text += " %d quiet place%s." % [quiet, "" if quiet == 1 else "s"]
 	FieldUI.clear(_list)
+	_group = ButtonGroup.new()
 	var first: Button = null
 	var pages_header := false
 	for id: String in FieldJournal.bird_order:
@@ -149,13 +198,17 @@ func refresh() -> void:
 			pages_header = true
 			FieldUI.label(_list, "Loose pages, in another hand", 14, ACCENT)
 		var button := Button.new()
+		button.theme_type_variation = &"ListButton"
+		button.toggle_mode = true
+		button.button_group = _group
+		button.button_pressed = id == _selected
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		var e := FieldJournal.entry(id)
 		if e.is_empty():
 			button.text = "  ? ? ?   (%s)" % FieldJournal.RARITY_NAMES[clampi(int(b.rarity), 1, 4)].to_lower()
-			button.modulate = Color(0.7, 0.7, 0.7)
+			button.modulate = Color(1, 1, 1, 0.55)
 		else:
-			button.text = "%s  %s" % [b.name, "*".repeat(int(e.get("best", 0)))]
+			button.text = "%s  %s" % [b.name, UiStyle.stars(int(e.get("best", 0))) if int(e.get("best", 0)) > 0 else ""]
 		button.pressed.connect(func() -> void:
 			_selected = id
 			_show(id))
@@ -169,6 +222,10 @@ func refresh() -> void:
 		for h: Dictionary in places:
 			var key := "place:" + String(h.id)
 			var button := Button.new()
+			button.theme_type_variation = &"ListButton"
+			button.toggle_mode = true
+			button.button_group = _group
+			button.button_pressed = key == _selected
 			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			button.text = String(h.name)
 			button.pressed.connect(func() -> void:
@@ -186,6 +243,7 @@ func refresh() -> void:
 		_selected = FieldJournal.bird_order[0] if not FieldJournal.bird_order.is_empty() else ""
 	_show(_selected)
 	if first:
+		first.set_pressed_no_signal(true)
 		first.grab_focus()
 
 
@@ -202,7 +260,7 @@ func _show(id: String) -> void:
 	if e.is_empty():
 		FieldUI.label(_page, "Not yet seen", 22, INK)
 		FieldUI.label(_page, FieldJournal.RARITY_NAMES[clampi(int(b.rarity), 1, 4)], 15, INK.lightened(0.3))
-		FieldUI.label(_page, "Pencilled in the margin: \"%s\"" % b.get("hint", ""), 16, INK)
+		_pencil("Pencilled in the margin:", String(b.get("hint", "")))
 		FieldUI.label(_page, _when(b), 14, INK.lightened(0.3))
 		return
 	FieldUI.label(_page, b.name, 24, INK)
@@ -218,9 +276,9 @@ func _show(id: String) -> void:
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		pic.custom_minimum_size = Vector2(0, 230)
 		_page.add_child(pic)
-		FieldUI.label(_page, "Best photo: %s   (%d taken, %d sold)" % ["*".repeat(int(e.best)), int(e.photos), int(e.get("sold", 0))], 14, INK)
+		FieldUI.label(_page, "Best photo: %s   (%d taken, %d sold)" % [UiStyle.stars(int(e.best)), int(e.photos), int(e.get("sold", 0))], 14, INK)
 	else:
-		FieldUI.label(_page, "No photo yet. Raise the binoculars (B), then Enter / A for the shot.", 14, INK.lightened(0.2))
+		FieldUI.label(_page, "No photo yet. Binoculars (B), then Enter / A.", 14, INK.lightened(0.2))
 	FieldUI.label(_page, b.get("note", ""), 16, INK)
 	FieldUI.label(_page, "First seen: day %d, %s, %s." % [int(e.seen), e.get("time", ""), e.get("where", "somewhere")], 14, INK.lightened(0.2))
 	FieldUI.label(_page, "Where to look: %s" % b.get("hint", ""), 14, INK.lightened(0.2))
@@ -235,6 +293,7 @@ func _refresh_fish() -> void:
 		FieldJournal.caught_count(), FieldJournal.fish_total(), FieldJournal.esky.size(), FieldJournal.esky_size(),
 		_spots_found(), _spots_known()]
 	FieldUI.clear(_list)
+	_group = ButtonGroup.new()
 	var first: Button = null
 	for id: String in FieldJournal.fish_order:
 		var f := FieldJournal.fish_species(id)
@@ -254,15 +313,20 @@ func _refresh_fish() -> void:
 		_selected = FieldJournal.fish_order[0] if not FieldJournal.fish_order.is_empty() else ""
 	_show_fish(_selected)
 	if first:
+		first.set_pressed_no_signal(true)
 		first.grab_focus()
 
 
 func _list_button(text: String, id: String, dim: bool, first: Button) -> Button:
 	var button := Button.new()
+	button.theme_type_variation = &"ListButton"
+	button.toggle_mode = true
+	button.button_group = _group
+	button.button_pressed = id == _selected
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.text = text
 	if dim:
-		button.modulate = Color(0.7, 0.7, 0.7)
+		button.modulate = Color(1, 1, 1, 0.55)
 	button.pressed.connect(func() -> void:
 		_selected = id
 		_show_fish(id))
@@ -297,7 +361,7 @@ func _show_fish(id: String) -> void:
 	if e.is_empty():
 		FieldUI.label(_page, "Not yet caught", 22, INK)
 		FieldUI.label(_page, FieldJournal.RARITY_NAMES[clampi(int(f.get("rarity", 1)), 1, 4)], 15, INK.lightened(0.3))
-		FieldUI.label(_page, "Pencilled in the margin: \"%s\"" % f.get("hint", ""), 16, INK)
+		_pencil("Pencilled in the margin:", String(f.get("hint", "")))
 		FieldUI.label(_page, _when(f), 14, INK.lightened(0.3))
 		return
 	FieldUI.label(_page, f.name, 24, INK)
@@ -339,7 +403,7 @@ func _show_place(h: Dictionary) -> void:
 	if h.is_empty():
 		return
 	FieldUI.label(_page, String(h.name), 24, INK)
-	FieldUI.label(_page, "A quiet place. You found it by wandering; nobody told you about it.", 14, INK.lightened(0.3))
+	FieldUI.label(_page, "A quiet place you found yourself.", 14, INK.lightened(0.3))
 	var seen := PackedStringArray()
 	var unseen := 0
 	for id: String in FieldJournal.bird_order:
@@ -351,14 +415,15 @@ func _show_place(h: Dictionary) -> void:
 		else:
 			unseen += 1
 	if not seen.is_empty():
-		FieldUI.label(_page, "Seen here and hardly anywhere else: %s." % ", ".join(seen), 16, INK)
+		FieldUI.label(_page, "Only here: %s." % ", ".join(seen), 16, INK)
 	if unseen > 0:
-		FieldUI.label(_page, "Something else lives here that you haven't seen yet. Come back early or late.", 16, INK)
+		_pencil("Still to see", "something else lives here. Try early or late.")
 	var first := 0
 	for e: Dictionary in FieldJournal.entries.values():
 		if String(e.get("where", "")) == String(h.name):
 			first += 1
-	FieldUI.label(_page, "%d species first seen here." % first, 14, INK.lightened(0.2))
+	if first > 0:
+		FieldUI.label(_page, "%d first seen here." % first, 14, INK.lightened(0.2))
 
 
 func _show_spot(sp: Dictionary) -> void:
@@ -389,8 +454,10 @@ func _show_wrong(b: Dictionary, e: Dictionary, verb := "saw") -> void:
 	_room_tone(true)
 	var yours: bool = b.get("page_by", "") == "you"
 	FieldUI.label(_page, "The page is already filled in. It's your handwriting." if yours else "A loose page, dated 1979, signed M.", 14, INK.lightened(0.3))
-	var hand := FieldUI.label(_page, String(b.get("page", "")), 17, Color(0.18, 0.2, 0.36) if not yours else INK)
-	hand.add_theme_constant_override("line_spacing", 4)
+	var hand := FieldUI.label(_page, String(b.get("page", "")), 17, UiStyle.BLUE_INK if not yours else UiStyle.INK_2)
+	hand.theme_type_variation = &"HandLabel"
+	hand.add_theme_font_size_override("font_size", 25)
+	hand.add_theme_constant_override("line_spacing", -2)
 	var tex := FieldUI.photo_texture(String(e.get("best_file", "")))
 	if tex:
 		var pic := TextureRect.new()
@@ -431,6 +498,14 @@ func _room_tone(on: bool) -> void:
 	_room.volume_db = -10.0
 	add_child(_room)
 	_room.play()
+
+
+## A pencilled note: a small printed lead-in, then the note in handwriting.
+func _pencil(lead: String, note: String) -> void:
+	FieldUI.label(_page, lead, 14, INK.lightened(0.3))
+	var hand := FieldUI.label(_page, "\"%s\"" % note, 15, Color("6a6058"))
+	hand.theme_type_variation = &"HandLabel"
+	hand.add_theme_font_size_override("font_size", 24)
 
 
 static func _when(b: Dictionary) -> String:

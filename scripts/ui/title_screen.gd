@@ -13,13 +13,10 @@ signal started
 const ORBIT_SECONDS := 140.0
 const ORBIT_RADIUS := 5.2
 const ORBIT_HEIGHT := 1.5
-const ACCENT := Color(0.95, 0.85, 0.5)
-const QUIET := Color(0.78, 0.76, 0.7)
 
 var _root: Control
 var _menu: VBoxContainer
 var _confirm: VBoxContainer
-var _footer: Label
 var _continue: Button
 var _new: Button
 var _orbit := 0.0
@@ -164,118 +161,35 @@ func _leave() -> void:
 # --- Building ------------------------------------------------------------------------
 
 func _build() -> void:
-	_root = Control.new()
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(_root)
+	# The look (wash, wordmark, buttons) is TitleArt's; the world shows through.
+	var art := TitleArt.new()
+	_root = art
+	add_child(art)
 
-	# A soft shadow down the left, where the words sit; the world shows through.
-	var shade := TextureRect.new()
-	var gradient := Gradient.new()
-	gradient.set_color(0, Color(0.02, 0.02, 0.03, 0.88))
-	gradient.set_color(1, Color(0.02, 0.02, 0.03, 0.0))
-	var texture := GradientTexture2D.new()
-	texture.gradient = gradient
-	texture.fill_to = Vector2(1, 0)
-	texture.width = 256
-	texture.height = 4
-	shade.texture = texture
-	shade.stretch_mode = TextureRect.STRETCH_SCALE
-	shade.anchor_bottom = 1.0
-	shade.anchor_right = 0.62
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(shade)
-
-	var column := VBoxContainer.new()
-	column.anchor_top = 0.5
-	column.anchor_bottom = 0.5
-	column.offset_left = 88
-	column.offset_top = -190
-	column.offset_right = 600
-	column.add_theme_constant_override("separation", 6)
-	_root.add_child(column)
-
-	var title := Label.new()
-	title.text = "Cinquecento"
-	title.add_theme_font_size_override("font_size", 64)
-	title.add_theme_color_override("font_color", Color(0.96, 0.93, 0.86))
-	column.add_child(title)
-	var subtitle := Label.new()
-	subtitle.text = "15 Little Shenton Lane, Northbridge"
-	subtitle.add_theme_font_size_override("font_size", 17)
-	subtitle.add_theme_color_override("font_color", QUIET)
-	column.add_child(subtitle)
-	var gap := Control.new()
-	gap.custom_minimum_size.y = 36
-	column.add_child(gap)
-
-	_menu = VBoxContainer.new()
-	_menu.add_theme_constant_override("separation", 2)
-	column.add_child(_menu)
 	var has_save := SaveGame.enabled and SaveGame.has_save()
-	_continue = _item(_menu, "Continue", _continue_game)
+	_menu = art.add_group()
+	_continue = art.add_button("Continue", _continue_game, true, _menu)
 	_continue.visible = has_save
-	_new = _item(_menu, "New game", _new_game)
-	_item(_menu, "Settings", _settings)
-	_item(_menu, "Quit", _quit)
+	_new = art.add_button("New game", _new_game, not has_save, _menu)
+	art.add_button("Settings", _settings, false, _menu)
+	art.add_button("Quit", _quit, false, _menu)
 
-	_confirm = VBoxContainer.new()
+	_confirm = art.add_group()
 	_confirm.visible = false
-	_confirm.add_theme_constant_override("separation", 2)
-	column.add_child(_confirm)
-	var ask := Label.new()
-	ask.text = "Start again from the Pop and an empty wallet?"
-	ask.add_theme_color_override("font_color", Color(0.96, 0.93, 0.86))
-	_confirm.add_child(ask)
-	var warn := Label.new()
-	warn.text = "Your saved game, garage and journal will be gone."
-	warn.add_theme_font_size_override("font_size", 15)
-	warn.add_theme_color_override("font_color", QUIET)
-	_confirm.add_child(warn)
-	_item(_confirm, "Keep my game", func() -> void:
+	var ask := UiStyle.label(_confirm, "Start again with the Pop and an empty wallet?", "", 19, UiStyle.CREAM_TEXT)
+	ask.add_theme_font_override("font", UiStyle.BOLD_FONT)
+	ask.custom_minimum_size.x = 440
+	UiStyle.label(_confirm, "Your save, garage and journal will be gone.", "", 0, Color(UiStyle.CREAM_TEXT, 0.7)).custom_minimum_size.x = 440
+	art.add_button("Keep my game", func() -> void:
 		_confirm.visible = false
 		_menu.visible = true
-		_continue.grab_focus())
-	_item(_confirm, "Start again", _start_again)
+		(_continue if _continue.visible else _new).grab_focus(), true, _confirm)
+	art.add_button("Start again", _start_again, false, _confirm)
 
-	_footer = Label.new()
-	_footer.anchor_top = 1.0
-	_footer.anchor_bottom = 1.0
-	_footer.offset_left = 88
-	_footer.offset_top = -64
-	_footer.offset_right = 900
-	_footer.add_theme_font_size_override("font_size", 14)
-	_footer.add_theme_color_override("font_color", Color(0.62, 0.6, 0.56))
-	_footer.text = _footer_text(has_save)
-	_root.add_child(_footer)
+	art.footer = _footer_text(has_save)
 
 
 func _footer_text(has_save: bool) -> String:
 	if not has_save:
 		return "A new game starts in the carport with the Pop."
-	var when := SaveGame.saved_at().replace("T", " ").left(16)
-	var money := str(Wallet.balance)
-	return "Day %d   ·   $%s   ·   saved %s" % [GameClock.day, money, when]
-
-
-## A menu line: plain text that brightens and gets a marker when chosen.
-func _item(parent: Control, text: String, action: Callable) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.flat = true
-	button.focus_mode = Control.FOCUS_ALL
-	button.add_theme_font_size_override("font_size", 26)
-	button.add_theme_color_override("font_color", QUIET)
-	button.add_theme_color_override("font_hover_color", ACCENT)
-	button.add_theme_color_override("font_focus_color", ACCENT)
-	button.add_theme_color_override("font_pressed_color", ACCENT)
-	button.add_theme_color_override("font_hover_pressed_color", ACCENT)
-	var empty := StyleBoxEmpty.new()
-	for state in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
-		button.add_theme_stylebox_override(state, empty)
-	button.focus_entered.connect(func() -> void: button.text = "›  " + text)
-	button.focus_exited.connect(func() -> void: button.text = text)
-	button.mouse_entered.connect(button.grab_focus)
-	button.pressed.connect(action)
-	parent.add_child(button)
-	return button
+	return "Day %d, %s  ·  $%s" % [GameClock.day, Garage.weekday(), UiStyle.number(Wallet.balance)]
