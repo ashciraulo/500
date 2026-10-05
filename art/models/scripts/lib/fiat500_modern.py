@@ -211,6 +211,7 @@ def build(spec):
     root_objs += [interior, wheel_obj] + needles
     # where a pair of period spotlights clamps on, just proud of the bumper
     spot, _ = K.on_front(ref, 0, 0.40)
+    mods = K.mod_mounts((ref,), 0.30, 0.35, 0.0, S.AXLE_R, (TRACK2 if gen2 else TRACK) / 2, 0.38)
     bpy.data.objects.remove(ref, do_unlink=True)
 
     ws = spec.get("wheels", "pop_trim")
@@ -227,7 +228,8 @@ def build(spec):
 
     C.empty("Cam_Cockpit", (-0.36, 0.20, 1.17 + ride))
     C.empty("Mount_Exhaust", (0.42, 1.70, 0.24 + ride))
-    C.empty("Mount_Roof", (0, 0.35, 1.49 + ride))
+    # the 2020 body's roof sits about 4 cm higher where rack feet stand
+    C.empty("Mount_Roof", (0, 0.35, (1.533 if gen2 else 1.49) + ride))
     # trinket slots (scripts/vehicle/trinkets.gd): under the rear-view mirror,
     # on the passenger side of the dash mat, the parcel shelf and the gear knob
     C.empty("Mount_Mirror", (0, -0.30, 1.295 + ride))
@@ -235,6 +237,12 @@ def build(spec):
     C.empty("Mount_Shelf", (0.32, 1.38, 0.95 + ride))
     C.empty("Mount_Gear", (0, -0.37, 0.595 + ride))
     C.empty("Mount_Spotlights", (0, spot.y - 0.03, spot.z + ride))
+    for nm, (x, y, z) in mods.items():
+        C.empty(nm, (x, y, z + ride))
+    # fitted steering wheel (Godot -Z down the column, +Y to twelve o'clock)
+    # and gear knob (+Y up the lever)
+    K.tilted_mount("Mount_SteeringWheel", wheel_obj.location + Vector((0, 0, ride)), wheel_obj.rotation_euler.x)
+    K.tilted_mount("Mount_GearKnob", Vector((0, -0.37, 0.595 + ride)), math.radians(-40), 0.04)
     if ride:
         for o in root_objs:
             if not o.name.startswith("Wheel_"):
@@ -838,9 +846,12 @@ def _interior(M, spec, cab, X):
     hit = cab.ray_cast(Vector((0, -0.31, 1.37)), Vector((0, -1, 0)), 0.5)
     gy = hit[0].y + 0.004 if hit[0] is not None else -0.36
     bits.append(C.box_minmax("mirror_stem", (-0.015, gy, 1.35), (0.015, -0.315, 1.37), M["knob"]))
+    # the gear knob is its own object so a fitted one can replace it
+    knob = [b for b in bits if b.name.startswith(("gear_knob", "gear_badge", "gear_pattern"))]
+    bits = [b for b in bits if b not in knob]
     interior = C.join(bits, "Interior")
     interior, sw = _steering_wheel(M, interior, spec, X)
-    return interior, sw, needles
+    return interior, sw, needles + [C.join(knob, "GearKnob")]
 
 
 def _seat_mats(spec):

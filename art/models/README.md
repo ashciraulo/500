@@ -60,6 +60,11 @@ fuzzy dash mat, phone holder, and gaffer tape on the driver's seat bolster.
 | `Lights_Head`, `Lights_Tail` | Lamp lenses; materials `LampHead` / `LampTail` are driven by `car_body.gd`. |
 | `Cam_Cockpit` | Driver's eye point. |
 | `Mount_Exhaust`, `Mount_Roof` | Where exhaust and roof parts attach. |
+| `Mount_BumperF`, `Mount_BumperR` | On the bumper face, centred (every car): over-riders and the nudge bar attach here. |
+| `Mount_TowBar` | Under the rear bumper, centred, at hitch height (every car). |
+| `Mount_MudFlap_L`, `Mount_MudFlap_R` | Under the body just behind each rear tyre (every car). |
+| `Mount_SteeringWheel` | The steering-wheel hub (every car): -Z runs down the column toward the dash, +Y to twelve o'clock. A fitted wheel goes here with `SteeringWheel` hidden. |
+| `GearKnob`, `Mount_GearKnob` | The stock knob is its own mesh so it can be hidden; the mount is on the lever top with +Y up the lever (every car). |
 | `Hub_FL/FR/RL/RR`, `WheelStyle_<style>` | Every car built by `build_modern.py` (not the Pop, whose rig is the game's default): hub centres and wheel style, as on the classics below, so the game fits wheels and collision to each car. |
 
 Wheels are separate so the car scene can put them under its suspension
@@ -153,6 +158,7 @@ Same node contract as the modern cars, plus:
 | `Door_*` extras `hinge`, `open_sign` | `hinge` is `front` (F, L, R) or `rear` (Nuova, Sport, D, Giardiniera, the Abarths: rear-hinged "suicide" doors, origin on the rear shut line). Suicide doors open the other way: rotate by `open_sign * angle` about local Y (Door_L: `-1` front-hinged, `+1` rear-hinged). Godot 4.3 drops these extras, so the game reads `DoorOpen_*` instead. |
 | `Mount_Spotlights` | Centre of the front bumper, where period spotlights clamp (the modern cars have one too). |
 | `Mount_Roof` | Roof centre (top of the canopy frame on the Jolly). |
+| `Mount_RearRack` | Centre of the engine lid, for the lid rack (the saloons and the Jolly; not the Giardiniera, whose engine is under the floor, or the Abarths, whose lids are propped open). |
 
 The Jolly has no doors (no `Door_*`, `DoorOpen_*` or `Exit_*` nodes, but it has `Seat_*`) and no roof; its `Glass` is the low
 windscreen and `Mount_Mirror` sits on the windscreen's top rail.
@@ -200,9 +206,29 @@ a time.
 ## Found parts
 
 `scripts/build_accessories.py` writes bolt-on extras to `cars/parts/`, origin
-at the mount and front toward -Z: `roofrack_surf.glb` (gutter rack with a
-mini-mal surfboard, at `Mount_Roof`) and `spotlights_period.glb` (a pair of
-round driving lamps, at `Mount_Spotlights`).
+at the mount and front toward -Z: `spotlights_period.glb` (a pair of round
+driving lamps, at `Mount_Spotlights`) and the roof racks, at `Mount_Roof`:
+`roofrack_<load>_<roof>.glb`, where load is `plain` (bare bars), `luggage`
+(suitcase and tarp roll on slats), `bike` (an old road bike in a wheel tray)
+or `surf` (a mini-mal surfboard, fin up), and roof is `modern` (2007 and 2020
+bodies) or `classic` (Nuova to Giardiniera). `roofrack_surf.glb` is the old
+name for `roofrack_surf_modern.glb`. Each rack has a `Mount_Rod` empty where a
+fishing rod lies on the bars, rod along -Z. No hard roof, no rack: skip the
+500C, Jolly and other cabrios.
+
+The rest of the bolt-ons, each placed at its mount with an identity
+transform:
+
+| File | Mount | What |
+| --- | --- | --- |
+| `rack_rear_classic.glb`, `rack_rear_spare.glb` | `Mount_RearRack` | Chrome engine-lid rack on rubber-footed legs, bare or with a strapped 12-inch spare. |
+| `bumper_overriders_f.glb` / `_r.glb` | `Mount_BumperF` / `Mount_BumperR` | Pair of upright chrome over-riders with rubber faces (classics). |
+| `bumper_nudge.glb` | `Mount_BumperF` | Low polished-alloy nudge bar, uprights clear of the plate (modern cars). |
+| `towbar.glb` | `Mount_TowBar` | Square receiver, drop plate and 50 mm ball. |
+| `mudflap.glb`, `mudflap_short.glb` | `Mount_MudFlap_L` / `_R` | Black rubber flap, 24 cm (10 cm for the Giardiniera, whose body sits lower behind the wheel). |
+| `wheel_wood.glb`, `wheel_sport.glb` | `Mount_SteeringWheel` | Dished wood rim on slotted alloy spokes; smaller leather sport rim with a red band at twelve. |
+| `knob_wood.glb`, `knob_chrome.glb`, `knob_8ball.glb` | `Mount_GearKnob` | Walnut ball on a brass collar; chrome ball; black 8 ball. |
+| `seatcover_<sheepskin\|beaded>_<modern\|classic>.glb` | `Seat_L` | Covers shaped to the Pop's and the Nuova's seats; mirror X for `Seat_R`. |
 
 ## Home: 15 Little Shenton Lane
 

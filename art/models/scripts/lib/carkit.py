@@ -396,6 +396,63 @@ def hit(obj, origin, direction):
     return loc, nor
 
 
+def hit_scene(origin, direction, skip=()):
+    """Nearest ray hit on any mesh in the scene (world space), ignoring the
+    objects in skip and the road wheels: (location, normal) or None."""
+    import bpy
+    origin, direction = Vector(origin), Vector(direction).normalized()
+    best = None
+    for o in bpy.data.objects:
+        if o.type != "MESH" or o in skip or o.name.startswith("Wheel_"):
+            continue
+        inv = o.matrix_world.inverted()
+        lo = inv @ origin
+        ld = (inv.to_3x3() @ direction).normalized()
+        ok, loc, nor, _ = o.ray_cast(lo, ld)
+        if ok:
+            w = o.matrix_world @ loc
+            d = (w - origin).length
+            if best is None or d < best[0]:
+                best = (d, w, (o.matrix_world.to_3x3() @ nor).normalized())
+    return None if best is None else (best[1], best[2])
+
+
+def tilted_mount(name, loc, angle_x, size=0.05):
+    """An empty tilted about X by angle_x (radians) for a part to sit on.
+    The export turns the scene 180 degrees about Z, baking that turn into the
+    part's mesh but premultiplying it onto this empty, so the turn goes in
+    here too: in Godot the part then lands as it was authored, -Z toward the
+    nose before the tilt, +Y up."""
+    import bpy
+    from mathutils import Matrix
+    e = bpy.data.objects.new(name, None)
+    e.empty_display_size = size
+    e.matrix_world = Matrix.Translation(loc) @ Matrix.Rotation(angle_x, 4, "X") @ Matrix.Rotation(math.pi, 4, "Z")
+    bpy.context.scene.collection.objects.link(e)
+    return e
+
+
+def mod_mounts(skip, front_z, rear_z, bumper_x, axle_r, wheel_x, flap_dy):
+    """Empties for the bolt-on parts the game adds (cars/parts/):
+
+      Mount_BumperF/R   on the bumper face at x = bumper_x (where over-riders
+                        clamp), front_z / rear_z high
+      Mount_TowBar      under the rear bumper, centred, at hitch height
+      Mount_MudFlap_L/R under the body just behind each rear tyre
+    """
+    out = {}
+    f = hit_scene((bumper_x, -6, front_z), (0, 1, 0), skip)[0]
+    r = hit_scene((bumper_x, 6, rear_z), (0, -1, 0), skip)[0]
+    out["Mount_BumperF"] = (0, f.y, front_z)
+    out["Mount_BumperR"] = (0, r.y, rear_z)
+    out["Mount_TowBar"] = (0, r.y, 0.28)
+    y = axle_r + flap_dy
+    for nm, sx in (("L", 1), ("R", -1)):
+        h = hit_scene((sx * wheel_x, y, 0.02), (0, 0, 1), skip)
+        out["Mount_MudFlap_" + nm] = (sx * wheel_x, y, h[0].z if h else 0.32)
+    return out
+
+
 def on_front(obj, x, z):
     return hit(obj, (x, -5, z), (0, 1, 0))
 

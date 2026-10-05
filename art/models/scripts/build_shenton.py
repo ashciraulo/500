@@ -584,6 +584,11 @@ def lived_in(z0, z1):
     out.append(it("Dress_Cable_Pedals", L.cable([(4.9, 8.75), (5.0, 8.62), (5.09, 8.55)]), (0, 0, z1)))
     out.append(it("Dress_PowerPoint_Studio", L.power_point(), (W, 10.3, z1 + 0.3), -90))
     out.append(it("Dress_Switch_Bed2", L.switch_plate(), (2.08, 8.05, z1 + 1.15), 180))
+    # laundry and toilets
+    out.append(it("Dress_Detergent", L.detergent(), (2.62, 5.4, z0 + 0.85), 180))
+    out.append(it("Dress_PegBasket", L.peg_basket(), (2.36, 5.25, z0 + 0.85)))
+    out.append(it("Dress_LooRoll_Down", L.toilet_roll_holder(), (W, 6.2, z0 + 0.7), -90))
+    out.append(it("Dress_LooRoll_Up", L.toilet_roll_holder(), (W, 7.62, z1 + 0.7), -90))
     # the back door: M.'s binoculars hung here
     out.append(it("Dress_BackDoor_Hooks", L.back_door_hook(), (4.1, D, z0 + 1.6)))
     # where the field journal hangs the binoculars until you take them down

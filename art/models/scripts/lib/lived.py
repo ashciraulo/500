@@ -361,3 +361,35 @@ def back_door_hook():
         parts.append(cyl(0.008, 0.035, (x, -0.08, 0.017), brass, 6))
         parts.append(cyl(0.016, 0.006, (x, -0.023, 0.0), brass, 8, axis="Y"))
     return parts
+
+
+# ------------------------------------------------------------------ laundry and toilets
+
+def toilet_roll_holder():
+    """On the wall plane y=0: a chrome arm with a roll, a spare on top."""
+    paper = _m("toilet_paper", "#f4f2ec", 0.95)
+    return [bx((-0.075, -0.012, -0.02), (0.075, 0.0, 0.02), M("chrome")),
+            cyl(0.006, 0.13, (0, -0.05, 0), M("chrome"), 6, axis="X"),
+            cyl(0.055, 0.1, (0, -0.06, -0.01), paper, 10, axis="X"),
+            cyl(0.018, 0.101, (0, -0.06, -0.01), _m("roll_core", "#b08a5a", 1.0), 8, axis="X")]
+
+
+def detergent():
+    return [bx((-0.07, -0.05, 0), (0.07, 0.05, 0.24), _m("detergent", "#2f7fc0", 0.35)),
+            bx((-0.06, -0.051, 0.06), (0.06, -0.05, 0.16), _m("label_white", "#f2f2ee", 0.6)),
+            cyl(0.025, 0.03, (0.04, 0, 0.255), _m("cap_orange", "#e07a2a", 0.4), 8)]
+
+
+def peg_basket(seed=7):
+    rnd = random.Random(seed)
+    parts = [cyl(0.09, 0.08, (0, 0, 0.04), _m("peg_tub", "#9ccfc0", 0.6), 10, r_top=0.1)]
+    cols = ("#e05a5a", "#3a7ad0", "#e8c840", "#5fae6a")
+    for i in range(8):
+        a, d = rnd.random() * math.tau, rnd.random() * 0.06
+        p = bx((-0.004, -0.018, 0), (0.004, 0.018, 0.008), _m("peg_%d" % (i % 4), cols[i % 4], 0.5))
+        _turn([p], rnd.random() * 180)
+        p.location = (math.cos(a) * d, math.sin(a) * d, 0.08 + rnd.random() * 0.01)
+        C.apply_transform(p)
+        parts.append(p)
+    return parts
+

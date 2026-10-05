@@ -716,6 +716,8 @@ def _nerf(ref, g, M, front):
 LID_SALOON = [(-0.29, 0.905), (0.29, 0.905), (0.355, 0.88), (0.39, 0.80), (0.395, 0.60), (0.37, 0.545),
               (0.33, 0.53), (-0.33, 0.53), (-0.37, 0.545), (-0.395, 0.60), (-0.39, 0.80), (-0.355, 0.88)]
 
+LID_RACK_Z = 0.72  # Mount_RearRack height on the lid (before ride)
+
 
 def _louvres(ref, M, spec):
     """Horizontal cooling slots in the engine lid: one wide bank on the
@@ -1212,7 +1214,9 @@ def interior(M, spec, g, cab):
     bits.append(_tube("gear_stick", base, knob, 0.008, M["chrome"], segs=6))
     bits.append(C.cylinder("gaiter", 0.035, 0.03, segs=8, loc=tuple(base + Vector((0, 0, 0.012))),
                            material=M["knob"], r_top=0.015))
-    bits.append(C.sphere("gear_knob", 0.022, tuple(knob), M["ivory" if not black else "knob"], segs=8, rings=5))
+    # the knob is its own object so a fitted one can replace it
+    gear_knob = C.sphere("GearKnob", 0.022, tuple(knob), M["ivory" if not black else "knob"], segs=8, rings=5)
+    K.tilted_mount("Mount_GearKnob", knob, -math.atan2((knob - base).y, (knob - base).z), 0.04)
     hb = _tube("handbrake", (0, 0.02 + dy, 0.27), (0, 0.22 + dy, 0.34), 0.012, M["trim"], segs=6)
     bits.append(hb)
     bits.append(_tube("choke", (0.03, -0.05 + dy, 0.26), (0.03, 0.0 + dy, 0.31), 0.005, M["chrome"], segs=5))
@@ -1259,7 +1263,7 @@ def interior(M, spec, g, cab):
                                      M["headliner"]))
     interior_obj = C.join(bits, "Interior")
     wheel, column = _steering_wheel(M, dy)
-    mounts_needles = needles
+    mounts_needles = needles + [gear_knob]
     interior_obj = C.join([interior_obj, column], "Interior")
     mounts = {
         "Cam_Cockpit": (DRIVER_X, 0.24 + dy, 1.06),
@@ -1292,6 +1296,8 @@ def _steering_wheel(M, dy):
     sw = C.join(bits, "SteeringWheel")
     sw.rotation_euler = (tilt, 0, 0)
     sw.location = hub
+    # a fitted wheel goes here: Godot -Z down the column, +Y to twelve o'clock
+    K.tilted_mount("Mount_SteeringWheel", hub, tilt)
     column = C.cylinder("column", 0.018, 0.20, segs=6, axis="Y", loc=hub - axis * 0.125, material=M["knob"])
     column.rotation_euler = (tilt, 0, 0)
     C.apply_transform(column)
@@ -1550,6 +1556,11 @@ def build(spec):
         "Mount_Roof": (0, ry, rz),
         "Mount_Spotlights": (0, bumper.y - 0.045, 0.39),
     })
+    # engine-lid luggage rack: saloons and the Jolly (the Abarths ride with
+    # the lid propped, the Giardiniera has its engine under the floor)
+    if spec.get("body", "saloon") != "estate" and not spec.get("abarth"):
+        mounts["Mount_RearRack"] = tuple(K.on_rear(ref, 0, LID_RACK_Z)[0])
+    mounts.update(K.mod_mounts((ref,), 0.365, 0.36, 0.28, g.axle_r, TRACK_R / 2, 0.33))
     for nm, loc in mounts.items():
         C.empty(nm, loc)
     bpy.data.objects.remove(ref, do_unlink=True)
