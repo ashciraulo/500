@@ -491,10 +491,7 @@ func add_data(data: Dictionary) -> int:
 		for node in dirty.keys():
 			_link_footpaths(node)
 
-	for f in data.get("footways", []):
-		var way := add_footway(_points(f.pts))
-		if way:
-			way.name = str(f.get("name", ""))
+	_add_footways(data.get("footways", []))
 	var rail_before := rail_edges.size()
 	for r in data.get("rail", []):
 		_add_rail(_points(r.pts))
@@ -1052,6 +1049,60 @@ func _link_footpaths(node: GNode) -> void:
 
 
 ## A path for people only (the ends join footpaths ending within 1.5 m).
+## Footways from the map. OSM paths join at shared points that can be
+## anywhere along a way, not just at its ends, so split them there; then
+## tie loose ends to the footpath network close by.
+func _add_footways(list: Array) -> void:
+	if list.is_empty():
+		return
+	var lines: Array = []
+	var seen := {}
+	for f in list:
+		var pts := _points(f.pts)
+		if pts.size() < 2:
+			continue
+		lines.append([pts, str(f.get("name", ""))])
+		var mine := {}
+		for p in pts:
+			mine[Vector2i(roundi(p.x), roundi(p.z))] = true
+		for k in mine:
+			seen[k] = seen.get(k, 0) + 1
+	var ends: Array = []
+	for line in lines:
+		var pts: PackedVector3Array = line[0]
+		var piece := PackedVector3Array([pts[0]])
+		for i in range(1, pts.size()):
+			piece.append(pts[i])
+			if i < pts.size() - 1 and seen.get(Vector2i(roundi(pts[i].x), roundi(pts[i].z)), 0) >= 2:
+				var way := add_footway(piece)
+				if way:
+					way.name = line[1]
+				piece = PackedVector3Array([pts[i]])
+		var last := add_footway(piece)
+		if last:
+			last.name = line[1]
+			ends.append(_ped_node_at(pts[0]))
+			ends.append(last.b)
+	for pn in ends:
+		if pn.edges.size() != 1:
+			continue
+		var other: PedEdge = pn.edges[0]
+		var best: PedNode = null
+		var best_d := 15.0
+		for x in range(-8, 9):
+			for z in range(-8, 9):
+				for q in _ped_node_cells.get(Vector2i(roundi(pn.pos.x / 2.0) + x, roundi(pn.pos.z / 2.0) + z), []):
+					if q == pn or q == other.a or q == other.b:
+						continue
+					var d: float = q.pos.distance_to(pn.pos)
+					if d < best_d:
+						best_d = d
+						best = q
+		if best:
+			var link := _add_ped_edge(PackedVector3Array([pn.pos, best.pos]), pn, best)
+			link.name = other.name
+
+
 func add_footway(pts: PackedVector3Array) -> PedEdge:
 	if pts.size() >= 2:
 		return _add_ped_edge(pts)

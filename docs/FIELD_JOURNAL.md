@@ -139,16 +139,22 @@ with were on the hook by the back door, with an M scratched into them.
 
 The lab won't sell prints of these ("they've come out blank, love"), but they
 stay in the journal and the album. Fishing gets a couple of its own in a later
-batch (a bream with a 1979 tag in its jaw).
+batch: a black bream with a 1979 fisheries tag in its jaw, at the Mends
+Street jetty after midnight once the ticket's found. It can't be kept; its
+page in the Fish tab is M.'s.
 
 ## Progression, lightly
 
 Selling prints and weighing in fish earns money, so it's an alternative to
 deliveries. Journal stats (`species_seen`, `species_photographed`,
 `prints_sold`, `fish_caught`, `fish_species`) are known to Progression, so the
-career can ask for a few. Milestones (10, 25, 40 species) give cosmetics: a
-bird on the dash, a field-guide sticker, a feeder for the townhouse courtyard
-that brings birds home.
+career can ask for a few. Milestones give cosmetics: a nodding willie
+wagtail on the dash at 10 species, a field-guide sticker at 20 (both the
+car's side, `dash_bird.glb`), and at 30 a feeder in the townhouse courtyard
+(`Feeder_Spot`) that brings garden birds you've seen home by day.
+
+**At home.** A new game starts with the binoculars on the coat hook by the
+sliding door (`Binoculars_Hook`); F takes them, and B works from then on.
 
 ## Building it (batches)
 

@@ -141,6 +141,7 @@ var boats: TrafficBoats
 var kerbside: TrafficKerbside
 var schools: TrafficSchools
 var events: TrafficEvents
+var night: TrafficNight
 ## Other things standing in the road that traffic stops for (crossing guards
 ## and the children they see across): anything with position, forward,
 ## velocity, speed, length and width.
@@ -204,6 +205,10 @@ func _ready() -> void:
 	events.name = "Events"
 	add_child(events)
 	events.setup(self, graph)
+	night = TrafficNight.new()
+	night.name = "Night"
+	add_child(night)
+	night.setup(self, graph)
 	_horn_car = _make_horn(415.0, 523.0, 1.4)
 	_horn_bus = _make_horn(247.0, 311.0, 1.6)
 	_siren = _make_siren()
@@ -376,6 +381,7 @@ func clear_all() -> void:
 	kerbside.clear()
 	schools.clear()
 	events.clear()
+	night.clear()
 	_warm = 2.0
 
 
@@ -411,6 +417,7 @@ func _physics_process(delta: float) -> void:
 	kerbside.update(delta, focus_position())
 	schools.update(delta, focus_position())
 	events.update(delta, focus_position())
+	night.update(delta, focus_position())
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	step_ms = lerpf(step_ms, ms, 0.05)
 
@@ -680,6 +687,8 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 		v0 = minf(v0, 6.5 * v.eagerness)
 	if lane.zone_speed > 0.0:
 		v0 = minf(v0, lane.zone_speed)  # Nobody's eager in a school zone.
+	if v.max_speed > 0.0:
+		v0 = minf(v0, v.max_speed)
 
 	# Slow down in time for bends and slower roads ahead.
 	var ahead: float = lane.length - v.s
@@ -814,6 +823,33 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 				stop_found = true
 				break
 		base += l.length
+
+	# Working stops (a bin truck at each wheelie bin).
+	if not v.service_stops.is_empty():
+		var sbase := -v.s - v.length * 0.5
+		for i in v.route.size():
+			var l: TrafficGraph.Lane = v.route[i]
+			if sbase > 60.0:
+				break
+			for st in v.service_stops:
+				if st.lane != l or st.get("done", false):
+					continue
+				var d: float = sbase + st.s
+				if d < -1.5:
+					continue
+				if d < 1.5 and v.speed < 0.4:
+					v.dwell += dt
+					if v.dwell > st.dwell:
+						st.done = true
+						v.dwell = 0.0
+						continue
+				var g := d + 1.4
+				if g < gap:
+					gap = g
+					lead_speed = 0.0
+					reason = TrafficVehicle.Reason.STOP_LINE
+					who = null
+			sbase += l.length
 
 	# 3. Junctions: give way, stop signs, and don't enter while someone is
 	# crossing our path or there's no room on the far side.
@@ -1064,13 +1100,20 @@ func _merge_turn(c: TrafficGraph.Lane, v: TrafficVehicle, d: float) -> bool:
 		for o in other.vehicles:
 			if o != v and o.s < o.length + 2.0:
 				return false
+		# Held at their own red: they're not coming.
+		var held: bool = other.in_lane.signal_gate != null and other.in_lane.signal_gate.state() != TrafficGraph.Gate.GO
 		for o in other.in_lane.vehicles:
 			if o == v:
 				continue
 			if o.commits.has(other):
 				return false
-			var rem: float = other.in_lane.length - o.s - o.length * 0.5
-			if rem < d - 0.5 or (absf(rem - d) <= 0.5 and o.id < v.id):
+			if held:
+				continue
+			# Compare distances to where the paths join (the moves can be
+			# very different lengths at a skewed junction).
+			var rem: float = other.in_lane.length - o.s - o.length * 0.5 + other.length
+			var mine: float = d + c.length
+			if rem < mine - 0.5 or (absf(rem - mine) <= 0.5 and o.id < v.id):
 				return false
 	return true
 
@@ -1310,7 +1353,7 @@ func _maybe_change_lane(v: TrafficVehicle, dt: float, v0: float, gap: float, lea
 	if lane.connector or (lane.left_lane == null and lane.right_lane == null):
 		return
 	if not v.works_merge:
-		if v.is_bike or v.to_lane_end() < 40.0 or v.is_bus and v.reason != TrafficVehicle.Reason.PLAYER:
+		if v.is_bike or v.keep_lane or v.to_lane_end() < 40.0 or v.is_bus and v.reason != TrafficVehicle.Reason.PLAYER:
 			return
 		var slow_leader := gap < 30.0 and lead_speed < v0 * 0.6 and v.reason in [
 			TrafficVehicle.Reason.LEADER, TrafficVehicle.Reason.PLAYER, TrafficVehicle.Reason.OBSTACLE]
@@ -1848,6 +1891,9 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 		if not refs.is_empty():
 			v.bus_route = refs[_rng.randi() % refs.size()]
 	v.dwell = 0.0
+	v.max_speed = 0.0
+	v.keep_lane = false
+	v.service_stops = []
 	v.lateral = 0.0
 	v.lateral_base = 0.0
 	v.pull_over = 0.0

@@ -68,6 +68,13 @@ func _process(_delta: float) -> bool:
 			{name = "cottesloe_groyne", wait = 300, cam = [Vector3(-9640, 70, 5420), Vector3(-9790, 0, 5500)], fog = 0.002},
 			{name = "fishing_boat_harbour", wait = 300, cam = [Vector3(-10050, 80, 12560), Vector3(-10204, 0, 12676)], fog = 0.0015},
 			{name = "claisebrook_cove", wait = 300, cam = [Vector3(2420, 30, 560), Vector3(2360, 1, 670)], fog = 0.002},
+			{name = "lm_council_house", wait = 300, cam = [Vector3(700, 0, 1225), Vector3(645, 26, 1185)], fog = 0.002, above = 4.0},
+			{name = "night_lm_council_house", wait = 300, hour = 21.5, cam = [Vector3(700, 0, 1225), Vector3(645, 26, 1185)], fog = 0.002, above = 4.0},
+			{name = "lm_dna_tower", wait = 300, cam = [Vector3(-1705, 0, 2048), Vector3(-1673, 68, 2028)], fog = 0.002, above = 4.0},
+			{name = "lm_rac_arena", wait = 300, cam = [Vector3(-40, 0, 420), Vector3(-191, 30, 269)], fog = 0.0015, above = 25.0},
+			{name = "night_lm_rac_arena", wait = 300, hour = 21.5, cam = [Vector3(-40, 0, 420), Vector3(-191, 30, 269)], fog = 0.0015, above = 25.0},
+			{name = "lm_fremantle_markets", wait = 300, cam = [Vector3(-9800, 0, 12260), Vector3(-9863, 8, 12201)], fog = 0.003, above = 12.0},
+			{name = "lm_rendezvous", wait = 300, cam = [Vector3(-9420, 0, -5650), Vector3(-9188, 35, -5803)], fog = 0.0015, above = 20.0},
 			{name = "night_aerial", wait = 240, hour = 22.0, cam = [Vector3(-100, 260, -450), Vector3(350, 20, 900)], fog = 0.0008},
 		]
 		var only := _arg("only", "")

@@ -212,7 +212,7 @@ func _refresh_fish() -> void:
 	var first: Button = null
 	for id: String in FieldJournal.fish_order:
 		var f := FieldJournal.fish_species(id)
-		if f.get("junk", false) and not FieldJournal.is_caught(id):
+		if (f.get("junk", false) or f.get("wrong", false)) and not FieldJournal.is_caught(id):
 			continue
 		var e: Dictionary = FieldJournal.catches.get(id, {})
 		var label := "  ? ? ?   (%s)" % FieldJournal.RARITY_NAMES[clampi(int(f.get("rarity", 1)), 1, 4)].to_lower() if e.is_empty() \
@@ -267,6 +267,9 @@ func _show_fish(id: String) -> void:
 		FieldUI.label(_page, _when(f), 14, INK.lightened(0.3))
 		return
 	FieldUI.label(_page, f.name, 24, INK)
+	if f.get("wrong", false):
+		_show_wrong_fish(f, e)
+		return
 	if String(f.get("latin", "")) != "":
 		FieldUI.label(_page, "%s   %s" % [f.latin, FieldJournal.RARITY_NAMES[clampi(int(f.get("rarity", 1)), 1, 4)]], 14, INK.lightened(0.3))
 	var tex := FieldUI.photo_texture(String(e.get("best_file", "")))
@@ -287,6 +290,13 @@ func _show_fish(id: String) -> void:
 	FieldUI.label(_page, "First caught: day %d, %s, %s." % [int(e.first_day), e.get("time", ""), e.get("where", "somewhere")], 14, INK.lightened(0.2))
 	FieldUI.label(_page, "Where to try: %s" % f.get("hint", ""), 14, INK.lightened(0.2))
 	FieldUI.label(_page, _when(f), 14, INK.lightened(0.3))
+
+
+## One of the wrong fish: M.'s 1979 page, like the night birds'.
+func _show_wrong_fish(f: Dictionary, e: Dictionary) -> void:
+	_show_wrong(f, {"best_file": e.get("best_file", ""), "seen": e.get("first_day", 0), "time": e.get("time", ""),
+		"where": e.get("where", "")}, "caught")
+	FieldUI.label(_page, String(f.get("note", "")), 15, INK)
 
 
 func _show_spot(sp: Dictionary) -> void:
@@ -310,7 +320,7 @@ func _show_spot(sp: Dictionary) -> void:
 
 
 ## A wrong bird: the page that was already there when you found it.
-func _show_wrong(b: Dictionary, e: Dictionary) -> void:
+func _show_wrong(b: Dictionary, e: Dictionary, verb := "saw") -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("has") and audio.has("field/m_page_open"):
 		audio.play_2d("field/m_page_open", "UI", -6.0)
@@ -328,7 +338,7 @@ func _show_wrong(b: Dictionary, e: Dictionary) -> void:
 		pic.custom_minimum_size = Vector2(0, 200)
 		_page.add_child(pic)
 		FieldUI.label(_page, "Your photo. The lab won't print it.", 14, INK.lightened(0.2))
-	FieldUI.label(_page, "You saw it: day %d, %s, %s." % [int(e.seen), e.get("time", ""), e.get("where", "somewhere")], 14, INK.lightened(0.2))
+	FieldUI.label(_page, "You %s it: day %d, %s, %s." % [verb, int(e.seen), e.get("time", ""), e.get("where", "somewhere")], 14, INK.lightened(0.2))
 
 
 ## The journal's own music while it's open, if nothing else is playing (the

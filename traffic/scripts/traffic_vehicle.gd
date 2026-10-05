@@ -63,6 +63,12 @@ var served := {}
 ## The bus route this bus is running ("" for none: it roams the big roads).
 var bus_route := ""
 var dwell := 0.0
+## Working vehicles (sweepers, bin trucks): a top speed of their own (0 for
+## none), stay in their lane, and stops to make on the way:
+## { lane, s, dwell } dictionaries, each marked "done" once served.
+var max_speed := 0.0
+var keep_lane := false
+var service_stops: Array = []
 var lifetime := 0.0
 
 ## Sideways offset from the lane centre (to dodge the player), metres; + = left.

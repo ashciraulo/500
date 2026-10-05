@@ -32,7 +32,14 @@ const TYPES := {
 	&"bike": { "weight": 0.0, "length": 1.8, "width": 0.65, "height": 1.75 },
 	# A sedan with a roof sign; also queued on the ranks at stations.
 	&"taxi": { "weight": 1.5, "length": 4.8, "width": 1.82, "height": 1.62 },
+	# The night shift (never picked at random; see TrafficNight).
+	&"sweeper": { "weight": 0.0, "length": 5.4, "width": 1.95, "height": 2.6 },
+	&"bin_truck": { "weight": 0.0, "length": 9.2, "width": 2.5, "height": 3.4 },
 }
+
+## Council colours for the night shift: [body, livery band].
+const SWEEPER_PAINT := [Color(0.95, 0.95, 0.93), Color(0.95, 0.45, 0.05)]
+const BIN_TRUCK_PAINT := [Color(0.94, 0.94, 0.92), Color(0.12, 0.45, 0.25)]
 
 ## Taxi colours: [body, band along the doors].
 const TAXI_PAINT := [
@@ -138,6 +145,10 @@ static func _build_vehicle(type: StringName) -> ArrayMesh:
 			_fire_truck(b, L, W)
 		&"bike":
 			_bike(b, L)
+		&"sweeper":
+			_sweeper(b, L, W)
+		&"bin_truck":
+			_bin_truck(b, L, W)
 	return b.commit()
 
 
@@ -162,6 +173,201 @@ static func _bike(b: Builder, L: float) -> void:
 	b.box(Surf.PAINT, Vector3(0, 1.6, -0.44), Vector3(0.24, 0.1, 0.3))
 	b.box(Surf.HEAD, Vector3(0, 0.92, -wb - 0.02), Vector3(0.08, 0.06, 0.04))
 	b.box(Surf.TAIL, Vector3(0, 0.8, wb * 0.6), Vector3(0.07, 0.06, 0.04))
+
+
+## Compact street sweeper: tall glass cab up front, hopper behind, the
+## brushes are separate meshes so they can spin (see sweeper_brushes()).
+static func _sweeper(b: Builder, L: float, W: float) -> void:
+	var y0 := 0.35
+	var cab := 1.9
+	var cz := -L * 0.5 + cab * 0.5
+	b.box(Surf.PAINT, Vector3(0, y0 + 0.45, cz), Vector3(W * 0.92, 0.9, cab))
+	b.box(Surf.GLASS, Vector3(0, y0 + 1.45, cz + 0.05), Vector3(W * 0.9, 1.1, cab * 0.9), Vector2(0.95, 0.9))
+	b.box(Surf.PAINT, Vector3(0, y0 + 2.04, cz + 0.05), Vector3(W * 0.88, 0.1, cab * 0.85))
+	# Hopper: a rounded-off box with a dumping seam, and the water tank.
+	var hz := L * 0.5 - (L - cab) * 0.5
+	b.box(Surf.PAINT, Vector3(0, y0 + 1.05, hz), Vector3(W, 1.9, L - cab - 0.1), Vector2(0.92, 0.9))
+	b.box(Surf.GLASS, Vector3(0, y0 + 1.4, hz + 0.2), Vector3(W + 0.02, 0.04, L - cab - 0.6))
+	b.box(Surf.LIVERY, Vector3(0, y0 + 0.55, 0.0), Vector3(W + 0.03, 0.22, L - 0.25))
+	# Suction mouth under the middle, between the wheels.
+	b.box(Surf.TYRES, Vector3(0, 0.22, -0.2), Vector3(W * 0.8, 0.2, 0.5))
+	_wheels(b, L, W, 0.36, L * 0.5 - 0.75, -L * 0.5 + 0.8)
+	_lamps(b, L, W, y0 + 0.55, false)
+
+
+## Where the sweeper's two gutter brooms sit (kerb side first): x, z.
+const SWEEPER_BROOMS := [Vector2(-1.0, -2.45), Vector2(1.0, -2.45)]
+
+
+## The spinning gutter brooms: discs of bristles, named BroomL and BroomR.
+static func sweeper_brushes() -> Node3D:
+	var root := Node3D.new()
+	root.name = "Brooms"
+	var bristle := material(Color(0.22, 0.2, 0.17))
+	var hub := material(Color(0.95, 0.45, 0.05))
+	for i in SWEEPER_BROOMS.size():
+		var at: Vector2 = SWEEPER_BROOMS[i]
+		var broom := Node3D.new()
+		broom.name = "BroomL" if i == 0 else "BroomR"
+		broom.position = Vector3(at.x, 0.08, at.y)
+		root.add_child(broom)
+		var disc := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.5
+		cyl.bottom_radius = 0.58
+		cyl.height = 0.14
+		cyl.radial_segments = 8
+		cyl.rings = 0
+		disc.mesh = cyl
+		disc.material_override = bristle
+		broom.add_child(disc)
+		# A paddle across the hub, so the turning shows.
+		_add_part(broom, "broom_paddle", Vector3(0.9, 0.06, 0.14), Vector3(0, 0.09, 0), Vector3.ZERO, hub)
+		_add_part(broom, "broom_mast", Vector3(0.1, 0.5, 0.1), Vector3(0, 0.3, 0), Vector3.ZERO, hub)
+	return root
+
+
+## Side-loading bin truck: cab-over front, big compactor body, the lifting
+## arm on the kerb (left) side is a separate node (see bin_arm()).
+static func _bin_truck(b: Builder, L: float, W: float) -> void:
+	var y0 := 0.5
+	var cab := 2.2
+	var cz := -L * 0.5 + cab * 0.5
+	b.box(Surf.PAINT, Vector3(0, y0 + 1.1, cz), Vector3(W, 2.2, cab), Vector2(1.0, 0.92))
+	b.box(Surf.GLASS, Vector3(0, y0 + 1.55, -L * 0.5 - 0.01), Vector3(W * 0.88, 0.85, 0.04))
+	b.box(Surf.GLASS, Vector3(0, y0 + 1.6, cz + 0.1), Vector3(W + 0.02, 0.75, cab * 0.6))
+	var body_len := L - cab - 0.15
+	var bz := L * 0.5 - body_len * 0.5
+	# The compactor body in the council's green, a white stripe along it.
+	b.box(Surf.LIVERY, Vector3(0, y0 + 1.45, bz), Vector3(W, 2.9, body_len), Vector2(0.97, 0.98))
+	b.box(Surf.PAINT, Vector3(0, y0 + 1.9, bz), Vector3(W + 0.03, 0.22, body_len - 0.4))
+	# Ribs down the body, and the hopper opening over the arm.
+	for i in 4:
+		b.box(Surf.TYRES, Vector3(0, y0 + 1.45, bz - body_len * 0.36 + i * body_len * 0.24), Vector3(W + 0.05, 2.7, 0.08))
+	b.box(Surf.GLASS, Vector3(-W * 0.12, y0 + 2.92, -L * 0.5 + cab + 0.8), Vector3(W * 0.7, 0.06, 1.3))
+	b.box(Surf.LIVERY, Vector3(0, y0 + 0.2, cz), Vector3(W + 0.03, 0.3, cab - 0.1))
+	b.box(Surf.TYRES, Vector3(0, y0 - 0.05, 0.0), Vector3(W * 0.8, 0.3, L - 0.6))
+	b.box(Surf.GLASS, Vector3(0, y0 + 0.05, -L * 0.5 - 0.03), Vector3(W * 0.98, 0.3, 0.14))
+	_wheels(b, L, W, 0.52, L * 0.5 - 1.1, -L * 0.5 + 1.2)
+	b.wheel(Surf.TYRES, Vector3(-(W * 0.5 - 0.12), 0.52, L * 0.5 - 2.4), 0.52, 0.24)
+	b.wheel(Surf.TYRES, Vector3(W * 0.5 - 0.12, 0.52, L * 0.5 - 2.4), 0.52, 0.24)
+	_lamps(b, L, W, y0 + 0.5, true)
+
+
+## The bin truck's lifter on the kerb (left) side behind the cab: a rail up
+## the body and a gripper ("Grip") that carries the bin up it. TrafficNight
+## moves the gripper; "BinArm" sits at ground level beside the rail.
+static func bin_arm() -> Node3D:
+	var root := Node3D.new()
+	root.name = "BinArm"
+	var info: Dictionary = TYPES[&"bin_truck"]
+	root.position = Vector3(-info.width * 0.5 - 0.06, 0.0, -info.length * 0.5 + 2.2 + 0.8)
+	var steel := material(Color(0.35, 0.36, 0.38))
+	_add_part(root, "bin_rail", Vector3(0.12, 3.0, 0.3), Vector3(0, 1.95, 0), Vector3.ZERO, steel)
+	var grip := Node3D.new()
+	grip.name = "Grip"
+	grip.position = Vector3(0, 0.75, 0)
+	root.add_child(grip)
+	_add_part(grip, "bin_arm_grip", Vector3(0.3, 0.5, 0.75), Vector3(-0.12, 0, 0), Vector3.ZERO, steel)
+	return root
+
+
+## Two flashing amber beacons on a working vehicle's roof, named A and B.
+const BEACON := { &"sweeper": [2.45, -1.6], &"bin_truck": [2.78, -3.6] }
+const BEACON_AMBER := Color(1.0, 0.55, 0.05)
+
+
+static func beacon(type: StringName) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Beacon"
+	var spot: Array = BEACON[type]
+	var w: float = TYPES[type].width
+	root.position = Vector3(0, spot[0], spot[1])
+	for i in 2:
+		var lamp := _add_part(root, "beacon_lamp", Vector3(0.26, 0.22, 0.26), Vector3((i * 2 - 1) * w * 0.3, 0.08, 0), Vector3.ZERO, beacon_material(false))
+		lamp.name = "A" if i == 0 else "B"
+		lamp.visibility_range_end = 420.0
+	return root
+
+
+static func beacon_material(lit: bool) -> Material:
+	return material(BEACON_AMBER, 4.0) if lit else material(BEACON_AMBER.darkened(0.6))
+
+
+## A wheelie bin (240 L), its lid on a hinge named "Lid". Perth councils:
+## dark green bins, red lids for rubbish and yellow for recycling.
+static func wheelie_bin(recycling: bool) -> Node3D:
+	var root := Node3D.new()
+	var body := material(Color(0.1, 0.3, 0.16))
+	_add_part(root, "bin_body", Vector3(0.58, 1.0, 0.72), Vector3(0, 0.55, 0), Vector3.ZERO, body)
+	for side in [-1.0, 1.0]:
+		_add_part(root, "bin_wheel", Vector3(0.06, 0.2, 0.2), Vector3(side * 0.24, 0.1, 0.3), Vector3.ZERO, material(Color(0.05, 0.05, 0.05)))
+	var lid := Node3D.new()
+	lid.name = "Lid"
+	lid.position = Vector3(0, 1.06, 0.36)
+	root.add_child(lid)
+	_add_part(lid, "bin_lid", Vector3(0.62, 0.06, 0.78), Vector3(0, 0, -0.38), Vector3.ZERO,
+		material(Color(0.92, 0.75, 0.05) if recycling else Color(0.75, 0.08, 0.06)))
+	for child in root.find_children("*", "MeshInstance3D", true, false):
+		child.visibility_range_end = 160.0
+	return root
+
+
+## A food van for Northbridge nights: a step van with its serving hatch open
+## on the kerb (left) side, a lit kitchen, an awning with string lights, and
+## a sign on the roof. `sign_text` names the food.
+static func food_van(sign_text: String, paint: Color, trim: Color) -> Node3D:
+	var root := Node3D.new()
+	var L := 5.6
+	var W := 2.2
+	var body := material(paint)
+	var band := material(trim)
+	var dark := material(Color(0.06, 0.06, 0.07))
+	var glow := material(Color(1.0, 0.86, 0.6), 2.5)
+	var steel := material(Color(0.7, 0.72, 0.74))
+	_add_part(root, "fv_body", Vector3(W, 2.3, L - 1.2), Vector3(0, 1.6, 0.6), Vector3.ZERO, body)
+	_add_part(root, "fv_cab", Vector3(W * 0.96, 1.5, 1.2), Vector3(0, 1.2, -L * 0.5 + 0.6), Vector3.ZERO, body)
+	_add_part(root, "fv_screen", Vector3(W * 0.86, 0.7, 0.05), Vector3(0, 1.6, -L * 0.5 - 0.01), Vector3.ZERO, dark)
+	_add_part(root, "fv_band", Vector3(W + 0.03, 0.3, L - 1.2), Vector3(0, 0.85, 0.6), Vector3.ZERO, band)
+	# The hatch: lit kitchen behind a steel counter, the flap held up as an awning.
+	_add_part(root, "fv_kitchen", Vector3(0.05, 1.0, 2.6), Vector3(-W * 0.5 - 0.01, 1.95, 0.7), Vector3.ZERO, glow)
+	_add_part(root, "fv_counter", Vector3(0.35, 0.06, 2.7), Vector3(-W * 0.5 - 0.17, 1.42, 0.7), Vector3.ZERO, steel)
+	_add_part(root, "fv_awning", Vector3(1.1, 0.05, 2.8), Vector3(-W * 0.5 - 0.5, 2.62, 0.7), Vector3(0, 0, deg_to_rad(-18)), band)
+	for i in 6:
+		_add_part(root, "fv_bulb", Vector3(0.07, 0.07, 0.07), Vector3(-W * 0.5 - 1.02, 2.38, -0.55 + i * 0.5), Vector3.ZERO, material(Color(1.0, 0.8, 0.45), 4.0))
+	# Menu board and the roof sign.
+	_add_part(root, "fv_menu", Vector3(0.04, 0.7, 0.6), Vector3(-W * 0.5 - 0.02, 1.85, 2.4), Vector3.ZERO, dark)
+	_add_part(root, "fv_signboard", Vector3(0.08, 0.5, 2.6), Vector3(0, 3.0, 0.7), Vector3.ZERO, dark)
+	for side in [-1.0, 1.0]:
+		var label := Label3D.new()
+		label.text = sign_text
+		label.font_size = 64
+		# Long names in smaller letters, to fit the board.
+		label.pixel_size = minf(0.006, 2.4 / (sign_text.length() * 64.0 * 0.62))
+		label.modulate = Color(1.0, 0.92, 0.7)
+		label.outline_size = 0
+		label.double_sided = false
+		label.position = Vector3(side * 0.05, 3.0, 0.7)
+		label.rotation = Vector3(0, side * PI * 0.5, 0)
+		label.visibility_range_end = 160.0
+		root.add_child(label)
+	for z in [-L * 0.5 + 0.8, L * 0.5 - 0.7]:
+		for side in [-1.0, 1.0]:
+			_add_part(root, "fv_wheel", Vector3(0.24, 0.66, 0.66), Vector3(side * (W * 0.5 - 0.12), 0.33, z), Vector3.ZERO, dark)
+	# The hatch lights up the footpath and the queue.
+	var lamp := OmniLight3D.new()
+	lamp.name = "HatchLight"
+	lamp.light_color = Color(1.0, 0.78, 0.5)
+	lamp.light_energy = 2.2
+	lamp.omni_range = 7.0
+	lamp.position = Vector3(-W * 0.5 - 1.2, 2.3, 0.7)
+	lamp.distance_fade_enabled = true
+	lamp.distance_fade_begin = 90.0
+	lamp.distance_fade_length = 30.0
+	root.add_child(lamp)
+	for child in root.find_children("*", "MeshInstance3D", true, false):
+		child.visibility_range_end = 260.0
+	return root
 
 
 ## The dark base under a light bar (the lamps themselves are separate

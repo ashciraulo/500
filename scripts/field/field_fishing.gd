@@ -96,6 +96,9 @@ var _float: Node3D
 var _line: MeshInstance3D
 var _line_mesh: ImmediateMesh
 var _splash: MeshInstance3D
+## The reel's click while you wind, and the line singing under load.
+var _reel_loop: AudioStreamPlayer
+var _tension_loop: AudioStreamPlayer
 var _held: Node3D
 var _held_light: OmniLight3D
 var _props := {}
@@ -190,6 +193,7 @@ func _process(delta: float) -> void:
 		_check_t = 0.5
 		_update_spots()
 	_animate_props(delta)
+	_update_loops()
 	if get_tree().paused or state == State.IDLE:
 		return
 	if not is_instance_valid(_walker) or _walker.get("in_car"):
@@ -500,6 +504,10 @@ func _is_water(p: Vector3) -> bool:
 func _next_fish() -> void:
 	var list := FieldJournal.fish_candidates(current_spot, GameClock.time_of_day)
 	_species = FieldJournal.pick_fish(list, _rng)
+	# A wrong one about takes the bait more often than not.
+	for f: Dictionary in list:
+		if f.get("wrong", false) and _rng.randf() < 0.6:
+			_species = f
 	_wait = _rng.randf_range(4.0, 14.0)
 	var shy := float(_species.get("shy", 0.0))
 	_nibbles = _rng.randi_range(0, 1 + roundi(shy * 3.0))
@@ -644,6 +652,9 @@ func _land() -> void:
 	_show_held(caught)
 	state = State.LANDED
 	_sound("field/landed_flop")
+	if FieldJournal.fish_species(String(caught.species)).get("wrong", false) and caught.get("first", false):
+		Activities.say("There's already a page about this in the journal. It isn't in your handwriting.")
+		_sound("field/m_page_found")
 	state_changed.emit(state)
 	landed.emit(caught)
 	if screen:
@@ -668,7 +679,10 @@ func choose(action: String) -> void:
 				_open_esky()
 		"release":
 			FieldJournal.release(caught)
-			_say("Back it goes." if not caught.get("junk", false) else "Back in the river with it.")
+			if sp.get("wrong", false):
+				_say("You let it go under the lights. It swims for the pylons.")
+			else:
+				_say("Back it goes." if not caught.get("junk", false) else "Back in the river with it.")
 			_sound("field/splash_small")
 		"photo":
 			_photo(sp)
@@ -686,6 +700,8 @@ func choose(action: String) -> void:
 func keep_blocked(c: Dictionary) -> String:
 	if c.get("junk", false):
 		return ""
+	if FieldJournal.fish_species(String(c.species)).get("wrong", false):
+		return "It isn't yours to keep."
 	if int(FieldJournal.fish_species(String(c.species)).get("pay", 0)) <= 0:
 		return "Nobody keeps one of these."
 	if not c.get("legal", false):
@@ -971,6 +987,42 @@ func _say(text: String) -> void:
 		screen.say(text)
 	else:
 		Activities.say(text)
+
+
+## The reel clicks round while you wind in on a fish, quicker with less
+## weight on it; the line sings as it nears breaking.
+func _update_loops() -> void:
+	var fighting := state == State.FIGHT and not get_tree().paused
+	var reeling := fighting and _reeling
+	var singing := fighting and tension > 0.55
+	_reel_loop = _loop(_reel_loop, "field/reel_loop", reeling)
+	if reeling and _reel_loop:
+		_reel_loop.pitch_scale = lerpf(1.15, 0.8, clampf(tension, 0.0, 1.0))
+	_tension_loop = _loop(_tension_loop, "field/line_tension_loop", singing)
+	if singing and _tension_loop:
+		var k := clampf((tension - 0.55) / 0.45, 0.0, 1.0)
+		_tension_loop.volume_db = lerpf(-22.0, -6.0, k)
+		_tension_loop.pitch_scale = lerpf(0.9, 1.25, k)
+
+
+## Start or stop a looping sound; makes its player the first time it's wanted.
+func _loop(player: AudioStreamPlayer, sound_name: String, on: bool) -> AudioStreamPlayer:
+	if not on:
+		if player and player.playing:
+			player.stop()
+		return player
+	if player == null:
+		var audio := get_node_or_null("/root/Audio")
+		if audio == null or not audio.has_method("stream") or not audio.has(sound_name):
+			return null
+		player = AudioStreamPlayer.new()
+		player.stream = audio.stream(sound_name, true)
+		player.bus = "SFX"
+		player.volume_db = -10.0
+		add_child(player)
+	if not player.playing:
+		player.play()
+	return player
 
 
 func _sound(sound_name: String) -> void:

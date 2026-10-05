@@ -24,6 +24,10 @@ SIGNAL_SPREAD = 30.0  # junctions this close along a road share one set of light
 LANE_WIDTH = 3.2  # traffic/scripts/traffic_graph.gd
 STADIUM_WALK = 600.0  # metres around Optus Stadium whose footpaths carry event crowds
 BRIDGE_APPROACH = 150.0  # footpaths this close to the Matagarup Bridge's ends join it
+# The CBD and Northbridge (plan metres e0, n0, e1, n1): malls, plazas and
+# footpaths here go out as footways for crowds and night-life walkers.
+CITY_WALK = (-560.0, -1780.0, 2180.0, 440.0)
+CITY_FOOT = {"pedestrian", "footway", "path", "steps"}
 CARRIAGEWAY_GAP = 0.6  # clear space kept between opposing one-way carriageways
 MAX_SHIFT = 3.0  # most two carriageways are pulled apart, in metres
 MERGE_ZONE = 15.0  # metres from a node both sides share where they may converge
@@ -66,6 +70,13 @@ def _bike_lane(tags) -> bool:
 def _speed(tags):
     m = re.match(r"\s*(\d+)", tags.get("maxspeed", ""))
     return int(m.group(1)) if m else None
+
+
+def _path(w) -> dict:
+    """A foot or bike path for the traffic data: Godot points, its name, and
+    the plan midpoint that decides which tile carries it."""
+    return {"pts": np.column_stack([w.xy[:, 0], w.h + 0.05, -w.xy[:, 1]]).astype(np.float32),
+            "name": w.tags.get("name", ""), "_mid": tuple(w.xy[len(w.xy) // 2]), "_way": w}
 
 
 def _densify(pts, step: float):
@@ -174,6 +185,8 @@ class TrafficNetwork:
         self.bus_stops = []
         self.keep_clear = self._home_exits()
         self.footways = self._event_footways()
+        self.footways += self._city_footways({id(f["_way"]) for f in self.footways})
+        self.cycleways = self._cycleways()
         nj, ni = hf.H.shape
         self.schools = []
         schools = [(t, e, n) for _, t, e, n in world.poi_nodes if t.get("amenity") == "school"]
@@ -227,8 +240,40 @@ class TrafficNetwork:
             line = LineString(w.xy)
             if w in bridge or line.distance(stadium) < STADIUM_WALK or \
                     any(line.distance(p) < BRIDGE_APPROACH for p in ends):
-                out.append({"pts": np.column_stack([w.xy[:, 0], w.h + 0.05, -w.xy[:, 1]]).astype(np.float32),
-                            "name": w.tags.get("name", ""), "_mid": tuple(w.xy[len(w.xy) // 2])})
+                out.append(_path(w))
+        return out
+
+    def _city_footways(self, taken) -> list:
+        """Malls, plazas and footpaths in the CBD and Northbridge (not the
+        sidewalks drawn along roads, which walkers already use)."""
+        e0, n0, e1, n1 = CITY_WALK
+        out = []
+        for w in self.w.ways:
+            t = w.tags
+            if w.group != "foot" or len(w.xy) < 2 or id(w) in taken or t.get("highway") not in CITY_FOOT:
+                continue
+            if t.get("footway") == "sidewalk" or t.get("access") in NO_CARS:
+                continue
+            e, n = w.xy[len(w.xy) // 2]
+            if e0 <= e < e1 and n0 <= n < n1:
+                f = _path(w)
+                if t.get("highway") == "pedestrian":
+                    f["kind"] = "mall"
+                out.append(f)
+        return out
+
+    def _cycleways(self) -> list:
+        """Bike paths and shared paths (highway=cycleway, or a path or footway
+        signed for bikes), for cyclists riding off the road."""
+        out = []
+        for w in self.w.ways:
+            t = w.tags
+            if w.group != "foot" or len(w.xy) < 2:
+                continue
+            hw = t.get("highway")
+            if hw == "cycleway" or (hw in ("path", "footway") and t.get("bicycle") in ("designated", "yes")
+                                    and t.get("footway") != "sidewalk"):
+                out.append(_path(w))
         return out
 
     def _spread_signals(self, ways):
@@ -387,10 +432,14 @@ class TrafficNetwork:
                            for p in self.keep_clear if inside(p[0], -p[2])],
             "bus_routes": self._bus_routes_in(inside),
         }
-        footways = [{k: v for k, v in f.items() if k != "_mid" and (k != "name" or v)}
+        footways = [{k: v for k, v in f.items() if k not in ("_mid", "_way") and (k != "name" or v)}
                     for f in self.footways if inside(*f["_mid"])]
-        if footways:  # only near the stadium, so most tiles go without the key
+        if footways:  # only near the stadium and in the city, so most tiles go without the key
             data["footways"] = footways
+        cycleways = [{k: v for k, v in f.items() if k not in ("_mid", "_way") and (k != "name" or v)}
+                     for f in self.cycleways if inside(*f["_mid"])]
+        if cycleways:
+            data["cycleways"] = cycleways
         return data
 
     def _bus_routes_in(self, inside) -> list:

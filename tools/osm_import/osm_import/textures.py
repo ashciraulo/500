@@ -286,6 +286,59 @@ def _landmarks(r):
     img = _base((236, 236, 230), rng, (32, 5))
     img[:, ::16] -= 26
     T["roof_fabric"] = (img, None)
+    rng = r("council_tees")  # Council House: white T sunshades over dark glass, one bay a storey
+    img = _base((40, 54, 70), rng, (16, 4))
+    emit = np.zeros((S, S, 3))
+    emit[16:62, 4:24] = (230, 196, 140)
+    if rng.random() < 0.7:
+        emit[16:62, 40:60] = (230, 196, 140)
+    img[2:6] = (60, 76, 92)  # sky in the glass
+    img[0:16, 3:61] = (232, 230, 222)  # the T's bar, a gap to the next T
+    img[16:64, 25:39] = (226, 224, 216)  # and its stem
+    img[15, 3:61] = (150, 150, 146)
+    img[16:64, 24] = img[16:64, 39] = (150, 150, 146)
+    emit[:16] = 0
+    emit[:, 24:40] = 0
+    T["council_tees"] = (img, emit)
+    rng = r("arena_panels")  # RAC Arena's jigsaw of folded silver panels, LED seams at night
+    img = _base((212, 216, 220), rng, (16, 3), (4, 2))
+    emit = np.zeros((S, S, 3))
+    yy, xx = np.mgrid[0:S, 0:S]
+    lx, ly = xx % 32, yy % 32
+    upper = lx > ly  # four squares a tile, each split into two triangles
+    shade = [0, -22, 10, -34, -12, 6, -26, -4]
+    for q in range(4):
+        sq = (xx // 32 + 2 * (yy // 32)) == q
+        img[sq & upper] += shade[2 * q]
+        img[sq & ~upper] += shade[2 * q + 1]
+    img[(xx // 32 == 1) & (yy // 32 == 1) & ~upper] = (150, 170, 196)  # the odd blue-grey panel
+    seam = (lx == ly) | (lx == 0) | (ly == 0)
+    img[seam] = (132, 136, 142)
+    emit[seam] = (120, 90, 255)
+    T["arena_panels"] = (img, emit)
+    rng = r("hotel_white")  # Rendezvous Scarborough: white balconies, blue-green glass
+    img = _base((236, 234, 226), rng, (16, 4))
+    emit = np.zeros((S, S, 3))
+    img[6:40, 2:62] = (86, 128, 140)
+    img[6:9, 2:62] = (130, 168, 176)
+    if rng.random() < 0.6:
+        emit[9:40, 4:60] = (255, 214, 160)
+    img[40:48] = (246, 244, 238)  # balcony slab
+    img[30:40, :] = img[30:40, :] * 0.6 + np.array((200, 220, 224)) * 0.4  # glass balustrade
+    T["hotel_white"] = (img, emit)
+    rng = r("facade_market")  # Fremantle Markets: limestone with arched windows, red brick dressings
+    img = _base((214, 198, 160), rng, (16, 8), (4, 8))
+    img[::8, :] -= 18
+    img[0:4] = (160, 74, 56)
+    img[56:64] = (176, 160, 128)
+    emit = np.zeros((S, S, 3))
+    for y in range(18, 52):
+        half = 9 if y >= 26 else int(np.sqrt(max(0.0, 81 - (26 - y) ** 2)))
+        img[y, 32 - half - 2:32 + half + 2] = (160, 74, 56)
+        img[y + 2, 32 - half:32 + half] = (58, 50, 44)
+        emit[y + 2, 32 - half:32 + half] = (255, 190, 110)
+    img[52:56, 20:44] = (196, 182, 150)
+    T["facade_market"] = (img, emit)
     return T
 
 

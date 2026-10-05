@@ -83,6 +83,27 @@ func _process(_delta: float) -> bool:
 				_check(_fj.bird_order.size() >= 39, "39 species (%d)" % _fj.bird_order.size())
 				_check(_fj.habitats.size() >= 20, "real places (%d)" % _fj.habitats.size())
 				_check(_bino != null and _bino.is_inside_tree(), "binoculars ready")
+				# The binoculars start on the hook by the back door.
+				var disc := root.get_node("Discoveries")
+				disc._found.erase("field/binoculars")
+				_check(String(_bino.blocked_reason()).contains("hook"), "the binoculars start on the hook at home")
+				_field.home.take_binoculars()
+				_check(disc.has("field/binoculars") and not String(_bino.blocked_reason()).contains("hook"), "taken off the hook")
+				# Thirty species puts a feeder up in the courtyard, with visitors by day.
+				var saved: Dictionary = _fj.entries.duplicate(true)
+				for id: String in _fj.bird_order:
+					if not _fj.bird(id).get("wrong", false) and _fj.entries.size() < 30:
+						_fj.entries[id] = {"seen": 1, "time": "08:00", "where": "test"}
+				clock.set_time(10.0)
+				_field.home._update_feeder()
+				_field.home._animate_visitors(0.1)
+				var feeder: Node3D = _field.home._feeder
+				_check(is_instance_valid(feeder) and feeder.is_inside_tree(), "a feeder in the courtyard at 30 species")
+				_check(_field.home._visitors.size() >= 1, "birds at the feeder (%d)" % _field.home._visitors.size())
+				_field.home._clear_visitors()
+				if is_instance_valid(feeder):
+					feeder.queue_free()
+				_fj.entries = saved
 				_check(_field.journal.is_inside_tree() and _field.lab_screen.is_inside_tree(), "journal and lab screens ready")
 				# Hours wrap past midnight; dry birds skip the rain.
 				var frog: Dictionary = _fj.bird("tawny_frogmouth")
@@ -114,7 +135,8 @@ func _process(_delta: float) -> bool:
 				_check(_bino.open(), "binoculars come up in a stopped car")
 				_aim(galah.birds[0].node)
 			elif _frames > 30 and _frames < 400:
-				_aim(_target.birds[0].node)
+				# Grazing galahs wander; keep on one you can see over the lawn's rises.
+				_aim(_visible_bird(_target))
 				if _fj.is_seen("galah"):
 					_check(true, "the galah is identified")
 					_shot("01_binoculars_galah")
@@ -363,6 +385,23 @@ func _stage_fishing(clock: Node) -> void:
 		_check(dusk.has("black_bream") and not dusk.has("mulloway") and not dusk.has("king_george_whiting"), "bream at the jetty at dusk, no mulloway or KGs")
 		_check(_ids(_fj.fish_candidates(_fj.spot("elizabeth_quay"), 12.0)).has("fiat_hubcap"), "something odd in the river off the quay")
 		_check(_ids(_fj.fish_candidates(_fj.spot("fremantle_harbour"), 21.0)).has("squid"), "squid under the harbour lights at night")
+		# The wrong bream: Mends St after midnight, once the ticket's found.
+		var disc := root.get_node("Discoveries")
+		var had_ticket: bool = disc.has("mystery/ticket")
+		disc._found.erase("mystery/ticket")
+		_check(not _ids(_fj.fish_candidates(_spot, 1.0)).has("wrong_bream"), "no tagged bream before the ticket")
+		disc._found["mystery/ticket"] = 1
+		_check(_ids(_fj.fish_candidates(_spot, 1.0)).has("wrong_bream"), "a tagged bream at Mends St after midnight")
+		_check(not _ids(_fj.fish_candidates(_spot, 13.0)).has("wrong_bream"), "but not by day")
+		_check(not _ids(_fj.fish_candidates(_fj.spot("coode_st_jetty"), 1.0)).has("wrong_bream"), "and only at Mends St")
+		var total: int = _fj.fish_total()
+		var tagged: Dictionary = _fj.land(_fj.fish_size(_fj.fish_species("wrong_bream"), RandomNumberGenerator.new()), "Mends Street jetty")
+		_check(tagged.first and _fishing.keep_blocked(tagged) != "" and not _fj.keep(tagged), "it can't go in the esky")
+		_check(_fj.fish_total() == total and not _fj.counts(_fj.fish_species("wrong_bream")), "and doesn't count as a species")
+		_check(not _ids(_fj.fish_candidates(_spot, 1.0)).has("wrong_bream"), "once caught it's done")
+		_fj.catches.erase("wrong_bream")
+		if not had_ticket:
+			disc._found.erase("mystery/ticket")
 		_check(_ids(_fj.fish_candidates(_spot, 12.0, "net")) == ["blue_swimmer_crab"], "the crab net catches crabs")
 		clock.set_time(18.5)
 		_teleport(Vector3(-4.0, 9.6, 2873.0), 2.0)
@@ -535,6 +574,16 @@ func _teleport(p: Vector3, yaw: float) -> void:
 	_car.global_transform = Transform3D(Basis(Vector3.UP, yaw), p + Vector3.UP * 0.8)
 	_car.linear_velocity = Vector3.ZERO
 	_car.angular_velocity = Vector3.ZERO
+
+
+## The first of a flock the binoculars have a clear line to (else the first).
+func _visible_bird(s: Dictionary) -> Node3D:
+	var size := float(s.species.get("size", 0.3))
+	for b: Dictionary in s.birds:
+		var n: Node3D = b.node
+		if is_instance_valid(n) and _bino._camera and _bino._clear_line(_bino._camera.global_position, n.global_position + Vector3.UP * size * 0.8):
+			return n
+	return s.birds[0].node
 
 
 func _aim(node: Node3D) -> void:
