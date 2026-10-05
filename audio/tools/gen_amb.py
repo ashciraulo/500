@@ -2795,7 +2795,8 @@ def fish_jumps(n, seed, count=4):
 def place_jetty():
     """Out on an old timber jetty (fishing spots on the river and the coast):
     water lapping round the pylons and slapping up under the boards, the
-    timbers creaking, a light sea breeze, gulls, now and then a fish jumping."""
+    timbers creaking, moored boats' halyards and ropes, a light sea breeze,
+    gulls, now and then a fish jumping."""
     dur = 60
     B = Bed(dur, 3601)
     n = B.n
@@ -2804,6 +2805,9 @@ def place_jetty():
     B.add(timber_creaks(n, 36013, 7), -31)
     B.add(ear_wind(n, 36014, level=0.6), -36)
     B.add(fish_jumps(n, 36015, 3), -24)
+    hal = halyard_tinks(n, 36016, clusters=7)
+    B.add(np.stack([hal, np.roll(hal, secs(0.29))], axis=1), -39)
+    B.add(rope_creaks(n, 36017, 6), -35)
     B.scatter(gull_pool(), 4, gain_db=(-20, -11), dist=(0.2, 0.6))
     place_save("place_jetty_loop", B.x)
 
@@ -2820,7 +2824,238 @@ def place_jetty_night():
     B.add(timber_creaks(n, 36033, 6), -31)
     B.add(fish_jumps(n, 36024, 6), -24)
     B.add(city_hum(n, 36025, 30, 250), -40)
+    hal = halyard_tinks(n, 36026, clusters=5)
+    B.add(np.stack([hal, np.roll(hal, secs(0.33))], axis=1), -40)
+    B.add(rope_creaks(n, 36027, 5), -36)
     place_save("place_jetty_night_loop", B.x)
+
+
+def rope_creaks(n, seed, count=6):
+    """Mooring lines stretching on bollards and cleats as boats ride the
+    swell: short, tight, squeaky stick-slip groans (stereo, circular)."""
+    r = np.random.default_rng(seed)
+    y = np.zeros((n, 2))
+    for _ in range(count):
+        m = secs(r.uniform(0.25, 0.6))
+        rate = r.uniform(70, 150) * (1 + 0.4 * np.sin(np.linspace(0, np.pi, m)))
+        pulses = np.diff(np.floor(np.cumsum(rate / SR)), prepend=0) * (0.6 + 0.4 * r.random(m))
+        c = S.resonator(pulses, r.uniform(800, 1300), 6) + 0.6 * S.resonator(pulses, r.uniform(1800, 2600), 8)
+        c *= np.sin(np.linspace(0, np.pi, m)) ** 2
+        S.place(y, S.pan(c, r.uniform(-0.6, 0.6)), secs(r.uniform(0, n / SR)), wrap=True)
+    return y
+
+
+def rock_wash(n, seed, every=9.0):
+    """Swell running up a rock groyne (stereo, circular): the dull thump of
+    each wave on the boulders, its rush up between the rocks, and the long
+    drain back, gurgling and trickling through the gaps."""
+    r = np.random.default_rng(seed)
+    y = np.zeros((n, 2))
+    count = max(1, int(round(n / SR / every)))
+    for k in range(count):
+        at = (k + r.uniform(-0.25, 0.25)) * n / SR / count
+        L = secs(6.0)
+        t = S.t_axis(L)
+        rise = np.clip(t / r.uniform(0.6, 1.0), 0, 1) ** 2 * np.exp(-np.clip(t - 1.0, 0, None) / 1.2)
+        rush = S.bp(r.standard_normal(L), 250, 4000, 2) * rise
+        thump = S.lp(r.standard_normal(L), 140, 2) * np.exp(-np.clip(t - 0.35, 0, None) / 0.12) * (t > 0.35) * 2.5
+        drain = np.zeros(L)
+        for _ in range(int(r.integers(40, 70))):
+            b0 = r.uniform(1.4, 5.5)
+            m = secs(0.03)
+            tb = S.t_axis(m)
+            f = r.uniform(500, 1600) * (1 + 3 * tb / 0.03)
+            pop = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tb / 0.008)
+            S.place(drain, pop * r.uniform(0.1, 0.5) * np.exp(-(b0 - 1.4) / 2.5), secs(b0))
+        trickle = S.bp(r.standard_normal(L), 1500, 6000, 1) * np.exp(-np.clip(t - 1.5, 0, None) / 1.8) * (t > 1.2) * 0.25
+        s = rush * 0.9 + thump + drain + trickle
+        S.place(y, S.pan(s, r.uniform(-0.6, 0.6)), secs(at), wrap=True)
+    return y
+
+
+@builder("place_groyne")
+def place_groyne():
+    """Out on a rock groyne (Cottesloe, the Freo moles): the open shore break
+    either side, swell washing up the boulders and draining back through
+    the gaps, the sea breeze, gulls working the water."""
+    dur = 54
+    B = Bed(dur, 3701)
+    n = B.n
+    B.add(texture(src("beach_day", True), dur, 37011, chunk=18), -26)
+    B.add(rock_wash(n, 37012, every=9.0), -24)
+    B.add(ear_wind(n, 37013, gust_rate=0.08), -33)
+    B.scatter(gull_pool(), 5, gain_db=(-18, -9), dist=(0.15, 0.55))
+    place_save("place_groyne_loop", B.x)
+
+
+@builder("place_groyne_night")
+def place_groyne_night():
+    dur = 54
+    B = Bed(dur, 3702)
+    n = B.n
+    B.add(texture(src("beach_night", True), dur, 37021, chunk=18), -26)
+    B.add(rock_wash(n, 37022, every=10.8), -25)
+    B.add(ear_wind(n, 37023, gust_rate=0.05), -37)
+    place_save("place_groyne_night_loop", B.x)
+
+
+def shop_radio(n, track, start_s, seed):
+    """A little radio on a shelf (mono, circular): one of the station's
+    tracks through a tinny speaker, its end folded into its start."""
+    x = S.load(S.AUDIO_ROOT / f"music/{track}.ogg")
+    x = x.mean(axis=1) if x.ndim == 2 else x
+    xf = secs(3.0)
+    seg = x[secs(start_s): secs(start_s) + n + xf].copy()
+    w = np.linspace(0, 1, xf)
+    seg[:xf] = seg[:xf] * w + seg[n:n + xf] * (1 - w)
+    seg = seg[:n]
+    y = S.circ_bp(seg, 300, 3200, 2)
+    return np.tanh(2.0 * y / (np.abs(y).max() + 1e-9))
+
+
+def bubbler(n, seed, density=35):
+    """A live-bait tank's aerator (mono, circular): the air pump's 50 Hz
+    buzz and a steady stream of small bubbles breaking."""
+    r = np.random.default_rng(seed)
+    t = S.t_axis(n)
+    f = periodic_tone(n, 50)
+    pump = S.circ_bp(np.tanh(3 * np.sin(2 * np.pi * f * t)), 60, 900, 2) * 0.15
+    y = np.zeros(n)
+    m = secs(0.025)
+    tb = S.t_axis(m)
+    for _ in range(int(density * n / SR)):
+        fr = r.uniform(700, 2200) * (1 + 2 * tb / 0.025)
+        pop = np.sin(2 * np.pi * np.cumsum(fr) / SR) * np.exp(-tb / 0.006)
+        S.place(y, pop * r.uniform(0.2, 1.0), int(r.integers(n)), wrap=True)
+    return pump + y * 0.4
+
+
+def ceiling_fan(n, seed, rpm=130):
+    """An old ceiling fan (mono, circular): a soft whoosh per blade pass, a
+    faint motor hum, a slight tick in the bearing."""
+    t = S.t_axis(n)
+    fb = periodic_tone(n, rpm / 60 * 3)
+    swish = S.circ_bp(S.noise(n, seed), 150, 1500, 1) * (0.6 + 0.4 * np.sin(2 * np.pi * fb * t)) ** 2
+    hum = np.sin(2 * np.pi * periodic_tone(n, 100) * t) * 0.03
+    tick = np.zeros(n)
+    k = secs(0.01)
+    s = S.bp(np.random.default_rng(seed + 1).standard_normal(k), 2000, 6000, 2) * np.exp(-S.t_axis(k) / 0.002)
+    per = int(round(SR * 60 / rpm))
+    for at in range(0, n, per):
+        S.place(tick, s * 0.15, at, wrap=True)
+    return swish * 0.5 + hum + tick
+
+
+def shop_bell(seed):
+    """The bell on a shop door: a small brass bell jangling on its spring."""
+    r = np.random.default_rng(seed)
+    y = np.zeros(secs(1.6))
+    for j in range(int(r.integers(4, 7))):
+        b = bell(r.uniform(1150, 1250), 1.2, seed + j)
+        S.place(y, b * 0.7 ** j, secs(j * r.uniform(0.07, 0.12)))
+    return y
+
+
+@builder("place_tackle_shop")
+def place_tackle_shop():
+    """Inside the bait and tackle shop: the bait freezer and the live-bait
+    tank bubbling, a ceiling fan, the radio on the shelf, rod tips knocking
+    in the rack, the till, and now and then the bell on the door."""
+    import gen_car as C
+    dur = 48
+    B = Bed(dur, 3801)
+    n = B.n
+    room = lambda x: S.reverb(x, size_s=0.45, damp_hz=4500, wet=0.18, seed=38019, circular=True)  # noqa: E731
+    B.add(fridge_hum(n, 38011), -32)
+    B.add(room(bubbler(n, 38012)), -31)
+    B.add(ceiling_fan(n, 38013), -37)
+    B.add(room(shop_radio(n, "mus_cinquecento_04", 40.0, 38014)), -36)
+    for k, at in enumerate(B.times(3, 0.7)):
+        clack = sum(C.modal(0.15, [(B.r.uniform(1100, 2400), 0.02, 0.5), (B.r.uniform(3000, 5000), 0.01, 0.2)],
+                            38100 + 10 * k + j) for j in range(1))
+        y = np.zeros(secs(0.8))
+        for j in range(int(B.r.integers(2, 5))):
+            S.place(y, clack * B.r.uniform(0.4, 1.0), secs(j * B.r.uniform(0.08, 0.2)))
+        B.put(room(y), at, -24)
+    till = np.zeros(secs(1.2))
+    S.place(till, np.sin(2 * np.pi * 2400 * S.t_axis(secs(0.08))) * 0.4, 0)
+    S.place(till, C.add(S.lp(C.burst(0.15, 0.02, 38021), 900) * 1.2, C.modal(0.3, [(900, 0.05, 0.5)], 38022)),
+            secs(0.3))
+    B.put(room(till), secs(14), -22)
+    B.put(room(shop_bell(38023)), secs(33), -20)
+    place_save("place_tackle_shop_loop", B.x)
+
+
+@builder("place_photo_lab")
+def place_photo_lab():
+    """Inside the Lake Street photo lab: the minilab running (motor, the
+    film-transport rollers ticking, the dryer fan), prints dropping into the
+    tray, the chemistry pump now and then, the machine's beep, fluoros."""
+    dur = 48
+    B = Bed(dur, 3901)
+    n = B.n
+    t = S.t_axis(n)
+    room = lambda x: S.reverb(x, size_s=0.5, damp_hz=5000, wet=0.15, seed=39019, circular=True)  # noqa: E731
+    motor = np.tanh(2 * np.sin(2 * np.pi * periodic_tone(n, 120) * t)) * 0.4 \
+        + np.sin(2 * np.pi * periodic_tone(n, 360) * t) * 0.1
+    B.add(room(S.circ_bp(motor, 80, 1500, 2)), -34)
+    rollers = np.zeros(n)
+    k = secs(0.02)
+    tk = S.t_axis(k)
+    per = int(round(SR / 6.0))
+    for i, at in enumerate(range(0, n, per)):
+        s = np.sin(2 * np.pi * (1800 + 200 * (i % 3)) * tk) * np.exp(-tk / 0.004)
+        S.place(rollers, s, at, wrap=True)
+    B.add(room(rollers), -38)
+    B.add(S.circ_lp(S.brown(n, 39012), 900) + S.circ_bp(S.noise(n, 39013), 400, 3000, 1) * 0.3, -33)
+    B.add(fluoro_buzz(n, 39014, tubes=2), -42)
+    for k, at in enumerate(B.times(6, 0.5)):
+        m = secs(0.25)
+        tm = S.t_axis(m)
+        slap = S.bp(np.random.default_rng(39100 + k).standard_normal(m), 700, 5000, 2) * np.exp(-tm / 0.03)
+        whisk = S.bp(np.random.default_rng(39200 + k).standard_normal(m), 2000, 8000, 2) * np.exp(-tm / 0.08) * 0.3
+        B.put(room(slap + whisk), at, -27)
+    for k, at in enumerate(B.times(2, 0.6)):
+        m = secs(2.0)
+        tm = S.t_axis(m)
+        gur = S.bp(np.random.default_rng(39300 + k).standard_normal(m), 150, 900, 2) \
+            * (0.5 + 0.5 * np.sin(2 * np.pi * 7 * tm)) * np.sin(np.pi * tm / 2.0)
+        B.put(room(gur), at, -30)
+    beep = np.zeros(secs(0.6))
+    for j in range(2):
+        S.place(beep, np.sin(2 * np.pi * 2050 * S.t_axis(secs(0.09))) * 0.5, secs(j * 0.16))
+    B.put(room(beep), secs(21), -28)
+    place_save("place_photo_lab_loop", B.x)
+
+
+@builder("place_wrong_cockatoos_night")
+def place_wrong_cockatoos_night():
+    """Under the thirteen black cockatoos in Kings Park at 3 am: not one of
+    them calls. Feathers resettling, a claw shifting on bark, a bill clicking
+    once, branches taking their weight, and the night itself gone too quiet:
+    no crickets, just the wind high up and a low hum you feel more than hear."""
+    dur = 48
+    B = Bed(dur, 3951)
+    n = B.n
+    t = S.t_axis(n)
+    B.add(ear_wind(n, 39511, gust_rate=0.04, level=0.5), -40)
+    f1, f2 = periodic_tone(n, 41.0), periodic_tone(n, 41.3)
+    hum = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
+    B.add(hum, -41)
+    B.add(timber_creaks(n, 39512, 6), -38)
+    r = B.r
+    k = secs(0.4)
+    tk = S.t_axis(k)
+    for i, at in enumerate(B.times(18, 0.9)):
+        ruffle = S.bp(r.standard_normal(k), 900, 6000, 2) * np.sin(np.pi * tk / 0.4) ** 2 \
+            * (0.5 + 0.5 * np.sin(2 * np.pi * r.uniform(20, 35) * tk))
+        B.put(distant(ruffle, r.uniform(0.2, 0.45), r.uniform(-0.8, 0.8), 39600 + i, room=1.6), at, r.uniform(-30, -24))
+    m = secs(0.05)
+    tm = S.t_axis(m)
+    for i, at in enumerate(B.times(3, 0.6)):
+        click = np.sin(2 * np.pi * 2600 * tm) * np.exp(-tm / 0.006) + 0.5 * S.bp(r.standard_normal(m), 1500, 6000, 2) * np.exp(-tm / 0.003)
+        B.put(distant(click, 0.3, r.uniform(-0.6, 0.6), 39700 + i, room=1.6), at, -27)
+    place_save("place_wrong_cockatoos_night_loop", B.x)
 
 
 @builder("place_riverside")

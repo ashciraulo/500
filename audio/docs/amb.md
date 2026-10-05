@@ -89,8 +89,13 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | place/place_riverside_night_loop | yes (55 s) | The river bank at night: lapping, reeds, crickets, banjo frogs bonking | P2 | lapping, crickets_sub, pobble1, pobble2 (+ synth reeds) |
 | place/place_carpark_loop | yes (50 s) | A big open car park by day: distant traffic, doors and boots shutting, a trolley rattling past, a car creeping by | P2 | traffic_peak (+ synth thuds, trolley, car) |
 | place/place_carpark_night_loop | yes (55 s) | A quiet car park at night: old fluorescent tubes buzzing (one flickering), a parked car ticking as it cools, the city a long way off, one car on the road beyond. Nearly empty, on purpose | P2 | traffic_night (+ synth buzz, hum, ticks, car) |
-| place/place_jetty_loop | yes (60 s) | An old timber jetty: water lapping round the pylons and slapping under the boards, timbers creaking, light breeze, gulls, a fish jumping now and then | P2 | lapping (+ synth slaps, creaks, wind, gulls, jumps) |
-| place/place_jetty_night_loop | yes (60 s) | The jetty after dark: quieter water, timbers, more fish jumping, the city a faint hum across the water | P2 | lapping (+ synth) |
+| place/place_jetty_loop | yes (60 s) | An old timber jetty: water lapping round the pylons and slapping under the boards, timbers creaking, moored boats' halyards and mooring ropes, light breeze, gulls, a fish jumping now and then | P2 | lapping (+ synth slaps, creaks, halyards, ropes, wind, gulls, jumps) |
+| place/place_jetty_night_loop | yes (60 s) | The jetty after dark: quieter water, timbers, halyards and ropes, more fish jumping, the city a faint hum across the water | P2 | lapping (+ synth) |
+| place/place_groyne_loop | yes (54 s) | A rock groyne (Cottesloe, the Freo moles): shore break either side, swell thumping the boulders, rushing up and draining back through the gaps, sea breeze, gulls | P2 | beach_day (+ synth rock wash, wind, gulls) |
+| place/place_groyne_night_loop | yes (54 s) | The groyne after dark: the same wash, slower, no gulls | P2 | beach_night (+ synth) |
+| place/place_tackle_shop_loop | yes (48 s) | Inside the Mends St bait and tackle shop: bait freezer, live-bait tank bubbling, ceiling fan, the station on a shelf radio, rod tips knocking, the till, the door bell | P2 | synth; radio plays mus_cinquecento_04 |
+| place/place_photo_lab_loop | yes (48 s) | Inside the Lake St photo lab: the minilab's motor, rollers and dryer fan, prints dropping into the tray, the chemistry pump, a beep, fluoros | P2 | synth |
+| place/place_wrong_cockatoos_night_loop | yes (48 s) | Under the thirteen silent cockatoos in Kings Park at 3 am: feathers resettling, a bill click, branches taking their weight, no crickets, a low beating hum | P2 | synth |
 | amb_bird_raven_01..03 | no | Australian raven, the long mournful falling 'aah-aah-aaaah' | P1 | raven_db |
 | amb_bird_magpie_01..03 | no | Australian magpie warble/carol (01-02 Kings Park, 03 close suburban) | P1 | mag_kp2, mag_dl |
 | amb_bird_kookaburra_01..02 | no | Laughing kookaburra family laugh (Kings Park) | P1 | kook_kp |

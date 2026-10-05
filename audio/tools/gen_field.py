@@ -3,7 +3,7 @@
 wrong, the binoculars / camera / journal foley, and fishing foley.
 
     python3 audio/tools/gen_field.py            # everything
-    python3 audio/tools/gen_field.py birds      # just one group: birds, ui, fish
+    python3 audio/tools/gen_field.py birds      # one group: birds, ui, fish, mystery
 
 Everything goes to audio/field/, named as the bird-watching code asks for it
 (see audio/docs/field.md): field/bird_<species>_NN (mono, 3D-ready),
@@ -627,14 +627,138 @@ def render_fish():
     S.save("field/reel_in", reel_in(), **enc)
 
 
+# --------------------------------------------------------------------------
+# The mystery: the wrong night birds' own calls, and M.'s 1979 pages. Quiet
+# and plain, never a jump scare: the unease is in what is slightly off.
+# --------------------------------------------------------------------------
+
+def tape_hiss(n, seed, level=0.02):
+    return bp(noise(n, seed), 2500, 12000, 1) * level + bp(noise(n, seed + 1), 200, 1500, 1) * level * 0.3
+
+
+def cassette(y, seed):
+    """Played back off an old cassette in a nest: band-limited, wow and
+    flutter, hiss, and the play button's clunk either end."""
+    y = A.tape_warble(bp(y, 250, 5000, 2), seed, wow=0.008, flutter=0.002)
+    y = y + tape_hiss(len(y), seed + 1, 0.015 * np.abs(y).max())
+    clunk = lambda s: C.add(C.modal(0.06, [(1400, 0.008, 0.4), (3200, 0.004, 0.2)], s),  # noqa: E731
+                            lp(C.burst(0.03, 0.004, s + 1), 900) * 0.6)
+    return C.mix(len(y) / SR + 1.0, [(0.0, clunk(seed + 2), 0.5), (0.25, y, 1.0), (0.3 + len(y) / SR, clunk(seed + 3), 0.6)])
+
+
+def wrong_birds():
+    """field/bird_wrong_<id>: what the journal's wrong birds sound like."""
+    for i in range(2):
+        note = frogmouth(7720 + i, count=1, f0=280)[:secs(0.32)]
+        y = np.zeros(secs(9.0))
+        for k in range(16):
+            S.place(y, note, secs(0.2 + 0.5 * k))
+        save_bird(f"bird_wrong_frogmouth_{i + 1:02d}", A.distant(S.fade(y, 0.1, 0.05), 0.5, 0, 2 + i, room=2.2).mean(axis=1), 150)
+    mag = mono_amb("amb_bird_magpie_01")
+    for i, cut_s in enumerate([1.6, 1.1]):
+        carol = S.fade(mag[:secs(cut_s)], 0.0, 0.25)
+        tune = np.zeros(secs(3.4))
+        for j, (at, f) in enumerate(A.INTERVAL_NOTES):
+            note = FB.whistle(f * 2 * 2 ** (-30 / 1200), 0.42 if j < 3 else 1.0, 7710 + 10 * i + j, slur=0.08,
+                              vib=(0.012, 9.0), harm=0.25, breath=0.04)
+            S.place(tune, note, secs(at * 1.1))
+        y = C.mix(cut_s + 4.0, [(0.0, carol, 1.0), (cut_s - 0.25, tune, 0.8)])
+        save_bird(f"bird_wrong_magpie_{i + 1:02d}", A.distant(A.tape_warble(y, 7715 + i), 0.45, 0, 1, room=2.0).mean(axis=1), 300)
+    bb = A.src("boobook1")
+    for i, (a, b) in enumerate([(34.7, 38.9), (44.7, 48.2)]):
+        y = cassette(A.cut(bb, secs(a), secs(b), 0.05, 0.3), 7730 + 10 * i)
+        save_bird(f"bird_wrong_boobook_{i + 1:02d}", A.distant(y, 0.35, 0, 3, room=1.6).mean(axis=1), 150)
+    # the ibis grunts the crossing's walk signal: a fast run at exactly the
+    # walk ticks' rate, then three at the locator's one-a-second
+    for i in range(2):
+        r = np.random.default_rng(7740 + i)
+        y = np.zeros(secs(5.5))
+        grunt = FB.croak(125, 0.06, 7741 + i, formants=((420, 2.0, 1.0), (950, 2.5, 0.6), (2100, 3.5, 0.25)),
+                         drop=0.1, rough=0.6, attack=0.003)
+        for k in range(int(r.integers(9, 13))):
+            S.place(y, grunt, secs(0.1 + k / 7.0))
+        for k in range(3):
+            S.place(y, grunt * 0.8, secs(2.4 + k * 1.0))
+        save_bird(f"bird_wrong_ibis_{i + 1:02d}", A.distant(y, 0.35, 0, 4, room=1.4).mean(axis=1), 120)
+
+
+def music_box(f, L, seed):
+    """One music-box tine: bright, slightly inharmonic, fast decay."""
+    n = secs(L)
+    t = t_axis(n)
+    r = np.random.default_rng(seed)
+    y = sum(a * np.sin(2 * np.pi * f * m * (1 + r.normal(0, 0.001)) * t) * np.exp(-t / d)
+            for m, a, d in ((1.0, 1.0, 0.9), (2.76, 0.3, 0.25), (5.4, 0.12, 0.08)))
+    return S.fade(y, 0.002, 0.1)
+
+
+def m_page(found=True, yours=False):
+    """A page by M.: a dry old page shifting, and the station's falling
+    interval on a worn music box, slow and a little flat. Your own page
+    plays it rising, the wrong way round, and stops a note short."""
+    notes = A.INTERVAL_NOTES if not yours else [(at, f) for at, (_, f) in zip([0.0, 0.5, 1.0], A.INTERVAL_NOTES[::-1])]
+    tune = np.zeros(secs(4.5))
+    for j, (at, f) in enumerate(notes):
+        S.place(tune, music_box(f * 2 * 2 ** (-35 / 1200), 1.6, 7800 + j), secs(0.3 + at * 1.35))
+    tune = A.tape_warble(tune, 7810 + yours, wow=0.006, flutter=0.002)
+    tune = S.reverb(tune, size_s=2.2, damp_hz=4000, wet=0.35, seed=7811).mean(axis=1)
+    page = paper(0.5, 7820 + yours, 140, 0.7)
+    x = C.mix(5.0, [(0.0, page, 0.5), (0.2, tune, 1.0)])
+    return x + tape_hiss(len(x), 7830, 0.004)
+
+
+def m_page_open():
+    """One of M.'s pages opened: brittle old paper, a dry crackle, and the
+    room going a little quieter round it."""
+    n = secs(1.6)
+    t = t_axis(n)
+    crack = paper(0.8, 7840, 500, 0.8)
+    swell = bp(noise(n, 7841), 60, 400, 2) * np.sin(np.pi * np.clip(t / 1.6, 0, 1)) * 0.08
+    return C.mix(1.6, [(0.0, crack, 1.0), (0.0, swell, 1.0)])
+
+
+def m_page_room(seconds=24.0):
+    """While M.'s page is open (loop): a still room, the faint hiss of old
+    tape, a low hum beating slowly against itself, and a clock somewhere
+    that ticks almost, but not quite, evenly."""
+    n = secs(seconds)
+    t = t_axis(n)
+    f1 = round(55 * seconds) / seconds
+    f2 = round(55.25 * seconds) / seconds
+    hum = (np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)) * 0.05
+    hiss = S.circ_bp(noise(n, 7850), 2500, 10000, 1) * 0.012 + S.circ_bp(S.brown(n, 7851), 60, 600, 1) * 0.01
+    clock = np.zeros(n)
+    r = np.random.default_rng(7852)
+    k = secs(0.04)
+    tk = t_axis(k)
+    tick = np.sin(2 * np.pi * 3100 * tk) * np.exp(-tk / 0.004) + 0.4 * np.sin(2 * np.pi * 1250 * tk) * np.exp(-tk / 0.01)
+    ticks = int(seconds)
+    for i in range(ticks):
+        at = i + (0.06 if i % 7 == 3 else 0.0) + r.normal(0, 0.004)  # every seventh comes late
+        S.place(clock, tick * (0.5 if i % 2 else 0.4), secs(at) % n, wrap=True)
+    clock = S.circ_lp(clock, 5000) * 0.08
+    return C.check_loop("m_page_room", hum + hiss + clock)
+
+
+def render_mystery():
+    wrong_birds()
+    enc = dict(norm="lufs:-26", **FX_ENC)
+    S.save("field/m_page_found", m_page(), **enc)
+    S.save("field/m_page_found_yours", m_page(yours=True), **enc)
+    S.save("field/m_page_open", m_page_open(), **enc)
+    S.save("field/m_page_room", m_page_room(), norm="lufs:-34", **FX_ENC)
+
+
 def main(argv):
-    want = set(argv) or {"birds", "ui", "fish"}
+    want = set(argv) or {"birds", "ui", "fish", "mystery"}
     if "birds" in want:
         render_birds()
     if "ui" in want:
         render_ui()
     if "fish" in want:
         render_fish()
+    if "mystery" in want:
+        render_mystery()
 
 
 if __name__ == "__main__":

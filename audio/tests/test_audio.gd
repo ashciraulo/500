@@ -236,11 +236,13 @@ func _test_ambience(audio: Node) -> void:
 	amb.lightning(500.0)
 	audio.set_player_inside(false)
 	check(true, "weather and lightning without errors")
-	# Place layers: every type has day and night loops; a place fades in as
-	# you get near it and out as you leave; a "poi" node counts as a place.
+	# Place layers: every outdoor type has day and night loops (the shops and
+	# the 3 am cockatoos have one, used at any hour); a place fades in as you
+	# get near it and out as you leave; a "poi" node counts as a place.
 	for type in amb.PLACE_TYPES:
-		check(audio.has("amb/place/place_%s_loop" % type) and audio.has("amb/place/place_%s_night_loop" % type),
-				"place %s has day and night loops" % type)
+		var both: bool = audio.has("amb/place/place_%s_loop" % type) and audio.has("amb/place/place_%s_night_loop" % type)
+		var one_only: bool = type in ["tackle_shop", "photo_lab", "wrong_cockatoos"] and amb.place_sound(type) != ""
+		check(both or one_only, "place %s has its loops" % type)
 	amb.set_time_of_day(12.0)
 	amb.add_place("beach", Vector3(1000, 0, 0), 100.0)
 	amb.update_places(Vector3(1010, 0, 0))
@@ -669,3 +671,11 @@ func _test_field(audio: Node) -> void:
 	check(audio.stream("field/reel", true) != null, "the reel alias loops")
 	check(audio.ambience.PLACE_TYPES.has("jetty") and audio.has("amb/place/place_jetty_loop")
 			and audio.has("amb/place/place_jetty_night_loop"), "jetty place ambience, day and night")
+	for n in ["bird_wrong_frogmouth", "bird_wrong_magpie", "bird_wrong_boobook", "bird_wrong_ibis", "m_page_found",
+			"m_page_found_yours", "m_page_open", "m_page_room"]:
+		check(audio.has("field/" + n), "mystery " + n)
+	check(not audio.has("field/bird_wrong_swan"), "the wrong swan makes no sound")
+	check(audio.stream("field/m_page_room", true) != null, "M.'s page room tone loops")
+	for type in ["groyne", "tackle_shop", "photo_lab", "wrong_cockatoos"]:
+		check(audio.ambience.PLACE_TYPES.has(type) and audio.ambience.place_sound(type) != "", "place ambience " + type)
+	check(audio.has("amb/place/place_groyne_night_loop"), "groyne at night")

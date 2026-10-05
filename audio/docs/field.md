@@ -69,7 +69,30 @@ Everything but the recordings is synthesised from field-guide descriptions
 (whistles, screeches, trills, coos and croaks): no CC0 recordings of those
 species were reachable.
 
-## Wrong calls (`field/wrong_*`)
+## The wrong birds (`field/bird_wrong_<id>_NN`)
+
+Played like any species (`Audio.play_at("field/bird_wrong_<id>", pos)`).
+wrong_swan and wrong_grey_bird are silent on purpose (no file).
+The thirteen wrong cockatoos have a bed instead of a call: place type
+`wrong_cockatoos` (`Audio.ambience.add_place("wrong_cockatoos", pos, 40.0, true)`).
+
+| Id | What is wrong |
+|---|---|
+| wrong_frogmouth | Calls metronome-regular, every note the same, half a second apart, far too long |
+| wrong_magpie | Its carol drifts mid-phrase into the midnight station's falling interval, a little flat |
+| wrong_boobook | A boobook played off a cassette in the nest: hiss, wow, the play button's clunk |
+| wrong_ibis | Grunts in the exact rhythm of the Barrack St crossing: the fast walk ticks, then the slow locator |
+
+## M.'s pages
+
+| File | When | What it is |
+|---|---|---|
+| m_page_found | binoculars first identify a wrong bird | A dry page shifting and the station's falling interval on a worn music box, slow and flat |
+| m_page_found_yours | the grey bird (the page is in your handwriting) | The same, rising the wrong way round, a note short |
+| m_page_open | one of M.'s pages opened in the journal | Brittle paper crackling, the room going quieter |
+| m_page_room | loop while the page is open | Still room, old-tape hiss, a low hum beating against itself, a clock where every seventh tick comes late |
+
+## Spare wrong calls (`field/wrong_*`)
 
 Quiet, far off and soft-edged, never jumpy: for after midnight and the mystery.
 
