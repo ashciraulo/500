@@ -105,6 +105,19 @@ func owns(part: CarPart, car: CarController) -> bool:
 	return car.get_part_ids().has(String(part.id))
 
 
+## Parts you own for this car (bought, or found around the city) that aren't
+## fitted to it: what sits on the parts shelf in the carport.
+func spare_parts(car: CarController) -> Array[CarPart]:
+	var fitted := car.get_part_ids()
+	var spares: Array[CarPart] = []
+	for part in PartsCatalogue.all():
+		if part.is_stock() or fitted.has(String(part.id)):
+			continue
+		if owned.has(_key(car.car_id, part)) or (part.found_only and is_found(part)):
+			spares.append(part)
+	return spares
+
+
 ## Pay for a part for this car. Returns false if you can't afford it, it
 ## doesn't fit, or it's one you have to find.
 func buy(part: CarPart, car: CarController) -> bool:

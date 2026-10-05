@@ -372,12 +372,51 @@ func _refresh_tuning() -> void:
 			high.add_theme_color_override("font_color", Color(0.85, 0.55, 0.45))
 		row.add_child(high)
 		_tuning_list.add_child(row)
+	_heading(_tuning_list, "Saved setups")
+	_text(_tuning_list, "Keep a setup for each kind of drive and swap between them here.")
+	for i in CarController.SETUP_NAMES.size():
+		var slot := i
+		var row := HBoxContainer.new()
+		var name_label := Label.new()
+		name_label.text = CarController.SETUP_NAMES[i]
+		name_label.custom_minimum_size.x = 170
+		row.add_child(name_label)
+		var info := Label.new()
+		info.text = _setup_summary(_car.setups[i]) if _car.has_setup(i) else "Empty"
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_theme_font_size_override("font_size", 13)
+		info.add_theme_color_override("font_color", Color(0.7, 0.7, 0.68))
+		row.add_child(info)
+		var save := Button.new()
+		save.text = "Overwrite" if _car.has_setup(i) else "Save here"
+		save.pressed.connect(func() -> void:
+			_car.save_setup(slot)
+			_refresh())
+		row.add_child(save)
+		var use := Button.new()
+		var in_use: bool = _car.has_setup(i) and _car.setups[i] == _car.tuning
+		use.text = "In use" if in_use else "Use"
+		use.disabled = not _car.has_setup(i) or in_use
+		use.pressed.connect(func() -> void:
+			_car.load_setup(slot)
+			_refresh())
+		row.add_child(use)
+		_tuning_list.add_child(row)
 	var reset := Button.new()
 	reset.text = "Back to the default setup"
 	reset.pressed.connect(func() -> void:
 		_car.set_tuning({})
 		_refresh())
 	_tuning_list.add_child(reset)
+
+
+## "tyre pressure soft, grippy; damping tight" style summary of a saved setup, defaults left out.
+func _setup_summary(values: Dictionary) -> String:
+	var bits: PackedStringArray = []
+	for o in CarTuning.OPTIONS:
+		if values.has(o.key) and not is_equal_approx(float(values[o.key]), float(o.default)):
+			bits.append("%s %s" % [o.label.to_lower(), o.low if float(values[o.key]) < float(o.default) else o.high])
+	return "; ".join(bits) if not bits.is_empty() else "Default setup"
 
 
 func _refresh_paint() -> void:

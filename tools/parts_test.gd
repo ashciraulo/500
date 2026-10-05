@@ -37,6 +37,8 @@ func _process(_delta: float) -> bool:
 		_field_gear()
 	elif _frames == 64:
 		_decor_earned()
+		_setups()
+		_shelf()
 	elif _frames == 70:
 		_decor_shows()
 		return _finish()
@@ -341,6 +343,48 @@ func _decor_earned() -> void:
 	_check(decor != null, "the townhouse decorates itself")
 	if decor:
 		decor.refresh()
+
+
+func _setups() -> void:
+	var before: Dictionary = _car.tuning.duplicate()
+	_car.set_tuning({"tyre_pressure": -0.5})
+	_car.save_setup(1)
+	_check(_car.has_setup(1) and not _car.has_setup(0), "a setup saves into its own slot")
+	_car.set_tuning({})
+	_check(_car.load_setup(1) and is_equal_approx(float(_car.tuning.get("tyre_pressure", 0.0)), -0.5),
+		"using a saved setup brings its tuning back")
+	_check(not _car.load_setup(0), "an empty slot changes nothing")
+	var state: Dictionary = _car.vehicle_state()
+	_car.setups = [{}, {}, {}]
+	_car.load_vehicle_state(state)
+	_check(_car.has_setup(1), "saved setups keep with the car")
+	_car.setups = [{}, {}, {}]
+	_car.set_tuning(before)
+
+
+func _shelf() -> void:
+	var garage := root.get_node("Garage")
+	var shelf := _main.find_child("PartsShelf", true, false)
+	_check(shelf != null and shelf.has_method("refresh"), "the carport has a parts shelf")
+	if shelf == null:
+		return
+	var owned_before: PackedStringArray = garage.owned.duplicate()
+	for id: String in ["wheels_alloy15", "gear_knob_wood", "roof_plain_rack"]:
+		garage.owned.append("%s/%s" % [_car.car_id, id])
+	shelf.refresh()
+	var spares: Array = garage.spare_parts(_car)
+	_check(spares.size() >= 3, "bought parts you haven't fitted are spares (%d)" % spares.size())
+	_check(shelf.shown_count() == spares.size(), "the shelf shows each spare (%d)" % shelf.shown_count())
+	var home := get_first_node_in_group(&"home_base") as Node3D
+	var spot := home.find_child("CarportShelf", false, false) as Node3D if home else null
+	_check(spot != null and spot.global_position.distance_to(home.spawn_transform(&"Spawn_Car").origin) < 3.5,
+		"the shelf is in the carport by the car")
+	_car.install_part(load("res://scripts/vehicle/parts_catalogue.gd").get_part(&"gear_knob_wood"))
+	shelf.refresh()
+	_check(shelf.shown_count() == spares.size() - 1, "a part leaves the shelf once it's fitted")
+	_car.remove_part(&"gear_knob")
+	garage.owned = owned_before
+	shelf.refresh()
 
 
 func _decor_shows() -> void:
