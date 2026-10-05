@@ -82,3 +82,5 @@ func _exit_tree() -> void:
 	for node in _ui:
 		if is_instance_valid(node):
 			node.queue_free()
+	BirdModels.clear_cache()
+	FishModels.clear_cache()

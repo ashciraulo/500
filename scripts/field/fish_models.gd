@@ -22,6 +22,12 @@ const PLANS := {
 static var _cache := {}
 
 
+## Let go of the cached meshes (on quit: static vars outlive the renderer
+## otherwise).
+static func clear_cache() -> void:
+	_cache.clear()
+
+
 static func build(f: Dictionary) -> Node3D:
 	var id := String(f.get("id", "fish"))
 	if not _cache.has(id):

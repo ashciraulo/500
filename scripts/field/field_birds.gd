@@ -419,10 +419,6 @@ func _cull(focus: Vector3) -> void:
 
 func _remove(s: Dictionary) -> void:
 	sightings.erase(s)
-	if s.has("lights_cb"):
-		var traffic := get_tree().get_first_node_in_group(&"traffic") if is_inside_tree() else null
-		if traffic and traffic.is_connected("signals_changed", s.lights_cb):
-			traffic.disconnect("signals_changed", s.lights_cb)
 	for b: Dictionary in s.birds:
 		if is_instance_valid(b.node):
 			b.node.queue_free()
@@ -431,6 +427,30 @@ func _remove(s: Dictionary) -> void:
 	for prop: Node in s.props:
 		if is_instance_valid(prop):
 			prop.queue_free()
+	_forget(s)
+
+
+## Each bird points back at its sighting (and the ibis's lights callback
+## holds its sighting), so a sighting is a loop of references that never
+## frees itself: break it once the sighting's done. Left alone, every one
+## leaked, and the leftovers being torn down after the renderer at exit
+## crashed the game on quit on Windows.
+func _forget(s: Dictionary) -> void:
+	if s.has("lights_cb"):
+		var traffic := get_tree().get_first_node_in_group(&"traffic") if is_inside_tree() else null
+		if traffic and traffic.is_connected("signals_changed", s.lights_cb):
+			traffic.disconnect("signals_changed", s.lights_cb)
+		s.erase("lights_cb")
+	for b: Dictionary in s.birds:
+		b.sighting = {}
+
+
+func _exit_tree() -> void:
+	for s: Dictionary in sightings:
+		_forget(s)
+	sightings.clear()
+	_tree_cache.clear()
+	_twig_cache.clear()
 
 
 func clear() -> void:

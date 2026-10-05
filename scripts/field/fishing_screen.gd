@@ -184,7 +184,8 @@ func _draw_overlay() -> void:
 		FieldFishing.State.FIGHT:
 			_draw_fight(size)
 			hint = "Hold F / A to reel, let go to give it line. Ease off when the rod tip shivers."
-	_text(hint, Vector2(centre.x, size.y - 16.0), 14, Color(0.88, 0.9, 0.9, 0.85))
+	# Above the status bar along the bottom.
+	_text(hint, Vector2(centre.x, size.y - 54.0), 14, Color(0.88, 0.9, 0.9, 0.85))
 	# The esky, in the corner.
 	var esky := "ESKY %d / %d" % [FieldJournal.esky.size(), FieldJournal.esky_size()]
 	var ice := FieldJournal.ice_left_hours()

@@ -453,6 +453,8 @@ func _hint() -> String:
 		if _car and _car.linear_velocity.length() < 1.2 and _car.player_controlled:
 			return "Hold F  Get out"
 		return ""
+	if not is_physics_processing():
+		return ""  # held still by the binoculars or the fishing rod, which have their own prompts
 	match _target():
 		["car", _]:
 			return "F  Get in"

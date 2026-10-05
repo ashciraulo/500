@@ -503,6 +503,8 @@ func _take() -> void:
 	if DisplayServer.get_name() != "headless":
 		_overlay.visible = false
 		await RenderingServer.frame_post_draw
+		if not is_inside_tree():
+			return  # the game closed under the shutter
 		image = get_viewport().get_texture().get_image()
 		_overlay.visible = true
 	_overlay.flash = 1.0

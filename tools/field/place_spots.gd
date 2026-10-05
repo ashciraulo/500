@@ -59,7 +59,8 @@ func _place(spot: Dictionary) -> void:
 	var deck: bool = spot.kind == "deck"
 	var best := {}
 	var best_score := -INF
-	var reach := 70.0 if deck else 260.0
+	# The map's coast can sit a couple of hundred metres off the real beach.
+	var reach := 70.0 if deck else (320.0 if spot.water == "ocean" else 260.0)
 	var step := 2.0 if deck else 4.0
 	var space := _car.get_world_3d().direct_space_state
 	var x := -reach
@@ -71,7 +72,8 @@ func _place(spot: Dictionary) -> void:
 			var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 80.0, p + Vector3.DOWN * 20.0, 1 | 2)
 			q.exclude = [_car.get_rid()]
 			var hit := space.intersect_ray(q)
-			if hit.is_empty() or hit.position.y < 0.4 or hit.position.y > 6.0:
+			# Beaches run down nearly to the waterline; decks and banks stand clear.
+			if hit.is_empty() or hit.position.y < (0.4 if deck else 0.12) or hit.position.y > 6.0:
 				continue
 			var surface := StringName(hit.collider.get_meta("surface", &""))
 			if (hit.collider as CollisionObject3D).collision_layer & 2:
@@ -137,12 +139,13 @@ func _water_round(p: Vector3) -> float:
 	return float(n)
 
 
-## Water: the river mask, or (the sea, small coves the mask misses) no
-## ground above the waterline.
+## Water: nothing solid above the waterline (a deck over the river isn't
+## water), and the river mask, the sea floor or no ground at all below.
 func _is_water(p: Vector3) -> bool:
-	if _boats.water_at(p, 0.0):
-		return true
 	var q := PhysicsRayQueryParameters3D.create(Vector3(p.x, 40.0, p.z), Vector3(p.x, -15.0, p.z), 1 | 2)
 	q.exclude = [_car.get_rid()]
 	var hit := _car.get_world_3d().direct_space_state.intersect_ray(q)
-	return hit.is_empty() or hit.position.y < -0.2
+	# A jetty deck or a bank over the river mask is still in the way.
+	if not hit.is_empty() and hit.position.y > 0.25:
+		return false
+	return hit.is_empty() or hit.position.y < -0.2 or _boats.water_at(p, 0.0)

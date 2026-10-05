@@ -16,9 +16,9 @@
 			],
 			"hint": "The South Perth ferry jetty. Bream round the pylons after dark.",
 			"stand": [
-				-12,
+				2,
 				4.8,
-				2766.4
+				2730.4
 			],
 			"yaw": 0
 		},
@@ -42,7 +42,7 @@
 				4.75,
 				3154.5
 			],
-			"yaw": 0
+			"yaw": 0.98
 		},
 		{
 			"id": "point_fraser",
@@ -60,11 +60,11 @@
 			],
 			"hint": "The boardwalk at Point Fraser, under the Causeway. Shallow, sandy, good for whiting and crabs.",
 			"stand": [
-				2272.1,
+				2270.1,
 				1.4,
-				2127.2
+				2143.2
 			],
-			"yaw": 1.37
+			"yaw": 2.36
 		},
 		{
 			"id": "heirisson_island",
@@ -82,10 +82,10 @@
 			"hint": "The sandy edges of Heirisson Island, where the kangaroos are. Whiting and flathead on the flats.",
 			"stand": [
 				2543.9,
-				4.75,
-				2157.4
+				5.45,
+				2141.4
 			],
-			"yaw": 1.37
+			"yaw": 0
 		},
 		{
 			"id": "claisebrook_cove",
@@ -121,11 +121,11 @@
 			],
 			"hint": "The old jetty past the Causeway in East Perth. Quiet, and the bream know the pylons.",
 			"stand": [
-				2667.6,
+				2671.6,
 				3.45,
-				434.2
+				436.2
 			],
-			"yaw": 0
+			"yaw": 0.2
 		},
 		{
 			"id": "burswood_jetty",
@@ -142,9 +142,9 @@
 			],
 			"hint": "The jetty off the Burswood foreshore, by the snags along the bank. Bream after dark.",
 			"stand": [
-				3464.4,
+				3462.4,
 				1.95,
-				1514.7
+				1516.7
 			],
 			"yaw": 0.59
 		},
@@ -163,10 +163,10 @@
 			"hint": "The Maylands bank by the old airfield, among the snags. A bream spot at dusk.",
 			"stand": [
 				3741.7,
-				1.2,
-				-202.3
+				1.5,
+				-190.3
 			],
-			"yaw": 2.36
+			"yaw": 2.16
 		},
 		{
 			"id": "garratt_rd_bridge",
@@ -183,11 +183,11 @@
 			],
 			"hint": "Under the Garratt Road bridge, up past Bayswater. Deep water: the locals fish it at night for mulloway.",
 			"stand": [
-				6362.3,
-				4.55,
-				-2082.8
+				6338.3,
+				3.95,
+				-2002.8
 			],
-			"yaw": 3.14
+			"yaw": 2.36
 		},
 		{
 			"id": "elizabeth_quay",
@@ -208,7 +208,7 @@
 				0.55,
 				1456
 			],
-			"yaw": 5.69
+			"yaw": 6.09
 		},
 		{
 			"id": "canning_bridge",
@@ -227,9 +227,9 @@
 			],
 			"hint": "Canning Bridge, where the two rivers meet. Deep holes, crabs, and the odd mulloway after dark.",
 			"stand": [
-				-172.5,
+				-168.5,
 				1.7,
-				7114.5
+				7124.5
 			],
 			"yaw": 0
 		},
@@ -251,7 +251,7 @@
 				1.2,
 				4806.8
 			],
-			"yaw": 0.59
+			"yaw": 1.57
 		},
 		{
 			"id": "freshwater_bay",
@@ -268,11 +268,11 @@
 			],
 			"hint": "The jetty in Freshwater Bay, Peppermint Grove. A crab net spot, and whiting off the sand.",
 			"stand": [
-				-7709.7,
+				-7703.7,
 				1.2,
-				5625
+				5615
 			],
-			"yaw": 2.36
+			"yaw": 0
 		},
 		{
 			"id": "mosman_bay",
@@ -289,11 +289,11 @@
 			],
 			"hint": "Mosman Bay, under the cliffs. Deep water close in: snapper and mulloway at night.",
 			"stand": [
-				-7617.8,
+				-7615.8,
 				3.7,
-				6112
+				6114
 			],
-			"yaw": 0
+			"yaw": 1.96
 		},
 		{
 			"id": "east_fremantle",
@@ -310,9 +310,9 @@
 			],
 			"hint": "The jetties off East Fremantle, by the rowing clubs. Crabs in summer, tailor at dusk.",
 			"stand": [
-				-8726.6,
+				-8730.6,
 				1.2,
-				10165.1
+				10169.1
 			],
 			"yaw": 0
 		},
@@ -367,11 +367,11 @@
 			],
 			"hint": "The beach north of the port. Herring, whiting and tailor off the sand.",
 			"stand": [
-				-9738.4,
-				0.45,
-				8802.4
+				-9758.4,
+				0.25,
+				8822.4
 			],
-			"yaw": 0.59
+			"yaw": 0.2
 		},
 		{
 			"id": "cottesloe_groyne",
@@ -404,8 +404,8 @@
 			"hint": "The groynes at City Beach. Tailor at dawn and dusk, whiting off the sand.",
 			"stand": [
 				-9498.9,
-				0.4,
-				-855.5
+				0.2,
+				-943.5
 			],
 			"yaw": 0.39
 		},
@@ -424,8 +424,8 @@
 			],
 			"hint": "The point at Trigg, all reef and wash. Herring, skippy and the odd KG whiting.",
 			"stand": [
-				-9709.6,
-				0.5,
+				-9721.6,
+				0.15,
 				-7997.9
 			],
 			"yaw": 0

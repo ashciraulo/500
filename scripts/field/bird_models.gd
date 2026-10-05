@@ -109,6 +109,13 @@ static var _cache := {}
 static var _materials := {}
 
 
+## Let go of the cached meshes and materials (on quit: static vars outlive
+## the renderer otherwise).
+static func clear_cache() -> void:
+	_cache.clear()
+	_materials.clear()
+
+
 ## A bird for this species entry (from FieldJournal.bird(id)).
 static func build(species: Dictionary) -> Node3D:
 	var id := String(species.get("id", "bird"))

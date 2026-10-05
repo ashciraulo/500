@@ -407,6 +407,10 @@ func start(sp: Dictionary) -> void:
 	_walker.set_process_input(false)
 	(_walker as CharacterBody3D).velocity = Vector3.ZERO
 	_water_y = 0.0
+	if sp.has("yaw"):
+		# Turn to face the water (the way the spot looks out).
+		var to := _yaw + wrapf(float(sp.yaw) - _yaw, -PI, PI)
+		create_tween().tween_property(self, "_yaw", to, 0.45).set_trans(Tween.TRANS_SINE)
 	_make_rod()
 	_put_esky_down()
 	_crab_net(sp)
@@ -698,6 +702,8 @@ func _photo(_sp: Dictionary) -> void:
 			screen.hide_card(true)
 		await RenderingServer.frame_post_draw
 		await RenderingServer.frame_post_draw
+		if not is_inside_tree():
+			return  # the game closed under the shutter
 		image = get_viewport().get_texture().get_image()
 		if screen:
 			screen.hide_card(false)
