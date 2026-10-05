@@ -196,6 +196,10 @@ var roof_open := false
 ## player's, not the car's: it moves to whichever car they drive.
 var field_gear: PackedStringArray = []
 var _parked := false
+## Dashboard needles on the body (Needle_<dial>_<full scale>, see
+## art/models/README.md): [node, rest basis, dial, full scale, shown value].
+var _needles: Array = []
+var _needles_body: Node = null
 ## Engine torque multiplier from installed parts.
 var torque_multiplier := 1.0
 ## How much rain hurts grip (1 = stock tyres).
@@ -457,6 +461,7 @@ func _process(delta: float) -> void:
 		if wheel.spin:
 			wheel.spin_angle = wrapf(wheel.spin_angle - wheel.spin_speed * delta, -PI, PI)
 			wheel.spin.rotation.x = wheel.spin_angle
+	_update_needles(delta)
 	var brake_lights := get_node_or_null("BrakeLights")
 	if brake_lights:
 		brake_lights.visible = brake > 0.05
@@ -465,6 +470,33 @@ func _process(delta: float) -> void:
 		if want != headlights_on:
 			headlights_on = want
 			_update_lights()
+
+
+## Swing the dashboard needles: the speedo, rev counter and fuel gauge on
+## bodies that have them. A needle rests on zero and turns 240 degrees
+## clockwise (negative about its local Y) at full scale, with a little lag.
+func _update_needles(delta: float) -> void:
+	var body := get_node_or_null("Body")
+	if body != _needles_body:
+		_needles_body = body
+		_needles.clear()
+		if body:
+			for node: Node3D in body.find_children("Needle_*", "Node3D", true, false):
+				var parts := node.name.split("_")
+				if parts.size() >= 3 and parts[2].is_valid_float() and float(parts[2]) > 0.0:
+					_needles.append([node, node.basis, parts[1], float(parts[2]), 0.0])
+	for needle: Array in _needles:
+		var value := 0.0
+		match needle[2]:
+			"Speed":
+				value = speed_kmh()
+			"Rev":
+				value = rpm / 1000.0 if fuel_litres > 0.0 else 0.0
+			"Fuel":
+				value = fuel_litres / maxf(tank_litres, 0.001)
+		value = clampf(value, 0.0, needle[3] * 1.04)
+		needle[4] = lerpf(needle[4], value, 1.0 - exp(-10.0 * delta))
+		(needle[0] as Node3D).basis = needle[1] * Basis(Vector3.UP, -deg_to_rad(240.0) * needle[4] / needle[3])
 
 
 ## Everything audio (or a HUD) needs in one place. See docs/HOOKS.md.

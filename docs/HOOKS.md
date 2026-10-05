@@ -41,6 +41,11 @@ Signals:
 - `headlights_changed(on: bool)`
 - `parked_changed(parked: bool)`: the driver stopped or moved off.
 
+Dashboard needles: any node under the body named `Needle_<dial>_<full
+scale>` (`Needle_Speed_200`, `Needle_Rev_7` in thousands of rpm,
+`Needle_Fuel_1` as a share of the tank) is swung by the car, 240 degrees
+clockwise from its rest pose at full scale.
+
 Bird-watching and fishing from the car:
 
 - `is_parked_for_viewing()`: the driver is in the seat and the car is

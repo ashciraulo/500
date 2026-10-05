@@ -158,6 +158,29 @@ func _field_gear() -> void:
 	var eye: Transform3D = _car.driver_eye()
 	_check(eye.origin.distance_to(_car.global_position) < 1.5 and eye.origin.y > _car.global_position.y,
 		"the driver's eye is in the car")
+	# Dashboard needles: the Pop's own, or stand-ins on a body without them.
+	var pop_body := _car.get_node("Body") as Node3D
+	var added: Array[Node3D] = []
+	for needle_name: String in ["Needle_Rev_7", "Needle_Speed_200"]:
+		if pop_body.find_child(needle_name, true, false) == null:
+			var stand_in := Node3D.new()
+			stand_in.name = needle_name
+			pop_body.add_child(stand_in)
+			added.append(stand_in)
+	var rev := pop_body.find_child("Needle_Rev_7", true, false) as Node3D
+	var speedo := pop_body.find_child("Needle_Speed_200", true, false) as Node3D
+	var rev_rest := rev.basis
+	var speedo_rest := speedo.basis
+	_car._needles_body = null  # Pick up any stand-ins.
+	_car.rpm = 3500.0
+	for i in 30:
+		_car._update_needles(0.1)
+	var rev_angle := rad_to_deg((rev_rest.inverse() * rev.basis).get_euler().y)
+	_check(absf(rev_angle + 120.0) < 2.0, "the rev needle points straight up at 3,500 rpm (%.0f deg)" % rev_angle)
+	_check(speedo.basis.is_equal_approx(speedo_rest), "the speedo rests on zero when parked")
+	for stand_in in added:
+		stand_in.free()
+	_car._needles_body = null
 	# The time of day, for birds.
 	var clock := root.get_node("GameClock")
 	var phases := {}
