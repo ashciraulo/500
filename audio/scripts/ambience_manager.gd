@@ -64,7 +64,7 @@ var zone := "cbd"
 ## dark). Places come from the map's points of interest (add_map_pois(), fed
 ## MapStreamer.get_pois() by Audio.hooks), from nodes in the "poi" group with
 ## meta "poi_type" (and optionally "radius", metres), or from add_place().
-const PLACE_TYPES := ["beach", "lookout", "bush", "quay", "riverside", "carpark", "jetty", "groyne",
+const PLACE_TYPES := ["beach", "surf", "lookout", "bush", "quay", "riverside", "carpark", "jetty", "groyne",
 		"tackle_shop", "photo_lab", "wrong_cockatoos"]
 const PLACE_RADIUS := 120.0
 ## Full volume inside this fraction of the radius, fading out to the edge.
@@ -76,7 +76,10 @@ const POI_PLACES := {
 	"quiet_point_fraser": "riverside", "quiet_mill_point_foreshore": "riverside",
 	"quiet_matagarup_car_park": "riverside", "landmark_matagarup_bridge": "riverside",
 	"quiet_lake_monger": "riverside", "landmark_state_war_memorial": "lookout",
+	"fishing_north_mole": "groyne", "fishing_south_cottesloe_groyne": "groyne",
 }
+## Beaches open to the swell (the rest are the calmer Cottesloe end).
+const SURF_SUBURBS := ["Trigg", "Scarborough", "City Beach", "Floreat"]
 var _place_amount := {}        # type -> 0..1 wanted now
 var _place_players := {}       # type -> AudioStreamPlayer
 var _place_night := {}         # type -> whether the night loop is loaded
@@ -93,6 +96,41 @@ const ZONE_AREAS := [
 	["river", -700.0, 2650.0, 650.0],
 	["river", 1500.0, 2300.0, 700.0],
 	["river", 2500.0, 1700.0, 600.0],
+	# Fremantle: the West End, the Fishing Boat Harbour and the port
+	["fremantle", -10500.0, 12300.0, 1000.0],
+	# Bold Park and Reabold Hill: the same banksia and tuart bush as Kings Park
+	["kingspark", -7370.0, -610.0, 950.0],
+	# Wetlands: Herdsman Lake, Lake Monger (Galup), Gwelup, Lake Claremont, Alfred Cove
+	["wetland", -4630.0, -2910.0, 1150.0],
+	["wetland", -2420.0, -1780.0, 560.0],
+	["wetland", -5850.0, -7520.0, 420.0],
+	["wetland", -7280.0, 3150.0, 420.0],
+	["wetland", -3700.0, 9300.0, 650.0],
+	# The ocean coast, Trigg to Leighton: circles centred just off the sand
+	["beach", -9700.0, -8800.0, 480.0],
+	["beach", -9720.0, -8000.0, 480.0],
+	["beach", -9650.0, -7200.0, 480.0],
+	["beach", -9550.0, -6400.0, 480.0],
+	["beach", -9450.0, -5600.0, 480.0],
+	["beach", -9380.0, -4800.0, 480.0],
+	["beach", -9350.0, -4000.0, 480.0],
+	["beach", -9380.0, -3200.0, 480.0],
+	["beach", -9420.0, -2400.0, 480.0],
+	["beach", -9450.0, -1600.0, 480.0],
+	["beach", -9450.0, -800.0, 480.0],
+	["beach", -9450.0, 0.0, 480.0],
+	["beach", -9450.0, 800.0, 480.0],
+	["beach", -9450.0, 1600.0, 480.0],
+	["beach", -9480.0, 2400.0, 480.0],
+	["beach", -9550.0, 3200.0, 480.0],
+	["beach", -9620.0, 4000.0, 480.0],
+	["beach", -9700.0, 4800.0, 480.0],
+	["beach", -9780.0, 5600.0, 480.0],
+	["beach", -9780.0, 6400.0, 480.0],
+	["beach", -9720.0, 7200.0, 480.0],
+	["beach", -9600.0, 8000.0, 480.0],
+	["beach", -9500.0, 8800.0, 480.0],
+	["beach", -9450.0, 9500.0, 480.0],
 ]
 var rain := 0.0          # 0..1
 var storm := 0.0         # 0..1
@@ -153,12 +191,12 @@ func add_map_pois(pois: Array) -> void:
 		if POI_PLACES.has(id):
 			add_place(POI_PLACES[id], at)
 		elif kind == "beach":
-			add_place("beach", at, 150.0)
+			add_place("surf" if String(poi.get("suburb", "")) in SURF_SUBURBS else "beach", at, 150.0)
 		elif kind == "lookout":
 			add_place("lookout", at)
 		if kings_park and kind in ["lookout", "landmark"]:
 			add_place("bush", at)
-		if kind in ["jetty", "fishing_spot", "fishing"]:
+		if kind in ["jetty", "fishing_spot", "fishing"] and not POI_PLACES.has(id):
 			add_place("jetty", at, 70.0)
 		elif kind in ["groyne", "mole", "breakwater"]:
 			add_place("groyne", at, 90.0)

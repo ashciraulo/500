@@ -272,7 +272,15 @@ func _test_ambience(audio: Node) -> void:
 		{"id": "lookout_dryandra_lookout", "kind": "lookout", "suburb": "Kings Park", "p": Vector3.ZERO, "at": Vector3(0, 0, 5000)},
 		{"id": "landmark_bell_tower", "kind": "landmark", "suburb": "Perth", "p": Vector3.ZERO, "at": Vector3(-5000, 0, 0)},
 		{"id": "servo_1", "kind": "servo", "suburb": "Perth", "p": Vector3(0, 0, -5000), "at": Vector3(0, 0, -5010)},
+		{"id": "beach_trigg_beach", "kind": "beach", "suburb": "Trigg", "p": Vector3.ZERO, "at": Vector3(9000, 0, 0)},
+		{"id": "fishing_north_mole", "kind": "fishing", "suburb": "North Fremantle", "p": Vector3.ZERO, "at": Vector3(0, 0, 9000)},
 	])
+	amb.update_places(Vector3(9000, 0, 0))
+	check(amb._place_amount.get("surf", 0.0) == 1.0 and amb._place_amount.get("beach", 0.0) == 0.0,
+			"Trigg beach -> surf layer")
+	amb.update_places(Vector3(0, 0, 9000))
+	check(amb._place_amount.get("groyne", 0.0) == 1.0 and amb._place_amount.get("jetty", 0.0) == 0.0,
+			"North Mole -> groyne, not a jetty")
 	amb.update_places(Vector3(5000, 0, 10))
 	check(amb._place_amount.get("beach", 0.0) == 1.0, "map beach POI -> beach layer")
 	amb.update_places(Vector3(0, 0, 5000))
@@ -455,7 +463,9 @@ func _test_traffic(audio: Node) -> void:
 			"traffic_ferry_wake_loop", "traffic_roadworks_day_loop", "traffic_ibis_grunt", "traffic_roo_thump",
 			"traffic_hazard_tick_loop", "traffic_van_slide_door_open", "traffic_van_slide_door_close",
 			"traffic_van_rear_door_open", "traffic_van_rear_door_close", "traffic_trolley_roll_loop",
-			"traffic_taxi_door_close", "traffic_taxi_door_open", "traffic_ticket_printer"]:
+			"traffic_taxi_door_close", "traffic_taxi_door_open", "traffic_ticket_printer", "traffic_guard_whistle",
+			"traffic_crowd_roar_loop", "traffic_crowd_cheer", "traffic_bin_tip", "traffic_sweeper_loop",
+			"traffic_food_van_hum_loop"]:
 		check(audio.has("traffic/" + n), "city sound " + n)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -520,6 +530,13 @@ func _test_traffic(audio: Node) -> void:
 	check(amb.zone_at(Vector3(-1900, 0, 1700)) == "kingspark", "Kings Park zone")
 	check(amb.zone_at(Vector3(300, 0, 2450)) == "river", "Perth Water is the river")
 	check(amb.zone_at(Vector3(-3500, 0, -1200)) == "suburbs", "Wembley is suburbs")
+	check(amb.zone_at(Vector3(-4630, 0, -2900)) == "wetland", "Herdsman Lake is a wetland")
+	check(amb.zone_at(Vector3(-9700, 0, 5480)) == "beach", "Cottesloe Beach is the beach")
+	check(amb.zone_at(Vector3(-9680, 0, -7600)) == "beach", "Trigg is the beach")
+	check(amb.zone_at(Vector3(-7370, 0, -610)) == "kingspark", "Bold Park is bush")
+	check(amb.zone_at(Vector3(-10400, 0, 12500)) == "fremantle", "Fremantle")
+	for period in ["day", "dawn", "night"]:
+		check(audio.has("amb/amb_wetland_" + period), "wetland bed " + period)
 	if main.find_child("PerthMap", true, false):
 		await create_timer(1.2).timeout
 		check(audio.hooks._home != null, "hooks found the townhouse")
@@ -679,6 +696,16 @@ func _test_field(audio: Node) -> void:
 		check(audio.has("music/" + n), "field music " + n)
 	check(audio.hooks.light_cue(6) == "mus_field_dawn" and audio.hooks.light_cue(19) == "mus_field_dusk"
 			and audio.hooks.light_cue(12) == "", "dawn and dusk cues")
+	for n in ["home/home_studio_dove_strum", "home/home_studio_tele", "home/home_studio_jbass"]:
+		check(audio.variant(n) != null, "studio instrument " + n)
+	for n in ["garage/garage_spray_gun", "garage/garage_masking_tape", "garage/garage_rack_fit"]:
+		check(audio.has(n), "spray shop sound " + n)
+	var look := {"paint": Color.RED, "livery": {}, "finish": ""}
+	check(audio.hooks.spray_kind(look, {"paint": Color.BLUE, "livery": {}, "finish": ""}) == "respray", "respray heard")
+	check(audio.hooks.spray_kind(look, {"paint": Color.RED, "livery": {"mode": "stripes"}, "finish": ""}) == "livery",
+			"livery heard")
+	check(audio.hooks.spray_kind(look, {"paint": Color.RED, "livery": {}, "finish": "gloss"}) == "finish", "clear coat heard")
+	check(audio.hooks.spray_kind(look, look.duplicate()) == "", "no change, no spray")
 	check(audio.stream("field/m_page_room", true) != null, "M.'s page room tone loops")
 	for type in ["groyne", "tackle_shop", "photo_lab", "wrong_cockatoos"]:
 		check(audio.ambience.PLACE_TYPES.has(type) and audio.ambience.place_sound(type) != "", "place ambience " + type)

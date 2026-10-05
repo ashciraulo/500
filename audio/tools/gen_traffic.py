@@ -671,7 +671,211 @@ def render_kerb():
     S.save(f"{OUT}/traffic_ticket_printer", ticket_printer(), "peak", quality=4)
 
 
+# --------------------------------------------------------------------------
+# School crossings, the stadium, bin day, the street sweeper
+# --------------------------------------------------------------------------
+
+def guard_whistle(seed=200) -> np.ndarray:
+    """A crossing guard's pea whistle: one firm blast, the pea rattling the
+    tone into a trill (about 30 Hz), breath underneath (mono)."""
+    r = np.random.default_rng(seed)
+    dur = 0.62
+    n = secs(dur)
+    t = t_axis(n)
+    pea = 0.5 + 0.5 * np.sin(2 * np.pi * 31 * t + 2.0 * np.sin(2 * np.pi * 4.3 * t))
+    f = 3050 * (1 + 0.035 * pea + 0.01 * S.smooth_noise(n, 12, seed, periodic=False))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    tone = np.sin(ph) + 0.12 * np.sin(2 * ph) + 0.05 * np.sin(3 * ph)
+    tone *= 0.55 + 0.45 * pea
+    breath = bp(noise(n, seed + 1), 2200, 7000) * 0.18
+    env = S.env_adsr(n, 0.02, 0.06, 0.85, 0.09)
+    env *= 1 + 0.15 * np.exp(-t / 0.05)  # the first puff a little harder
+    x = (tone + breath) * env
+    return fade(x + 0.002 * r.standard_normal(n), 0.002, 0.03)
+
+
+def _crowd_voices(seconds: float, seed: int, count: int, lo=140.0, hi=320.0, rise=None) -> np.ndarray:
+    """Many wordless sung/shouted 'aah's at once: each voice a pulsed glottal
+    source through two vowel formants, wandering in pitch (mono)."""
+    r = np.random.default_rng(seed)
+    n = secs(seconds)
+    t = t_axis(n)
+    out = np.zeros(n)
+    for v in range(count):
+        f0 = r.uniform(lo, hi) * (1 + 0.04 * S.smooth_noise(n, 0.7, seed + 10 + v, periodic=False))
+        if rise is not None:
+            f0 = f0 * (1 + 0.25 * rise)
+        ph = 2 * np.pi * np.cumsum(f0) / SR
+        src = np.maximum(np.sin(ph), 0) ** 3 + 0.25 * r.standard_normal(n)
+        y = S.resonator(src, r.uniform(650, 850), 5.0) + 0.6 * S.resonator(src, r.uniform(1100, 1350), 6.0)
+        y /= np.std(y) + 1e-12
+        y *= np.clip(0.7 + 0.5 * S.smooth_noise(n, 0.3, seed + 200 + v, periodic=False), 0.1, 1.5)
+        out += np.roll(y, int(r.integers(0, n)))
+    return out / np.sqrt(count)
+
+
+def crowd_roar_loop(seconds=30.0) -> np.ndarray:
+    """A stadium crowd heard from outside the ground (mono, loops): tens of
+    thousands of voices fused into a dull roar through the stands and the
+    concrete, swelling and settling with the play, the odd chant rising."""
+    import gen_amb as A
+    n = secs(seconds)
+    t = t_axis(n)
+    bed = sum(A.texture(A.src("pub_crowd", True), seconds, 210 + k, chunk=6).mean(axis=1) for k in range(4))
+    bed = bed / (np.std(bed) + 1e-12)
+    voices = S.circ_lp(S.make_loop(_crowd_voices(seconds + 1.0, 220, 40), 1.0), 2500)
+    x = bed + 0.8 * voices / (np.std(voices) + 1e-12)
+    # the play: slow swells (attacks building, a near miss) on a periodic curve
+    k1, k2 = round(seconds / 11), round(seconds / 4.5)
+    swell = 1 + 0.35 * np.sin(2 * np.pi * k1 * t / seconds) + 0.15 * np.sin(2 * np.pi * k2 * t / seconds + 1.3)
+    swell += 0.6 * np.exp(-(((t - 17.0) % seconds) / 1.6) ** 2) * (((t - 17.0) % seconds) > -1)
+    x *= swell
+    # outside the walls: only the low end gets out, with some distance air
+    x = S.circ_lp(x, 900, 2) + 0.12 * S.circ_bp(x, 900, 2500)
+    x += 0.04 * S.circ_bp(S.pink(n, 230), 80, 400)
+    return x
+
+
+def crowd_cheer() -> np.ndarray:
+    """A goal at the stadium from outside: the roar leaping up in a second,
+    holding, then settling back with a ripple of applause (mono, ~7 s)."""
+    import gen_amb as A
+    dur = 7.0
+    n = secs(dur)
+    t = t_axis(n)
+    bed = sum(A.texture(A.src("pub_crowd", True), dur, 240 + k, chunk=5).mean(axis=1) for k in range(4))
+    bed = S.hp(bed / (np.std(bed) + 1e-12), 120)
+    rise = np.clip(t / 0.9, 0, 1)
+    voices = lp(_crowd_voices(dur, 250, 48, 180, 380, rise=rise), 3200)
+    voices /= np.std(voices) + 1e-12
+    clap = np.zeros(n)
+    r = np.random.default_rng(260)
+    for at in r.uniform(1.5, 6.5, 900):
+        k = secs(0.012)
+        S.place(clap, bp(noise(k, int(at * 1000)), 900, 4000) * env_exp(k, 0.003) * r.uniform(0.3, 1), secs(at))
+    clap /= np.std(clap) + 1e-12
+    env = np.clip(t / 0.25, 0, 1) ** 2 * (0.25 + 0.75 * np.clip(t / 1.0, 0, 1))
+    env *= np.where(t < 2.6, 1.0, np.exp(-(t - 2.6) / 1.6))
+    clap_env = np.clip((t - 1.5) / 1.0, 0, 1) * np.exp(-np.maximum(t - 3.5, 0) / 1.5)
+    x = (0.6 * bed + voices) * (0.15 + env) + 0.35 * clap * clap_env
+    x = lp(x, 1400) + 0.15 * bp(x, 1400, 3000)
+    return fade(x, 0.05, 0.6)
+
+
+def bin_tip(seed=270) -> np.ndarray:
+    """A side-loader bin truck emptying a wheelie bin (mono, ~3.5 s): the
+    diesel revving for the hydraulics, the arm's whine climbing, rubbish
+    sliding and thudding into the hopper, the empty bin set back down."""
+    r = np.random.default_rng(seed)
+    dur = 3.6
+    n = secs(dur)
+    t = t_axis(n)
+    # diesel under the PTO: 4-cyl firing climbing from idle as the arm goes
+    rpm = 750 + 650 * np.clip(t / 0.4, 0, 1) * np.clip((3.3 - t) / 0.4, 0, 1)
+    fire = rpm / 60 * 2
+    ph = 2 * np.pi * np.cumsum(fire) / SR
+    eng = sum(a * np.sin(m * ph) for m, a in ((1, 1.0), (2, 0.55), (3, 0.3), (4, 0.18), (6, 0.08)))
+    eng = eng * 0.3 + 0.25 * lp(noise(n, seed), 500) * (rpm / 1400)
+    # hydraulic pump whine, up on lift and settling on the way down
+    arm = np.clip(t / 0.3, 0, 1) * np.clip((3.2 - t) / 0.3, 0, 1)
+    wf = 420 + 260 * np.clip((t - 0.2) / 1.0, 0, 1) - 120 * np.clip((t - 1.8) / 0.8, 0, 1)
+    wph = 2 * np.pi * np.cumsum(wf) / SR
+    whine = (np.sin(wph) + 0.4 * np.sin(2 * wph) + 0.2 * np.sin(3 * wph)) * arm * 0.22
+    whine += bp(noise(n, seed + 1), 1500, 4000) * arm * 0.04  # oil hiss
+    x = eng + whine
+    # the lid flapping open at the top, then the rubbish tumbling out
+    k = secs(0.25)
+    tk = t_axis(k)
+    lid = lp(noise(k, seed + 2), 900) * np.exp(-tk / 0.03) + 0.6 * np.sin(2 * np.pi * 140 * tk) * np.exp(-tk / 0.05)
+    S.place(x, lid * 0.9, secs(1.05))
+    for i in range(int(r.integers(9, 13))):
+        at = 1.15 + r.uniform(0, 0.6) ** 1.4
+        k = secs(r.uniform(0.08, 0.2))
+        tk = t_axis(k)
+        big = r.random() < 0.4
+        thud = lp(noise(k, seed + 10 + i), 400 if big else 1200) * np.exp(-tk / (0.04 if big else 0.02))
+        thud += (0.5 if big else 0.2) * np.sin(2 * np.pi * r.uniform(60, 110) * tk) * np.exp(-tk / 0.06)
+        S.place(x, thud * r.uniform(0.5, 1.0) * (1.2 if big else 0.7), secs(at))
+    for i in range(3):  # a bottle or two in the hopper
+        at = 1.2 + r.uniform(0, 0.5)
+        k = secs(0.15)
+        tk = t_axis(k)
+        clink = sum(np.sin(2 * np.pi * f * tk) for f in r.uniform(2500, 4200, 3)) * np.exp(-tk / 0.02)
+        S.place(x, clink * 0.06, secs(at))
+    slide = bp(noise(secs(0.6), seed + 30), 300, 2500) * np.hanning(secs(0.6)) * 0.25
+    S.place(x, slide, secs(1.2))
+    # the bin knocking against the stops at the top, and set back on the kerb
+    for at, a in ((1.0, 0.5), (3.15, 0.9)):
+        k = secs(0.2)
+        tk = t_axis(k)
+        knock = lp(noise(k, int(at * 100)), 700) * np.exp(-tk / 0.025) + 0.5 * np.sin(2 * np.pi * 95 * tk) * np.exp(-tk / 0.04)
+        S.place(x, knock * a, secs(at))
+    return fade(x, 0.08, 0.25)
+
+
+def sweeper_loop(seconds=8.0) -> np.ndarray:
+    """A street sweeper working the gutter (mono, loops): its diesel at a
+    steady working speed, the suction fan's whine, the gutter brooms
+    scratching round and the water spray hissing."""
+    n = secs(seconds)
+    t = t_axis(n)
+    k = round(60 * seconds)  # 1800 rpm four: 60 Hz firing
+    f1 = k / seconds
+    eng = sum(a * np.sin(2 * np.pi * f1 * m * t + m) for m, a in ((0.5, 0.3), (1, 1.0), (2, 0.5), (3, 0.25), (4, 0.12)))
+    eng = eng * (1 + 0.05 * S.smooth_noise(n, 3, 280)) * 0.35 + 0.2 * S.circ_lp(S.pink(n, 281), 600)
+    kf = round(330 * seconds)  # suction fan blade pass
+    fan = (np.sin(2 * np.pi * kf / seconds * t) + 0.3 * np.sin(4 * np.pi * kf / seconds * t)) * 0.07
+    fan += 0.25 * S.circ_bp(S.pink(n, 282), 400, 3000)
+    # gutter brooms: two turning about 1.5 times a second, bristles scratching
+    rot = round(1.5 * seconds) / seconds
+    scratch = S.circ_bp(noise(n, 283), 2500, 9000)
+    grit = S.circ_bp(noise(n, 284), 1000, 5000) * (S.smooth_noise(n, 40, 285) > 1.2)
+    brooms = (scratch * 0.5 + grit * 0.8) * (0.7 + 0.3 * np.sin(2 * np.pi * rot * t)) \
+        * (0.85 + 0.15 * np.sin(2 * np.pi * rot * 1.0 * t + 2.1))
+    spray = S.circ_bp(noise(n, 286), 4000, 12000) * 0.12
+    return eng + fan + brooms * 0.18 + spray * 0.5
+
+
+def food_van_loop(seconds=12.0) -> np.ndarray:
+    """A late-night food van at the kerb (mono, loops): its generator
+    droning on the footpath, the extraction fan over the hotplate, the
+    fridge compressor, oil in the fryer bubbling and the odd sizzle as
+    something goes on the grill."""
+    n = secs(seconds)
+    t = t_axis(n)
+    r = np.random.default_rng(290)
+    k = round(50 * seconds)  # an inverter generator settled at ~3000 rpm
+    f1 = k / seconds
+    gen = sum(a * np.sin(2 * np.pi * f1 * m * t + m) for m, a in ((0.5, 0.25), (1, 1.0), (2, 0.5), (3, 0.3), (5, 0.12)))
+    gen = gen * 0.25 * (1 + 0.04 * S.smooth_noise(n, 2, 291)) + 0.15 * S.circ_bp(S.pink(n, 292), 150, 1500)
+    kf = round(140 * seconds)  # extraction fan blade pass
+    fan = 0.05 * np.sin(2 * np.pi * kf / seconds * t) + 0.25 * S.circ_bp(S.pink(n, 293), 300, 4000)
+    kc = round(100 * seconds)  # fridge compressor, 100 Hz
+    fridge = 0.04 * np.tanh(2 * np.sin(2 * np.pi * kc / seconds * t))
+    fry = S.circ_bp(noise(n, 294), 2000, 9000) * (0.6 + 0.4 * (S.smooth_noise(n, 25, 295) > 0.5))
+    fry = fry / (np.std(fry) + 1e-12) * 0.12
+    x = gen + fan * 0.6 + fridge + fry
+    for at in (2.3, 8.1):  # something on the hotplate
+        L = secs(2.5)
+        tl = t_axis(L)
+        sz = bp(noise(L, int(at * 10)), 2500, 11000) * np.exp(-tl / 0.8) * np.minimum(1, tl / 0.02)
+        S.place(x, sz * 0.5, secs(at), wrap=True)
+    return x
+
+
+def render_events():
+    S.save(f"{OUT}/traffic_guard_whistle", guard_whistle(), "peak", quality=4)
+    S.save(f"{OUT}/traffic_crowd_roar_loop", crowd_roar_loop(), "lufs:-24", quality=2, rate=24000)
+    S.save(f"{OUT}/traffic_crowd_cheer", crowd_cheer(), "peak", quality=3, rate=32000)
+    S.save(f"{OUT}/traffic_bin_tip", bin_tip(), "peak", quality=4)
+    S.save(f"{OUT}/traffic_sweeper_loop", sweeper_loop(), "peak", quality=3, rate=32000)
+    S.save(f"{OUT}/traffic_food_van_hum_loop", food_van_loop(), "peak", quality=3, rate=32000)
+
+
 def main(argv=()):
+    if "events" in argv:
+        render_events()
+        return
     if "city" in argv:
         render_city()
         return
@@ -690,6 +894,7 @@ def main(argv=()):
     render_city()
     render_people()
     render_kerb()
+    render_events()
     render_engines()
 
 

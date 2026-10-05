@@ -47,3 +47,16 @@ static, purr, rain on windows) at -24 LUFS; the clock loop peaks at -1 dBTP.
 | home_intercom_handset | no | Intercom handset lifted | P3 | Plastic cradle knock, hook-switch click, line hiss opening |
 | home_odd_wall_tapping | no | Oddity: tapping behind a wall | P3 | Uneven knuckle knocks through a plasterboard cavity (~160 Hz), low-passed |
 | home_odd_door_creak | no | Oddity: door creaking slowly open (~3.5 s) | P3 | Stick-slip creak with drifting rate through wood resonances, bump at the end |
+
+## The studio's instruments
+
+Picked up and played a little in bedroom 2. Each is a variant set: play
+`Audio.variant("home/home_studio_dove_strum")` (or `_tele`, `_jbass`) at the
+instrument, so a second go is a different take. Made by `gen_studio.py`
+(FluidSynth, then a small bedroom's reverb).
+
+| File | Loop? | What it is |
+|---|---|---|
+| home_studio_dove_strum_01..03 | no | The Gibson Dove strummed with a pick: three chords, down-down-up, the last one left ringing (8 s) |
+| home_studio_tele_01..03 | no | The Telecaster through the little practice amp, clean: chord stabs and a twangy lick, amp hum under it (9-10 s) |
+| home_studio_jbass_01..03 | no | A walking line on the Jazz Bass through the practice amp (6-7 s) |

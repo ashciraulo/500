@@ -404,9 +404,94 @@ def album_page():
 
 
 # --------------------------------------------------------------------------
+# The spray shop and the roof rack
+# --------------------------------------------------------------------------
+
+def spray_gun():
+    """A spray gun laying down a coat (a respray or clear coat): the
+    trigger's click, the air cap's hiss carrying the atomised paint, two
+    long passes along the panel with a breath between, the compressor
+    kicking in behind."""
+    r = rng(16000)
+    parts = []
+    t0 = 0.05
+    for k, L in enumerate((2.2, 1.9)):
+        n = secs(L)
+        tt = t_axis(n)
+        hiss = bp(noise(n, 16010 + k), 1800, 13000) * 0.4 + bp(noise(n, 16020 + k), 400, 1800) * 0.15
+        # the gun sweeping past: brighter and louder as it faces the ear
+        sweep = 0.75 + 0.25 * np.sin(np.pi * tt / L)
+        hiss *= sweep * np.minimum(1, tt / 0.04) * np.minimum(1, (L - tt) / 0.05)
+        click_on = steel_tick(16030 + 2 * k, 0.4, 3200)
+        click_off = steel_tick(16031 + 2 * k, 0.3, 2600)
+        parts += [(t0, click_on, 1.0), (t0 + 0.03, hiss, 1.0), (t0 + L + 0.02, click_off, 1.0)]
+        t0 += L + r.uniform(0.5, 0.7)
+    # the compressor motor starting up and running under the second pass
+    n = secs(3.0)
+    tt = t_axis(n)
+    f = 24.0 * np.minimum(1, tt / 0.6) + 1.0
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    comp = (np.sin(ph) + 0.6 * np.sin(2 * ph) + 0.4 * np.sin(4 * ph)) * 0.08 + lp(noise(n, 16040), 500) * 0.05
+    comp *= np.minimum(1, tt / 0.3) * np.minimum(1, (3.0 - tt) / 0.4)
+    parts.append((2.6, comp, 1.0))
+    return fade(garage(mix(t0 + 0.4, parts), 0.6, 0.12), fout=0.1)
 
 
-def main():
+def masking_tape():
+    """Masking tape: a strip pulled off the roll with a sticky crackle, torn
+    off, and smoothed down along the panel with a thumb."""
+    r = rng(16100)
+    n = secs(0.8)
+    tt = t_axis(n)
+    crackle = bp(noise(n, 16101), 1500, 9000) * (rng(16102).random(n) < 0.08) * 1.2
+    crackle += bp(noise(n, 16103), 600, 4000) * 0.25
+    pull = crackle * np.minimum(1, tt / 0.03) * np.minimum(1, (0.8 - tt) / 0.05) * (0.7 + 0.3 * np.sin(2 * np.pi * 1.6 * tt))
+    rip = bp(burst(0.07, 0.015, 16104), 1200, 9000) * 1.2
+    m = secs(0.6)
+    tm = t_axis(m)
+    smooth = bp(noise(m, 16105), 300, 3000) * 0.18 * np.sin(np.pi * tm / 0.6)
+    x = mix(1.9, [(0.02, pull, 1.0), (0.85, rip, 1.0), (1.15, smooth, 1.0)])
+    return fade(garage(x, 0.5, 0.1), fout=0.05)
+
+
+def rack_fit():
+    """Roof rack going on: the bars set down on the roof with a padded
+    thunk, two clamp knobs wound tight (a plastic ratchet each), then a
+    strap cinched down with its cam buckle."""
+    r = rng(16200)
+    thunk = add(lp(burst(0.2, 0.03, 16201), 350) * 1.2,
+                modal(0.4, [(r.uniform(180, 230), 0.05, 0.5), (r.uniform(600, 700), 0.04, 0.3),
+                            (r.uniform(1500, 1800), 0.03, 0.15)], 16202))
+    parts = [(0.02, thunk, 1.0)]
+    at = 0.55
+    for knob in range(2):
+        for k in range(9):
+            tick = bp(burst(0.012, 0.0015, 16210 + knob * 20 + k), 1800, 7000) * (0.4 + 0.04 * k)
+            parts.append((at + k * r.uniform(0.07, 0.09), tick, 1.0))
+        at += 1.05
+    n = secs(0.5)
+    tt = t_axis(n)
+    strap = bp(noise(n, 16250), 400, 4000) * 0.25 * np.minimum(1, tt / 0.05) * np.minimum(1, (0.5 - tt) / 0.1)
+    cam = add(steel_tick(16251, 0.6, 2400), lp(burst(0.05, 0.006, 16252), 700) * 0.4)
+    parts += [(at + 0.1, strap, 1.0), (at + 0.62, cam, 1.0)]
+    return fade(garage(mix(at + 1.0, parts), 0.6, 0.12), fout=0.05)
+
+
+NEW = {
+    "garage_spray_gun": spray_gun,
+    "garage_masking_tape": masking_tape,
+    "garage_rack_fit": rack_fit,
+}
+
+
+# --------------------------------------------------------------------------
+
+
+def main(argv=()):
+    if argv:
+        for k in argv:
+            save(f"{OUT}/{k}", NEW[k]())
+        return
     save(f"{OUT}/garage_room_tone", room_tone(), norm="amb")
     save(f"{OUT}/garage_ratchet", ratchet())
     save(f"{OUT}/garage_impact_wrench", impact_wrench())
@@ -425,7 +510,9 @@ def main():
     save(f"{OUT}/garage_wash_drips", wash_drips())
     save(f"{OUT}/garage_camera_shutter", camera_shutter())
     save(f"{OUT}/garage_album_page", album_page())
+    for k, fn in NEW.items():
+        save(f"{OUT}/{k}", fn())
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

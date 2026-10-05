@@ -75,6 +75,9 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | amb_suburbs_dawn | yes (110 s) | Suburbs 05:00-07:00: magpies carolling, wagtails, small birds, ravens, the retic coming on a couple of yards over, the last crickets, early traffic waking, one car off to an early shift | P2 | mag_kp2, mag_dl, wagtail1, raven_db, raven_yell, sprinkler, traffic_night, crickets_sub, dogs_far, dog_far2 (+ synth) |
 | amb_river_dawn | yes (100 s) | River 05:00-07:00: still water lapping, magpies on the foreshore, gulls, a rowing eight passing out on the Swan (catch splashes, oars in the gates) | P2 | lapping, mag_kp2, mag_dl (+ synth gulls, rowing) |
 | amb_beach_dawn | yes (100 s) | Beach 05:00-07:00: a calm morning sea, gulls, magpies in the dunes behind, a light breeze | P3 | beach_night, mag_kp2, mag_dl (+ synth gulls) |
+| amb_wetland_day | yes (100 s) | Herdsman Lake and the other wetlands by day: reed warblers singing from the bulrushes, purple swamphens screeching, coots, a black duck, swallows, wind in the reeds, the freeway faint across the water | P2 | lapping, mag_kp2, mag_dl (+ synth reeds, waterbirds, hum) |
+| amb_wetland_dawn | yes (100 s) | Wetland 05:00-07:00: the reed warblers' chorus, swamphens and coots waking, the last few banjo frogs | P2 | lapping, pobble1, pobble2 (+ synth) |
+| amb_wetland_night | yes (110 s) | Wetland after dark: banjo frogs bonking all round the lake, squelching froglets in the sedge, crickets, coots squabbling | P2 | crickets_sub, pobble1, pobble2 (+ synth frogs, reeds) |
 | amb_tunnel | yes (60 s) | Northbridge tunnel: low drone, jet fans, light hum, reverberant car passes | P3 | synth only |
 | amb_carmeet | yes (90 s) | Night car meet: idling engines (V8 burble, four, a rough six), chatter, a muffled car stereo, occasional revs | P2 | bar_wa (+ synth idles, stereo, revs) |
 | place/place_beach_loop | yes (50 s) | At the beach: the shore break close by, the sea breeze in your ears, gulls | P2 | beach_day (+ synth wind, gulls) |
@@ -93,6 +96,8 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | place/place_jetty_night_loop | yes (60 s) | The jetty after dark: quieter water, timbers, halyards and ropes, more fish jumping, the city a faint hum across the water | P2 | lapping (+ synth) |
 | place/place_groyne_loop | yes (54 s) | A rock groyne (Cottesloe, the Freo moles): shore break either side, swell thumping the boulders, rushing up and draining back through the gaps, sea breeze, gulls | P2 | beach_day (+ synth rock wash, wind, gulls) |
 | place/place_groyne_night_loop | yes (54 s) | The groyne after dark: the same wash, slower, no gulls | P2 | beach_night (+ synth) |
+| place/place_surf_loop | yes (54 s) | On the sand at Trigg, Scarborough and City Beach: a real swell, each wave landing with a thump and a roar that peels along the beach, the whitewater fizzing up the sand, sea breeze, gulls | P2 | beach_day (+ synth breaks, wind, gulls) |
+| place/place_surf_night_loop | yes (54 s) | The surf beaches after dark: the same breaks, slower, no gulls | P2 | beach_night (+ synth) |
 | place/place_tackle_shop_loop | yes (48 s) | Inside the Mends St bait and tackle shop: bait freezer, live-bait tank bubbling, ceiling fan, the station on a shelf radio, rod tips knocking, the till, the door bell | P2 | synth; radio plays mus_cinquecento_04 |
 | place/place_photo_lab_loop | yes (48 s) | Inside the Lake St photo lab: the minilab's motor, rollers and dryer fan, prints dropping into the tray, the chemistry pump, a beep, fluoros | P2 | synth |
 | place/place_wrong_cockatoos_night_loop | yes (48 s) | Under the thirteen silent cockatoos in Kings Park at 3 am: feathers resettling, a bill click, branches taking their weight, no crickets, a low beating hum | P2 | synth |
@@ -117,3 +122,10 @@ Notes
   freeway, NYC ferry engine, Coney Island lapping, Canadian lawnmower, Balkan
   dog) are used only where the content has no regional character, filtered
   and/or placed at a distance.
+
+Zones on the outer map (ambience_manager.gd ZONE_AREAS): the coast from Trigg
+to Leighton is the beach bed, Fremantle its own bed, Bold Park the Kings Park
+bush, and Herdsman Lake, Lake Monger, Lake Gwelup, Lake Claremont and Alfred
+Cove the wetland bed. Beaches in Trigg, Scarborough, City Beach and Floreat
+add the surf place layer instead of the calmer beach one; the North Mole and
+the South Cottesloe groyne add the groyne layer.

@@ -24,6 +24,7 @@ var _music := ""             # "", "tension" or "trial"
 var _last_tick := -1
 var _last_fuel := -1.0
 var _last_dirt := -1.0
+var _last_look := {}         # the car's paint, livery and finish, to hear the spray shop
 var _was_paused := false
 var _phone: Node
 var _workshop: Node
@@ -245,6 +246,9 @@ func _find_nodes() -> void:
 		_car = get_tree().get_first_node_in_group(&"player_car")
 		if _car:
 			_last_fuel = -1.0
+			_last_look = {}
+			if _car.has_signal("car_changed"):
+				_car.car_changed.connect(func(_id: String) -> void: _last_look = {})
 			if _car.has_signal("impact"):
 				_car.impact.connect(_on_impact)
 			if _car.has_signal("parts_changed"):
@@ -298,10 +302,13 @@ func _on_impact(strength: float) -> void:
 		Audio.play_at("car/car_cargo_boxes_slide", pos, -4.0, "Cabin")
 
 
-func _on_part_fitted(_slot: StringName, _part) -> void:
+func _on_part_fitted(slot: StringName, _part) -> void:
 	if not _loud() or _car == null:
 		return
 	var pos: Vector3 = _car.global_position
+	if slot == &"roof":
+		Audio.play_at("garage/garage_rack_fit", pos, -2.0)
+		return
 	Audio.play_at("garage/garage_impact_wrench", pos, -4.0)
 	get_tree().create_timer(0.9).timeout.connect(func() -> void:
 		Audio.play_at("garage/garage_part_fitted", pos, -2.0))
@@ -320,6 +327,38 @@ func _update_car() -> void:
 	if _last_dirt > 0.05 and dirt <= 0.01 and _loud():
 		_wash_sounds()
 	_last_dirt = dirt
+	var look := {"paint": _car.get("paint_color"), "livery": _car.get("custom_livery"), "finish": _car.get("finish")}
+	if not _last_look.is_empty() and look != _last_look and _loud():
+		_spray_sounds(spray_kind(_last_look, look))
+	_last_look = look.duplicate(true)
+
+
+## What the spray shop just did, from the car's look before and after:
+## "respray", "livery", "finish" or "".
+static func spray_kind(before: Dictionary, after: Dictionary) -> String:
+	if before.get("paint") != after.get("paint"):
+		return "respray"
+	if before.get("livery") != after.get("livery"):
+		return "livery"
+	if before.get("finish") != after.get("finish"):
+		return "finish"
+	return ""
+
+
+## A respray: masked up, then the gun. A livery: tape and a rattle can. A
+## clear coat: just the gun. Played flat, since you're at the shop's counter.
+func _spray_sounds(kind: String) -> void:
+	match kind:
+		"respray":
+			Audio.play_2d("garage/garage_masking_tape", "UI", -8.0)
+			get_tree().create_timer(1.6).timeout.connect(func() -> void:
+				Audio.play_2d("garage/garage_spray_gun", "UI", -6.0))
+		"livery":
+			Audio.play_2d("garage/garage_masking_tape", "UI", -8.0)
+			get_tree().create_timer(1.6).timeout.connect(func() -> void:
+				Audio.play_2d("garage/garage_spray_paint", "UI", -6.0))
+		"finish":
+			Audio.play_2d("garage/garage_spray_gun", "UI", -6.0)
 
 
 func _fuel_sounds(litres: float) -> void:

@@ -3137,6 +3137,209 @@ def place_carpark_night():
     place_save("place_carpark_night_loop", B.x)
 
 
+# ---- wetlands: Herdsman Lake, Lake Monger, Gwelup, Claremont, Alfred Cove ----
+
+def reed_rustle(n, seed, gust_rate=0.07):
+    """Wind through bulrushes and sedge (stereo, circular): a dry, papery
+    hiss that swells with the gusts, and the stems ticking against each
+    other, higher and drier than gum leaves."""
+    chans = []
+    for c in range(2):
+        gust = 0.5 + 0.5 * np.clip(0.5 + 0.6 * S.smooth_noise(n, gust_rate, seed + c * 7), 0, 1.3)
+        hiss = S.circ_bp(S.noise(n, seed + 10 + c), 1800, 9000, 1)
+        hiss = hiss / (np.std(hiss) + 1e-12) * gust ** 1.5
+        ticks = S.noise(n, seed + 20 + c) * (S.noise(n, seed + 30 + c) > 2.9) * gust ** 2
+        ticks = S.circ_bp(ticks, 2500, 9000, 2)
+        ticks = ticks / (np.std(ticks) + 1e-12)
+        chans.append(hiss + 0.4 * ticks)
+    return np.stack(chans, axis=1)
+
+
+def reed_warbler(seed):
+    """Australian reed warbler: a loud, rich, repetitive song from inside
+    the reeds, 'chut-chut-chut, twee-twee, churr', phrases repeated."""
+    import field_birds as F
+    r = np.random.default_rng(seed)
+    parts, at = [], 0.02
+    for k in range(int(r.integers(3, 6))):
+        kind = int(r.integers(3))
+        reps = int(r.integers(2, 5))
+        for j in range(reps):
+            if kind == 0:
+                y = F.whistle(r.uniform(2400, 3200), 0.06, seed + k * 10 + j, r.uniform(1800, 2400), harm=0.25,
+                              attack=0.004)
+            elif kind == 1:
+                y = F.whistle(r.uniform(3200, 4200), 0.09, seed + k * 10 + j, r.uniform(3800, 4800), harm=0.12)
+            else:
+                y = F.trill(r.uniform(2600, 3400), 0.18, seed + k * 10 + j, rate=r.uniform(40, 55))
+            parts.append((at, y, r.uniform(0.6, 1.0)))
+            at += len(y) / SR + r.uniform(0.04, 0.09)
+        at += r.uniform(0.15, 0.4)
+    return F.series(parts)
+
+
+def wetland_pools():
+    import field_birds as F
+    return {
+        "duck": [F.pacific_black_duck(26000 + i) for i in range(4)],
+        "swamphen": [F.purple_swamphen(26100 + i) for i in range(4)],
+        "coot": [F.eurasian_coot(26200 + i) for i in range(6)],
+        "swallow": [F.welcome_swallow(26300 + i) for i in range(3)],
+        "warbler": [reed_warbler(26400 + i) for i in range(5)],
+    }
+
+
+def frog_bonks():
+    """Western banjo frog 'bonks' from the recordings and synthesised."""
+    bonk = (snips("pobble1", 250, 1200, thresh_db=12, min_len=0.05, max_len=0.6, gap=0.08)
+            + snips("pobble2", 250, 1200, thresh_db=12, min_len=0.05, max_len=0.6, gap=0.08))
+    bonk = [S.hp(b, 180) for b in bonk]
+    for i in range(6):
+        rr = np.random.default_rng(26500 + i)
+        k = secs(0.25)
+        tk = S.t_axis(k)
+        f = rr.uniform(430, 560) * (1 + 0.35 * np.exp(-tk / 0.012))
+        ph = 2 * np.pi * np.cumsum(f) / SR
+        y = (np.sin(ph) + 0.35 * np.sin(2 * ph) + 0.1 * np.sin(3 * ph)) * np.exp(-tk / 0.05)
+        bonk.append(S.fade(y, 0.002, 0.03))
+    return bonk
+
+
+def squelch_frog(seed):
+    """Squelching froglet (Crinia insignifera), the swamp's other voice: a
+    short, wet, rasping 'squelch' (mono)."""
+    r = np.random.default_rng(seed)
+    L = r.uniform(0.09, 0.14)
+    n = secs(L)
+    t = S.t_axis(n)
+    pulses = (np.sin(2 * np.pi * r.uniform(90, 130) * t) > 0.3) * 1.0
+    y = S.resonator(pulses + 0.3 * r.standard_normal(n), r.uniform(2400, 2900), 6.0)
+    return S.fade(y * np.exp(-t / (L * 0.6)), 0.003, 0.02)
+
+
+def frog_chorus(B, bonk, count, gain=(-18, -9), dist=(0.35, 0.8)):
+    for k, at in enumerate(B.times(count, 0.9)):
+        p = B.r.uniform(-0.8, 0.8)
+        d = B.r.uniform(*dist)
+        g = B.r.uniform(*gain)
+        tt = at
+        for j in range(int(B.r.integers(2, 6))):
+            s = bonk[int(B.r.integers(len(bonk)))]
+            B.put(distant(s, d, p, k * 10 + j, room=1.0), tt, g)
+            tt += secs(B.r.uniform(0.5, 1.4))
+
+
+@builder("amb_wetland_day")
+def wetland_day():
+    dur = 100
+    B = Bed(dur, 2601)
+    n = B.n
+    B.add(S.circ_lp(texture(src("lapping", True), dur, 26011, chunk=20), 2500), -36)  # still water at the edge
+    B.add(reed_rustle(n, 26012), -33)
+    B.add(city_hum(n, 26013, 30, 220), -41)  # the freeway past the lake
+    P = wetland_pools()
+    B.scatter(P["warbler"], 7, gain_db=(-16, -8), dist=(0.15, 0.55))
+    B.scatter(P["swamphen"], 4, gain_db=(-15, -8), dist=(0.25, 0.7))
+    B.scatter(P["coot"], 8, gain_db=(-20, -12), dist=(0.3, 0.8))
+    B.scatter(P["duck"], 3, gain_db=(-18, -11), dist=(0.4, 0.8))
+    B.scatter(P["swallow"], 4, gain_db=(-24, -16), dist=(0.15, 0.5))
+    B.scatter(bird_pools(), 3, gain_db=(-26, -18), dist=(0.6, 0.85))  # magpies on the far bank
+    save_loop("amb/amb_wetland_day", B.x, **LEAN)
+
+
+@builder("amb_wetland_dawn")
+def wetland_dawn():
+    dur = 100
+    B = Bed(dur, 2602)
+    n = B.n
+    B.add(S.circ_lp(texture(src("lapping", True), dur, 26021, chunk=20), 2000), -38)
+    B.add(reed_rustle(n, 26022, gust_rate=0.04), -40)
+    B.add(city_hum(n, 26023, 30, 200), -44)
+    P = wetland_pools()
+    B.scatter(P["warbler"], 12, gain_db=(-15, -7), dist=(0.1, 0.6))
+    B.scatter(P["swamphen"], 5, gain_db=(-15, -8), dist=(0.25, 0.7))
+    B.scatter(P["coot"], 10, gain_db=(-19, -11), dist=(0.3, 0.8))
+    B.scatter(P["duck"], 4, gain_db=(-17, -10), dist=(0.3, 0.8))
+    frog_chorus(B, frog_bonks(), 4, gain=(-22, -14), dist=(0.5, 0.85))  # the last few from the night
+    save_loop("amb/amb_wetland_dawn", B.x, **LEAN_WET)
+
+
+@builder("amb_wetland_night")
+def wetland_night():
+    dur = 110
+    B = Bed(dur, 2603)
+    n = B.n
+    B.add(texture(src("crickets_sub", True), dur, 26031, chunk=17, region=(22.5, 82)), -36)
+    B.add(reed_rustle(n, 26032, gust_rate=0.035), -42)
+    B.add(city_hum(n, 26033, 30, 200), -42)
+    frog_chorus(B, frog_bonks(), 16, gain=(-17, -7), dist=(0.25, 0.8))
+    sq = [squelch_frog(26600 + i) for i in range(8)]
+    for k, at in enumerate(B.times(14, 0.9)):  # froglets in runs from the sedge
+        p = B.r.uniform(-0.8, 0.8)
+        tt = at
+        for j in range(int(B.r.integers(3, 8))):
+            B.put(distant(sq[int(B.r.integers(len(sq)))], B.r.uniform(0.3, 0.7), p, k * 20 + j, room=0.8),
+                  tt, B.r.uniform(-24, -16))
+            tt += secs(B.r.uniform(0.25, 0.6))
+    P = wetland_pools()
+    B.scatter(P["coot"], 4, gain_db=(-22, -15), dist=(0.4, 0.85))  # coots squabbling in the dark
+    B.scatter(P["swamphen"], 1, gain_db=(-18, -14), dist=(0.6, 0.85))
+    save_loop("amb/amb_wetland_night", B.x, **LEAN)
+
+
+@builder("place_surf")
+def place_surf():
+    """On the sand at Trigg and Scarborough: a real swell breaking, each set
+    a long roar, the whitewater fizzing up the beach and draining back."""
+    dur = 54
+    B = Bed(dur, 3801)
+    n = B.n
+    B.add(texture(src("beach_day", True), dur, 38011, chunk=18), -26)
+    B.add(surf_breaks(n, 38012, every=7.5), -22)
+    B.add(ear_wind(n, 38013, gust_rate=0.09), -34)
+    B.scatter(gull_pool(), 4, gain_db=(-20, -11), dist=(0.2, 0.6))
+    place_save("place_surf_loop", B.x)
+
+
+@builder("place_surf_night")
+def place_surf_night():
+    dur = 54
+    B = Bed(dur, 3802)
+    n = B.n
+    B.add(texture(src("beach_night", True), dur, 38021, chunk=18), -27)
+    B.add(surf_breaks(n, 38022, every=8.5), -23)
+    B.add(ear_wind(n, 38023, gust_rate=0.05), -38)
+    place_save("place_surf_night_loop", B.x)
+
+
+def surf_breaks(n, seed, every=7.5):
+    """Breaking waves (stereo, circular): each one a low thump as the lip
+    lands, a broadband roar that rolls along the beach from one side, then
+    the whitewater's fizz running up the sand and hissing back."""
+    r = np.random.default_rng(seed)
+    y = np.zeros((n, 2))
+    count = max(1, int(round(n / SR / every)))
+    for k in range(count):
+        at = (k + r.uniform(-0.2, 0.2)) * n / SR / count
+        big = 0.7 + 0.5 * r.random()
+        L = secs(7.0)
+        t = S.t_axis(L)
+        crash = np.clip(t / 0.25, 0, 1) * np.exp(-np.clip(t - 0.25, 0, None) / 1.4)
+        roar = S.bp(r.standard_normal(L), 120, 3000, 2) * crash
+        thump = S.lp(r.standard_normal(L), 120) * np.exp(-t / 0.3) * 2.5
+        fizz_env = np.clip((t - 1.2) / 1.5, 0, 1) * np.exp(-np.clip(t - 2.7, 0, None) / 1.8)
+        fizz = S.bp(r.standard_normal(L), 2500, 10000, 2) * fizz_env * (1 + 0.5 * (r.random(L) < 0.02))
+        mono = (roar / (np.std(roar) + 1e-12) + thump / (np.std(thump) + 1e-12) * 0.6
+                + fizz / (np.std(fizz) + 1e-12) * 0.5) * big
+        # the break peels along the beach: sweep the pan across it
+        p = (np.clip(t / 2.5, 0, 1) * 1.2 - 0.6) * (1 if k % 2 else -1)
+        a = (p + 1) * np.pi / 4
+        st = np.stack([mono * np.cos(a), mono * np.sin(a)], axis=1)
+        idx = (np.arange(L) + int(at * SR)) % n
+        np.add.at(y, idx, st)
+    return y
+
+
 def main(argv):
     import json
     names = list(BUILD)

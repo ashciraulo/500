@@ -11,6 +11,9 @@ at -24 LUFS; compressor, fuel flow, wash hose and brushes at -20 LUFS.
 | garage_impact_wrench | no | Pneumatic impact wrench burst (1.8 s) | P3 | Air-motor spin-up whine + exhaust hiss + ~25/s hammer hits ringing the socket |
 | garage_compressor | yes | Piston air compressor running (6 s) | P3 | ~24/s chugging strokes (alternate weaker), motor hum, con-rod clatter, valve chatter, air hiss |
 | garage_spray_paint | no | Spray can shaken then sprayed | P3 | Mixing-ball clacks (5 shakes) then a 2 s pressurised hiss with a sputtery start |
+| garage_spray_gun | no | Spray gun laying a coat (respray, clear coat) | P3 | Trigger clicks, two long air-cap hiss passes sweeping past, the compressor kicking in under the second |
+| garage_masking_tape | no | Masking tape pulled, torn, smoothed down | P3 | Sticky crackle off the roll, the tear, a thumb along the panel |
+| garage_rack_fit | no | Roof rack fitted | P3 | Bars set down with a padded thunk, two clamp knobs ratcheted tight, a strap cinched with its cam buckle |
 | garage_part_fitted_01..03 | no | Part fitted: clunk + bolt tightened | P3 | Low metal thud with short ring, then steel ticks and a final click |
 | garage_fuel_nozzle_in | no | Petrol nozzle out of holster and into the filler | P3 | Holster knock, hose flop, filler-neck clank, trigger latch |
 | garage_fuel_flow | yes | Fuel flowing (8 s) | P3 | Turbulent gush, gurgle of escaping air, dispenser pump motor tone |
@@ -23,3 +26,8 @@ at -24 LUFS; compressor, fuel flow, wash hose and brushes at -20 LUFS.
 | garage_wash_drips | no | Dripping after the car wash (5 s) | P3 | Bubble plinks and splat taps thinning out over time |
 | garage_camera_shutter | no | Old film SLR shutter + film advance | P3 | Mirror slap, two curtain ticks 16 ms apart, mirror return, advance-lever ratchet zip |
 | garage_album_page | no | Photo album page turn | P3 | Plastic sleeve crinkle, air swish, card page flop |
+
+The spray shop is heard from the car's look: Audio.hooks watches its paint,
+livery and finish, and plays masking tape then the gun for a respray, tape
+then a rattle can for a livery, and the gun alone for a clear coat. A part in
+the roof slot plays garage_rack_fit instead of the impact wrench.

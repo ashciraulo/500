@@ -74,3 +74,14 @@ engine sounds itself.
 Play the one-shots with `Audio.play_at(name, pos)` and the loops with
 `Audio.stream(name, true)` on an AudioStreamPlayer3D; guard with `Audio.has()`.
 
+## Schools, the stadium, bin day, sweepers
+
+| File | Loop? | What it is | How |
+|---|---|---|---|
+| traffic_guard_whistle | no | A school crossing guard stepping out | One 0.6 s pea-whistle blast: a ~3 kHz tone trilled by the pea (~30 Hz), breath under it |
+| traffic_crowd_roar_loop | yes (30 s) | A stadium crowd heard from outside the ground | Four layers of the bar-crowd recording plus 40 synthetic voices, low-passed to 900 Hz like it's coming over the stands, with slow swells and one big surge |
+| traffic_crowd_cheer | no | A goal, from outside the ground | The roar leaping up in a second, holding, then settling back under applause (7 s) |
+| traffic_bin_tip | no | A side-loader bin truck emptying a wheelie bin | The diesel revving for the hydraulics, the arm's whine, the lid flapping, rubbish and a bottle thudding into the hopper, the bin set down (3.6 s) |
+| traffic_sweeper_loop | yes (8 s) | A street sweeper working the gutter | Diesel at working speed, the suction fan's whine, the gutter brooms scratching, the water spray |
+| traffic_food_van_hum_loop | yes (12 s) | A late-night food van at the kerb | Its generator on the footpath, the extraction fan, the fridge compressor, the fryer bubbling, two sizzles on the hotplate. For the customers, add traffic_crowd_small_loop |
+
