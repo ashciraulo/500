@@ -39,7 +39,26 @@ static func build(f: Dictionary) -> Node3D:
 	m.mesh = _cache[id]
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(m)
+	if f.has("glow"):
+		_glow(root, m, Color(String(f.glow)))
 	return root
+
+
+## A cold light coming off it: a tint over the body and a little lamp inside.
+static func _glow(root: Node3D, body: MeshInstance3D, colour: Color) -> void:
+	var tint := StandardMaterial3D.new()
+	tint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	tint.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tint.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	tint.albedo_color = Color(colour, 0.45)
+	body.material_overlay = tint
+	var lamp := OmniLight3D.new()
+	lamp.name = "Glow"
+	lamp.light_color = colour
+	lamp.light_energy = 0.8
+	lamp.omni_range = 1.6
+	lamp.shadow_enabled = false
+	root.add_child(lamp)
 
 
 ## Scale a model to a catch's length in cm.

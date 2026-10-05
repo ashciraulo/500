@@ -313,6 +313,7 @@ func _process(_delta: float) -> bool:
 				_fj.load_state(copy)
 				_check(_fj.is_photographed("galah") and _fj.prints_sold == 1, "the journal survives a save and load")
 				_check(root.get_node("Progression").get_stat("species_photographed") >= 1.0, "the career counts photographed species")
+				_check_lens_and_film(clock)
 				_next()
 		7:  # Fishing off the Mends Street jetty at dusk.
 			_stage_fishing(clock)
@@ -370,6 +371,7 @@ func _process(_delta: float) -> bool:
 				_fj.load_state(copy)
 				_check(_fj.is_caught("black_bream") and _fj.fish_weighed >= 1 and _fj.has_crab_net, "the catches survive a save and load")
 				_check(root.get_node("Progression").get_stat("fish_species") >= 1.0, "the career counts fish species")
+				_check_hubcap(root.get_node("Discoveries"))
 				return _finish()
 	return false
 
@@ -404,6 +406,7 @@ func _stage_fishing(clock: Node) -> void:
 		_fj.catches.erase("wrong_bream")
 		if not had_ticket:
 			disc._found.erase("mystery/ticket")
+		_check_wrong_flathead(disc)
 		_check(_ids(_fj.fish_candidates(_spot, 12.0, "net")) == ["blue_swimmer_crab"], "the crab net catches crabs")
 		clock.set_time(18.5)
 		_teleport(Vector3(-4.0, 9.6, 2873.0), 2.0)
@@ -500,6 +503,87 @@ func _stage_fishing(clock: Node) -> void:
 	elif _frames > 4000:
 		_check(false, "fishing stalled (state %d, tries %d, lost %s)" % [_fishing.state, _tries, str(_lost)])
 		_next()
+
+
+## The lab's lens and film: a long lens makes a far bird a print, fast film
+## takes the murk out of a night shot, and both are bought and saved.
+func _check_lens_and_film(clock: Node) -> void:
+	var wallet := root.get_node("Wallet")
+	var was_target: Dictionary = _bino.target
+	_bino.target = {"frame": 0.03}
+	var bare: float = _bino.photo_frame()
+	wallet.earn(2000)
+	var money: int = wallet.balance
+	_check(_fj.upgrade("lens") and _fj.lens == 1 and wallet.balance == money - int(_fj.LENSES[1].price), "a 200 mm zoom from the lab")
+	_check(_bino.photo_frame() > bare * 1.5 and _bino.photo_frame() >= _bino.MIN_FRAME, "a far bird fills a photo with it (%.3f to %.3f)" % [bare, _bino.photo_frame()])
+	_bino.target = was_target
+	var hour: float = clock.time_of_day
+	clock.set_time(23.0)
+	var slow: float = _fj.murk()
+	_check(slow > 0.5, "slow film can't cope at night (murk %.2f)" % slow)
+	_check(_fj.upgrade("film") and _fj.upgrade("film") and _fj.film == 2 and _fj.murk() < 0.05, "ISO 3200 shoots at midnight (murk %.2f)" % _fj.murk())
+	clock.set_time(12.0)
+	_check(_fj.murk() < 0.05, "and by day there's no murk")
+	clock.set_time(hour)
+	var copy: Dictionary = JSON.parse_string(JSON.stringify(_fj.save_state()))
+	_fj.lens = 0
+	_fj.film = 0
+	_fj.load_state(copy)
+	_check(_fj.lens == 1 and _fj.film == 2, "the lens and film survive a save and load")
+	_fj.lens = 0
+	_fj.film = 0
+
+
+## The glowing flathead: Point Fraser in the small hours, once the atlas page
+## is found; it glows, and it goes back.
+func _check_wrong_flathead(disc: Node) -> void:
+	var point: Dictionary = _fj.spot("point_fraser")
+	_check(not point.is_empty(), "Point Fraser is a spot")
+	var had: bool = disc.has("mystery/atlas_page")
+	disc._found.erase("mystery/atlas_page")
+	_check(not _ids(_fj.fish_candidates(point, 2.0)).has("wrong_flathead"), "no glowing flathead before the atlas page")
+	disc._found["mystery/atlas_page"] = 1
+	_check(_ids(_fj.fish_candidates(point, 2.0)).has("wrong_flathead"), "a glowing flathead at Point Fraser at 2 a.m.")
+	_check(not _ids(_fj.fish_candidates(point, 5.0)).has("wrong_flathead"), "but not once it's getting light")
+	_check(not _ids(_fj.fish_candidates(_spot, 2.0)).has("wrong_flathead"), "and only at Point Fraser")
+	var f: Dictionary = _fj.fish_species("wrong_flathead")
+	var model: Node3D = load("res://scripts/field/fish_models.gd").build(f)
+	_check(model.find_child("Glow", true, false) is OmniLight3D, "it glows")
+	model.free()
+	_check(_fishing.keep_blocked(_fj.fish_size(f, RandomNumberGenerator.new())) != "", "it can't be kept")
+	if not had:
+		disc._found.erase("mystery/atlas_page")
+
+
+## The kept hubcap goes up on the shed door at home.
+func _check_hubcap(disc: Node) -> void:
+	var trophies: Node = _field.trophies
+	var kept := "fishing/fiat_hubcap"
+	var door := get_root_home_door()
+	if door == null:
+		print("     (no shed door in this map; skipping the hubcap)")
+		return
+	var had: bool = disc.has(kept)
+	disc._found.erase(kept)
+	trophies._update_hubcap()
+	_check(trophies.hubcap() == null, "no hubcap on the shed door until you keep one")
+	disc._found[kept] = 1
+	trophies._update_hubcap()
+	var cap: Node3D = trophies.hubcap()
+	_check(cap != null and cap.get_parent() == door, "the kept hubcap hangs on the shed door")
+	if cap:
+		var out := door.global_basis * Vector3(0, 0, -1)
+		var face: Vector3 = cap.global_basis.y.normalized()
+		_check(face.dot(out.normalized()) > 0.95, "chrome side out (%.2f)" % face.dot(out.normalized()))
+	if not had:
+		disc._found.erase(kept)
+		if cap:
+			cap.free()
+
+
+func get_root_home_door() -> Node3D:
+	var home := get_first_node_in_group(&"home_base") as Node3D
+	return home.find_child("Shed_Door", true, false) as Node3D if home else null
 
 
 var _shop_cam: Camera3D

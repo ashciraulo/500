@@ -458,8 +458,10 @@ after a map rebuild).
   `upgrade_fishing("rod" | "esky" | "crab_net")`, `buy_ice()`, `weigh_in()`.
   Discoveries: `fishing/<spot id>` when a spot is found, `fishing/fiat_hubcap`
   when the hubcap goes home.
-- Gear: `FieldJournal.binoculars`, `camera` (levels into `BINOCULARS`,
-  `CAMERAS`); `upgrade(kind)` buys the next at the lab.
+- Gear: `FieldJournal.binoculars`, `camera`, `lens`, `film` (levels into
+  `BINOCULARS`, `CAMERAS`, `LENSES`, `FILMS`); `upgrade(kind)` buys the next
+  at the lab. `murk()` is how much the dark spoils a shot on the film loaded
+  (0 by day); `Binoculars.photo_frame()` is the target's frame times the lens.
 - The world side is `FieldWorld` ("Field", next to the player's car): `birds`
   (`FieldBirds`, group `field_bird_spawner`), `lab` (`BirdLab` on Lake
   Street, group `photo_labs`), `binoculars`, `journal`, `lab_screen`,
@@ -498,12 +500,17 @@ after a map rebuild).
 - Wrong fish (`"wrong": true` in fish.json, like the birds): a `spot`, an
   `after` discovery and `hours`; they bite at that spot only until caught,
   can't be kept, don't count (`FieldJournal.counts(f)`), and show M.'s `page`
-  in the Fish tab. `tag` gives the fish model a jaw tag in that colour.
+  in the Fish tab. `tag` gives the fish model a jaw tag in that colour;
+  `glow` a colour it glows (an overlay and an `OmniLight3D` "Glow"), and a
+  fading patch of that light under the surface when it's let go; `release`
+  replaces the line said when it's let go.
 - Home (`FieldWorld.home`, `HomeField`): the starter binoculars hang on
   `Binoculars_Hook` until taken (discovery `field/binoculars`; B is blocked
   till then, old saves with journal entries count as taken); at 30 species
   `bird_feeder.glb` goes on `Feeder_Spot` (discovery `field/feeder`) with
-  garden birds you've seen (`HomeField.FEEDER_BIRDS`) on its perches by day. The dash bird (10
+  garden birds you've seen (`HomeField.FEEDER_BIRDS`) on its perches by day.
+  `FieldWorld.trophies` (`HomeTrophies`) hangs the kept hubcap on the outside
+  of `Shed_Door` once `fishing/fiat_hubcap` is discovered (`hubcap()`). The dash bird (10
   species) is the car's: `FieldJournal.seen_count()` and `species_seen`.
 - Quiet places (`FieldWorld.quiet`, `QuietPlaces`): habitats.json entries
   with `"hidden": true` and fishing_spots.json spots with `"hidden": true`

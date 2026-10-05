@@ -28,6 +28,13 @@ follows on the same journal, money and gear.
    bodies hold more frames and make the shot easier; long lenses reach shy
    birds; fast film works at night. Rods, reels, a crab net and bigger eskies
    for fishing. Some gear shows on the car (a rod on the roof rack).
+
+   Lenses and film are on the lab counter next to the camera bodies. A 200 mm
+   zoom ($380) makes a bird 1.6x bigger in the photo, a 500 mm mirror lens
+   ($1250) 2.5x, so a far bird still makes a print, and shy birds stay calmer
+   while you focus. ISO 100 film can't cope after dark: the dial narrows and a
+   night shot comes out grainy (one star). ISO 800 ($160) copes with dusk and
+   most of the night; ISO 3200 ($520) is sharp at midnight.
 7. **Fill the journal.** Every species has a page: a silhouette and a hint
    ("Kings Park banksia, early morning") until you find it, then your best
    photo and grade, or your biggest fish.
@@ -87,7 +94,7 @@ Fifteen catches (`data/field/fish.json`): blowies (everywhere, worthless),
 black bream, tailor, herring, yellowfin and King George whiting, flathead,
 tarwhine, skippy, garfish, squid under the lights at night, mulloway in the
 deep holes after dark, pink snapper off the moles at night, blue manna crabs
-in the crab net, and a 1970s Fiat 500 hubcap somewhere off the Esplanade.
+in the crab net, and an old 500 hubcap from the 1970s somewhere off the Esplanade.
 Each has real hours, water (river, estuary, ocean), spot tags it wants
 (jetty pylons, flats, snags, deep, rocks, beach, lights), a real legal size,
 a length range (mostly small ones, the odd big one), and a weight from
@@ -114,8 +121,9 @@ rod (the old rod can't hold one; the graphite rod can, if you heed every run).
 Landed, it's held up in front of you with a card: size, weight, legal or not,
 first in the journal, what the club would pay. Keep it (F), let it go (R) or
 photograph it (C; the photo goes in the album and on its journal page).
-Undersized fish and blowies can't be kept; the hubcap goes home for the shed
-wall.
+Undersized fish and blowies can't be kept; the hubcap goes home, and from
+then on it hangs on the outside of the shed door (chrome out; M.'s own
+hubcap is on the wall inside).
 
 **The esky and the tackle shop.** Kept fish go in the esky (4, 8 or 14). The
 bait and tackle shop at the end of Mends Street, South Perth, on the jetty
@@ -156,10 +164,14 @@ with were on the hook by the back door, with an M scratched into them.
   field guide. Its page is already filled in, in your handwriting.
 
 The lab won't sell prints of these ("they've come out blank, love"), but they
-stay in the journal and the album. Fishing gets a couple of its own in a later
-batch: a black bream with a 1979 fisheries tag in its jaw, at the Mends
-Street jetty after midnight once the ticket's found. It can't be kept; its
-page in the Fish tab is M.'s.
+stay in the journal and the album. Fishing has two of its own, which can't
+be kept and whose pages in the Fish tab are M.'s:
+
+- A black bream with a 1979 fisheries tag in its jaw, at the Mends Street
+  jetty after midnight once the ticket's found.
+- A big pale flathead with a cold green light coming off it, on the flats at
+  Point Fraser between midnight and 3:30 am once the atlas page is found.
+  Let it go and its light shows under the surface, drifting out and fading.
 
 ## Progression, lightly
 
