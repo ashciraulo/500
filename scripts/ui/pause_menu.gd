@@ -3,6 +3,8 @@ extends CanvasLayer
 ## day length, gearbox, lo-fi options and mouse sensitivity. Esc / Start opens
 ## and closes it. Built in code; works with mouse, keyboard and gamepad.
 
+signal closed
+
 const TIME_PRESETS := [
 	["Dawn", 5.8], ["Morning", 9.0], ["Noon", 12.0], ["Afternoon", 15.5],
 	["Golden hour", 17.6], ["Dusk", 18.6], ["Night", 21.5], ["Small hours", 2.5],
@@ -23,7 +25,13 @@ var _dither: CheckBox
 var _wobble: HSlider
 var _mouse: HSlider
 var _volumes := {}
+var _cozy: CheckBox
 var _resume: Button
+## Opened from the title screen: Back instead of Resume, and the game stays paused.
+var _from_title := false
+var _heading: Label
+var _was_paused := false
+var _game_only: Array[Button] = []  # hidden when opened from the title screen
 var _save_button: Button
 var _syncing := false
 
@@ -36,7 +44,7 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause"):
+	if event.is_action_pressed("pause") and (_panel.visible or not TitleScreen.is_showing(get_tree())):
 		toggle()
 		get_viewport().set_input_as_handled()
 
@@ -49,21 +57,28 @@ func toggle() -> void:
 
 
 func open() -> void:
+	_from_title = TitleScreen.is_showing(get_tree())
+	_was_paused = get_tree().paused
 	Settings.capture()
 	_sync_from_settings()
 	_panel.visible = true
-	_dim.visible = true
+	_dim.visible = not _from_title
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_save_button.text = "Save game"
+	for button in _game_only:
+		button.visible = not _from_title
+	_resume.text = "Back" if _from_title else "Resume"
+	_heading.text = "Settings" if _from_title else "Paused"
 	_resume.grab_focus()
 
 
 func close() -> void:
 	_panel.visible = false
 	_dim.visible = false
-	get_tree().paused = false
+	get_tree().paused = _was_paused
 	Settings.save_settings()
+	closed.emit()
 
 
 func is_open() -> bool:
@@ -105,6 +120,7 @@ func _build() -> void:
 	_panel.add_child(box)
 
 	var title := Label.new()
+	_heading = title
 	title.text = "Paused"
 	title.add_theme_font_size_override("font_size", 26)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -141,6 +157,10 @@ func _build() -> void:
 		lengths.append("%d min" % minutes)
 	_day_length = _option(left, "Day length (real time)", lengths, func(i: int) -> void:
 		Settings.day_length_minutes = Settings.DAY_LENGTHS[i]
+		Settings.apply())
+
+	_cozy = _check(left, "Cozy mode (nothing odd at home)", func(on: bool) -> void:
+		Settings.cozy_mode = on
 		Settings.apply())
 
 	_section(left, "Driving")
@@ -197,16 +217,18 @@ func _build() -> void:
 	save_button.pressed.connect(func() -> void:
 		save_button.text = "Saved" if SaveGame.save_game() else "Saving is off (--no-save)")
 	_save_button = save_button
-	_button(right, "Put the car back on its wheels", car_reset)
-	_button(right, "Save and quit to desktop", func() -> void:
+	_game_only.append(save_button)
+	_game_only.append(_button(right, "Put the car back on its wheels", car_reset))
+	_game_only.append(_button(right, "Save and quit to desktop", func() -> void:
 		Settings.save_settings()
-		SaveGame.quit_cleanly())
+		SaveGame.quit_cleanly()))
 
 
 func _sync_from_settings() -> void:
 	_syncing = true
 	_weather.select(Settings.weather_choice + 1)
 	_freeze.button_pressed = Settings.clock_frozen
+	_cozy.button_pressed = Settings.cozy_mode
 	_day_length.select(maxi(0, Settings.DAY_LENGTHS.find(Settings.day_length_minutes)))
 	_gearbox.select(1 if Settings.automatic_gearbox else 0)
 	_mouse.value = Settings.mouse_sensitivity

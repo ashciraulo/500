@@ -34,6 +34,12 @@ func _ready() -> void:
 	var shelf := PartsShelf.new()
 	shelf.name = "PartsShelf"
 	add_child(shelf)
+	var life := HomeLife.new()
+	life.name = "HomeLife"
+	add_child(life)
+	var odd_home := HomeOddities.new()
+	odd_home.name = "HomeOddities"
+	add_child(odd_home)
 	for p: Dictionary in places.get("photo_spots", []):
 		var spot := PhotoSpot.new()
 		spot.spot_id = p.id
@@ -76,6 +82,7 @@ func _ready() -> void:
 	# Workshops: wait a frame so the map has placed its own.
 	_top_up_badges.call_deferred()
 	_place_found_parts.call_deferred()
+	_place_cuttings.call_deferred()
 
 
 func _add(node: Node3D, entry: Dictionary, node_name: String) -> void:
@@ -99,6 +106,22 @@ func _place_found_parts() -> void:
 		node.name = "FoundPart_" + String(entry.part)
 		node.position = at + Vector3(o[0], o[1], o[2])
 		add_child(node)
+
+
+## Rare plants to take cuttings of (data/world/cuttings.json).
+func _place_cuttings() -> void:
+	for entry: Dictionary in HomeLife.cutting_entries():
+		var at := _place_ref(String(entry.get("near", "")))
+		if at == Vector3.INF:
+			push_warning("Cutting %s: nowhere called '%s'" % [entry.get("id"), entry.get("near")])
+			continue
+		var o: Array = entry.get("offset", [0.0, 0.0, 0.0])
+		var spot := CuttingSpot.new()
+		spot.cutting_id = entry.id
+		spot.title = entry.get("name", entry.id)
+		spot.name = "Cutting_" + String(entry.id)
+		spot.position = at + Vector3(o[0], o[1], o[2])
+		add_child(spot)
 
 
 ## Where a "barn:<car>", "site:<id>" or "photo:<id>" reference is.

@@ -24,6 +24,8 @@ const VERSION := 2
 var slot := 1
 ## False with --no-save on the command line.
 var enabled := true
+## No autosaves while true (the title screen, before you've chosen to play).
+var hold := false
 
 var _sources := {}
 ## Sections read from disk, waiting for (or already given to) their owners.
@@ -41,7 +43,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not enabled or get_tree().paused:
+	if not enabled or hold or get_tree().paused:
 		return
 	_autosave_timer += delta
 	if _autosave_timer >= autosave_interval:
@@ -105,6 +107,11 @@ func save_path() -> String:
 
 func has_save() -> bool:
 	return FileAccess.file_exists(save_path())
+
+
+## When the save on this slot was written (system time), or "" if none.
+func saved_at() -> String:
+	return String(_pending.get("saved_at", ""))
 
 
 func register(section: String, source: Object) -> void:

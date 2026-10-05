@@ -53,9 +53,16 @@ static func build(kind: String) -> Node3D:
 	return root
 
 
-## The card table and the home-made transmitter under the shed's sheet,
-## filling `size` (the sheet's footprint). Origin on the floor, centred.
+const SHED_MODEL := "res://art/models/home/mystery/shed_reveal.glb"
+
+
+## M.'s broadcasting table under the shed's sheet: the modelled one
+## (art/models/README.md) with its lamps lit, or a stand-in built from boxes
+## filling `size` (the sheet's footprint). Origin on the floor, centred, the
+## wall side toward +Z.
 static func build_shed(size: Vector3) -> Node3D:
+	if ResourceLoader.exists(SHED_MODEL):
+		return _shed_model()
 	var root := Node3D.new()
 	var w := clampf(size.x, 0.6, 1.2)
 	var d := clampf(size.z, 0.5, 1.3)
@@ -105,6 +112,25 @@ static func build_shed(size: Vector3) -> Node3D:
 	bulb.omni_range = 3.0
 	bulb.position = Vector3(0, top + 1.0, 0)
 	root.add_child(bulb)
+	return root
+
+
+static func _shed_model() -> Node3D:
+	var root := (load(SHED_MODEL) as PackedScene).instantiate() as Node3D
+	PS1Model.apply(root)
+	# [empty, colour, energy, range]
+	for lamp: Array in [["DeckLight", Color(1.0, 0.15, 0.1), 0.12, 0.5],
+			["TxLight", Color(1.0, 0.55, 0.2), 0.12, 0.5],
+			["Valve", Color(1.0, 0.5, 0.18), 0.35, 0.9],
+			["Bulb", Color(1.0, 0.72, 0.42), 0.7, 3.0]]:
+		var at := root.find_child(lamp[0], true, false) as Node3D
+		if at == null:
+			continue
+		var light := OmniLight3D.new()
+		light.light_color = lamp[1]
+		light.light_energy = lamp[2]
+		light.omni_range = lamp[3]
+		at.add_child(light)
 	return root
 
 

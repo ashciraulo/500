@@ -220,6 +220,16 @@ func _refresh_leads() -> void:
 			_text(_leads_list, "\"%s\"" % entry.get("rumour", ""))
 	_text(_leads_list, "Found: %d of %d. Stop next to one (or walk up to it) to take it home." % [found, parts.size()], 14)
 
+	var cuttings := HomeLife.cutting_entries()
+	var taken := 0
+	_text(_leads_list, "Cuttings to grow at home", 18, accent)
+	for entry: Dictionary in cuttings:
+		if Discoveries.has("cutting/" + String(entry.id)):
+			taken += 1
+		else:
+			_text(_leads_list, "\"%s\"" % entry.get("rumour", ""))
+	_text(_leads_list, "Taken: %d of %d. Walk up to the plant and take a cutting; water it at home every day." % [taken, cuttings.size()], 14)
+
 	_text(_leads_list, "Things to do", 18, accent)
 	_text(_leads_list, "Photo spots: %d of %d. Press P for photo mode near a blue PHOTO sign. %d photos in the album." % [
 		Activities.photo_spots_found(), Activities.PHOTO_SPOTS_TOTAL, Activities.photos.size()])
