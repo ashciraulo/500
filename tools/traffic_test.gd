@@ -59,6 +59,8 @@ func _setup() -> void:
 	_traffic.schools.enabled = false
 	# No stadium in the sandbox until the game-day step puts one there.
 	_traffic.events.enabled = false
+	# Nor the night shift until its step.
+	_traffic.night.enabled = false
 	# A driveway on the avenue, inside the westbound queue for the Station
 	# Street lights: nobody may stop across it.
 	_graph.add_keep_clear(Vector3(-72, 0, 3.2), 5.0)
@@ -188,7 +190,11 @@ func _run_step() -> bool:
 				_mark.walker = CharacterBody3D.new()
 				_mark.walker.set_script(script)
 				_root3d.add_child(_mark.walker)
-				_mark.walker.global_position = Vector3(-40, 0, 4.8)
+				# Somewhere no car is already too close to stop for them.
+				var wx := -40.0
+				while wx > -100.0 and _traffic.vehicles.any(func(v): return absf(v.position.z - 4.8) < 2.5 and v.position.x > wx - 6.0 and v.position.x < wx + 25.0):
+					wx -= 8.0
+				_mark.walker.global_position = Vector3(wx, 0, 4.8)
 				_mark.walker_hits = 0
 				_mark.waited = 0
 				_next()
@@ -563,10 +569,84 @@ func _run_step() -> bool:
 				_check(ev.phase == TrafficEvents.Phase.LEAVING and ev.stats.fans > _mark.leave_from + 10, "after the siren they pour out again (%d)" % (ev.stats.fans - _mark.leave_from))
 				ev.force_event = false
 				ev.enabled = false
+				ev.clear()
 				root.get_node("GameClock").set_time(8.0)
+				_next()
+		12:  # The night shift: sweepers, bin day and the bin truck, food vans.
+			var nt: TrafficNight = _traffic.night
+			if _frame == 1:
+				var clock := root.get_node("GameClock")
+				var hours := []
+				for t in [[1, 2.0, "sweep"], [1, 14.0, "sweep"], [1, 19.0, "bins"], [3, 9.0, "bins"], [2, 7.0, "truck"], [2, 13.0, "truck"],
+						[5, 21.0, "food"], [2, 21.0, "food"], [6, 1.0, "food"], [7, 20.0, "food"]]:
+					clock.day = t[0]
+					clock.set_time(t[1])
+					hours.append(nt.sweeper_hours() if t[2] == "sweep" else nt.bins_out() if t[2] == "bins" else nt.truck_hours() if t[2] == "truck" else nt.food_hours())
+				_mark.night_hours = hours
+				clock.day = 1
+				clock.set_time(8.0)
+				nt.always_on = true
+				nt.enabled = true
+				nt.bin_radius = 300.0
+				# Among the back streets, with the street parking on Station Street.
+				_focus.position = Vector3(-160, 0, -120)
+				nt._timer = 0.0
+				_mark.sweep_fast = 0
+				_mark.sweep_seen = 0
+				_mark.sweep_moved = 0
+				_mark.truck = {}
+				_mark.truck_stopped = 0
+			if _frame == 90 and not nt.bins.is_empty():
+				# Send the bin truck up a street with bins out.
+				# (The street with the most bins on it.)
+				var count := {}
+				for bin in nt.bins:
+					count[bin.lane] = count.get(bin.lane, 0) + 1
+				var lanes: Array = count.keys()
+				lanes.sort_custom(func(a, b): return count[a] > count[b])
+				for bin in nt.bins:
+					if bin.lane == lanes[0] and _mark.truck.is_empty():
+						_mark.truck = nt.add_bin_truck(bin.lane, maxf(bin.s - 45.0, 5.0))
+			if _frame > 90:
+				for v in nt.sweepers:
+					if v.active:
+						_mark.sweep_seen += 1
+						if v.speed > TrafficNight.SWEEPER_SPEED + 0.2:
+							_mark.sweep_fast += 1
+						if v.speed > 1.0:
+							_mark.sweep_moved += 1
+				var t: Dictionary = _mark.truck
+				if not t.is_empty() and t.v.active and t.v.speed < 0.3 and t.v.reason == TrafficVehicle.Reason.STOP_LINE:
+					_mark.truck_stopped += 1
+			if _seconds() >= 75.0:
+				var h: Array = _mark.night_hours
+				_check(h == [true, false, true, false, true, false, true, false, true, false],
+						"the night shift keeps its hours: sweeping at 2am, bins out Monday night, the truck Tuesday morning, food vans Thursday to Saturday nights (%s)" % [h])
+				var v: TrafficVehicle = nt.sweepers[0] if not nt.sweepers.is_empty() else null
+				_check(nt.stats.sweepers >= 1 and v != null and v.body.has_node("Beacon") and v.body.has_node("Brooms"), "a street sweeper comes out, beacons and brooms going (%d)" % nt.stats.sweepers)
+				_check(_mark.sweep_seen > 0 and _mark.sweep_fast == 0 and _mark.sweep_moved > 0, "it creeps along at sweeping pace (%d of %d frames too fast)" % [_mark.sweep_fast, _mark.sweep_seen])
+				var off_road := 0
+				for bin in nt.bins:
+					var c: Vector3 = bin.lane.point(bin.s)
+					if Vector2(bin.pos.x - c.x, bin.pos.z - c.z).length() > 1.4:
+						off_road += 1
+				_check(nt.bins.size() >= 12 and off_road == nt.bins.size(), "bins out along the residential kerbs, out of the traffic (%d, %d off the road)" % [nt.bins.size(), off_road])
+				_check(not _mark.truck.is_empty() and _mark.truck_stopped > 60 and nt.stats.bins_emptied >= 2,
+						"the bin truck stops at each bin and empties it (%d emptied)" % nt.stats.bins_emptied)
+				var vans: Array = nt.food_vans
+				var parked_under := 0
+				for van in vans:
+					for spot in _traffic.parking.shown.keys():
+						if spot.pos.distance_to(van.spot.pos) < 2.0:
+							parked_under += 1
+				_check(vans.size() >= 1 and vans[0].queue.size() >= 2 and parked_under == 0,
+						"food vans park up in the street bays with a queue at the hatch (%d vans, %d cars under them)" % [vans.size(), parked_under])
+				nt.always_on = false
+				nt.clear()
+				_check(nt.bins.is_empty() and nt.food_vans.is_empty(), "the night shift packs up")
 				_root3d.queue_free()
 				_next()
-		12:  # The main scene gets traffic on the Perth map's roads.
+		13:  # The main scene gets traffic on the Perth map's roads.
 			if _main == null:
 				_main = load("res://scenes/main.tscn").instantiate()
 				root.add_child(_main)
@@ -595,7 +675,7 @@ func _run_step() -> bool:
 				_mark.roo = wild.spawn_group(TrafficWildlife.Kind.ROO, cp + Vector3(-9, 0, 0), 1, false)
 				_mark.roo_start = cp + Vector3(-9, 0, 0)
 				_next()
-		13:  # Wildlife reacts to the player.
+		14:  # Wildlife reacts to the player.
 			if _seconds() >= 3.0:
 				var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 				var wild: TrafficWildlife = traffic.wildlife
@@ -615,7 +695,7 @@ func _run_step() -> bool:
 				_check(hopped > 10.0, "the kangaroo bounds away (%.0f m)" % hopped)
 				wild.enabled = true
 				_next()
-		14:  # Boats on the Swan, and the ferry to Mends St.
+		15:  # Boats on the Swan, and the ferry to Mends St.
 			var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 			var boats: TrafficBoats = traffic.boats
 			if not boats.ready_for_boats() and _seconds() < 30.0:
@@ -643,7 +723,7 @@ func _run_step() -> bool:
 			_mark.boat_start = Vector3(1000, 0, 1750)
 			_mark.boat_dry_frames = 0
 			_next()
-		15:  # Boats sail about and keep off the land.
+		16:  # Boats sail about and keep off the land.
 			var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 			var boats: TrafficBoats = traffic.boats
 			for b in _mark.boats:

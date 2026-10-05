@@ -129,7 +129,18 @@ the old test grid get a network matching the grid's streets instead.
   hear the crowd during the game; at the final siren it all goes the other
   way. Fans are ordinary pedestrians with a route
   (`manager.spawn_walker(route, s, dir, leave_at_end)`, with
-  `graph.ped_path(from, to)` for the route). Only on the Perth map.
+  `graph.ped_path(from, to)` for the route). Only on the Perth map. Map
+  footways are split where they meet each other and their loose ends are
+  tied to the nearest footpath, so OSM paths that join mid-way still route.
+- **The night shift** (`night`, TrafficNight). From 11pm to 5am a street
+  sweeper creeps along the city kerbs at about 12 km/h, brooms turning and
+  amber beacons flashing. On bin day (Tuesday) wheelie bins (red lids for
+  rubbish, yellow for recycling) line the residential kerbs from Monday
+  evening, and from 5:30 to 10 the bin truck works along them, stopping at
+  each one to lift it over with its side arm. Thursday to Saturday nights,
+  7pm to 2am, food vans park up in Northbridge's street bays, hatches lit,
+  with a few people queuing. Working vehicles use `TrafficVehicle.max_speed`,
+  `keep_lane` and `service_stops` ({ lane, s, dwell } stops, marked `done`).
 - **Driving** uses the intelligent driver model: each car keeps a safe gap to
   whatever is ahead (the car in front, a stop line, a person, the player).
   Cars slow for bends, change lanes to pass slow traffic, and drive a little
@@ -257,11 +268,15 @@ String, position: Vector3)` and `taxi_departed(station: String, position:
 Vector3)`. `schools` signals `zone_changed(active: bool)` and
 `guard_out(position: Vector3)`. `events` signals `event_changed(event_name:
 String, phase: int)` (TrafficEvents.Phase: NONE, ARRIVING, ON, LEAVING).
+`night` signals `bin_emptied(position: Vector3)` and
+`food_van_opened(position: Vector3, food: String)`. `vehicle_spawned` types
+also include `sweeper` and `bin_truck`.
 
 Sounds the traffic plays when the audio thread adds them (all optional):
 `traffic/traffic_guard_whistle` (a crossing guard steps out),
 `traffic/traffic_crowd_roar_loop` and `traffic/traffic_crowd_cheer` (the
-stadium during a game).
+stadium during a game), `traffic/traffic_bin_tip` (the bin truck empties a
+bin).
 
 Each vehicle body has a child `Audio` (Node3D at the engine) with a `Horn`
 AudioStreamPlayer3D on the Vehicles bus playing a placeholder two-tone horn.

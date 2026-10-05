@@ -53,6 +53,11 @@ func _init() -> void:
 		["school_guard", 8.3, 0, 16.0, Vector3(1152, 20, -585), 1.6, 6.5],
 		["school_run", 15.2, 0, 16.0, Vector3(1152, 20, -585), 1.8, 7.0],
 		["school_sign", 8.4, 0, 16.0, Vector3(1152, 20, -585), 1.7, 3.6],
+		["night_sweeper", 2.0, 0, 40.0, Vector3(520, 40, 900), 1.3, 7.5, 3],
+		["bin_day_truck", 7.2, 0, 40.0, Vector3(1152, 20, -585), 1.5, 9.0, 2],
+		["northbridge_food_vans", 21.5, 0, 30.0, Vector3(380, 20, 60), 1.6, 8.0, 5],
+		["stadium_fans_arriving", 18.7, 0, 40.0, Vector3(3170, 6, 560), 2.2, 18.0, 6],
+		["stadium_crowd_leaving", 22.35, 0, 40.0, Vector3(3170, 6, 560), 2.2, 18.0, 6],
 	]
 	if args.size() > 1:
 		# Optional second argument: render only the shots whose names contain it.
@@ -106,12 +111,29 @@ func _process(_delta: float) -> bool:
 			view = _kerbside_view(shot[0], shot[4], shot[5], shot[6])
 		elif shot[0].begins_with("school"):
 			view = _school_view(shot[0], shot[4], shot[5], shot[6])
+		elif shot[0] == "night_sweeper" or shot[0] == "bin_day_truck" or shot[0] == "northbridge_food_vans":
+			view = _night_view(shot[0], shot[4], shot[5], shot[6])
+		elif shot[0].begins_with("stadium"):
+			view = _stadium_view(shot[4], shot[5], shot[6])
 		elif shot[5] <= 12.0:
 			view = _junction_view(shot[4], shot[5], shot[6])
 		else:
 			view = _traffic_view(shot[4], shot[5], shot[6])
 		_cam.look_at_from_position(view[0], view[1])
 	var ready := _frames >= int(shot[3] * 60.0)
+	if _frames >= int(shot[3] * 60.0) - 20:
+		# Nobody standing right in front of the lens.
+		for p in _traffic.pedestrians:
+			if p.active and p.position.distance_to(_cam.global_position) < 3.5:
+				p.node.visible = false
+	if shot[0] == "bin_day_truck" and _frames >= int(shot[3] * 60.0) - 20:
+		# Hold on until the arm's got a bin up (or give up after a while).
+		var lifting: bool = _traffic.night.bins.any(func(b): return b.get("lifting", false))
+		var t: Array = _traffic.night.trucks
+		var k: float = t[0].v.dwell / TrafficNight.BIN_DWELL if not t.is_empty() else 0.0
+		ready = (lifting and k > 0.5 and k < 0.6) or _frames > int(shot[3] * 60.0) * 4
+		var view := _night_view(shot[0], shot[4], shot[5], shot[6])
+		_cam.look_at_from_position(view[0], view[1])
 	if ready and shot[0] == "perth_station" and _train != null:
 		ready = _train.dwell > 0.5 or _frames > 60 * 90
 	if ready:
@@ -145,6 +167,9 @@ func _next_shot() -> void:
 	var weather := root.get_node("Weather")
 	weather.set_state(shot[2], true)
 	weather.set_locked(true)
+	# Game day: an Eagles v Dockers night match at 7:10.
+	_traffic.events.force_event = shot[0].begins_with("stadium")
+	_traffic.events.force_start = 19.17
 	var target: Vector3 = shot[4]
 	var cam_pos := target + Vector3(30, 30, 30)
 	_car.freeze = true
@@ -156,6 +181,62 @@ func _next_shot() -> void:
 	for layer in root.get_children():
 		if layer is CanvasLayer:
 			layer.visible = false
+
+
+## The night shift: ahead of the sweeper or the bin truck on the verge,
+## looking back at it; across the street from a food van's hatch.
+func _night_view(shot_name: String, near: Vector3, height: float, back: float) -> Array:
+	var nt: TrafficNight = _traffic.night
+	if _frames % 600 == 0:
+		print("night: ", nt.stats, " sweepers ", nt.sweepers.size(), " trucks ", nt.trucks.size(), " bins ", nt.bins.size(), " vans ", nt.food_vans.size())
+	var v: TrafficVehicle = null
+	if shot_name == "night_sweeper" and not nt.sweepers.is_empty():
+		v = nt.sweepers[0]
+	elif shot_name == "bin_day_truck" and not nt.trucks.is_empty():
+		v = nt.trucks[0].v
+	if v != null and shot_name == "bin_day_truck":
+		# From the verge ahead, past the bins still to go, to the one going up.
+		var kerb := TrafficGraph.left_of(v.forward)
+		var arm: Vector3 = v.position + v.forward * (v.length * 0.5 - TrafficNight.ARM_BACK) + kerb * 1.6
+		# Along the kerb ahead (the houses are close to the street).
+		var look := arm - kerb * 0.8 + Vector3(0, 2.2, 0)
+		return [arm + v.forward * back * 0.65 + kerb * 1.1 + Vector3(0, height, 0), look]
+	if v != null:
+		var kerb := TrafficGraph.left_of(v.forward)
+		var cam := v.position + v.forward * back + kerb * 3.2 + Vector3(0, height, 0)
+		return [cam, v.position + kerb * 0.6 + Vector3(0, 1.4, 0)]
+	if shot_name == "northbridge_food_vans" and not nt.food_vans.is_empty():
+		var van: Dictionary = nt.food_vans[0]
+		var t: Transform3D = van.node.global_transform
+		var hatch := -t.basis.x
+		var along := -t.basis.z
+		return [t.origin + hatch * back + along * 4.0 + Vector3(0, height, 0), t.origin + hatch * 1.5 + Vector3(0, 1.8, 0)]
+	return [near + Vector3(-back, height + 6.0, back), near]
+
+
+## Behind the thickest knot of fans near `near`, looking on towards the
+## stadium.
+func _stadium_view(near: Vector3, height: float, back: float) -> Array:
+	var ev: TrafficEvents = _traffic.events
+	var fans: Array = ev.fans.filter(func(f): return f.active and f.position.distance_to(near) < 160.0)
+	print("fans near: ", fans.size(), " of ", ev.fans.size(), " (", ev.stats, ") phase ", ev.phase, " gates ", ev._gates.size(), " origins ", ev._origins.size(), " focus ", _traffic.focus_position(), " routes ", ev._routes.values().map(func(r): return r.size()))
+	if fans.is_empty():
+		return [near + Vector3(-back, height + 4.0, 0), ev.stadium + Vector3(0, 20, 0)]
+	var best: TrafficPedestrian = fans[0]
+	var best_n := 0
+	for f in fans:
+		var n := fans.filter(func(o): return o.position.distance_to(f.position) < 12.0).size()
+		if n > best_n:
+			best_n = n
+			best = f
+	# On their own path: behind them on the way in (the stadium ahead),
+	# in front of them on the way out (the stadium behind them).
+	var edge: TrafficGraph.PedEdge = best.edge
+	var arriving := ev.phase == TrafficEvents.Phase.ARRIVING
+	var off: float = -best.dir * back if arriving else best.dir * back
+	var cs: float = clampf(best.s + off, 0.0, edge.length)
+	var cam: Vector3 = TrafficGraph.point_at(edge.pts, edge.cum, cs)
+	return [cam + Vector3(0, height, 0), best.position + Vector3(0, 1.4, 0)]
 
 
 ## Stand back along the busiest road into the junction nearest `near`.
