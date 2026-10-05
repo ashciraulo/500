@@ -282,6 +282,24 @@ a time.
 | `watering_can.glb` | `WateringCan`; `Spout` is where the water comes out. |
 | `kangaroo_paw.glb`, `geraldton_wax.glb`, `frangipani.glb` | `Stage_1` (a cutting: in a jar of water, or a frangipani stick in a pot), `Stage_2` (young) and `Stage_3` (grown and in flower). The cuttings come from Kings Park, a Fremantle nursery and a neglected verge. |
 
+### Decor
+
+`scripts/build_decor.py` writes `props/home/decor/`, the things the player
+buys to decorate the townhouse. Each file holds one mesh with its origin at
+the base, facing +Z. Posters are the exception: their origin is at the
+middle of the poster, with the back on the wall.
+
+| Kind | Files |
+| --- | --- |
+| Rugs | `rug_jute` (braided oval), `rug_persian` (with fringes), `rug_retro` (70s bands). |
+| Floor lamps | `lamp_arc`, `lamp_paper`, `lamp_tripod`. A `Light` empty marks the bulb, and the shades use `Lampshade_Glow`. |
+| Posters | `poster_band`, `poster_surf`, `poster_map` (framed), `poster_film`. The gigs, films and maps are all made up. |
+| Plants | `plant_monstera`, `plant_fiddle`, `plant_cactus`. |
+| Armchairs | `chair_rattan`, `chair_velvet`, `chair_eames_style` (a generic moulded-ply lounge chair). |
+
+The spots they go on are the `Decor_*` empties in `shenton_interior.glb` (see
+below).
+
 ## Found parts
 
 `scripts/build_accessories.py` writes bolt-on extras to `cars/parts/`, origin
@@ -340,6 +358,7 @@ x 0..5.4, z 0..-12.
 | `Oddity_Plant`, `Oddity_LooseBrick`, `Oddity_Footprints`, `Oddity_Drawing` | Small wrong things: a plant on the breakfast bar leaning toward the sliding door (turn it 180 degrees to face the front door), a loose brick in the bricked-up fireplace, small muddy footprints in from the courtyard, a child's drawing on the fridge. Origins on the props. |
 | `Spawn_Player`, `Spawn_Front`, `Spawn_Courtyard`, `Spawn_Car` | Spawn points (`HomeBase.spawn_transform()`). The car parks with room to stand at the shed door behind it, and the carport posts stand back under the roof so it can swing left or right into the narrow rear lane straight away. |
 | `Bed` | Walk here to sleep (`HomeBase.sleep()` skips to 7:00 next day). |
+| `Decor_Rug_Lounge`, `Decor_Rug_Bedroom`, `Decor_Lamp_Lounge`, `Decor_Lamp_Bedroom`, `Decor_Poster_1`..`4`, `Decor_Plant_1`..`3`, `Decor_Chair` (in `shenton_interior.glb`) | Spots for the decor (`props/home/decor/`), facing into the room. When a spot is filled, hide the stock piece it replaces: `Rug_Lounge`, `Rug_Bed1`, `FloorLamp`, `Plant_Snake` (Plant_1) and `Plant_Fiddle2` (Plant_3). Posters 1 to 4 are over the couch, on the bedroom back wall, on the landing and in the rear living. |
 | `Light_*` | Warm lamp positions; `HomeBase` adds lights that come on at dusk. `Light_WC_Up` flickers. |
 
 The listing photos of the house are reference only: never textures, never

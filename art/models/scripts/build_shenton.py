@@ -494,6 +494,21 @@ def interior(M):
     out.append(it("Plant_Fiddle2", F.plant("fiddle", 11), (2.25, 0.4, z1)))
     out.append(it("Curtains_Bed1", F.curtains(2.0, 2.4), (3.6, 0.08, z1)))
     out.append(it("Rug_Bed1", F.rug(2.0, 1.6, "rug_cream", "rug_red"), (3.2, 2.05, z1)))
+    # Decorate spots for things bought from props/home/decor/ (origin at the
+    # base, or the middle of a poster on the wall); when a spot is filled the
+    # game hides the stock piece it replaces, named in the comment
+    marker("Decor_Rug_Lounge", (3.4, 2.95, z0), 90)            # Rug_Lounge
+    marker("Decor_Rug_Bedroom", (3.2, 2.05, z1), 0)            # Rug_Bed1
+    marker("Decor_Lamp_Lounge", (4.75, 0.5, z0), 180)          # FloorLamp
+    marker("Decor_Lamp_Bedroom", (W - 0.3, 3.6, z1), -90)
+    marker("Decor_Poster_1", (W - 0.01, 1.6, z0 + 1.6), -90)   # over the couch
+    marker("Decor_Poster_2", (4.3, 3.82, z1 + 1.55), 0)        # bedroom back wall
+    marker("Decor_Poster_3", (0.02, 6.5, z1 + 1.55), 90)       # landing
+    marker("Decor_Poster_4", (W - 0.01, 11.05, z0 + 1.55), -90)  # rear living
+    marker("Decor_Plant_1", (1.95, 0.3, z0), 180)              # Plant_Snake
+    marker("Decor_Plant_2", (0.35, 11.7, z0), 90)
+    marker("Decor_Plant_3", (2.25, 0.4, z1), 180)              # Plant_Fiddle2
+    marker("Decor_Chair", (1.75, 1.4, z0), -153)
     # balcony plants
     out.append(it("Balcony_Pot1", F.plant("succulent", 12, 2.0), (2.3, -1.3, z1)))
     out.append(it("Balcony_Pot2", F.plant("palm", 13, 0.8), (5.0, -1.3, z1)))
