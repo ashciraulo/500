@@ -36,6 +36,7 @@ var _pois_loaded := false    # its points of interest handed to the place ambien
 var _home: Node
 var _zone_timer := 0.0
 var _look_timer := 0.0
+var _last_hour := -1          # GameClock hour last frame, for the dawn and dusk cues
 
 
 func _ready() -> void:
@@ -97,6 +98,41 @@ func _process(delta: float) -> void:
 	_update_job_music()
 	_update_car()
 	_update_zone(delta)
+	_update_light_cues()
+
+
+# ---------------------------------------------------------------------------
+# Dawn and dusk
+# ---------------------------------------------------------------------------
+
+## Hours the light turns (Perth: first light about 6, dusk about 19).
+const DAWN_HOUR := 6
+const DUSK_HOUR := 19
+
+
+## A short music cue as the clock passes dawn or dusk, the way Dredge marks
+## the turn of the day. Only in the quiet: radio off, no job music, and only
+## when the clock ran there (not when sleeping skips past it).
+func _update_light_cues() -> void:
+	var clock := get_node_or_null("/root/GameClock")
+	if clock == null:
+		return
+	var hour := int(floor(float(clock.time_of_day)))
+	if hour != _last_hour and _last_hour >= 0 and (_last_hour + 1) % 24 == hour:
+		var cue := light_cue(hour)
+		if cue != "" and _music == "" and not Audio.radio.is_on() and _loud():
+			Audio.play_2d("music/" + cue, "Music", -4.0)
+	_last_hour = hour
+
+
+## The cue for the hour just begun ("" for none).
+static func light_cue(hour: int) -> String:
+	match hour:
+		DAWN_HOUR:
+			return "mus_field_dawn"
+		DUSK_HOUR:
+			return "mus_field_dusk"
+	return ""
 
 
 # ---------------------------------------------------------------------------

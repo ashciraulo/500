@@ -62,7 +62,8 @@ LEAN_ENC = dict(quality=2, rate=24000)
 def _register():
     import importlib
     # Radio Cinquecento's and Notte FM's wider rotations live in their own modules.
-    for mod in ("music_tracks_more", "music_tracks_cinq", "music_tracks_notte", "music_tracks_idents"):
+    for mod in ("music_tracks_more", "music_tracks_cinq", "music_tracks_notte", "music_tracks_idents",
+                "music_tracks_field"):
         try:
             tracks = importlib.import_module(mod).TRACKS
             TRACKS.update(tracks)

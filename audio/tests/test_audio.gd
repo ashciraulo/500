@@ -675,6 +675,10 @@ func _test_field(audio: Node) -> void:
 			"m_page_found_yours", "m_page_open", "m_page_room"]:
 		check(audio.has("field/" + n), "mystery " + n)
 	check(not audio.has("field/bird_wrong_swan"), "the wrong swan makes no sound")
+	for n in ["mus_field_journal", "mus_field_dawn", "mus_field_dusk", "mus_field_new_species"]:
+		check(audio.has("music/" + n), "field music " + n)
+	check(audio.hooks.light_cue(6) == "mus_field_dawn" and audio.hooks.light_cue(19) == "mus_field_dusk"
+			and audio.hooks.light_cue(12) == "", "dawn and dusk cues")
 	check(audio.stream("field/m_page_room", true) != null, "M.'s page room tone loops")
 	for type in ["groyne", "tackle_shop", "photo_lab", "wrong_cockatoos"]:
 		check(audio.ambience.PLACE_TYPES.has(type) and audio.ambience.place_sound(type) != "", "place ambience " + type)

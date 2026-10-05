@@ -48,6 +48,10 @@ All files are 48 kHz stereo OGG Vorbis (q6) at -16 LUFS integrated, with true pe
 | mus_sting_tier_unlock | no | Tier unlocked | 7.5 s | 120, D major | Harp arpeggios, celesta, vibraphone, strings swell |
 | mus_sting_race_win | no | Beat the train | 5.5 s | 132, G major | Climbing vibraphone run and muted trumpet over a brushed train shuffle, two-note whistle call (high-low, like the crossing horn), crash on the last chord. `Audio.sting("race_win")` |
 | mus_sting_new_car | no | New car | 8 s | 120, D major | Main-theme motif on vibraphone and whistle, bossa band |
+| mus_field_journal | yes | Under the field journal screen (J) | 56 s | 68, G major | Nylon guitar arpeggios, vibraphone on the idents' motif (D B G D) slowed right down, warm pad, fretless bass; no drums |
+| mus_field_dawn | no | First light (6:00), radio off, played by Audio.hooks | 16 s | 64, G major | Pad swell, the motif climbing on celesta, a flute answer, one strummed chord |
+| mus_field_dusk | no | Dusk (19:00), radio off, played by Audio.hooks | 17 s | 60, E minor | The motif falling on vibraphone over a slow guitar arpeggio, the last chord left open |
+| mus_field_new_species | no | A new species in the journal | 6 s | 84, G major | Harp chord and the motif on celesta |
 | mus_storm_01 | no | Storm version of Cinquecento 01 | 3:35 | 90, D major (down a fourth) | Nylon guitar lead, clarinet, church organ, detuned warm pad, brushes; darker, duller tape |
 | mus_storm_02 | no, fades | Storm version of Notte FM 02 | 2:39 | 52, C# minor | Bowed pads, synth strings, contrabass drone, distant timpani rolls, vibraphone |
 | mus_midnight_theme | yes, seamless | Midnight: the main theme slowed, warped and partly reversed | 1:02.5 | 76.8 (96 slowed to 80 %), about Bb major | Main theme intro + A section, slowed 80 %, reversed bars, reverse-reverb swells, heavy wow |
