@@ -177,6 +177,12 @@ career tier finished, then silver per classic restored), `Corkboard_Pin_1..12`
 (a card per classic found) and `Photo_Frame_1..6` (latest album photos). Each
 prop is a child named `Decor`.
 
+The carport parts shelf (`PartsShelf`, `scripts/world/parts_shelf.gd`) shows
+`Garage.spare_parts(car)` (owned or found, not fitted) at the player's shed
+wall under a `CarportShelf` node on the home: small parts on a steel unit,
+spare wheels leaning on the wall, racks and bumpers flat-packed. No model
+empty needed; if the shed moves in `build_shenton.py`, move `WALL_X`/`WALL_Y`.
+
 ## Saving (autoload `SaveGame`)
 
 Register anything that should persist, with a section name and two methods:
@@ -275,7 +281,9 @@ records).
   respraying advance the clock (`FIT_HOURS`, `RESPRAY_HOURS`).
 - `car.set_tuning({key: value})` applies `CarTuning.OPTIONS` (tyre pressure,
   ride height, springs, dampers, anti-roll, final drive); options need the
-  right part fitted and are ignored otherwise. `car.set_paint(color)` calls
+  right part fitted and are ignored otherwise. `car.save_setup(i)`,
+  `car.load_setup(i)` and `car.has_setup(i)` keep named setups
+  (`CarController.SETUP_NAMES`) saved with the car. `car.set_paint(color)` calls
   `set_paint` on the car's `Body` node, so any car model with that method
   can be resprayed.
 

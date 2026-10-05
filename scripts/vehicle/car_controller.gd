@@ -242,6 +242,10 @@ var dirt_multiplier := 1.0
 const DIRT_PER_KM := {&"asphalt": 0.004, &"concrete": 0.004, &"gravel": 0.05, &"grass": 0.03, &"dirt": 0.06, &"sand": 0.05}
 ## Garage tuning values by CarTuning option key.
 var tuning := {}
+## Saved tuning setups, one per SETUP_NAMES slot (empty dict = nothing saved).
+var setups: Array = [{}, {}, {}]
+## Names of the saved setup slots in the workshop's Tuning tab.
+const SETUP_NAMES := ["Everyday", "Coast road", "Wet day"]
 ## Respray colour; alpha 0 means the original paint.
 var paint_color := Color(0, 0, 0, 0)
 ## Earned extras fitted to this car: "livery" (a cosmetic id or "") and
@@ -850,6 +854,25 @@ func set_tuning(values: Dictionary) -> void:
 	_rebuild_stats()
 
 
+## Keep the current tuning in setup slot `slot` (0..SETUP_NAMES.size()-1).
+func save_setup(slot: int) -> void:
+	if slot < 0 or slot >= SETUP_NAMES.size():
+		return
+	setups[slot] = tuning.duplicate()
+
+
+## Switch to the tuning saved in setup slot `slot`. Returns false when empty.
+func load_setup(slot: int) -> bool:
+	if slot < 0 or slot >= setups.size() or (setups[slot] as Dictionary).is_empty():
+		return false
+	set_tuning(setups[slot])
+	return true
+
+
+func has_setup(slot: int) -> bool:
+	return slot >= 0 and slot < setups.size() and not (setups[slot] as Dictionary).is_empty()
+
+
 ## Re-apply the body paint and stats after something outside the car changed
 ## them (a restoration stage, a restomod).
 func apply_paint_refresh() -> void:
@@ -903,6 +926,7 @@ func apply_car(id: String) -> void:
 	for wheel in _wheels:
 		wheel.driven = wheel.front != rear_wheel_drive
 	tuning = {}
+	setups = [{}, {}, {}]
 	paint_color = Color(0, 0, 0, 0)
 	cosmetics = {"livery": "", "trinkets": []}
 	custom_livery = {}
@@ -923,6 +947,7 @@ func vehicle_state() -> Dictionary:
 		"odometer_km": odometer_km,
 		"automatic": transmission == Transmission.AUTOMATIC,
 		"tuning": tuning,
+		"setups": setups.duplicate(true),
 		"fuel_litres": fuel_litres,
 		"dirt": dirt,
 		"paint": paint_color.to_html() if has_custom_paint() else "",
@@ -944,6 +969,11 @@ func load_vehicle_state(data: Dictionary) -> void:
 	install_part_ids(PackedStringArray(data.get("parts", [])))
 	odometer_km = float(data.get("odometer_km", 0.0))
 	set_tuning(data.get("tuning", {}))
+	setups = [{}, {}, {}]
+	var saved_setups: Array = data.get("setups", [])
+	for i in mini(saved_setups.size(), setups.size()):
+		if saved_setups[i] is Dictionary:
+			setups[i] = (saved_setups[i] as Dictionary).duplicate()
 	fuel_litres = clampf(float(data.get("fuel_litres", tank_litres)), 0.0, tank_litres)
 	dirt = clampf(float(data.get("dirt", dirt)), 0.0, 1.0)
 	paint_color = Color(0, 0, 0, 0)

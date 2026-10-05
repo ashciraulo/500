@@ -31,6 +31,9 @@ func _ready() -> void:
 	var decor := HomeDecor.new()
 	decor.name = "HomeDecor"
 	add_child(decor)
+	var shelf := PartsShelf.new()
+	shelf.name = "PartsShelf"
+	add_child(shelf)
 	for p: Dictionary in places.get("photo_spots", []):
 		var spot := PhotoSpot.new()
 		spot.spot_id = p.id
