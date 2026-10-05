@@ -42,6 +42,17 @@ their pivots: `BroomL`/`BroomR` (sweeper), `BinArm` with `Rail` and `Grip`
 van, shown open). The food van has empties `HatchLight`, `SignSide` (faces
 -X) and `SignFront` for its lamp and Label3D signs; no baked text.
 
+Stage 5 landmarks for the map: `python3.11 art/models/scripts/build_landmarks.py`
+(`lib/coast_landmarks.py`) writes `props/landmarks/mole_light_north.glb` (the
+red 1906 North Mole light), `mole_light_south.glb` (the green 1903 South Mole
+light), `herdsman_hide.glb` (a timber bird hide on stilts with a boardwalk
+out to it) and `trigg_surf_club.glb` (the surf club at Trigg). Origin on the
+ground at the anchor, front toward Godot +Z: the lights' doors, the hide's
+viewing slot and the club's beach side. Each has a `<Name>_Col` static body of
+plain boxes and empties: `Lamp` and `Door` (lights), `View` and `Entry` (hide;
+the boardwalk runs 14 m back toward -Z and ramps down to the bank), `Front`,
+`Apron` and `Tower` (surf club).
+
 ## Conventions
 
 - Metres, Y up in Godot. Cars face **-Z** (Godot forward); origin on the
