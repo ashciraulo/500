@@ -2,7 +2,8 @@ class_name FieldWorld
 extends Node3D
 ## The field journal's world side, added under World by the FieldJournal
 ## autoload once the player's car exists: bird sightings, the photo lab, and
-## the fishing spots and the rod, the tackle shop, and the screens
+## the fishing spots and the rod, the tackle shop, the binoculars' hook and
+## the feeder at home, and the screens
 ## (binoculars, the journal, the lab and tackle counters, the fishing view),
 ## which sit on the main scene at window resolution rather than inside the
 ## lo-fi viewport.
@@ -21,6 +22,7 @@ var fishing: FieldFishing
 var tackle: TackleShop
 var tackle_screen: TackleScreen
 var fishing_screen: FishingScreen
+var home: HomeField
 
 var _ui: Array[Node] = []
 
@@ -42,6 +44,9 @@ func _ready() -> void:
 	tackle.position = Vector3(TACKLE[0], 0.0, TACKLE[1])
 	tackle.rotation.y = TACKLE[2]
 	add_child(tackle)
+	home = HomeField.new()
+	home.name = "HomeField"
+	add_child(home)
 	var host: Node = get_tree().current_scene if get_tree().current_scene else get_tree().root
 	binoculars = Binoculars.new()
 	binoculars.name = "Binoculars"

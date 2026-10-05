@@ -443,7 +443,9 @@ after a map rebuild).
   `field/bite_nibble`, `field/splash_small` (a bite, a release), `field/strike`,
   `field/drag` (a run starts), `field/line_snap`, `field/landed_flop`,
   `field/esky_lid`, `field/reel_in`, `field/splash_big` (crab net in),
-  `field/bucket_drop` (crab net up). Saved under `field_journal`.
+  `field/bucket_drop` (crab net up); loops `field/reel_loop` (while you
+  wind on a fish, quicker with less weight) and `field/line_tension_loop`
+  (louder and higher as the line nears breaking). Saved under `field_journal`.
 - `FieldJournal.stat(name)` reads the career stats above live.
 - Place ambience (the audio side's `"poi"` group nodes with `poi_type` and
   `radius` meta): fishing spots near the player are `jetty` (decks) or
@@ -453,6 +455,16 @@ after a map rebuild).
   the bird they look like. `field/m_page_found` (or `_yours`) plays when the
   binoculars first find one; `field/m_page_open` and the `field/m_page_room`
   loop while one of M.'s pages is open in the journal.
+- Wrong fish (`"wrong": true` in fish.json, like the birds): a `spot`, an
+  `after` discovery and `hours`; they bite at that spot only until caught,
+  can't be kept, don't count (`FieldJournal.counts(f)`), and show M.'s `page`
+  in the Fish tab. `tag` gives the fish model a jaw tag in that colour.
+- Home (`FieldWorld.home`, `HomeField`): the starter binoculars hang on
+  `Binoculars_Hook` until taken (discovery `field/binoculars`; B is blocked
+  till then, old saves with journal entries count as taken); at 30 species
+  `bird_feeder.glb` goes on `Feeder_Spot` (discovery `field/feeder`) with
+  garden birds you've seen (`HomeField.FEEDER_BIRDS`) on its perches by day. The dash bird (10
+  species) is the car's: `FieldJournal.seen_count()` and `species_seen`.
 - Music: `music/mus_field_journal` plays while the journal is open (only if
   no other music is), and `music/mus_field_new_species` on a new bird; both
   are skipped until the audio side ships them.

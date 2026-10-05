@@ -419,6 +419,11 @@ func fish_candidates(sp: Dictionary, hour: float, method := "line") -> Array:
 			continue
 		if not is_about(f, hour, 0.0):
 			continue
+		# A wrong one turns up at its own spot once the mystery's that far
+		# along, until you've had it on the line.
+		if f.get("wrong", false) and (String(f.get("spot", "")) != String(sp.get("id", ""))
+				or not Discoveries.has(String(f.get("after", ""))) or catches.has(id)):
+			continue
 		# A few want a particular kind of spot.
 		match id:
 			"fiat_hubcap":
@@ -514,11 +519,11 @@ func land(caught: Dictionary, where: String, file := "") -> Dictionary:
 	if first:
 		catches[id] = {"caught": 0, "kept": 0, "released": 0, "biggest_cm": 0.0, "biggest_kg": 0.0, "first_day": GameClock.day,
 			"time": GameClock.time_string(), "where": where, "best_file": "", "weighed": 0}
-		if not f.get("junk", false):
+		if counts(f):
 			Progression.add_stat("fish_species")
 	var e: Dictionary = catches[id]
 	e.caught = int(e.caught) + 1
-	if not f.get("junk", false):
+	if counts(f):
 		Progression.add_stat("fish_caught")
 	if float(caught.cm) > float(e.biggest_cm):
 		e.biggest_cm = caught.cm
@@ -535,7 +540,7 @@ func land(caught: Dictionary, where: String, file := "") -> Dictionary:
 
 ## Into the esky (if it's legal and there's room). True if kept.
 func keep(caught: Dictionary) -> bool:
-	if not caught.get("legal", false) or caught.get("junk", false) or esky_room() <= 0:
+	if not caught.get("legal", false) or not counts(fish_species(String(caught.species))) or esky_room() <= 0:
 		return false
 	esky.append({"species": caught.species, "cm": caught.cm, "kg": caught.kg, "caught_at": now_minutes(), "where": caught.get("where", "")})
 	var e: Dictionary = catches.get(String(caught.species), {})
@@ -567,15 +572,20 @@ func is_caught(id: String) -> bool:
 func caught_count() -> int:
 	var n := 0
 	for id: String in catches:
-		if not fish_species(id).get("junk", false):
+		if counts(fish_species(id)):
 			n += 1
 	return n
+
+
+## A real catch for the counts and the board: not junk, not one of the wrong ones.
+static func counts(f: Dictionary) -> bool:
+	return not f.get("junk", false) and not f.get("wrong", false)
 
 
 func fish_total() -> int:
 	var n := 0
 	for id in fish_order:
-		if not fish[id].get("junk", false):
+		if counts(fish[id]):
 			n += 1
 	return n
 
@@ -654,7 +664,7 @@ func stat(stat_name: String) -> float:
 		"fish_caught":
 			var n := 0
 			for id: String in catches:
-				if not fish_species(id).get("junk", false):
+				if counts(fish_species(id)):
 					n += int(catches[id].get("caught", 0))
 			return float(n)
 	return 0.0

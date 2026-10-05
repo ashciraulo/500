@@ -39,6 +39,7 @@ var _yaw := 0.0
 var _pitch := 0.0
 var _dwell := 0.0
 var _dwell_node: Node3D
+var _dwell_species := ""
 var _overlay: BinocularsOverlay
 var _post_saved := {}
 var _message := ""
@@ -70,6 +71,8 @@ func blocked_reason() -> String:
 	var tree := get_tree()
 	if tree.paused:
 		return "paused"
+	if not HomeField.has_binoculars():
+		return "Your binoculars are still on the hook by the back door at home."
 	var photo := tree.root.find_child("PhotoMode", true, false)
 	if photo and photo.has_method("is_open") and photo.is_open():
 		return "photo mode"
@@ -326,7 +329,8 @@ func _update_target(delta: float) -> void:
 		var angle := forward.angle_to(to)
 		if angle > best_angle:
 			continue
-		if not _clear_line(from, at):
+		# Its head over a rise in the lawn is enough to see it by.
+		if not _clear_line(from, at + Vector3.UP * size * 0.5):
 			continue
 		best_angle = angle
 		best = {"node": c.node, "species": c.species, "dist": dist, "angle": angle,
@@ -338,8 +342,12 @@ func _update_target(delta: float) -> void:
 		_dwell = maxf(_dwell - delta * 2.0, 0.0)
 		return
 	if target.node != _dwell_node:
+		# Another of the same flock drifting into the middle keeps the count:
+		# you're still looking at galahs.
+		if _dwell_node == null or not is_instance_valid(_dwell_node) or _dwell_species != target.species:
+			_dwell = 0.0
 		_dwell_node = target.node
-		_dwell = 0.0
+		_dwell_species = target.species
 	var need: float = float(gear.identify) * (1.0 + target.dist / float(gear.range))
 	_dwell += delta
 	if _dwell >= need and identified != target.species:

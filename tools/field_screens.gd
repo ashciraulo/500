@@ -139,6 +139,7 @@ func _process(_delta: float) -> bool:
 				_car.freeze = false
 				_car.set_physics_process(true)
 			elif _frames == 260:
+				root.get_node("Discoveries").discover("field/binoculars")
 				_field.binoculars.open()
 			elif _frames == 262:
 				_step_to_the_edge(_sighting.birds[0].node)
@@ -232,7 +233,7 @@ func _build_fish_plate() -> void:
 	sun.light_energy = 1.1
 	_plate_root.add_child(sun)
 	var cam := Camera3D.new()
-	cam.position = Vector3(0, 0.0, 6.4)
+	cam.position = Vector3(0, 0.0, 7.0)
 	cam.fov = 50.0
 	_plate_root.add_child(cam)
 	cam.current = true
@@ -241,15 +242,14 @@ func _build_fish_plate() -> void:
 		var f: Dictionary = _fj.fish_species(ids[i])
 		var fish := FishModels.build(f)
 		fish.scale = Vector3.ONE * 1.4
-		var col := i % 5
-		var row := i / 5
-		fish.position = Vector3(-3.6 + col * 1.8, 1.5 - row * 1.75, 0)
+		var col := i % 6
+		var row := i / 6
+		fish.position = Vector3(-4.1 + col * 1.64, 1.5 - row * 1.75, 0)
 		match String(f.get("model", "")):
 			"crab":
 				fish.rotation = Vector3(1.0, 0, 0)
 			"hubcap":
 				fish.rotation = Vector3(1.3, 0, 0)
-				fish.scale = Vector3.ONE * 1.6
 			_:
 				fish.rotation.y = PI * 0.5
 		_plate_root.add_child(fish)

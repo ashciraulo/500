@@ -65,7 +65,17 @@ static func _make(f: Dictionary) -> ArrayMesh:
 			_hubcap(part, back, belly, fin, mark)
 		var model:
 			_fish(part, PLANS.get(model, PLANS["torpedo"]), back, belly, fin, mark)
+			if f.has("tag"):
+				_tag(part, PLANS.get(model, PLANS["torpedo"]).body, String(f.tag))
 	return part.mesh()
+
+
+## A plastic fisheries tag through the lower jaw, hanging on a wire loop.
+static func _tag(part: BirdModels.Part, r: Vector3, colour: String) -> void:
+	var jaw := Vector3(0, -r.y * 0.3, -r.z * 0.9)
+	part.add("#9a9a92", BirdModels._egg(Vector3(0.007, 0.022, 0.007), 0.0), Transform3D(Basis(), jaw + Vector3(0, -0.018, 0)))
+	part.add(colour, BirdModels._egg(Vector3(0.008, 0.06, 0.022), 0.0),
+		Transform3D(Basis(Vector3.RIGHT, 0.35), jaw + Vector3(0, -0.075, 0.02)))
 
 
 static func _fish(part: BirdModels.Part, plan: Dictionary, back: String, belly: String, fin: String, mark: String) -> void:
