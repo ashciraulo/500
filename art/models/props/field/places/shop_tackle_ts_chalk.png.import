@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bqlfax685xv72"
-path="res://.godot/imported/shop_tackle_fascia_tackle.png-756f21f8240b2a6593393296723049c3.ctex"
+uid="uid://cmsu7dq6upcv5"
+path="res://.godot/imported/shop_tackle_ts_chalk.png-624d8efb68ee00865f4110c10d1bf3e3.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "c889bd9c49613253e2aba546e34b5029"
+"md5": "c8321961a53f2b39ba7e985721d11545"
 }
 
 [deps]
 
-source_file="res://art/models/props/field/places/shop_tackle_fascia_tackle.png"
-dest_files=["res://.godot/imported/shop_tackle_fascia_tackle.png-756f21f8240b2a6593393296723049c3.ctex"]
+source_file="res://art/models/props/field/places/shop_tackle_ts_chalk.png"
+dest_files=["res://.godot/imported/shop_tackle_ts_chalk.png-624d8efb68ee00865f4110c10d1bf3e3.ctex"]
 
 [params]
 

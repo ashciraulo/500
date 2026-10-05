@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://dh8fkvstmqnno"
+path="res://.godot/imported/shenton_interior_dove_sunburst.png-5ca3fc23ceb84794ad9138f87be94319.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "04ac3019b2e210bf2038abbac0d2a4e0"
+}
+
+[deps]
+
+source_file="res://art/models/home/shenton/shenton_interior_dove_sunburst.png"
+dest_files=["res://.godot/imported/shenton_interior_dove_sunburst.png-5ca3fc23ceb84794ad9138f87be94319.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1
