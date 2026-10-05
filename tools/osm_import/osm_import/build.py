@@ -1113,7 +1113,14 @@ def _write_index(cfg, proj, world: World, index: dict, path: Path, region_of: di
             landmarks[tags["name"]] = [round(e, 1), round(-n, 1)]
     index["landmarks"] = dict(sorted(landmarks.items()))
     # Lakes and ponds with their water level, in lakes.json (MapStreamer.water_level_at):
-    # rebuilt where this build has terrain, kept elsewhere.
+    # each lake belongs to the stage owning the tile under its outline's mean point,
+    # so stages with overlapping terrain don't write it twice.
+    own = {k.name for k in region_of}
+    size = cfg["tile_size"]
+
+    def owned(outline):
+        x, z = np.mean(np.asarray(outline, dtype=float), axis=0)
+        return f"{math.floor(x / size)}_{math.floor(-z / size)}" in own
     lakes = {}
     for wb in world.water:
         if wb.level == RIVER_LEVEL or wb.geom.area < 1500:
@@ -1123,12 +1130,13 @@ def _write_index(cfg, proj, world: World, index: dict, path: Path, region_of: di
             if not inside_hf(c.x, c.y) or poly.area < 1500:
                 continue
             ring = np.asarray(poly.exterior.simplify(4.0).coords)[:-1]
-            lakes[(wb.name, round(c.x), round(c.y))] = {
-                "name": wb.name, "level": round(wb.level, 2),
-                "outline": [[round(float(e), 1), round(float(-n), 1)] for e, n in ring]}
+            lake = {"name": wb.name, "level": round(wb.level, 2),
+                    "outline": [[round(float(e), 1), round(float(-n), 1)] for e, n in ring]}
+            if owned(lake["outline"]):
+                lakes[(wb.name, round(c.x), round(c.y))] = lake
     lakes_path = path.with_name("lakes.json")
     old = json.loads(lakes_path.read_text()) if lakes_path.exists() else []
-    kept = [l for l in old if not inside_hf(l["outline"][0][0], -l["outline"][0][1])]
+    kept = [l for l in old if not owned(l["outline"])]
     # One lake per line: the outlines would be most of index.json in its layout.
     rows = [json.dumps(l, separators=(",", ":")) for l in
             sorted(kept + list(lakes.values()), key=lambda l: (l["name"], l["outline"][0]))]

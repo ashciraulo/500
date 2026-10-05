@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 import numpy as np
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from . import styles
 from .parking import Parking
@@ -22,6 +22,8 @@ TRAFFIC_KINDS = {
 SIGNAL_REACH = 35.0  # metres along a way a signal tag may sit from its junction
 SIGNAL_SPREAD = 30.0  # junctions this close along a road share one set of lights
 LANE_WIDTH = 3.2  # traffic/scripts/traffic_graph.gd
+STADIUM_WALK = 600.0  # metres around Optus Stadium whose footpaths carry event crowds
+BRIDGE_APPROACH = 150.0  # footpaths this close to the Matagarup Bridge's ends join it
 CARRIAGEWAY_GAP = 0.6  # clear space kept between opposing one-way carriageways
 MAX_SHIFT = 3.0  # most two carriageways are pulled apart, in metres
 MERGE_ZONE = 15.0  # metres from a node both sides share where they may converge
@@ -171,6 +173,7 @@ class TrafficNetwork:
         self.stations = []
         self.bus_stops = []
         self.keep_clear = self._home_exits()
+        self.footways = self._event_footways()
         nj, ni = hf.H.shape
         self.schools = []
         schools = [(t, e, n) for _, t, e, n in world.poi_nodes if t.get("amenity") == "school"]
@@ -206,6 +209,26 @@ class TrafficNetwork:
                 nid = int(nid)
                 if nid in ends and self.pos[nid] not in out:
                     out.append(self.pos[nid])
+        return out
+
+    def _event_footways(self) -> list:
+        """Paths for event-day crowds (docs/TRAFFIC.md "footways"): every footpath
+        within STADIUM_WALK of Optus Stadium, the Matagarup Bridge, and the paths
+        meeting the bridge at either end."""
+        lms = {lm.id: lm for lm in getattr(self.w, "landmarks", [])}
+        if "optus_stadium" not in lms:
+            return []
+        stadium = Point(*lms["optus_stadium"].center)
+        foot = [w for w in self.w.ways if w.group == "foot" and len(w.xy) > 1]
+        bridge = [w for w in foot if w.tags.get("name") == "Matagarup Bridge"]
+        ends = [Point(*w.xy[k]) for w in bridge for k in (0, -1)]
+        out = []
+        for w in foot:
+            line = LineString(w.xy)
+            if w in bridge or line.distance(stadium) < STADIUM_WALK or \
+                    any(line.distance(p) < BRIDGE_APPROACH for p in ends):
+                out.append({"pts": np.column_stack([w.xy[:, 0], w.h + 0.05, -w.xy[:, 1]]).astype(np.float32),
+                            "name": w.tags.get("name", ""), "_mid": tuple(w.xy[len(w.xy) // 2])})
         return out
 
     def _spread_signals(self, ways):
@@ -349,7 +372,7 @@ class TrafficNetwork:
                     k += 1
                 xy, h = w.xy[a:k + 1], w.h[a:k + 1]
                 rail.append({"pts": np.column_stack([xy[:, 0], h, -xy[:, 1]]).astype(np.float32)})
-        return {
+        data = {
             "nodes": nodes,
             "roads": [{k: v for k, v in r.items() if k != "_mid"} for r in roads],
             "rail": rail,
@@ -364,6 +387,11 @@ class TrafficNetwork:
                            for p in self.keep_clear if inside(p[0], -p[2])],
             "bus_routes": self._bus_routes_in(inside),
         }
+        footways = [{k: v for k, v in f.items() if k != "_mid" and (k != "name" or v)}
+                    for f in self.footways if inside(*f["_mid"])]
+        if footways:  # only near the stadium, so most tiles go without the key
+            data["footways"] = footways
+        return data
 
     def _bus_routes_in(self, inside) -> list:
         """Each route's pieces that lie in this tile; tiles join them by ref.
