@@ -514,7 +514,7 @@ def interior(M):
         keys.append(p)
     out.append(it("KeyboardStand-col", keys, (0.48, 10.2, z1), 90))
     out.append(it("DrumKit-col", S.drum_kit(), (4.4, 11.15, z1)))
-    for kind, y in (("tele", 8.45), ("jazzmaster", 9.2), ("jbass", 9.95)):
+    for kind, y in (("tele", 8.45), ("jazzmaster", 9.2), ("jbass", 9.95), ("dove", 10.62)):
         out.append(it("Guitar_" + kind, S.guitar(kind), (W, y, z1 + 2.1 - S.guitar_height(kind)), -90))
     out.append(it("Amp_Guitar-col", S.guitar_combo(), (W - 0.15, 8.5, z1), -90))
     out.append(it("Amp_Bass-col", S.bass_rig(), (W - 0.22, 9.35, z1), -90))
@@ -589,10 +589,10 @@ def lived_in(z0, z1):
     out.append(it("Dress_PegBasket", L.peg_basket(), (2.36, 5.25, z0 + 0.85)))
     out.append(it("Dress_LooRoll_Down", L.toilet_roll_holder(), (W, 6.2, z0 + 0.7), -90))
     out.append(it("Dress_LooRoll_Up", L.toilet_roll_holder(), (W, 7.62, z1 + 0.7), -90))
-    # the back door: M.'s binoculars hung here
-    out.append(it("Dress_BackDoor_Hooks", L.back_door_hook(), (4.1, D, z0 + 1.6)))
+    # by the back door, on the strip of wall past the slider: M.'s binoculars hung here
+    out.append(it("Dress_BackDoor_Hooks", L.back_door_hook(), (5.12, D, z0 + 1.6)))
     # where the field journal hangs the binoculars until you take them down
-    marker("Binoculars_Hook", (3.95, D - 0.08, z0 + 1.63))
+    marker("Binoculars_Hook", (4.97, D - 0.08, z0 + 1.63))
     return out
 
 
@@ -786,7 +786,7 @@ def site(M):
     it("Court_Shrub", F.shrub(0.5, 24), (5.0, 15.2, 0))
     A.add(F.item("Court_Table", F.dining_table(0.9, 0.6), (2.0, 14.6, 0)), b)
     # clear ground by the side wall, in view of the rear living window, where
-    # the field journal puts the bird feeder once you've seen 40 species
+    # the field journal puts the bird feeder once you've seen 30 species
     marker("Feeder_Spot", (0.9, 15.6, 0.02))
     for x, r in ((1.55, 90), (2.45, -90)):
         it("Court_Chair", F.chair("teal"), (x, 14.6, 0), r)

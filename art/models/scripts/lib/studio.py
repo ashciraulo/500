@@ -41,89 +41,19 @@ def _scaled(points, k, about):
 
 # ------------------------------------------------------------------ guitars
 
-# body outlines, neck up, viewed from the front (bass side on -X); the neck
-# joins between x = +-0.03 at the top of each outline
-TELE = [(-0.11, 0.0), (0.11, 0.0), (0.155, 0.05), (0.16, 0.14), (0.135, 0.21), (0.14, 0.27), (0.12, 0.31),
-        (0.06, 0.32), (0.03, 0.33), (0.03, 0.40), (-0.03, 0.40), (-0.07, 0.41), (-0.12, 0.38), (-0.14, 0.31),
-        (-0.135, 0.21), (-0.16, 0.14), (-0.155, 0.05)]
-OFFSET = [(0.05, 0.0), (0.14, 0.03), (0.18, 0.10), (0.17, 0.18), (0.135, 0.25), (0.15, 0.33), (0.165, 0.40),
-          (0.14, 0.44), (0.08, 0.43), (0.03, 0.41), (0.03, 0.47), (-0.03, 0.47), (-0.06, 0.48), (-0.11, 0.50),
-          (-0.15, 0.46), (-0.15, 0.38), (-0.12, 0.29), (-0.16, 0.20), (-0.185, 0.11), (-0.16, 0.03), (-0.07, -0.01)]
-BASS = [(0.05, 0.0), (0.13, 0.03), (0.165, 0.10), (0.155, 0.18), (0.12, 0.25), (0.13, 0.33), (0.15, 0.42),
-        (0.125, 0.46), (0.07, 0.43), (0.03, 0.40), (0.03, 0.47), (-0.03, 0.47), (-0.06, 0.49), (-0.11, 0.53),
-        (-0.145, 0.49), (-0.14, 0.40), (-0.11, 0.30), (-0.15, 0.21), (-0.17, 0.11), (-0.15, 0.03), (-0.07, -0.01)]
-
-GUITARS = {
-    # Squier 40th Anniversary Telecaster, Gold Edition: gold anodised
-    # pickguard and gold hardware, maple neck
-    "tele": dict(outline=TELE, body=("#2f5f9e", 0.3, 0.2), guard="#c9a24a", board="#d9b47a", neck_len=0.47,
-                 pickups="tele", hardware="gold", tuners=6),
-    # Squier J Mascis Jazzmaster: vintage white, gold anodised pickguard
-    "jazzmaster": dict(outline=OFFSET, body=("#ece2c6", 0.35, 0.0), guard="#c9a24a", board="#4a2c1e",
-                       neck_len=0.48, pickups="soapbar", hardware="chrome", tuners=6),
-    # Squier Affinity Jazz Bass in black, white pickguard
-    "jbass": dict(outline=BASS, body=("#121212", 0.3, 0.0), guard="#efece4", board="#4a2c1e", neck_len=0.66,
-                  pickups="jbass", hardware="chrome", tuners=4),
-}
+# The guitars themselves are built to their real proportions in guitars.py.
+TELE_COLOUR = "black"
 
 
 def guitar(kind):
     """Wall-hung guitar: back on y=0, facing -Y, bottom of the body at z=0."""
-    g = GUITARS[kind]
-    col, rough, metal = g["body"]
-    t = 0.045
-    y0, y1 = -0.008 - t, -0.008                # 8 mm off the wall
-    hw = _mat("gold" if g["hardware"] == "gold" else "chrome",
-              "#d2ab52" if g["hardware"] == "gold" else "#d6d8da", rough=0.25, metal=0.9)
-    parts = [_slab(g["outline"], y0, y1, _mat(kind + "_body", col, rough, metal), "body")]
-    top = max(z for _, z in g["outline"])
-    # pickguard: the outline shrunk about a point in the upper body
-    about = (0.0, top * 0.62)
-    parts.append(_slab(_scaled(g["outline"], 0.72, about), y0 - 0.003, y0, _mat(kind + "_guard", g["guard"], 0.4,
-                                                                                  0.6 if g["guard"] == "#c9a24a" else 0.0)))
-    # neck, fretboard, headstock, tuners
-    nl = g["neck_len"]
-    zj = top - 0.07
-    parts.append(bx((-0.026, y0 + 0.005, zj), (0.026, y1 - 0.01, zj + nl), _mat("maple", "#d9b47a", 0.5)))
-    parts.append(bx((-0.027, y0 - 0.006, zj + 0.02), (0.027, y0 + 0.005, zj + nl), _mat(kind + "_board", g["board"], 0.6)))
-    for i in range(1, 9):
-        z = zj + nl - nl * (1 - 0.5 ** (i / 6.0)) * 1.6
-        if zj + 0.05 < z < zj + nl - 0.02:
-            parts.append(bx((-0.027, y0 - 0.008, z), (0.027, y0 - 0.006, z + 0.003), hw))
-    zh = zj + nl
-    hs = 0.2 if kind == "jbass" else 0.17
-    parts.append(_slab([(-0.03, zh), (0.03, zh), (0.045, zh + hs * 0.4), (0.04, zh + hs), (-0.035, zh + hs),
-                        (-0.05, zh + hs * 0.6)], y0 + 0.012, y1 - 0.012, _mat("maple", "#d9b47a", 0.5), "head"))
-    n = g["tuners"]
-    for i in range(n):
-        z = zh + 0.03 + i * (hs - 0.05) / max(1, n - 1)
-        parts.append(cyl(0.008, 0.03, (-0.045 - 0.012, y0 + 0.02, z), hw, 6, axis="X"))
-    # pickups and bridge
-    pz = {"tele": [(0.08, "bridge"), (0.25, "neck_cover")], "soapbar": [(0.12, "soap"), (0.27, "soap")],
-          "jbass": [(0.11, "jb"), (0.24, "jb")]}[g["pickups"]]
-    for z, kindp in pz:
-        if kindp == "bridge":
-            parts.append(bx((-0.05, y0 - 0.008, z - 0.04), (0.05, y0 - 0.003, z + 0.05), hw))
-            parts.append(bx((-0.035, y0 - 0.014, z + 0.01), (0.035, y0 - 0.008, z + 0.035), _mat("pickup_black", "#151515")))
-        elif kindp == "neck_cover":
-            parts.append(bx((-0.035, y0 - 0.012, z - 0.015), (0.035, y0 - 0.003, z + 0.015), hw))
-        elif kindp == "soap":
-            parts.append(bx((-0.045, y0 - 0.012, z - 0.02), (0.045, y0 - 0.003, z + 0.02), _mat("pickup_cream", "#efe6cc", 0.5)))
-        else:
-            parts.append(bx((-0.05, y0 - 0.012, z - 0.012), (0.05, y0 - 0.003, z + 0.012), _mat("pickup_black", "#151515")))
-    parts.append(bx((-0.045, y0 - 0.01, 0.03), (0.045, y0 - 0.003, 0.06), hw))          # tailpiece/bridge
-    for i, (x, z) in enumerate(((0.095, 0.07), (0.11, 0.12), (0.12, 0.17))[: (2 if kind == "tele" else 3)]):
-        parts.append(cyl(0.012, 0.018, (x, y0 - 0.012, z), _mat("knob", "#1a1a1a", 0.4), 8, axis="Y"))
-    # wall hanger under the headstock
-    parts.append(bx((-0.03, -0.01, zh - 0.02), (0.03, 0.0, zh + 0.06), M("wood_dark")))
-    parts.append(cyl(0.006, 0.06, (0, y0 + 0.03, zh - 0.01), M("black"), 5, axis="Y"))
-    return parts
+    from . import guitars as G
+    return G.build(kind, TELE_COLOUR)
 
 
 def guitar_height(kind):
-    g = GUITARS[kind]
-    top = max(z for _, z in g["outline"])
-    return top - 0.07 + g["neck_len"] + (0.2 if kind == "jbass" else 0.17)
+    from . import guitars as G
+    return G.guitar_height(kind)
 
 
 # ------------------------------------------------------------------ amps and pedals
@@ -285,7 +215,7 @@ def drum_kit(shell="#e9e6dc"):
     parts.append(cyl(0.18, 0.006, (-0.6, -0.05, 0.9), brass, 12))
     parts.append(cyl(0.18, 0.006, (-0.6, -0.05, 0.92), brass, 12))
     # crash (left) and ride (right) on stands, slightly tilted
-    for x, y, z, r in ((-0.4, -0.38, 1.3, 0.2), (0.62, -0.3, 1.15, 0.24)):
+    for x, y, z, r in ((-0.4, -0.38, 1.3, 0.2), (0.55, -0.05, 1.15, 0.24)):
         parts.append(cyl(0.012, z, (x, y, z / 2), chrome, 6))
         c = cyl(r, 0.006, (0, 0, 0), brass, 14)
         c.rotation_euler = (math.radians(12), math.radians(-10 if x < 0 else 10), 0)

@@ -150,10 +150,19 @@ def roofrack_luggage(roof):
 
 
 def _wheel(r, x, y, z, rim_mat, tyre_mat, spokes_mat):
-    bits = [C.cylinder("tyre", r, 0.025, segs=20, axis="X", loc=(x, y, z), material=tyre_mat),
-            C.cylinder("rim", r - 0.02, 0.027, segs=20, axis="X", loc=(x, y, z), material=rim_mat),
-            C.cylinder("web", r - 0.03, 0.006, segs=20, axis="X", loc=(x, y, z), material=spokes_mat),
-            C.cylinder("hub", 0.025, 0.08, segs=8, axis="X", loc=(x, y, z), material=rim_mat)]
+    """A bike wheel in the YZ plane: tyre and rim as open rings (solid discs
+    stacked a millimetre apart z-fight in Godot), a see-through spoke web
+    and the hub."""
+    from lib import cabin as CB
+    bits = []
+    for name, rr, tube, ts, mat in (("tyre", r - 0.012, 0.012, 6, tyre_mat), ("rim", r - 0.028, 0.007, 4, rim_mat)):
+        o = CB.torus_rim(name, rr, tube, 24, mat, ts=ts)
+        o.rotation_euler = (0, 0, math.pi / 2)
+        o.location = (x, y, z)
+        C.apply_transform(o)
+        bits.append(o)
+    bits.append(C.cylinder("web", r - 0.032, 0.004, segs=20, axis="X", loc=(x, y, z), material=spokes_mat))
+    bits.append(C.cylinder("hub", 0.025, 0.08, segs=8, axis="X", loc=(x, y, z), material=rim_mat))
     return bits
 
 
