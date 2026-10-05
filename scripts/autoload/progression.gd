@@ -15,6 +15,8 @@ extends Node
 ##     (Discoveries count), upgrades_fitted (non-stock parts on the car you're
 ##     driving), suburbs_delivered (different suburbs you've delivered to),
 ##     cars_owned, badges (hidden 500 badges found)
+##   field journal (FieldJournal): species_seen, species_photographed,
+##     prints_sold, fish_caught, fish_species
 
 signal stat_changed(stat: String, value: float)
 signal challenge_completed(tier_index: int, challenge: Dictionary)
@@ -35,6 +37,7 @@ const KNOWN_STATS := [
 	"barn_finds", "restoration_stages", "classics_restored", "photos_taken", "photo_spots",
 	"parking_done", "parking_gold", "scenic_drives", "meets_attended", "lifts_given",
 	"trains_raced", "trains_beaten", "parts_found",
+	"species_seen", "species_photographed", "prints_sold", "fish_caught", "fish_species",
 ]
 
 var tiers: Array = []

@@ -1,0 +1,2400 @@
+{
+	"_comment": "Field journal birds: real Perth species. hours: [[from, to], ...] in game hours (to < from wraps past midnight). perch: ground, tree, water, shore, post or air. habitats: habitat tags (data/field/habitats.json) unless places names zones outright. rarity 1 common .. 4 very rare. value: AUD for a two-star print. shy 0..1 makes the shot harder. source traffic: the bird comes from traffic's wildlife (not spawned here). model: body plan in scripts/field/bird_models.gd; colours: body, wing, head, belly, beak, accent. Looks: model is the body plan (scripts/field/bird_models.gd PLANS); colours body, wing, head, belly, beak, plus optional tail, legs, eye, neck, crest, lower, pouch; marks [[kind, colour]] are patches (cap, nape, cheek, mask, brow, throat, collar, shoulder, wing_panel, wingbar, wingtip, rump, vent, tail_tip, tail_band, bill_tip, bill_band, flight_tip, ...); shape scales parts (neck, bill, tail, crest, head, body, leg) or sets tilt. Wrong birds (wrong: true) come after midnight once Discoveries has `after`; spot is a place (habitat or photo spot id, or home_pole, shed_roof, barrack_crossing); behaviour: watch, sing, still, silent, lights, nest, house; page is M.'s 1979 journal page (page_by: you for the last).",
+	"birds": [
+		{
+			"id": "australian_magpie",
+			"name": "Australian magpie",
+			"latin": "Gymnorhina tibicen",
+			"rarity": 1,
+			"value": 8,
+			"shy": 0.1,
+			"perch": "ground",
+			"habitats": [
+				"grass"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				3
+			],
+			"size": 0.4,
+			"source": "traffic",
+			"model": "songbird",
+			"colours": {
+				"body": "#111214",
+				"wing": "#111214",
+				"head": "#111214",
+				"belly": "#111214",
+				"beak": "#bfbfb3",
+				"accent": "#ebebe6",
+				"tail": "#f0f0ea",
+				"eye": "#8a2a1a"
+			},
+			"hint": "Any lawn in daylight.",
+			"note": "Carols at first light and defends its patch in spring. Every Perth park has a family.",
+			"marks": [
+				[
+					"nape",
+					"#f0f0ea"
+				],
+				[
+					"shoulder",
+					"#f0f0ea"
+				],
+				[
+					"rump",
+					"#f0f0ea"
+				],
+				[
+					"tail_tip",
+					"#111214"
+				],
+				[
+					"bill_tip",
+					"#1a1a1a"
+				]
+			],
+			"shape": {
+				"leg": 1.5,
+				"tilt": 0.2
+			}
+		},
+		{
+			"id": "australian_white_ibis",
+			"name": "Australian white ibis",
+			"latin": "Threskiornis molucca",
+			"rarity": 1,
+			"value": 9,
+			"shy": 0.1,
+			"perch": "ground",
+			"habitats": [
+				"river",
+				"park"
+			],
+			"hours": [
+				[
+					6.5,
+					18.5
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				2,
+				5
+			],
+			"size": 0.7,
+			"source": "traffic",
+			"model": "wader",
+			"colours": {
+				"body": "#dbd9cc",
+				"wing": "#d1ccbd",
+				"head": "#0f0f0f",
+				"belly": "#dbd9cc",
+				"beak": "#141414",
+				"accent": "#0f0f0f",
+				"tail": "#141414",
+				"legs": "#2a2a2a",
+				"neck": "#141414"
+			},
+			"hint": "Russell Square, Hyde Park, the foreshore.",
+			"note": "The bin chicken. Probes lawns with that long curved bill and roosts in the park's paperbarks.",
+			"marks": [
+				[
+					"wingtip",
+					"#202020"
+				]
+			],
+			"shape": {
+				"neck": 1.3
+			}
+		},
+		{
+			"id": "rainbow_lorikeet",
+			"name": "Rainbow lorikeet",
+			"latin": "Trichoglossus moluccanus",
+			"rarity": 1,
+			"value": 10,
+			"shy": 0.35,
+			"perch": "tree",
+			"habitats": [
+				"city",
+				"park"
+			],
+			"hours": [
+				[
+					6.0,
+					18.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				2,
+				6
+			],
+			"size": 0.3,
+			"model": "parrot",
+			"colours": {
+				"body": "#2e9e3a",
+				"wing": "#2a8a34",
+				"head": "#2c45b8",
+				"belly": "#e0461e",
+				"beak": "#e0302a",
+				"accent": "#e8c21e",
+				"tail": "#2a8a34"
+			},
+			"hint": "Noisy in the street trees, city and parks.",
+			"note": "Not from here: escaped birds in the 1960s, now everywhere. Screeches in fast flocks at dusk.",
+			"marks": [
+				[
+					"collar",
+					"#b8d83a"
+				],
+				[
+					"belly_patch",
+					"#2c3a9a"
+				]
+			]
+		},
+		{
+			"id": "laughing_dove",
+			"name": "Laughing dove",
+			"latin": "Spilopelia senegalensis",
+			"rarity": 1,
+			"value": 6,
+			"shy": 0.2,
+			"perch": "ground",
+			"habitats": [
+				"city",
+				"park",
+				"grass"
+			],
+			"hours": [
+				[
+					6.0,
+					18.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				4
+			],
+			"size": 0.25,
+			"model": "dove",
+			"colours": {
+				"body": "#b48a6e",
+				"wing": "#9a7a64",
+				"head": "#c99a86",
+				"belly": "#d7b9a2",
+				"beak": "#3a3030",
+				"accent": "#5a6c8c",
+				"tail": "#8a6a5a",
+				"legs": "#b06a6a"
+			},
+			"hint": "Footpaths and backyards.",
+			"note": "A soft bubbling coo. Brought to Perth Zoo in 1898 and never left.",
+			"marks": [
+				[
+					"wing_panel",
+					"#6a7a9a"
+				],
+				[
+					"breast_band",
+					"#7a5030"
+				]
+			]
+		},
+		{
+			"id": "spotted_dove",
+			"name": "Spotted dove",
+			"latin": "Spilopelia chinensis",
+			"rarity": 1,
+			"value": 7,
+			"shy": 0.2,
+			"perch": "ground",
+			"habitats": [
+				"city",
+				"park"
+			],
+			"hours": [
+				[
+					6.0,
+					18.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.3,
+			"model": "dove",
+			"colours": {
+				"body": "#a08878",
+				"wing": "#8a7466",
+				"head": "#a8a0a6",
+				"belly": "#c4a89c",
+				"beak": "#2a2424",
+				"accent": "#202020",
+				"legs": "#b06a6a"
+			},
+			"hint": "Gardens and verges, in pairs.",
+			"note": "The black collar has white spots, like a string of pearls.",
+			"marks": [
+				[
+					"collar",
+					"#202020"
+				],
+				[
+					"wingtip",
+					"#5a4a40"
+				]
+			]
+		},
+		{
+			"id": "rock_dove",
+			"name": "Feral pigeon",
+			"latin": "Columba livia",
+			"rarity": 1,
+			"value": 4,
+			"shy": 0.1,
+			"perch": "ground",
+			"habitats": [
+				"city"
+			],
+			"hours": [
+				[
+					6.0,
+					19.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				3,
+				7
+			],
+			"size": 0.33,
+			"model": "dove",
+			"colours": {
+				"body": "#7e8494",
+				"wing": "#8e94a4",
+				"head": "#606a7a",
+				"belly": "#7e8494",
+				"beak": "#2a2a2a",
+				"accent": "#3d7a6a",
+				"legs": "#c05a5a",
+				"eye": "#d06a1a"
+			},
+			"hint": "Stations, the Cultural Centre, under bridges.",
+			"note": "Nobody's favourite, but the neck shimmers green and purple in the right light.",
+			"marks": [
+				[
+					"collar",
+					"#4a8a6a"
+				],
+				[
+					"wingbar",
+					"#141414"
+				],
+				[
+					"tail_tip",
+					"#2a2c34"
+				]
+			]
+		},
+		{
+			"id": "willie_wagtail",
+			"name": "Willie wagtail",
+			"latin": "Rhipidura leucophrys",
+			"rarity": 1,
+			"value": 10,
+			"shy": 0.45,
+			"perch": "ground",
+			"habitats": [
+				"grass",
+				"park",
+				"river"
+			],
+			"hours": [
+				[
+					5.5,
+					19.0
+				],
+				[
+					21.0,
+					2.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.2,
+			"model": "songbird",
+			"colours": {
+				"body": "#121212",
+				"wing": "#121212",
+				"head": "#121212",
+				"belly": "#f2f2ee",
+				"beak": "#121212",
+				"accent": "#f2f2ee"
+			},
+			"hint": "Lawns by water. Sings on moonlit nights too.",
+			"note": "Never still: the tail swings side to side as it hunts. Sings 'sweet pretty creature', even at night.",
+			"marks": [
+				[
+					"brow",
+					"#f0f0ea"
+				]
+			],
+			"shape": {
+				"tail": 1.2
+			}
+		},
+		{
+			"id": "red_wattlebird",
+			"name": "Red wattlebird",
+			"latin": "Anthochaera carunculata",
+			"rarity": 1,
+			"value": 9,
+			"shy": 0.3,
+			"perch": "tree",
+			"habitats": [
+				"bush",
+				"park",
+				"city"
+			],
+			"hours": [
+				[
+					5.5,
+					18.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.35,
+			"model": "songbird",
+			"colours": {
+				"body": "#6a5a4c",
+				"wing": "#5a4a3e",
+				"head": "#6a5a4c",
+				"belly": "#b49a6e",
+				"beak": "#202020",
+				"accent": "#c0302a",
+				"tail": "#5a4a3e"
+			},
+			"hint": "Flowering gums and grevilleas.",
+			"note": "Loud, bossy and coughing. The red wattles hang from its cheeks.",
+			"marks": [
+				[
+					"cheek",
+					"#d8d4cc"
+				],
+				[
+					"wattle",
+					"#c0302a"
+				],
+				[
+					"vent",
+					"#d8b83a"
+				]
+			],
+			"shape": {
+				"tail": 1.15
+			}
+		},
+		{
+			"id": "new_holland_honeyeater",
+			"name": "New Holland honeyeater",
+			"latin": "Phylidonyris novaehollandiae",
+			"rarity": 2,
+			"value": 22,
+			"shy": 0.55,
+			"perch": "tree",
+			"habitats": [
+				"bush"
+			],
+			"hours": [
+				[
+					5.5,
+					10.0
+				],
+				[
+					15.0,
+					18.5
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				3
+			],
+			"size": 0.18,
+			"model": "songbird",
+			"colours": {
+				"body": "#1c1c1c",
+				"wing": "#1c1c1c",
+				"head": "#1c1c1c",
+				"belly": "#e8e8e0",
+				"beak": "#1c1c1c",
+				"accent": "#f0f0ea",
+				"tail": "#1c1c1c",
+				"eye": "#f0f0ea"
+			},
+			"hint": "Banksia in Kings Park and Bold Park.",
+			"note": "Black and white streaks with yellow wing flashes and a white eye. Banksia flowers are its pub.",
+			"marks": [
+				[
+					"wing_panel",
+					"#e0b82a"
+				],
+				[
+					"cheek",
+					"#f0f0ea"
+				],
+				[
+					"tail_base",
+					"#e0b82a"
+				]
+			]
+		},
+		{
+			"id": "singing_honeyeater",
+			"name": "Singing honeyeater",
+			"latin": "Gavicalis virescens",
+			"rarity": 2,
+			"value": 18,
+			"shy": 0.4,
+			"perch": "tree",
+			"habitats": [
+				"dunes",
+				"bush"
+			],
+			"hours": [
+				[
+					5.5,
+					18.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.2,
+			"model": "songbird",
+			"colours": {
+				"body": "#8e8a5c",
+				"wing": "#7e7a50",
+				"head": "#8e8a5c",
+				"belly": "#c6c09a",
+				"beak": "#1c1c1c",
+				"accent": "#1c1c1c"
+			},
+			"hint": "Coastal scrub behind the beaches.",
+			"note": "Drab olive with a black stripe through the eye and a rolling, cheerful song.",
+			"marks": [
+				[
+					"mask",
+					"#1c1c1c"
+				],
+				[
+					"throat",
+					"#d8c84a"
+				]
+			]
+		},
+		{
+			"id": "galah",
+			"name": "Galah",
+			"latin": "Eolophus roseicapilla",
+			"rarity": 1,
+			"value": 10,
+			"shy": 0.25,
+			"perch": "ground",
+			"habitats": [
+				"grass",
+				"park"
+			],
+			"hours": [
+				[
+					6.0,
+					18.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				2,
+				6
+			],
+			"size": 0.35,
+			"model": "cockatoo",
+			"colours": {
+				"body": "#a0a0a8",
+				"wing": "#8e8e96",
+				"head": "#e0647a",
+				"belly": "#e0647a",
+				"beak": "#d8d0c4",
+				"accent": "#f2c4cc",
+				"crest": "#f2c4cc",
+				"tail": "#8e8e96",
+				"legs": "#8a8a90"
+			},
+			"hint": "Ovals and parks, grazing in pairs.",
+			"note": "Pink and grey and a bit daft. Hangs upside down from power lines for fun.",
+			"marks": [
+				[
+					"cap",
+					"#f2c4cc"
+				],
+				[
+					"eye_ring",
+					"#c8606a"
+				]
+			]
+		},
+		{
+			"id": "little_corella",
+			"name": "Little corella",
+			"latin": "Cacatua sanguinea",
+			"rarity": 1,
+			"value": 9,
+			"shy": 0.25,
+			"perch": "ground",
+			"habitats": [
+				"park",
+				"lake"
+			],
+			"hours": [
+				[
+					6.0,
+					10.0
+				],
+				[
+					16.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				4,
+				8
+			],
+			"size": 0.38,
+			"model": "cockatoo",
+			"colours": {
+				"body": "#efefe8",
+				"wing": "#e8e8de",
+				"head": "#efefe8",
+				"belly": "#efefe8",
+				"beak": "#e0dcd0",
+				"accent": "#e8a0a0",
+				"crest": "#efefe8",
+				"legs": "#8a8a90"
+			},
+			"hint": "Big shrieking flocks at Hyde Park and Lake Monger, mornings and evenings.",
+			"note": "Not native to Perth, and loud about it. A pink smudge between the eye and the bill.",
+			"marks": [
+				[
+					"lores",
+					"#e8a0a0"
+				],
+				[
+					"eye_ring",
+					"#8a9ab8"
+				]
+			],
+			"shape": {
+				"crest": 0.6
+			}
+		},
+		{
+			"id": "australian_ringneck",
+			"name": "Australian ringneck",
+			"latin": "Barnardius zonarius",
+			"rarity": 2,
+			"value": 20,
+			"shy": 0.45,
+			"perch": "tree",
+			"habitats": [
+				"bush",
+				"park"
+			],
+			"hours": [
+				[
+					6.0,
+					18.0
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				3
+			],
+			"size": 0.37,
+			"model": "parrot",
+			"colours": {
+				"body": "#2f8a3e",
+				"wing": "#3a9a48",
+				"head": "#1e1e1e",
+				"belly": "#b8c83a",
+				"beak": "#c8c8c0",
+				"accent": "#e8d23a",
+				"tail": "#2a7a8a"
+			},
+			"hint": "Kings Park and Bold Park gums.",
+			"note": "Locally the 'twenty-eight', after its call. A yellow collar on a black head.",
+			"marks": [
+				[
+					"collar",
+					"#e8d23a"
+				]
+			]
+		},
+		{
+			"id": "carnabys_black_cockatoo",
+			"name": "Carnaby's black cockatoo",
+			"latin": "Zanda latirostris",
+			"rarity": 3,
+			"value": 95,
+			"shy": 0.5,
+			"perch": "tree",
+			"habitats": [
+				"bush"
+			],
+			"places": [
+				"kings_park_bush",
+				"kings_park_lawns",
+				"bold_park",
+				"herdsman_lake"
+			],
+			"hours": [
+				[
+					6.0,
+					8.5
+				],
+				[
+					16.5,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				3,
+				8
+			],
+			"size": 0.56,
+			"model": "cockatoo",
+			"colours": {
+				"body": "#1c1c1e",
+				"wing": "#1e1e20",
+				"head": "#1c1c1e",
+				"belly": "#1c1c1e",
+				"beak": "#5a5050",
+				"accent": "#e8e4d8",
+				"crest": "#1c1c1e",
+				"legs": "#3a3a3a"
+			},
+			"hint": "Kings Park pines and banksia, coming in to roost at dusk.",
+			"note": "Endangered, and only in the south-west. Their slow, wailing flocks are rain-bringers, people say.",
+			"marks": [
+				[
+					"cheek",
+					"#e8e4d8"
+				],
+				[
+					"tail_band",
+					"#e8e4d8"
+				]
+			],
+			"shape": {
+				"crest": 0.7
+			}
+		},
+		{
+			"id": "laughing_kookaburra",
+			"name": "Laughing kookaburra",
+			"latin": "Dacelo novaeguineae",
+			"rarity": 2,
+			"value": 24,
+			"shy": 0.3,
+			"perch": "tree",
+			"habitats": [
+				"park",
+				"bush"
+			],
+			"hours": [
+				[
+					5.5,
+					8.0
+				],
+				[
+					17.0,
+					19.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.45,
+			"model": "kookaburra",
+			"colours": {
+				"body": "#8a6a4a",
+				"wing": "#6a5a4e",
+				"head": "#e8e0d0",
+				"belly": "#e8e0d0",
+				"beak": "#2a2a2a",
+				"accent": "#4a7aa8",
+				"tail": "#a85a2e",
+				"lower": "#d8ccb8"
+			},
+			"hint": "Kings Park and Hyde Park at dawn and dusk.",
+			"note": "An eastern bird brought over in the 1890s. The dawn laugh is the whole family joining in.",
+			"marks": [
+				[
+					"mask",
+					"#5a4030"
+				],
+				[
+					"shoulder",
+					"#4a7aa8"
+				]
+			]
+		},
+		{
+			"id": "black_swan",
+			"name": "Black swan",
+			"latin": "Cygnus atratus",
+			"rarity": 1,
+			"value": 14,
+			"shy": 0.15,
+			"perch": "water",
+			"habitats": [
+				"river",
+				"lake"
+			],
+			"hours": [
+				[
+					5.5,
+					20.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				4
+			],
+			"size": 1.3,
+			"model": "swan",
+			"colours": {
+				"body": "#161616",
+				"wing": "#1a1a1a",
+				"head": "#161616",
+				"belly": "#161616",
+				"beak": "#c82a2a",
+				"accent": "#f0f0ea",
+				"eye": "#c82a2a"
+			},
+			"hint": "The river and Lake Monger.",
+			"note": "The state's bird, and the river is named for it. White flight feathers only show when it flies.",
+			"marks": [
+				[
+					"bill_band",
+					"#f0f0ea"
+				],
+				[
+					"flight_tip",
+					"#f0f0ea"
+				]
+			]
+		},
+		{
+			"id": "australian_pelican",
+			"name": "Australian pelican",
+			"latin": "Pelecanus conspicillatus",
+			"rarity": 2,
+			"value": 26,
+			"shy": 0.2,
+			"perch": "water",
+			"habitats": [
+				"river"
+			],
+			"places": [
+				"claisebrook_cove",
+				"point_fraser",
+				"heirisson_island",
+				"elizabeth_quay",
+				"point_walter",
+				"alfred_cove",
+				"fremantle"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				3
+			],
+			"size": 1.7,
+			"model": "pelican",
+			"colours": {
+				"body": "#f0f0ea",
+				"wing": "#141414",
+				"head": "#f0f0ea",
+				"belly": "#f0f0ea",
+				"beak": "#e8c8a0",
+				"accent": "#1a1a1a",
+				"tail": "#141414",
+				"pouch": "#e8b0a0",
+				"legs": "#b0b0b0"
+			},
+			"hint": "Claisebrook Cove, Point Fraser, Point Walter.",
+			"note": "Glides in low and lands like a jumbo. Waits by the boat ramps for fish frames.",
+			"marks": [
+				[
+					"wing_panel",
+					"#f0f0ea"
+				],
+				[
+					"shoulder",
+					"#f0f0ea"
+				]
+			]
+		},
+		{
+			"id": "pacific_black_duck",
+			"name": "Pacific black duck",
+			"latin": "Anas superciliosa",
+			"rarity": 1,
+			"value": 7,
+			"shy": 0.2,
+			"perch": "water",
+			"habitats": [
+				"lake",
+				"river"
+			],
+			"hours": [
+				[
+					5.5,
+					19.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				2,
+				5
+			],
+			"size": 0.55,
+			"model": "duck",
+			"colours": {
+				"body": "#5a4a3a",
+				"wing": "#4a3e30",
+				"head": "#c8b89a",
+				"belly": "#6a5a48",
+				"beak": "#3a3c40",
+				"accent": "#2a8a7a"
+			},
+			"hint": "Any lake or quiet stretch of river.",
+			"note": "Brown with a striped face and a green flash on the wing.",
+			"marks": [
+				[
+					"cap",
+					"#3a2e24"
+				],
+				[
+					"mask",
+					"#3a2e24"
+				],
+				[
+					"wing_panel",
+					"#2a8a7a"
+				]
+			]
+		},
+		{
+			"id": "purple_swamphen",
+			"name": "Australasian swamphen",
+			"latin": "Porphyrio melanotus",
+			"rarity": 1,
+			"value": 10,
+			"shy": 0.25,
+			"perch": "shore",
+			"habitats": [
+				"lake",
+				"reeds"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				3
+			],
+			"size": 0.45,
+			"model": "rail",
+			"colours": {
+				"body": "#2a3a8a",
+				"wing": "#1a2a5a",
+				"head": "#22306e",
+				"belly": "#2a3a8a",
+				"beak": "#d82a20",
+				"accent": "#d82a20",
+				"legs": "#d84a3a",
+				"tail": "#1a2a5a"
+			},
+			"hint": "Reedy lake edges: Lake Monger, Herdsman.",
+			"note": "Great red feet, a red shield on the face, and a habit of flicking its white undertail.",
+			"marks": [
+				[
+					"shield",
+					"#d82a20"
+				],
+				[
+					"vent",
+					"#f0f0ea"
+				]
+			]
+		},
+		{
+			"id": "eurasian_coot",
+			"name": "Eurasian coot",
+			"latin": "Fulica atra",
+			"rarity": 1,
+			"value": 7,
+			"shy": 0.2,
+			"perch": "water",
+			"habitats": [
+				"lake"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				3,
+				7
+			],
+			"size": 0.36,
+			"model": "duck",
+			"colours": {
+				"body": "#1e1e22",
+				"wing": "#1a1a1e",
+				"head": "#141416",
+				"belly": "#1e1e22",
+				"beak": "#f2f2ee",
+				"accent": "#f2f2ee",
+				"eye": "#b82020",
+				"legs": "#6a7a5a"
+			},
+			"hint": "Rafts of them on the lakes.",
+			"note": "Sooty black with a white bill and shield. Runs across the water to take off.",
+			"marks": [
+				[
+					"shield",
+					"#f0f0ea"
+				]
+			]
+		},
+		{
+			"id": "little_pied_cormorant",
+			"name": "Little pied cormorant",
+			"latin": "Microcarbo melanoleucos",
+			"rarity": 1,
+			"value": 9,
+			"shy": 0.25,
+			"perch": "post",
+			"habitats": [
+				"river",
+				"lake"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				3
+			],
+			"size": 0.6,
+			"model": "cormorant",
+			"colours": {
+				"body": "#1a1a1a",
+				"wing": "#1a1a1a",
+				"head": "#f0f0ea",
+				"belly": "#f0f0ea",
+				"beak": "#e0c84a",
+				"accent": "#f0f0ea",
+				"neck": "#f0f0ea"
+			},
+			"hint": "Posts and jetty pylons over the water.",
+			"note": "Dives for gobies and shrimp, then sits on a post with its wings out to dry.",
+			"marks": [
+				[
+					"cap",
+					"#1a1a1a"
+				]
+			]
+		},
+		{
+			"id": "australasian_darter",
+			"name": "Australasian darter",
+			"latin": "Anhinga novaehollandiae",
+			"rarity": 2,
+			"value": 22,
+			"shy": 0.35,
+			"perch": "post",
+			"habitats": [
+				"river",
+				"lake"
+			],
+			"places": [
+				"claisebrook_cove",
+				"lake_monger",
+				"herdsman_lake",
+				"matilda_bay",
+				"point_fraser"
+			],
+			"hours": [
+				[
+					7.0,
+					18.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.9,
+			"model": "cormorant",
+			"colours": {
+				"body": "#3a2e26",
+				"wing": "#2a221c",
+				"head": "#5a4a3a",
+				"belly": "#e8e0d0",
+				"beak": "#c8b06a",
+				"accent": "#e8e0d0",
+				"neck": "#5a4a3a",
+				"tail": "#2a221c"
+			},
+			"hint": "Swims with only its snake neck out of the water.",
+			"note": "Spears fish with that dagger bill, then hangs its wings out like washing.",
+			"marks": [
+				[
+					"throat",
+					"#e8e0d0"
+				],
+				[
+					"wing_panel",
+					"#cfc6b0"
+				]
+			],
+			"shape": {
+				"neck": 1.9,
+				"bill": 1.4,
+				"tail": 1.3,
+				"tilt": 0.6
+			}
+		},
+		{
+			"id": "silver_gull",
+			"name": "Silver gull",
+			"latin": "Chroicocephalus novaehollandiae",
+			"rarity": 1,
+			"value": 5,
+			"shy": 0.1,
+			"perch": "shore",
+			"habitats": [
+				"beach",
+				"harbour",
+				"river"
+			],
+			"hours": [
+				[
+					5.5,
+					20.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				3,
+				8
+			],
+			"size": 0.42,
+			"model": "gull",
+			"colours": {
+				"body": "#f2f2ee",
+				"wing": "#b8bcc4",
+				"head": "#f2f2ee",
+				"belly": "#f2f2ee",
+				"beak": "#d82a20",
+				"accent": "#1a1a1a",
+				"legs": "#d82a20",
+				"eye": "#f0f0ea",
+				"tail": "#f0f0ea"
+			},
+			"hint": "Wherever there are chips.",
+			"note": "Red bill, red legs, no shame.",
+			"marks": [
+				[
+					"wingtip",
+					"#141414"
+				],
+				[
+					"eye_ring",
+					"#d82a20"
+				],
+				[
+					"flight_tip",
+					"#141414"
+				]
+			]
+		},
+		{
+			"id": "crested_tern",
+			"name": "Greater crested tern",
+			"latin": "Thalasseus bergii",
+			"rarity": 2,
+			"value": 20,
+			"shy": 0.35,
+			"perch": "shore",
+			"habitats": [
+				"beach",
+				"harbour"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				2,
+				5
+			],
+			"size": 0.48,
+			"model": "gull",
+			"colours": {
+				"body": "#f2f2ee",
+				"wing": "#9ca0a8",
+				"head": "#f0f0ea",
+				"belly": "#f2f2ee",
+				"beak": "#e8d23a",
+				"accent": "#1a1a1a",
+				"legs": "#141414",
+				"tail": "#f0f0ea"
+			},
+			"hint": "Groynes and harbour walls, Cottesloe to Freo.",
+			"note": "A shaggy black crest and a yellow bill. Plunges headfirst for whitebait.",
+			"marks": [
+				[
+					"cap",
+					"#141414"
+				],
+				[
+					"nape",
+					"#141414"
+				],
+				[
+					"wingtip",
+					"#4a4c54"
+				]
+			]
+		},
+		{
+			"id": "pied_oystercatcher",
+			"name": "Pied oystercatcher",
+			"latin": "Haematopus longirostris",
+			"rarity": 3,
+			"value": 70,
+			"shy": 0.55,
+			"perch": "shore",
+			"habitats": [
+				"beach"
+			],
+			"places": [
+				"leighton_beach",
+				"trigg_beach",
+				"city_beach",
+				"point_walter"
+			],
+			"hours": [
+				[
+					5.5,
+					9.0
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.45,
+			"model": "wader",
+			"colours": {
+				"body": "#121212",
+				"wing": "#121212",
+				"head": "#121212",
+				"belly": "#f2f2ee",
+				"beak": "#e8502a",
+				"accent": "#e8502a",
+				"legs": "#e89a9a",
+				"eye": "#d82a20",
+				"tail": "#141414"
+			},
+			"hint": "Quiet beaches early, before the dog walkers.",
+			"note": "Black and white with a long carrot bill, working the wet sand in pairs.",
+			"marks": [
+				[
+					"eye_ring",
+					"#e8502a"
+				],
+				[
+					"breast",
+					"#121212"
+				]
+			],
+			"shape": {
+				"bill": 0.75
+			}
+		},
+		{
+			"id": "osprey",
+			"name": "Eastern osprey",
+			"latin": "Pandion haliaetus cristatus",
+			"rarity": 3,
+			"value": 110,
+			"shy": 0.6,
+			"perch": "air",
+			"habitats": [
+				"river"
+			],
+			"places": [
+				"point_walter",
+				"alfred_cove",
+				"matilda_bay",
+				"heirisson_island",
+				"fremantle"
+			],
+			"hours": [
+				[
+					7.0,
+					17.5
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.6,
+			"model": "raptor",
+			"colours": {
+				"body": "#4a3a2e",
+				"wing": "#4a3a2e",
+				"head": "#f0ece4",
+				"belly": "#f0ece4",
+				"beak": "#1a1a1a",
+				"accent": "#3a2e26",
+				"legs": "#c8c0a8",
+				"eye": "#e8c83a"
+			},
+			"hint": "Circling over the wider river, Point Walter and Alfred Cove.",
+			"note": "Hovers, then drops feet first into the water. Nests on the light towers and channel markers.",
+			"marks": [
+				[
+					"mask",
+					"#3a2e26"
+				],
+				[
+					"breast_band",
+					"#7a6250"
+				]
+			]
+		},
+		{
+			"id": "nankeen_kestrel",
+			"name": "Nankeen kestrel",
+			"latin": "Falco cenchroides",
+			"rarity": 2,
+			"value": 30,
+			"shy": 0.5,
+			"perch": "air",
+			"habitats": [
+				"grass",
+				"dunes"
+			],
+			"places": [
+				"kings_park_lawns",
+				"bold_park",
+				"city_beach",
+				"cottesloe",
+				"heirisson_island",
+				"herdsman_lake"
+			],
+			"hours": [
+				[
+					7.0,
+					18.0
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.33,
+			"model": "raptor",
+			"colours": {
+				"body": "#c88a52",
+				"wing": "#b8784a",
+				"head": "#9a9ca4",
+				"belly": "#f0e4d4",
+				"beak": "#2a2a2a",
+				"accent": "#1a1a1a",
+				"legs": "#e8c83a",
+				"tail": "#9a9ca4"
+			},
+			"hint": "Hovering over rough grass and dunes.",
+			"note": "Hangs dead still in the wind, tail fanned, then drops on a grasshopper.",
+			"marks": [
+				[
+					"tear",
+					"#141414"
+				],
+				[
+					"tail_tip",
+					"#141414"
+				],
+				[
+					"wingtip",
+					"#2a2a2a"
+				]
+			]
+		},
+		{
+			"id": "white_faced_heron",
+			"name": "White-faced heron",
+			"latin": "Egretta novaehollandiae",
+			"rarity": 2,
+			"value": 18,
+			"shy": 0.4,
+			"perch": "shore",
+			"habitats": [
+				"river",
+				"lake"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.65,
+			"model": "heron",
+			"colours": {
+				"body": "#8e98a6",
+				"wing": "#7e8896",
+				"head": "#8e98a6",
+				"belly": "#a89a8e",
+				"beak": "#2a2a2a",
+				"accent": "#f2f2ee",
+				"neck": "#9aa2ae",
+				"legs": "#c8b84a"
+			},
+			"hint": "Wading the shallows, alone.",
+			"note": "Blue-grey with a white face, stepping slowly through the shallows.",
+			"marks": [
+				[
+					"face",
+					"#f0f0ea"
+				]
+			]
+		},
+		{
+			"id": "great_egret",
+			"name": "Great egret",
+			"latin": "Ardea alba",
+			"rarity": 2,
+			"value": 26,
+			"shy": 0.45,
+			"perch": "shore",
+			"habitats": [
+				"lake",
+				"reeds"
+			],
+			"places": [
+				"herdsman_lake",
+				"lake_monger",
+				"alfred_cove",
+				"point_fraser"
+			],
+			"hours": [
+				[
+					6.0,
+					18.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.9,
+			"model": "heron",
+			"colours": {
+				"body": "#f4f4f0",
+				"wing": "#f0f0ea",
+				"head": "#f4f4f0",
+				"belly": "#f4f4f0",
+				"beak": "#e8c83a",
+				"accent": "#1a1a1a",
+				"legs": "#141414",
+				"neck": "#f4f4f0"
+			},
+			"hint": "Tall and white in the lake shallows.",
+			"note": "Stands perfectly still for minutes, then the neck uncoils like a spring.",
+			"marks": [],
+			"shape": {
+				"neck": 1.25
+			}
+		},
+		{
+			"id": "nankeen_night_heron",
+			"name": "Nankeen night heron",
+			"latin": "Nycticorax caledonicus",
+			"rarity": 3,
+			"value": 80,
+			"shy": 0.55,
+			"perch": "tree",
+			"habitats": [
+				"river",
+				"lake"
+			],
+			"places": [
+				"hyde_park",
+				"lake_monger",
+				"claisebrook_cove",
+				"herdsman_lake",
+				"matilda_bay"
+			],
+			"hours": [
+				[
+					18.5,
+					5.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.6,
+			"model": "heron",
+			"colours": {
+				"body": "#b8703a",
+				"wing": "#a8682e",
+				"head": "#f0e4d4",
+				"belly": "#f0e4d4",
+				"beak": "#1a1a1a",
+				"accent": "#f0e4d4",
+				"neck": "#c8925a",
+				"legs": "#e8c83a",
+				"eye": "#e8c83a"
+			},
+			"hint": "Lake edges after dark. A croak overhead.",
+			"note": "Roosts hidden in the day and fishes at night. Cinnamon back, black cap.",
+			"marks": [
+				[
+					"cap",
+					"#1a1a22"
+				]
+			],
+			"shape": {
+				"neck": 0.45,
+				"tilt": 0.25,
+				"body": 1.2,
+				"bill": 0.65
+			}
+		},
+		{
+			"id": "tawny_frogmouth",
+			"name": "Tawny frogmouth",
+			"latin": "Podargus strigoides",
+			"rarity": 2,
+			"value": 45,
+			"shy": 0.3,
+			"perch": "tree",
+			"habitats": [
+				"park",
+				"bush",
+				"city"
+			],
+			"hours": [
+				[
+					19.0,
+					5.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				2
+			],
+			"size": 0.42,
+			"model": "frogmouth",
+			"colours": {
+				"body": "#8a8478",
+				"wing": "#7a7468",
+				"head": "#8a8478",
+				"belly": "#9a9488",
+				"beak": "#5a5448",
+				"accent": "#e8b83a",
+				"eye": "#e8b83a"
+			},
+			"hint": "Night. On a low branch, pretending to be one.",
+			"note": "Not an owl. Sits stiff and points its face up so it looks like a broken branch.",
+			"marks": [
+				[
+					"brow",
+					"#a8a294"
+				],
+				[
+					"wing_panel",
+					"#6a6458"
+				]
+			]
+		},
+		{
+			"id": "southern_boobook",
+			"name": "Southern boobook",
+			"latin": "Ninox boobook",
+			"rarity": 3,
+			"value": 90,
+			"shy": 0.6,
+			"perch": "tree",
+			"habitats": [
+				"bush"
+			],
+			"places": [
+				"kings_park_bush",
+				"bold_park",
+				"herdsman_lake"
+			],
+			"hours": [
+				[
+					19.5,
+					4.5
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.32,
+			"model": "owl",
+			"colours": {
+				"body": "#5a4434",
+				"wing": "#4a382a",
+				"head": "#5a4434",
+				"belly": "#b49a7a",
+				"beak": "#3a3430",
+				"accent": "#e8c83a",
+				"eye": "#c8d83a"
+			},
+			"hint": "Kings Park and Bold Park at night. Listen for 'mopoke'.",
+			"note": "Australia's smallest common owl, and the one saying 'boo-book' in the dark.",
+			"marks": [
+				[
+					"face",
+					"#3a2a1e"
+				],
+				[
+					"brow",
+					"#d8c8a8"
+				],
+				[
+					"belly_patch",
+					"#c8ae8a"
+				]
+			]
+		},
+		{
+			"id": "eastern_barn_owl",
+			"name": "Eastern barn owl",
+			"latin": "Tyto javanica",
+			"rarity": 4,
+			"value": 240,
+			"shy": 0.7,
+			"perch": "post",
+			"habitats": [
+				"grass",
+				"reeds"
+			],
+			"places": [
+				"herdsman_lake",
+				"bold_park",
+				"heirisson_island"
+			],
+			"hours": [
+				[
+					20.0,
+					4.0
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.36,
+			"model": "owl",
+			"colours": {
+				"body": "#d8b07a",
+				"wing": "#c8a06a",
+				"head": "#f4ece0",
+				"belly": "#f8f2e8",
+				"beak": "#c8b8a8",
+				"accent": "#1a1a1a",
+				"eye": "#141414",
+				"legs": "#e8e0d0"
+			},
+			"hint": "A pale shape over rough grass at Herdsman, deep at night.",
+			"note": "Heart-shaped white face. Hunts by sound alone and screeches rather than hoots.",
+			"marks": [
+				[
+					"face",
+					"#f8f2e8"
+				],
+				[
+					"brow",
+					"#c8a06a"
+				]
+			]
+		},
+		{
+			"id": "rainbow_bee_eater",
+			"name": "Rainbow bee-eater",
+			"latin": "Merops ornatus",
+			"rarity": 3,
+			"value": 85,
+			"shy": 0.65,
+			"perch": "air",
+			"habitats": [
+				"dunes",
+				"grass"
+			],
+			"places": [
+				"kings_park_lawns",
+				"bold_park",
+				"herdsman_lake",
+				"heirisson_island",
+				"city_beach"
+			],
+			"hours": [
+				[
+					8.0,
+					17.0
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				1,
+				3
+			],
+			"size": 0.25,
+			"model": "swallow",
+			"colours": {
+				"body": "#4ab04a",
+				"wing": "#3aa06a",
+				"head": "#4ab04a",
+				"belly": "#5ab05a",
+				"beak": "#1a1a1a",
+				"accent": "#1a1a1a",
+				"tail": "#141414"
+			},
+			"hint": "Arrives for the warm months. Hawking bees over sandy ground.",
+			"note": "Spring migrant from the north. Nests in tunnels in sandy banks, even on golf courses.",
+			"marks": [
+				[
+					"cap",
+					"#e8b03a"
+				],
+				[
+					"mask",
+					"#141414"
+				],
+				[
+					"throat",
+					"#e8c83a"
+				],
+				[
+					"flight_tip",
+					"#d86a2a"
+				]
+			],
+			"shape": {
+				"bill": 2.6
+			}
+		},
+		{
+			"id": "splendid_fairywren",
+			"name": "Splendid fairywren",
+			"latin": "Malurus splendens",
+			"rarity": 3,
+			"value": 75,
+			"shy": 0.75,
+			"perch": "ground",
+			"habitats": [
+				"bush"
+			],
+			"places": [
+				"kings_park_bush",
+				"bold_park"
+			],
+			"hours": [
+				[
+					6.0,
+					10.0
+				],
+				[
+					16.0,
+					18.0
+				]
+			],
+			"weather": "dry",
+			"flock": [
+				2,
+				4
+			],
+			"size": 0.13,
+			"model": "wren",
+			"colours": {
+				"body": "#2a5ad8",
+				"wing": "#1e3c9a",
+				"head": "#3a8ae8",
+				"belly": "#2a5ad8",
+				"beak": "#1a1a1a",
+				"accent": "#101830",
+				"tail": "#2a4ab8",
+				"eye": "#141414"
+			},
+			"hint": "Hopping in the low scrub of Kings Park bushland, morning.",
+			"note": "The breeding male is blue all over, a ridiculous blue. The family hops about with him.",
+			"marks": [
+				[
+					"mask",
+					"#101830"
+				],
+				[
+					"breast_band",
+					"#101830"
+				],
+				[
+					"cheek",
+					"#6ab4f0"
+				]
+			]
+		},
+		{
+			"id": "australian_raven",
+			"name": "Australian raven",
+			"latin": "Corvus coronoides",
+			"rarity": 1,
+			"value": 6,
+			"shy": 0.2,
+			"perch": "ground",
+			"habitats": [
+				"city",
+				"grass",
+				"beach"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				3
+			],
+			"size": 0.52,
+			"model": "songbird",
+			"colours": {
+				"body": "#0e0e10",
+				"wing": "#121216",
+				"head": "#0e0e10",
+				"belly": "#0e0e10",
+				"beak": "#0e0e10",
+				"accent": "#f0f0f0",
+				"eye": "#f0f0ea",
+				"legs": "#141414"
+			},
+			"hint": "Everywhere, watching.",
+			"note": "White eyes and shaggy throat hackles. The long, falling 'aaah' is the sound of a hot Perth afternoon.",
+			"marks": [
+				[
+					"throat",
+					"#16161a"
+				]
+			],
+			"shape": {
+				"bill": 1.2
+			}
+		},
+		{
+			"id": "welcome_swallow",
+			"name": "Welcome swallow",
+			"latin": "Hirundo neoxena",
+			"rarity": 1,
+			"value": 8,
+			"shy": 0.5,
+			"perch": "air",
+			"habitats": [
+				"river",
+				"lake",
+				"grass"
+			],
+			"hours": [
+				[
+					6.5,
+					18.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				2,
+				5
+			],
+			"size": 0.15,
+			"model": "swallow",
+			"colours": {
+				"body": "#1e2a4a",
+				"wing": "#1a2440",
+				"head": "#1e2a4a",
+				"belly": "#e8e0d4",
+				"beak": "#1a1a1a",
+				"accent": "#1a1a1a",
+				"tail": "#1a2440"
+			},
+			"hint": "Skimming low over water and ovals.",
+			"note": "Nests under bridges and jetties. Rust throat, forked tail, never lands for long.",
+			"marks": [
+				[
+					"throat",
+					"#c86a3a"
+				],
+				[
+					"forehead",
+					"#c86a3a"
+				]
+			]
+		},
+		{
+			"id": "grey_butcherbird",
+			"name": "Grey butcherbird",
+			"latin": "Cracticus torquatus",
+			"rarity": 2,
+			"value": 20,
+			"shy": 0.4,
+			"perch": "tree",
+			"habitats": [
+				"bush",
+				"park"
+			],
+			"hours": [
+				[
+					6.0,
+					18.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.3,
+			"model": "songbird",
+			"colours": {
+				"body": "#7a7e86",
+				"wing": "#2a2a2c",
+				"head": "#1a1a1a",
+				"belly": "#e8e8e4",
+				"beak": "#7a7a80",
+				"accent": "#e8e8e4",
+				"tail": "#2a2a2c"
+			},
+			"hint": "Kings Park, on a dead branch.",
+			"note": "Hooked bill, beautiful piping song, and it wedges prey into forks of branches.",
+			"marks": [
+				[
+					"throat",
+					"#e8e8e4"
+				],
+				[
+					"wingbar",
+					"#f0f0ea"
+				],
+				[
+					"bill_tip",
+					"#1a1a1a"
+				]
+			]
+		},
+		{
+			"id": "musk_duck",
+			"name": "Musk duck",
+			"latin": "Biziura lobata",
+			"rarity": 3,
+			"value": 70,
+			"shy": 0.45,
+			"perch": "water",
+			"habitats": [
+				"lake"
+			],
+			"places": [
+				"herdsman_lake"
+			],
+			"hours": [
+				[
+					6.0,
+					19.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.6,
+			"model": "duck",
+			"colours": {
+				"body": "#3a3a36",
+				"wing": "#2e2e2a",
+				"head": "#3a3a36",
+				"belly": "#4a4a44",
+				"beak": "#1a1a1a",
+				"accent": "#1a1a1a",
+				"tail": "#2a2a26"
+			},
+			"hint": "Herdsman Lake, low in the water.",
+			"note": "The male has a leathery lobe under the bill and splashes the water with his feet to show off.",
+			"marks": [
+				[
+					"lobe",
+					"#1a1a1a"
+				]
+			]
+		},
+		{
+			"id": "wrong_frogmouth",
+			"name": "Frogmouth on the lane pole",
+			"latin": "Podargus strigoides?",
+			"rarity": 4,
+			"value": 0,
+			"shy": 0.0,
+			"perch": "post",
+			"habitats": [],
+			"hours": [
+				[
+					0.0,
+					3.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.42,
+			"model": "frogmouth",
+			"colours": {
+				"body": "#8a8478",
+				"wing": "#7a7468",
+				"head": "#8a8478",
+				"belly": "#9a9488",
+				"beak": "#5a5448",
+				"accent": "#e8b83a",
+				"eye": "#e8c87a"
+			},
+			"marks": [
+				[
+					"brow",
+					"#a8a294"
+				],
+				[
+					"wing_panel",
+					"#6a6458"
+				]
+			],
+			"wrong": true,
+			"after": "mystery/tape_1",
+			"spot": "home_pole",
+			"behaviour": "watch",
+			"hint": "The pole outside 15 Little Shenton Lane, after midnight.",
+			"note": "It turns its head to follow the car. All the way round.",
+			"page": "12 February 1979. The frogmouth is on the pole outside number 15 again. It doesn't pretend to be a branch for me any more. When I pull in, its head comes round with the car, all the way round. I've started saying goodnight to it.",
+			"like": "tawny_frogmouth"
+		},
+		{
+			"id": "wrong_magpie",
+			"name": "Magpie singing at 2 am",
+			"latin": "Gymnorhina tibicen?",
+			"rarity": 4,
+			"value": 0,
+			"shy": 0.0,
+			"perch": "ground",
+			"habitats": [],
+			"hours": [
+				[
+					1.5,
+					3.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.4,
+			"model": "songbird",
+			"colours": {
+				"body": "#111214",
+				"wing": "#111214",
+				"head": "#111214",
+				"belly": "#111214",
+				"beak": "#bfbfb3",
+				"accent": "#ebebe6",
+				"tail": "#f0f0ea",
+				"eye": "#e8c87a"
+			},
+			"marks": [
+				[
+					"nape",
+					"#f0f0ea"
+				],
+				[
+					"shoulder",
+					"#f0f0ea"
+				],
+				[
+					"rump",
+					"#f0f0ea"
+				],
+				[
+					"tail_tip",
+					"#111214"
+				],
+				[
+					"bill_tip",
+					"#1a1a1a"
+				]
+			],
+			"shape": {
+				"leg": 1.5,
+				"tilt": 0.2
+			},
+			"wrong": true,
+			"after": "mystery/polaroid",
+			"spot": "russell_square",
+			"behaviour": "sing",
+			"hint": "Russell Square, in the small hours. Turn the engine off and listen.",
+			"note": "Not the dawn carol. It sings the tune from the station between the others, note for note.",
+			"page": "Russell Square, ten past two. A magpie singing in the dark, and not the morning carol. It's the tune from the station, the one between the others, note for note. I sat in the car until it stopped. It stopped when I turned the radio off.",
+			"like": "australian_magpie"
+		},
+		{
+			"id": "wrong_swan",
+			"name": "Swan facing upstream",
+			"latin": "Cygnus atratus?",
+			"rarity": 4,
+			"value": 0,
+			"shy": 0.0,
+			"perch": "water",
+			"habitats": [],
+			"hours": [
+				[
+					0.0,
+					3.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 1.3,
+			"model": "swan",
+			"colours": {
+				"body": "#161616",
+				"wing": "#1a1a1a",
+				"head": "#161616",
+				"belly": "#161616",
+				"beak": "#c82a2a",
+				"accent": "#f0f0ea",
+				"eye": "#c82a2a"
+			},
+			"marks": [
+				[
+					"bill_band",
+					"#f0f0ea"
+				],
+				[
+					"flight_tip",
+					"#f0f0ea"
+				]
+			],
+			"wrong": true,
+			"after": "mystery/ticket",
+			"spot": "riverside_east",
+			"behaviour": "still",
+			"hint": "Off Riverside Drive, where the lights come up off the water.",
+			"note": "Dead still in the current, facing upstream. It doesn't drift.",
+			"page": "Riverside Drive, 3 am. One swan, dead still in the current, facing upstream like it's waiting for someone. The river lights came up around it and it didn't move. I counted to six hundred. It didn't drift an inch.",
+			"like": "black_swan"
+		},
+		{
+			"id": "wrong_cockatoos",
+			"name": "Thirteen black cockatoos",
+			"latin": "Zanda latirostris?",
+			"rarity": 4,
+			"value": 0,
+			"shy": 0.0,
+			"perch": "tree",
+			"habitats": [],
+			"hours": [
+				[
+					2.5,
+					4.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				13,
+				13
+			],
+			"size": 0.56,
+			"model": "cockatoo",
+			"colours": {
+				"body": "#1c1c1e",
+				"wing": "#1e1e20",
+				"head": "#1c1c1e",
+				"belly": "#1c1c1e",
+				"beak": "#5a5050",
+				"accent": "#e8e4d8",
+				"crest": "#1c1c1e",
+				"legs": "#3a3a3a",
+				"eye": "#e8c87a"
+			},
+			"marks": [
+				[
+					"cheek",
+					"#e8e4d8"
+				],
+				[
+					"tail_band",
+					"#e8e4d8"
+				]
+			],
+			"shape": {
+				"crest": 0.7
+			},
+			"wrong": true,
+			"after": "mystery/atlas_page",
+			"spot": "kings_park_fraser",
+			"behaviour": "silent",
+			"hint": "The gums on Fraser Avenue at 3 am. Count them.",
+			"note": "Thirteen, silent, in the gums at 3 am. Always thirteen.",
+			"page": "Fraser Avenue, 3 am. Thirteen black cockatoos in the lemon gums. Cockatoos don't sit up at night and they don't sit quiet. I came back three nights running and it was thirteen every time. I've stopped counting. They haven't.",
+			"like": "carnabys_black_cockatoo"
+		},
+		{
+			"id": "wrong_ibis",
+			"name": "Ibis in the Barrack Street crossing",
+			"latin": "Threskiornis molucca?",
+			"rarity": 4,
+			"value": 0,
+			"shy": 0.0,
+			"perch": "ground",
+			"habitats": [],
+			"hours": [
+				[
+					0.5,
+					3.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.7,
+			"model": "wader",
+			"colours": {
+				"body": "#dbd9cc",
+				"wing": "#d1ccbd",
+				"head": "#0f0f0f",
+				"belly": "#dbd9cc",
+				"beak": "#141414",
+				"accent": "#0f0f0f",
+				"tail": "#141414",
+				"legs": "#2a2a2a",
+				"neck": "#141414",
+				"eye": "#e8c87a"
+			},
+			"marks": [
+				[
+					"wingtip",
+					"#202020"
+				]
+			],
+			"shape": {
+				"neck": 1.3
+			},
+			"wrong": true,
+			"after": "mystery/keyring",
+			"spot": [
+				551.1,
+				1085.0
+			],
+			"behaviour": "lights",
+			"hint": "Barrack Street and the Terrace, late. In the middle of the road.",
+			"note": "It stands on the white line. When it lifts its head, the lights change.",
+			"page": "Barrack Street and the Terrace, twenty to two. An ibis standing on the white line, where the cars would be if there were any. Every time it lifted its head the lights changed. I watched for an hour to be sure. I'm sure.",
+			"like": "australian_white_ibis"
+		},
+		{
+			"id": "wrong_boobook",
+			"name": "Boobook with tape in its nest",
+			"latin": "Ninox boobook?",
+			"rarity": 4,
+			"value": 0,
+			"shy": 0.0,
+			"perch": "tree",
+			"habitats": [],
+			"hours": [
+				[
+					0.0,
+					3.5
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.32,
+			"model": "owl",
+			"colours": {
+				"body": "#5a4434",
+				"wing": "#4a382a",
+				"head": "#5a4434",
+				"belly": "#b49a7a",
+				"beak": "#3a3430",
+				"accent": "#e8c83a",
+				"eye": "#e8c87a"
+			},
+			"marks": [
+				[
+					"face",
+					"#3a2a1e"
+				],
+				[
+					"brow",
+					"#d8c8a8"
+				],
+				[
+					"belly_patch",
+					"#c8ae8a"
+				]
+			],
+			"wrong": true,
+			"after": "mystery/tape_12",
+			"spot": "kings_park_bush",
+			"behaviour": "nest",
+			"hint": "The bush side of Kings Park, in the small hours. Look for something shining in a nest.",
+			"note": "Its nest is woven through with brown cassette tape.",
+			"page": "Kings Park, the bush side, 2 am. A boobook by a hollow in a marri, and the nest is lined with brown ribbon. It's cassette tape. A bit of label was caught on a twig: NIGHT DR. I haven't made that one yet.",
+			"like": "southern_boobook"
+		},
+		{
+			"id": "wrong_grey_bird",
+			"name": "A small grey bird",
+			"latin": "Cracticus torquatus?",
+			"rarity": 4,
+			"value": 0,
+			"shy": 0.0,
+			"perch": "post",
+			"habitats": [],
+			"hours": [
+				[
+					0.0,
+					24.0
+				]
+			],
+			"weather": "any",
+			"flock": [
+				1,
+				1
+			],
+			"size": 0.3,
+			"model": "songbird",
+			"colours": {
+				"body": "#8a8c90",
+				"wing": "#7e8084",
+				"head": "#8a8c90",
+				"belly": "#9a9ca0",
+				"beak": "#6a6c70",
+				"accent": "#e8e8e4",
+				"tail": "#7e8084",
+				"eye": "#e8c87a",
+				"legs": "#5a5a5c"
+			},
+			"marks": [],
+			"wrong": true,
+			"after": "mystery/solved",
+			"spot": "shed_roof",
+			"behaviour": "house",
+			"hint": "On the shed roof.",
+			"note": "Small, grey, no markings at all. It isn't in any field guide.",
+			"page": "Shed roof, 15 Little Shenton Lane. Small and grey, no markings at all. It doesn't look at the car. It looks at the house. It isn't in any of the books. I think it's been here the whole time.",
+			"page_by": "you",
+			"like": ""
+		}
+	]
+}

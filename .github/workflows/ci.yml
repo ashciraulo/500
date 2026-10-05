@@ -93,6 +93,16 @@ jobs:
             exit 1
           fi
 
+      - name: Field journal test
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/field_test.gd -- --no-save 2>&1 \
+            | tee field.log | grep -E "ok |FAIL|FIELD|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" field.log; then
+            echo "::error::GDScript errors in the field journal"
+            exit 1
+          fi
+
       - name: Playthrough (fresh save, real time)
         run: |
           set -o pipefail

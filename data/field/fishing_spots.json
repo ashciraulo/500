@@ -1,0 +1,428 @@
+{
+	"_comment": "Fishing spots: real jetties, groynes and foreshores. near: [x, z] world metres, either a pier deck the map built from OSM (kind deck) or the real place (kind shore). stand: [x, y, z] where you fish from and yaw the way you face the water, both found in the map by tools/field/place_spots.gd. water picks the fish (data/field/fish.json); tags: jetty (pylons), crabs (crab net), flats (sand), snags, deep, rocks, beach, lights (under lights at night), hubcap.",
+	"spots": [
+		{
+			"id": "mends_st_jetty",
+			"name": "Mends Street jetty",
+			"water": "river",
+			"kind": "deck",
+			"near": [
+				-12,
+				2768.4
+			],
+			"tags": [
+				"jetty",
+				"crabs"
+			],
+			"hint": "The South Perth ferry jetty. Bream round the pylons after dark.",
+			"stand": [
+				-12,
+				4.8,
+				2766.4
+			],
+			"yaw": 0
+		},
+		{
+			"id": "coode_st_jetty",
+			"name": "Coode Street jetty",
+			"water": "river",
+			"kind": "deck",
+			"near": [
+				1022.3,
+				3156.5
+			],
+			"tags": [
+				"jetty",
+				"crabs",
+				"flats"
+			],
+			"hint": "The little jetty off Coode Street in South Perth. Crab nets in summer, whiting over the flats.",
+			"stand": [
+				1022.3,
+				4.75,
+				3154.5
+			],
+			"yaw": 0
+		},
+		{
+			"id": "point_fraser",
+			"name": "Point Fraser",
+			"water": "river",
+			"kind": "deck",
+			"near": [
+				2304.1,
+				2115.2
+			],
+			"tags": [
+				"jetty",
+				"crabs",
+				"flats"
+			],
+			"hint": "The boardwalk at Point Fraser, under the Causeway. Shallow, sandy, good for whiting and crabs.",
+			"stand": [
+				2272.1,
+				1.4,
+				2127.2
+			],
+			"yaw": 1.37
+		},
+		{
+			"id": "heirisson_island",
+			"name": "Heirisson Island",
+			"water": "river",
+			"kind": "shore",
+			"near": [
+				2559.9,
+				2165.4
+			],
+			"tags": [
+				"crabs",
+				"flats"
+			],
+			"hint": "The sandy edges of Heirisson Island, where the kangaroos are. Whiting and flathead on the flats.",
+			"stand": [
+				2543.9,
+				4.75,
+				2157.4
+			],
+			"yaw": 1.37
+		},
+		{
+			"id": "claisebrook_cove",
+			"name": "Claisebrook Cove",
+			"water": "river",
+			"kind": "shore",
+			"near": [
+				2219.9,
+				1167.4
+			],
+			"tags": [
+				"snags"
+			],
+			"hint": "The cove off East Perth, all snags and old timbers. Bream at night."
+		},
+		{
+			"id": "east_perth_jetty",
+			"name": "East Perth jetty",
+			"water": "river",
+			"kind": "deck",
+			"near": [
+				2665.6,
+				438.2
+			],
+			"tags": [
+				"jetty"
+			],
+			"hint": "The old jetty past the Causeway in East Perth. Quiet, and the bream know the pylons.",
+			"stand": [
+				2667.6,
+				3.45,
+				434.2
+			],
+			"yaw": 0
+		},
+		{
+			"id": "burswood_jetty",
+			"name": "Burswood jetty",
+			"water": "river",
+			"kind": "deck",
+			"near": [
+				3464.4,
+				1516.7
+			],
+			"tags": [
+				"jetty",
+				"snags"
+			],
+			"hint": "The jetty off the Burswood foreshore, by the snags along the bank. Bream after dark.",
+			"stand": [
+				3464.4,
+				1.95,
+				1514.7
+			],
+			"yaw": 0.59
+		},
+		{
+			"id": "maylands_foreshore",
+			"name": "Maylands foreshore",
+			"water": "river",
+			"kind": "shore",
+			"near": [
+				3789.7,
+				-218.3
+			],
+			"tags": [
+				"snags"
+			],
+			"hint": "The Maylands bank by the old airfield, among the snags. A bream spot at dusk.",
+			"stand": [
+				3741.7,
+				1.2,
+				-202.3
+			],
+			"yaw": 2.36
+		},
+		{
+			"id": "garratt_rd_bridge",
+			"name": "Garratt Road bridge",
+			"water": "river",
+			"kind": "shore",
+			"near": [
+				6230.3,
+				-2190.8
+			],
+			"tags": [
+				"snags",
+				"deep"
+			],
+			"hint": "Under the Garratt Road bridge, up past Bayswater. Deep water: the locals fish it at night for mulloway.",
+			"stand": [
+				6362.3,
+				4.55,
+				-2082.8
+			],
+			"yaw": 3.14
+		},
+		{
+			"id": "elizabeth_quay",
+			"name": "Elizabeth Quay",
+			"water": "river",
+			"kind": "shore",
+			"near": [
+				300,
+				1460
+			],
+			"tags": [
+				"deep",
+				"hubcap"
+			],
+			"hint": "The quay's edge in the city. Mostly blowies. People say things turn up off the old Esplanade.",
+			"stand": [
+				288,
+				0.55,
+				1456
+			],
+			"yaw": 5.69
+		},
+		{
+			"id": "canning_bridge",
+			"name": "Canning Bridge",
+			"water": "river",
+			"kind": "deck",
+			"near": [
+				-174.5,
+				7116.5
+			],
+			"tags": [
+				"jetty",
+				"crabs",
+				"flats",
+				"deep"
+			],
+			"hint": "Canning Bridge, where the two rivers meet. Deep holes, crabs, and the odd mulloway after dark.",
+			"stand": [
+				-172.5,
+				1.7,
+				7114.5
+			],
+			"yaw": 0
+		},
+		{
+			"id": "claremont_jetty",
+			"name": "Claremont jetty",
+			"water": "estuary",
+			"kind": "deck",
+			"near": [
+				-7020.6,
+				4812.8
+			],
+			"tags": [
+				"jetty"
+			],
+			"hint": "The Claremont jetty on Freshwater Bay. Tailor in the evenings, herring and skippy by day.",
+			"stand": [
+				-7020.6,
+				1.2,
+				4806.8
+			],
+			"yaw": 0.59
+		},
+		{
+			"id": "freshwater_bay",
+			"name": "Freshwater Bay jetty",
+			"water": "estuary",
+			"kind": "deck",
+			"near": [
+				-7711.7,
+				5617
+			],
+			"tags": [
+				"jetty",
+				"crabs"
+			],
+			"hint": "The jetty in Freshwater Bay, Peppermint Grove. A crab net spot, and whiting off the sand.",
+			"stand": [
+				-7709.7,
+				1.2,
+				5625
+			],
+			"yaw": 2.36
+		},
+		{
+			"id": "mosman_bay",
+			"name": "Mosman Bay jetty",
+			"water": "estuary",
+			"kind": "deck",
+			"near": [
+				-7617.8,
+				6114
+			],
+			"tags": [
+				"jetty",
+				"deep"
+			],
+			"hint": "Mosman Bay, under the cliffs. Deep water close in: snapper and mulloway at night.",
+			"stand": [
+				-7617.8,
+				3.7,
+				6112
+			],
+			"yaw": 0
+		},
+		{
+			"id": "east_fremantle",
+			"name": "East Fremantle jetties",
+			"water": "estuary",
+			"kind": "deck",
+			"near": [
+				-8726.6,
+				10167.1
+			],
+			"tags": [
+				"jetty",
+				"crabs"
+			],
+			"hint": "The jetties off East Fremantle, by the rowing clubs. Crabs in summer, tailor at dusk.",
+			"stand": [
+				-8726.6,
+				1.2,
+				10165.1
+			],
+			"yaw": 0
+		},
+		{
+			"id": "fishing_boat_harbour",
+			"name": "Fishing Boat Harbour",
+			"water": "estuary",
+			"kind": "deck",
+			"near": [
+				-10203.9,
+				12676.2
+			],
+			"tags": [
+				"jetty",
+				"lights"
+			],
+			"hint": "Fremantle's Fishing Boat Harbour. Squid under the lights at night."
+		},
+		{
+			"id": "fremantle_harbour",
+			"name": "Fremantle harbour",
+			"water": "estuary",
+			"kind": "deck",
+			"near": [
+				-10684.9,
+				12643.3
+			],
+			"tags": [
+				"jetty",
+				"lights",
+				"deep"
+			],
+			"hint": "The harbour walls in Fremantle. Squid under the lights, tarwhine and skippy, snapper after dark.",
+			"stand": [
+				-10674.9,
+				1.2,
+				12659.3
+			],
+			"yaw": 2.55
+		},
+		{
+			"id": "leighton_beach",
+			"name": "Leighton Beach",
+			"water": "ocean",
+			"kind": "shore",
+			"near": [
+				-9722.4,
+				8878.4
+			],
+			"tags": [
+				"beach"
+			],
+			"hint": "The beach north of the port. Herring, whiting and tailor off the sand.",
+			"stand": [
+				-9738.4,
+				0.45,
+				8802.4
+			],
+			"yaw": 0.59
+		},
+		{
+			"id": "cottesloe_groyne",
+			"name": "Cottesloe groyne",
+			"water": "ocean",
+			"kind": "shore",
+			"near": [
+				-9801.2,
+				5507.5
+			],
+			"tags": [
+				"rocks",
+				"beach"
+			],
+			"hint": "The groyne at Cottesloe. Skippy and herring off the rocks, KGs over the sand."
+		},
+		{
+			"id": "city_beach_groyne",
+			"name": "City Beach groyne",
+			"water": "ocean",
+			"kind": "shore",
+			"near": [
+				-9258.9,
+				-935.5
+			],
+			"tags": [
+				"rocks",
+				"beach"
+			],
+			"hint": "The groynes at City Beach. Tailor at dawn and dusk, whiting off the sand.",
+			"stand": [
+				-9498.9,
+				0.4,
+				-855.5
+			],
+			"yaw": 0.39
+		},
+		{
+			"id": "trigg_point",
+			"name": "Trigg Point",
+			"water": "ocean",
+			"kind": "shore",
+			"near": [
+				-9785.6,
+				-7809.9
+			],
+			"tags": [
+				"rocks",
+				"beach"
+			],
+			"hint": "The point at Trigg, all reef and wash. Herring, skippy and the odd KG whiting.",
+			"stand": [
+				-9709.6,
+				0.5,
+				-7997.9
+			],
+			"yaw": 0
+		}
+	]
+}

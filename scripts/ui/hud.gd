@@ -11,7 +11,8 @@ F5: next weather (locks it)    F6: weather lock    F7: +1 hour    F8: clock lock
 F9: lo-fi on/off    F1: hide this    Esc / Start: pause and settings    Tab / X: phone (jobs)
 F / A: use a workshop, servo or spray shop when parked in its bay    P / L3: photo mode
 Hold F / A: get out of the car    On foot: WASD walk, Space hurry, F open doors, sleep, get in
-Radio: . / , station    / on-off    M next track    N next playlist (My Music)    H: horn"""
+Radio: . / , station    / on-off    M next track    N next playlist (My Music)    H: horn
+B / R3: binoculars (stopped, or on foot), Enter / A to photograph    J: field journal"""
 
 var _car: CarController
 var _speed: Label

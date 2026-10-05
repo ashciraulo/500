@@ -334,3 +334,52 @@ records).
   moments) and `oddity/odd_shed_knock` (falls back to
   `home/home_odd_wall_tapping`). The shed unlock sound is game_hooks.gd's,
   on `shed_unlocked`.
+
+## Field journal: birds and fish (autoload `FieldJournal`)
+
+Design: `docs/FIELD_JOURNAL.md`. Species in `data/field/birds.json`, places
+in `data/field/habitats.json` (lat/lon of the real place; x/z from
+`tools/field/gen_field.py`, lake heights from `tools/field/water_levels.gd`).
+Fish in `data/field/fish.json`, spots in `data/field/fishing_spots.json`
+(where to stand found in the map by `tools/field/place_spots.gd`; rerun it
+after a map rebuild).
+
+- `FieldJournal.species_seen(id)`, `photo_logged(id, stars, frame)`,
+  `film_changed(left, size)`, `roll_developed(prints, pay)`.
+- `FieldJournal.is_seen(id)`, `is_photographed(id)`, `seen_count()`,
+  `photographed_count()`, `entry(id)`; `see(id, where)` notes a species
+  (another system can call it, e.g. traffic's magpies).
+- Career stats (`Progression`): `species_seen`, `species_photographed`,
+  `prints_sold`, `fish_caught`, `fish_species`.
+- Fishing: signals `fish_landed(catch)`, `esky_changed(count, size)`,
+  `weighed_in(fish, pay)`; `is_caught(id)`, `caught_count()`, `catches`,
+  `esky`, `rod`, `esky_level`, `has_crab_net`, `crab_nets`;
+  `upgrade_fishing("rod" | "esky" | "crab_net")`, `buy_ice()`, `weigh_in()`.
+  Discoveries: `fishing/<spot id>` when a spot is found, `fishing/fiat_hubcap`
+  when the hubcap goes home.
+- Gear: `FieldJournal.binoculars`, `camera` (levels into `BINOCULARS`,
+  `CAMERAS`); `upgrade(kind)` buys the next at the lab.
+- The world side is `FieldWorld` ("Field", next to the player's car): `birds`
+  (`FieldBirds`, group `field_bird_spawner`), `lab` (`BirdLab` on Lake
+  Street, group `photo_labs`), `binoculars`, `journal`, `lab_screen`,
+  `fishing` (`FieldFishing`, group `fishing`: `is_busy()`, signals
+  `landed(catch)`, `lost(why)`), `tackle` (`TackleShop` on Mends Street,
+  group `tackle_shops`), `tackle_screen`, `fishing_screen`.
+- `FishModels.build(fish)` / `sized(fish, cm)` makes a fish, crab, squid or
+  hubcap (node `Body`), facing -Z.
+  Birds are in group `field_birds` with meta `species`.
+- `FieldBirds.spawn(species, habitat, near)` places a sighting by hand (tests
+  set `auto_spawn = false`); `flush(node, from)` scares one off.
+- `BirdModels.build(species)` makes a bird (nodes `Trunk`, `Tail`, `Head`,
+  `Legs`, `WingL`, `WingR`); `set_flying`, `flap`.
+- Input: `binoculars` (B, R3), `photo_take` for the shot, `journal` (J),
+  `interact` (F / A) to fish, cast, strike and reel.
+- Sounds (missing ones play nothing): `field/bird_<id>` calls (magpie and
+  ibis use traffic's), `field/binoculars_up`, `field/binoculars_down`,
+  `field/shutter`, `field/focus_hit`, `field/focus_miss`, `field/flush`,
+  `field/film_full`; fishing: `field/rod_out`, `field/cast`, `field/lure_plop`,
+  `field/bite_nibble`, `field/splash_small` (a bite, a release), `field/strike`,
+  `field/drag` (a run starts), `field/line_snap`, `field/landed_flop`,
+  `field/esky_lid`, `field/reel_in`, `field/splash_big` (crab net in),
+  `field/bucket_drop` (crab net up). Saved under `field_journal`.
+- `FieldJournal.stat(name)` reads the career stats above live.

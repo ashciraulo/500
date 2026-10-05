@@ -1,0 +1,525 @@
+extends SceneTree
+## The field journal end to end: species and places load, birds turn up in
+## their places (on a lawn, in a tree, circling, on the river), the
+## binoculars identify one, the focus dial takes its photo, the lab develops
+## and sells the roll, the journal and lab screens open, and it all saves.
+## After midnight, once the mystery has moved on, the wrong birds turn up.
+## Then fishing off the Mends Street jetty: cast, a bite, the fight, a bream
+## in the esky, a line snapped by a mulloway, the crab net, and the weigh-in
+## at the tackle shop.
+##
+##   godot --headless --path . --fixed-fps 60 --script res://tools/field_test.gd -- --no-save
+##
+## With a display (xvfb-run) and shots=<dir> it saves screenshots of each
+## stage. Exits with code 1 if any check fails.
+
+const LAWNS := Vector3(-935.6, 66.0, 1455.6)     # Kings Park lookout car park
+const BUSH := Vector3(-2189.0, 48.0, 1822.0)     # Lovekin Drive, Kings Park
+const RIVER := Vector3(742.0, 3.0, 1533.0)       # Riverside Drive by the quay
+const FRASER := Vector3(-911.35, 68.4, 923.83)   # Fraser Avenue's lemon gums
+# FieldFishing.State, spelled out: naming the class here would compile it
+# before the autoloads it uses exist.
+const F_IDLE := 0
+const F_READY := 1
+const F_CHARGING := 2
+const F_WAITING := 3
+const F_BITE := 4
+const F_FIGHT := 5
+const F_LANDED := 6
+
+var _quitting := false
+var _main: Node
+var _car: RigidBody3D
+var _fj: Node
+var _field: Node
+var _birds: Node
+var _bino: Node
+var _failures: Array[String] = []
+var _stage := 0
+var _frames := 0
+var _shots := ""
+var _target: Dictionary = {}
+var _money := 0
+var _wait := 0
+var _seen_before := 0
+var _walker: Node3D
+var _fishing: Node
+var _spot := {}
+var _lost: Array[String] = []
+var _tries := 0
+
+
+func _process(_delta: float) -> bool:
+	if _quitting:
+		return false
+	if _main == null:
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("shots="):
+				_shots = arg.trim_prefix("shots=")
+				DirAccess.make_dir_recursive_absolute(_shots)
+		_main = load("res://scenes/main.tscn").instantiate()
+		root.add_child(_main)
+		current_scene = _main
+		_car = _main.get_node("LoFi/SubViewport/World/Car")
+		root.get_node("GameClock").set_locked(true)
+		root.get_node("Weather").set_locked(true)
+		root.get_node("Weather").set_state(0, true)
+		_fj = root.get_node("FieldJournal")
+		if _shots != "":
+			root.get_node("Settings").show_help = false
+		return false
+	_frames += 1
+	var clock := root.get_node("GameClock")
+	match _stage:
+		0:
+			if _frames == 90:
+				_field = _main.find_child("Field", true, false)
+				_check(_field != null, "the field journal's world is built")
+				if _field == null:
+					return _finish()
+				_birds = _field.birds
+				_bino = _field.binoculars
+				_birds.auto_spawn = false
+				_check(_fj.bird_order.size() >= 39, "39 species (%d)" % _fj.bird_order.size())
+				_check(_fj.habitats.size() >= 20, "real places (%d)" % _fj.habitats.size())
+				_check(_bino != null and _bino.is_inside_tree(), "binoculars ready")
+				_check(_field.journal.is_inside_tree() and _field.lab_screen.is_inside_tree(), "journal and lab screens ready")
+				# Hours wrap past midnight; dry birds skip the rain.
+				var frog: Dictionary = _fj.bird("tawny_frogmouth")
+				_check(_fj.is_about(frog, 23.0, 0.0) and _fj.is_about(frog, 2.0, 0.0) and not _fj.is_about(frog, 12.0, 0.0), "frogmouths are night birds")
+				_check(not _fj.is_about(_fj.bird("new_holland_honeyeater"), 7.0, 0.9), "honeyeaters keep out of the rain")
+				var dusk := _ids(_fj.candidates(_fj.habitat("kings_park_bush"), 18.0, 0.0))
+				_check(dusk.has("carnabys_black_cockatoo"), "Carnaby's in Kings Park at dusk")
+				_check(not dusk.has("black_swan"), "no swans in the bush")
+				var night := _ids(_fj.candidates(_fj.habitat("kings_park_bush"), 1.0, 0.0))
+				_check(night.has("southern_boobook") and not night.has("rainbow_lorikeet"), "boobooks, not lorikeets, at 1 am")
+				var quay := _ids(_fj.candidates(_fj.habitat("claisebrook_cove"), 10.0, 0.0))
+				_check(quay.has("australian_pelican"), "pelicans at Claisebrook")
+				_check(not _ids(_fj.candidates(_fj.habitat("northbridge"), 10.0, 0.0)).has("australian_magpie"), "magpies are traffic's, not spawned twice")
+				clock.set_time(8.0)
+				_teleport(LAWNS, 0.0)
+				_next()
+		1:  # Kings Park lawns: a galah on the grass, a kestrel overhead.
+			if _frames == 30:
+				var h: Dictionary = _fj.habitat("kings_park_lawns")
+				var galah := _spawn_near("galah", h, LAWNS, 45.0)
+				_check(not galah.is_empty(), "galahs on the Kings Park lawn")
+				if not galah.is_empty():
+					_check(galah.birds[0].kind == "ground", "galahs on the ground (%s)" % galah.birds[0].kind)
+					_target = galah
+				var kestrel := _spawn_near("nankeen_kestrel", h, LAWNS, 60.0)
+				_check(not kestrel.is_empty() and kestrel.birds[0].state == "circle", "a kestrel up in the air")
+				if galah.is_empty():
+					return _finish()
+				_check(_bino.open(), "binoculars come up in a stopped car")
+				_aim(galah.birds[0].node)
+			elif _frames > 30 and _frames < 400:
+				_aim(_target.birds[0].node)
+				if _fj.is_seen("galah"):
+					_check(true, "the galah is identified")
+					_shot("01_binoculars_galah")
+					_next()
+			elif _frames == 400:
+				_check(false, "the galah was never identified (target %s)" % str(_bino.target))
+				_next()
+		2:  # The shot: hit every arc.
+			_aim(_target.birds[0].node)
+			if _frames == 5:
+				_bino._start_shot()
+				_check(_bino.state == 2, "the focus dial starts")
+			elif _frames == 20:
+				_shot("02_focus_dial")
+			elif _frames > 20 and _bino.state == 2 and _frames % 10 == 0:
+				_bino.dial.needle = _bino.dial.arcs[0]
+				_bino._press()
+			elif _frames > 20 and _bino.state != 2 and _wait == 0:
+				_wait = _frames
+			if _wait > 0 and _frames > _wait + 10:
+				_check(_fj.roll.size() == 1, "a frame on the roll (%d)" % _fj.roll.size())
+				_check(_fj.is_photographed("galah"), "the galah's page has a photo")
+				var e: Dictionary = _fj.entry("galah")
+				_check(int(e.get("best", 0)) == 3 or _bino.target.get("frame", 0.0) < 0.04, "every sharp press is three stars (got %s)" % e.get("best"))
+				_check(FileAccess.file_exists(String(e.get("best_file", ""))) or DisplayServer.get_name() == "headless", "the photo is in the album")
+				_shot("03_after_shot")
+				_bino.close()
+				_check(_car.player_controlled, "the car is back in your hands")
+				_wait = 0
+				_next()
+		3:  # Kings Park bushland: a wattlebird in a tree; scare it off.
+			if _frames == 1:
+				_teleport(BUSH, 0.0)
+			elif _frames == 240:
+				var h: Dictionary = _fj.habitat("kings_park_bush")
+				# The map's trees are multimesh instances, which the headless renderer doesn't keep.
+				if DisplayServer.get_name() != "headless":
+					var crowns: Array = _birds.trees_near(BUSH, 120.0)
+					_check(not crowns.is_empty(), "trees in Kings Park to perch in (%d)" % crowns.size())
+				var wattle := _spawn_near("red_wattlebird", h, BUSH, 40.0)
+				_check(not wattle.is_empty(), "a wattlebird in the bush")
+				if not wattle.is_empty():
+					_check(wattle.birds[0].kind in ["tree", "post"], "up a tree (%s)" % wattle.birds[0].kind)
+					var below: Dictionary = _birds.ground(wattle.birds[0].node.global_position)
+					_check(not below.is_empty() and wattle.birds[0].node.global_position.y > below.pos.y + 2.0, "up off the ground")
+					_target = wattle
+				_shot("04_bush_wattlebird")
+			elif _frames == 250 and not _target.is_empty():
+				var before: int = _birds.stats.flushed
+				_birds.flush(_target.birds[0].node, BUSH)
+				_check(_birds.stats.flushed == before + 1 and _target.birds[0].state == "fly", "it flushes")
+			elif _frames == 800:
+				_check(_target.birds[0].state == "gone", "and it's gone (%s)" % _target.birds[0].state)
+				_next()
+		4:  # The river: a black swan on the water, a cormorant on a post.
+			if _frames == 1:
+				_teleport(RIVER, 1.2)
+				clock.set_time(9.0)
+			elif _frames == 60:
+				var boats: Node = get_first_node_in_group(&"traffic").get("boats")
+				var water := Vector3.INF
+				for r in [40.0, 70.0, 100.0, 140.0]:
+					for i in 16:
+						var p: Vector3 = RIVER + Vector3(cos(TAU * i / 16.0), 0, sin(TAU * i / 16.0)) * r
+						if boats.water_at(p, 8.0):
+							water = p
+							break
+					if water != Vector3.INF:
+						break
+				_check(water != Vector3.INF, "open water off Riverside Drive")
+				if water != Vector3.INF:
+					var swan: Dictionary = _birds.spawn(_fj.bird("black_swan"), _fj.habitat("langley_park"), water)
+					_check(not swan.is_empty() and absf(swan.birds[0].node.global_position.y) < 0.3, "a black swan sitting on the river")
+					var shag: Dictionary = _birds.spawn(_fj.bird("little_pied_cormorant"), _fj.habitat("langley_park"), water + Vector3(4, 0, 0))
+					_check(not shag.is_empty() and shag.birds[0].kind == "post", "a cormorant on a post")
+				_shot("05_river_swan")
+				_next()
+		5:  # After midnight: the wrong birds, once the mystery has moved on.
+			if _frames == 1:
+				clock.set_time(2.75)
+				_teleport(FRASER, 0.3)
+			elif _frames == 60:
+				var cockies: Dictionary = _fj.bird("wrong_cockatoos")
+				_seen_before = _fj.seen_count()
+				_check(not _ids(_fj.candidates(_fj.habitat("kings_park_bush"), 2.75, 0.0)).has("wrong_cockatoos"), "wrong birds aren't ordinary sightings")
+				_check(not _birds.wrong_ready(cockies, 2.75), "no thirteen cockatoos before the street directory page")
+				var disc := root.get_node("Discoveries")
+				for clue in ["tape_1", "polaroid", "ticket", "atlas_page"]:
+					disc.discover("mystery/" + clue)
+				_check(_birds.wrong_ready(cockies, 2.75) and not _birds.wrong_ready(cockies, 12.0), "after the page, at 3 am, they're out")
+				_check(not _birds.wrong_ready(_fj.bird("wrong_ibis"), 2.75), "the ibis waits for the keyring")
+				var at: Vector3 = _birds.wrong_place(cockies)
+				_check(at.distance_to(FRASER) < 1.0, "the cockatoos' place is Fraser Avenue")
+				_check(_birds.wrong_place(_fj.bird("wrong_frogmouth")) != Vector3.INF, "the frogmouth's pole is outside home")
+				# Stand off a little, so the snag (headless, no trees) isn't on the car.
+				_target = _birds.spawn_wrong(cockies, at + Vector3(18, 0, 0))
+				_check(not _target.is_empty() and _target.birds.size() == 13, "thirteen of them (%d)" % (_target.birds.size() if not _target.is_empty() else 0))
+				if _target.is_empty():
+					return _finish()
+				_check(_bino.open(), "binoculars up at night")
+				_aim(_target.birds[0].node)
+			elif _frames > 60 and _frames < 600:
+				_aim(_target.birds[0].node)
+				if _fj.is_seen("wrong_cockatoos"):
+					_check(root.get_node("Discoveries").has("field/wrong_cockatoos"), "seeing one is a discovery")
+					_check(_fj.seen_count() == _seen_before and _fj.species_total() == 39, "they don't count as species (%d of %d)" % [_fj.seen_count(), _fj.species_total()])
+					_check(_target.birds.all(func(b: Dictionary) -> bool: return b.state == "perch"), "none of them flush")
+					_bino._start_shot()
+					_wait = 0
+					_frames = 600
+			elif _frames > 600 and _bino.state == 2 and _frames % 10 == 0:
+				_aim(_target.birds[0].node)
+				_bino.dial.needle = _bino.dial.arcs[0]
+				_bino._press()
+			elif _frames > 600 and _bino.state != 2:
+				_check(_fj.roll.size() == 2 and _fj.roll[1].wrong, "a photo of one on the roll")
+				_shot("08_wrong_cockatoos")
+				_bino.close()
+				_field.journal.open()
+				_field.journal._selected = "wrong_cockatoos"
+				_field.journal.refresh()
+				_shot("09_wrong_page")
+				_field.journal.close()
+				_birds.clear()
+				clock.set_time(9.0)
+				_next()
+			if _frames == 599:
+				_check(false, "the cockatoos were never identified (target %s)" % str(_bino.target))
+				_bino.close()
+				_birds.clear()
+				_next()
+		6:  # The lab: develop and sell.
+			var lab: Node3D = _field.lab
+			if _frames == 1:
+				_teleport(Vector3(lab.global_position.x, 60.0, lab.global_position.z) + lab.global_basis.x * 6.0, lab.rotation.y)
+			elif _frames == 60:
+				_check(lab._grounded, "the lab finds the ground on Lake Street (y %.1f)" % lab.global_position.y)
+				_teleport(lab.global_position + Vector3.UP * 0.3, lab.rotation.y)
+			elif _frames == 70:
+				_car.freeze = false
+				_car.set_physics_process(true)
+			elif _frames == 120:
+				_check(lab.in_reach(), "parked in the lab's bay (local %s, speed %.1f)" % [lab.to_local(_car.global_position), _car.linear_velocity.length()])
+				_money = root.get_node("Wallet").balance
+				_field.lab_screen.open()
+				_check(_field.lab_screen.is_open() and paused, "the lab counter opens and pauses")
+				var result: Dictionary = _fj.develop()
+				_field.lab_screen._last_result = result
+				_field.lab_screen.refresh()
+				_check(result.prints.size() == 2 and _fj.roll.is_empty(), "two prints developed, the roll is empty")
+				_check(root.get_node("Wallet").balance == _money + int(result.pay) and int(result.pay) > 0, "the prints pay ($%d)" % result.pay)
+				_check(result.prints[0].first, "first print of a species earns the bonus")
+				_check(result.prints[1].wrong and int(result.prints[1].pay) == 0, "the cockatoo print comes out blank")
+			elif _frames == 130:
+				_shot("06_lab")
+				_field.lab_screen.close()
+				_check(not paused, "closing the counter unpauses")
+				_field.journal.open()
+				_field.journal._selected = "galah"
+				_field.journal.refresh()
+				_check(_field.journal.is_open(), "the journal opens")
+			elif _frames == 140:
+				_shot("07_journal")
+				_field.journal.close()
+				var state: Dictionary = _fj.save_state()
+				var copy: Dictionary = JSON.parse_string(JSON.stringify(state))
+				_fj.entries = {}
+				_fj.load_state(copy)
+				_check(_fj.is_photographed("galah") and _fj.prints_sold == 1, "the journal survives a save and load")
+				_check(root.get_node("Progression").get_stat("species_photographed") >= 1.0, "the career counts photographed species")
+				_next()
+		7:  # Fishing off the Mends Street jetty at dusk.
+			_stage_fishing(clock)
+		8:  # The tackle shop: ice, the weigh-in, and it all saves.
+			var shop: Node3D = _field.tackle
+			if _frames == 1:
+				# Getting in takes a couple of seconds (door, belt, key).
+				_walker.get_in()
+			elif _frames == 150:
+				_teleport(Vector3(shop.global_position.x, 60.0, shop.global_position.z) + shop.global_basis.x * 6.0, shop.rotation.y)
+			elif _frames == 210:
+				_check(shop._grounded, "the tackle shop finds the ground on Mends Street (y %.1f)" % shop.global_position.y)
+				_teleport(shop.global_position + Vector3.UP * 0.3, shop.rotation.y)
+			elif _frames == 220:
+				_car.freeze = false
+				_car.set_physics_process(true)
+			elif _frames == 280:
+				_check(shop.in_reach(), "parked in the tackle shop's bay (local %s)" % shop.to_local(_car.global_position))
+				var wallet := root.get_node("Wallet")
+				_money = wallet.balance
+				_field.tackle_screen.open()
+				_check(_field.tackle_screen.is_open() and paused, "the tackle counter opens and pauses")
+				_check(_fj.buy_ice() and _fj.ice_left_hours() > 7.0, "a bag of ice")
+				var kept: int = _fj.esky.size()
+				var result: Dictionary = _fj.weigh_in()
+				_field.tackle_screen._last_result = result
+				_field.tackle_screen.refresh()
+				_check(result.fish.size() == kept and kept >= 1 and _fj.esky.is_empty(), "the esky weighed in (%d fish)" % kept)
+				_check(int(result.pay) > 0 and wallet.balance == _money - _fj.ICE_PRICE + int(result.pay), "the club pays ($%d)" % result.pay)
+				_check(not result.fish.is_empty() and result.fish[0].first, "first of a species on the board earns the bonus")
+			elif _frames == 290:
+				_shot("10_tackle")
+				_field.tackle_screen.close()
+				_check(not paused, "closing the tackle counter unpauses")
+				_field.journal.open()
+				_field.journal._tab = "fish"
+				_field.journal._selected = "black_bream"
+				_field.journal.refresh()
+			elif _frames == 300:
+				_shot("11_journal_fish")
+				_field.journal.close()
+				var state: Dictionary = _fj.save_state()
+				var copy: Dictionary = JSON.parse_string(JSON.stringify(state))
+				_fj.catches = {}
+				_fj.load_state(copy)
+				_check(_fj.is_caught("black_bream") and _fj.fish_weighed >= 1 and _fj.has_crab_net, "the catches survive a save and load")
+				_check(root.get_node("Progression").get_stat("fish_species") >= 1.0, "the career counts fish species")
+				return _finish()
+	return false
+
+
+func _stage_fishing(clock: Node) -> void:
+	if _frames == 1:
+		_walker = _main.get_node("LoFi/SubViewport/World/Player")
+		_fishing = _field.fishing
+		_fishing.lost.connect(func(why: String) -> void: _lost.append(why))
+		_check(_fj.fish_order.size() >= 15, "15 fish (%d)" % _fj.fish_order.size())
+		_check(_fj.spots.size() >= 18, "fishing spots placed on the map (%d)" % _fj.spots.size())
+		_spot = _fj.spot("mends_st_jetty")
+		_check(not _spot.is_empty(), "the Mends Street jetty is a spot")
+		var dusk := _ids(_fj.fish_candidates(_spot, 18.5))
+		_check(dusk.has("black_bream") and not dusk.has("mulloway") and not dusk.has("king_george_whiting"), "bream at the jetty at dusk, no mulloway or KGs")
+		_check(_ids(_fj.fish_candidates(_fj.spot("elizabeth_quay"), 12.0)).has("fiat_hubcap"), "something odd in the river off the quay")
+		_check(_ids(_fj.fish_candidates(_fj.spot("fremantle_harbour"), 21.0)).has("squid"), "squid under the harbour lights at night")
+		_check(_ids(_fj.fish_candidates(_spot, 12.0, "net")) == ["blue_swimmer_crab"], "the crab net catches crabs")
+		clock.set_time(18.5)
+		_teleport(Vector3(-4.0, 9.6, 2873.0), 2.0)
+		var hud := get_first_node_in_group(&"hud")
+		if hud and _shots != "":
+			for c in hud.get_children():
+				for l in c.get_children():
+					if l is Label and l.text.begins_with("W/S"):
+						l.visible = false
+	elif _frames == 90:
+		_car.freeze = false
+		_car.set_physics_process(true)
+	elif _frames == 120:
+		_walker.get_out()
+	elif _frames == 230:
+		# Getting out takes a moment: key, door, step.
+		_check(not _walker.in_car, "out of the car on the Esplanade")
+		var stand: Vector3 = _fj.spot_stand(_spot)
+		var yaw := float(_spot.yaw)
+		_walker.teleport(stand + Vector3.UP * 0.1, stand + Vector3(-sin(yaw), -0.3, -cos(yaw)) * 10.0)
+	elif _frames == 270:
+		_check(root.get_node("Discoveries").has("fishing/mends_st_jetty"), "walking up finds the spot")
+		_check(_fishing.spot_in_reach().get("id", "") == "mends_st_jetty", "standing at the spot (%s)" % _walker.global_position)
+		_check(_fishing.prompt().contains("Fish here"), "the prompt offers to fish (%s)" % _fishing.prompt())
+		_fishing.start(_spot)
+		_check(_fishing.state == F_READY and _fishing._rod != null, "the rod comes out")
+		_check(not _walker.is_physics_processing(), "the walker stands still while fishing")
+		_fishing._yaw = float(_spot.yaw)
+		_fishing._pitch = -0.25
+	elif _frames == 280:
+		_fishing._press()
+	elif _frames > 280 and _fishing.state == F_CHARGING:
+		if _fishing.power > 0.8:
+			_fishing._release()
+			_check(_fishing.state == F_WAITING, "a long cast lands in the water (%.0f m)" % _fishing.cast_distance)
+			_check(absf(_fishing._float.global_position.y) < 0.2, "the float sits on the river (y %.2f)" % _fishing._float.global_position.y)
+			_hook_next("black_bream")
+	elif _fishing.state == F_WAITING and _tries == 0 and _fishing._nibbles > 0:
+		if _frames % 20 == 0:
+			_shot("08_fishing_wait")
+	elif _fishing.state == F_BITE and _frames > 280:
+		_fishing._press()
+		_check(_fishing.state == F_FIGHT, "struck in time: fish on")
+		if _tries == 0:
+			# A legal bream for the esky.
+			_fishing.fish_on.cm = 33.0
+			_fishing.fish_on.kg = 0.65
+			_fishing.fish_on.legal = true
+	elif _fishing.state == F_FIGHT:
+		if _tries == 0:
+			# Play it: ease off when the tip shivers or it runs, reel when it's slack.
+			if _fishing.warning or _fishing.surging or _fishing.tension > 0.8:
+				_fishing._reeling = false
+			elif _fishing.tension < 0.45:
+				_fishing._reeling = true
+		else:
+			_fishing._reeling = true  # hauling on a mulloway: it'll snap
+		if _fishing.tension > 0.5 and _frames % 97 == 0:
+			_shot("08_fishing_fight")
+	elif _fishing.state == F_LANDED and _tries == 0:
+		_tries = 1
+		_check(_fj.is_caught("black_bream"), "the bream's in the journal")
+		_check(_field.fishing_screen.card_open(), "the catch card is up")
+		_check(_fishing.keep_blocked(_fishing.caught) == "", "a legal bream can be kept")
+		_wait = _frames + 20
+	elif _tries == 1 and _frames == _wait:
+		_shot("09_fishing_catch")
+		_fishing.choose("keep")
+		_check(_fj.esky.size() == 1 and _fishing.state == F_READY, "the bream goes in the esky")
+		# Now something too big for the old rod.
+		_tries = 2
+		_fishing.power = 1.0
+		_fishing._cast()
+		_hook_next("mulloway")
+		_fishing._species = _fj.fish_species("mulloway")
+	elif _tries == 2 and _lost.size() > 0:
+		_check(_lost[-1] == "snapped", "hauling flat out on a mulloway snaps the line (%s)" % _lost[-1])
+		_fishing._put_away()
+		_check(_fishing.state == F_IDLE and _walker.is_physics_processing(), "the rod goes away")
+		# The crab net.
+		clock.set_time(20.5)
+		_fj.has_crab_net = true
+		_fishing.start(_spot)
+		_check(_fj.crab_nets.has("mends_st_jetty"), "the crab net goes over the side")
+		_fishing._put_away()
+		_fj.crab_nets["mends_st_jetty"] = float(_fj.crab_nets["mends_st_jetty"]) - 200.0
+		_check(_fishing.prompt().contains("crab net"), "the net's ready to pull (%s)" % _fishing.prompt())
+		var esky_before: int = _fj.esky.size()
+		var crabs: Array = _fishing.pull_crab_net(_spot)
+		_check(crabs.size() >= 2 and _fj.is_caught("blue_swimmer_crab"), "blue mannas in the net (%d)" % crabs.size())
+		_check(_fj.crab_nets.is_empty() and _fj.esky.size() >= esky_before, "the net's up, legal crabs kept (%d in the esky)" % _fj.esky.size())
+		_next()
+	elif _tries == 0 and not _lost.is_empty() and _fishing.state == F_READY:
+		print("     (the bream got away: %s; casting again)" % _lost[-1])
+		_lost.clear()
+		_fishing.power = 1.0
+		_fishing._cast()
+		_hook_next("black_bream")
+	elif _frames > 4000:
+		_check(false, "fishing stalled (state %d, tries %d, lost %s)" % [_fishing.state, _tries, str(_lost)])
+		_next()
+
+
+## Make sure `id` is what bites next, straight away.
+func _hook_next(id: String) -> void:
+	_fishing._species = _fj.fish_species(id)
+	_fishing._wait = 0.5
+	_fishing._nibbles = 1
+
+
+func _ids(list: Array) -> Array:
+	return list.map(func(b: Dictionary) -> String: return b.id)
+
+
+## A sighting of `id` somewhere about `dist` m from `at`, trying a few directions.
+func _spawn_near(id: String, h: Dictionary, at: Vector3, dist: float) -> Dictionary:
+	for i in 12:
+		var a := TAU * i / 12.0
+		var s: Dictionary = _birds.spawn(_fj.bird(id), h, at + Vector3(cos(a), 0, sin(a)) * dist)
+		if s.is_empty():
+			continue
+		# Somewhere you can actually see it from the car.
+		var eye := _car.global_position + Vector3.UP * 1.2
+		var q := PhysicsRayQueryParameters3D.create(eye, s.birds[0].node.global_position + Vector3.UP * 0.2, 1 | 2)
+		q.exclude = [_car.get_rid()]
+		if _car.get_world_3d().direct_space_state.intersect_ray(q).is_empty() or s.birds[0].kind == "air":
+			return s
+		_birds._remove(s)
+	return {}
+
+
+## Frozen cars keep adding up their script forces and leap when let go, so
+## the car's own processing is off while it's held.
+func _teleport(p: Vector3, yaw: float) -> void:
+	_car.freeze = true
+	_car.set_physics_process(false)
+	_car.global_transform = Transform3D(Basis(Vector3.UP, yaw), p + Vector3.UP * 0.8)
+	_car.linear_velocity = Vector3.ZERO
+	_car.angular_velocity = Vector3.ZERO
+
+
+func _aim(node: Node3D) -> void:
+	if not is_instance_valid(node) or _bino._camera == null:
+		return
+	var to: Vector3 = node.global_position + Vector3.UP * 0.15 - _bino._camera.global_position
+	_bino._yaw = atan2(-to.x, -to.z)
+	_bino._pitch = atan2(to.y, Vector2(to.x, to.z).length())
+	_bino._camera.fov = 9.0
+
+
+func _next() -> void:
+	_stage += 1
+	_frames = 0
+
+
+func _check(ok: bool, what: String) -> void:
+	print(("ok   " if ok else "FAIL ") + what)
+	if not ok:
+		_failures.append(what)
+
+
+func _shot(name: String) -> void:
+	if _shots == "" or DisplayServer.get_name() == "headless":
+		return
+	root.get_texture().get_image().save_png(_shots.path_join(name + ".png"))
+
+
+func _finish() -> bool:
+	print("FIELD ", "PASSED" if _failures.is_empty() else "FAILED (%d)" % _failures.size())
+	for f in _failures:
+		print("  - " + f)
+	_quitting = true
+	root.get_node("SaveGame").quit_cleanly(1 if _failures.size() else 0)
+	return false
