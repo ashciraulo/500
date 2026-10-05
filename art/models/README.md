@@ -42,6 +42,19 @@ their pivots: `BroomL`/`BroomR` (sweeper), `BinArm` with `Rail` and `Grip`
 van, shown open). The food van has empties `HatchLight`, `SignSide` (faces
 -X) and `SignFront` for its lamp and Label3D signs; no baked text.
 
+Everyday traffic (`lib/traffic_vehicles.py`):
+`python3.11 art/models/scripts/build_traffic.py` writes
+`vehicles/traffic/<type>.glb` for hatch, sedan, suv, ute, van, taxi, bus,
+police, ambulance, fire, carriage_cab and carriage_mid, with the same
+conventions as the night shift (front -Z, kerb -X, origin on the ground at
+the footprint centre, rail level for the railcar, no wheel nodes, no
+logos). Body on `Paint`, a stripe or band on `Livery`, windows on `Glass`;
+`HeadL`/`HeadR`/`TailL`/`TailR` and the amber `IndL`/`IndR` (front and back
+on one mesh a side) are their own meshes. The bus has a lit `Dest` panel;
+police, ambulance and fire a `LightBar` with `Red` and `Blue` under it and
+a `Siren` empty; each railcar `DoorsL`/`DoorsR` (two double doors a side,
+origins on the body side at floor height). About 0.7-1.9k triangles each.
+
 Stage 5 landmarks for the map: `python3.11 art/models/scripts/build_landmarks.py`
 (`lib/coast_landmarks.py`) writes `props/landmarks/mole_light_north.glb` (the
 red 1906 North Mole light), `mole_light_south.glb` (the green 1903 South Mole
