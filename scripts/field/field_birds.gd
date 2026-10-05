@@ -291,21 +291,17 @@ func water_level(h: Dictionary, p: Vector3) -> float:
 	var boats := _boats()
 	if boats == null or not boats.has_method("water_at") or not boats.water_at(p, 4.0):
 		return INF
-	# Lakes sit above the river: their heights come from the map, per 25 m cell
-	# (tools/field/water_levels.gd). The river and the sea are at 0.
-	var river: bool = Array(h.get("tags", [])).has("river")
-	var best := INF
-	var best_d := 35.0 * 35.0
-	for cell: Array in h.get("water", []):
-		var d := Vector2(p.x - float(cell[0]), p.z - float(cell[1])).length_squared()
-		if d < best_d:
-			best_d = d
-			best = float(cell[2])
-	if river and (best == INF or best < 0.5):
+	# Lakes and ponds sit above the river at their own levels (the map knows
+	# them); the river and the sea are at 0.
+	var map: Node = FieldJournal.map_node()
+	if map and map.has_method("water_level_at"):
+		var level: float = map.water_level_at(p)
+		if not is_nan(level):
+			return level
+	var tags: Array = h.get("tags", [])
+	if tags.has("river") or not tags.has("lake"):
 		return 0.0
-	if best == INF and h.has("water"):
-		return INF
-	return best if best != INF else 0.0
+	return INF
 
 
 func _near_water(p: Vector3, r: float) -> bool:
@@ -719,6 +715,15 @@ func spawn_wrong(sp: Dictionary, at: Vector3) -> Dictionary:
 	var s := {"id": String(sp.id), "species": sp, "habitat": {}, "centre": spots[0].pos, "perch": String(sp.perch),
 		"birds": [], "frames": 999, "leaving": false, "cue": null, "cue_timer": 0.0,
 		"call_timer": _rng.randf_range(2.0, 6.0), "props": props, "wrong": true, "lift": 0.0}
+	if sp.has("bed"):
+		# A sound bed while they're here (the audio side's place ambience).
+		var bed := Node3D.new()
+		bed.name = "Bed"
+		bed.position = spots[0].pos
+		bed.add_to_group(&"poi")
+		bed.set_meta("poi_type", String(sp.bed))
+		bed.set_meta("radius", 40.0)
+		props.append(bed)
 	for prop: Node3D in props:
 		add_child(prop)
 	for i in n:

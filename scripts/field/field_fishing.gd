@@ -42,6 +42,10 @@ const MAX_LINE := 70.0
 const REEL_SPEED := 2.4
 const SLACK_LIMIT := 2.5
 const WARN_TIME := 0.5
+const ROD_MODEL := "res://art/models/props/field/fishing_rod.glb"
+const ESKY_MODEL := "res://art/models/props/field/esky.glb"
+## How far the rod's held up from level.
+const ROD_TILT := 0.5
 
 var state := State.IDLE
 ## The spot being fished, or the one in reach.
@@ -95,6 +99,7 @@ var _splash: MeshInstance3D
 var _held: Node3D
 var _held_light: OmniLight3D
 var _props := {}
+var _esky: Node3D
 var _check_t := 0.0
 
 
@@ -250,6 +255,12 @@ func _make_spot_props(sp: Dictionary) -> Node3D:
 	root.name = "Spot_" + String(sp.id)
 	root.position = FieldJournal.spot_stand(sp)
 	root.rotation.y = float(sp.get("yaw", 0.0))
+	# The jetty or groyne's sound (the audio side's place ambience).
+	var place := "jetty" if sp.get("kind", "") == "deck" else ("groyne" if Array(sp.get("tags", [])).has("rocks") else "")
+	if place != "":
+		root.add_to_group(&"poi")
+		root.set_meta("poi_type", place)
+		root.set_meta("radius", 60.0)
 	# A bait bucket someone's left by the rail.
 	var bucket := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
@@ -397,6 +408,7 @@ func start(sp: Dictionary) -> void:
 	(_walker as CharacterBody3D).velocity = Vector3.ZERO
 	_water_y = 0.0
 	_make_rod()
+	_put_esky_down()
 	_crab_net(sp)
 	state = State.READY
 	state_changed.emit(state)
@@ -417,6 +429,9 @@ func _put_away() -> void:
 		_rod.queue_free()
 	_rod = null
 	_rod_joints.clear()
+	if is_instance_valid(_esky):
+		_esky.queue_free()
+	_esky = null
 	if is_instance_valid(_walker):
 		# Hand the look back to the walker where it is now.
 		_walker.set("_yaw", _yaw)
@@ -646,6 +661,7 @@ func choose(action: String) -> void:
 			else:
 				_say("Into the esky (%d of %d)." % [FieldJournal.esky.size(), FieldJournal.esky_size()])
 				_sound("field/esky_lid")
+				_open_esky()
 		"release":
 			FieldJournal.release(caught)
 			_say("Back it goes." if not caught.get("junk", false) else "Back in the river with it.")
@@ -748,6 +764,36 @@ func pull_crab_net(sp: Dictionary) -> Array:
 	return out
 
 
+# --- the esky at your feet ------------------------------------------------------------------
+
+func _put_esky_down() -> void:
+	if is_instance_valid(_esky) or not ResourceLoader.exists(ESKY_MODEL):
+		return
+	_esky = (load(ESKY_MODEL) as PackedScene).instantiate() as Node3D
+	_esky.name = "Esky"
+	add_child(_esky)
+	# Beside you on your left, back a little, on whatever's underfoot.
+	var basis := Basis(Vector3.UP, _walker.rotation.y)
+	var at := _walker.global_position + basis * Vector3(-0.75, 0, 0.35)
+	var q := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 1.0, at + Vector3.DOWN * 2.0, 1 | 2)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if not hit.is_empty():
+		at.y = hit.position.y
+	_esky.global_transform = Transform3D(basis.rotated(Vector3.UP, 0.4), at)
+
+
+## Lift the lid a moment as a fish goes in.
+func _open_esky() -> void:
+	var lid := _esky.find_child("Lid", true, false) as Node3D if is_instance_valid(_esky) else null
+	if lid == null:
+		return
+	var shut := lid.rotation.x
+	var t := create_tween()
+	t.tween_property(lid, "rotation:x", shut - 1.4, 0.25)
+	t.tween_interval(0.5)
+	t.tween_property(lid, "rotation:x", shut, 0.2)
+
+
 # --- the rod, the float and the line ---------------------------------------------------------
 
 func _make_rod() -> void:
@@ -757,11 +803,24 @@ func _make_rod() -> void:
 	_rod = Node3D.new()
 	_rod.name = "Rod"
 	_rod.position = Vector3(0.3, -0.38, -0.45)
-	_rod.rotation = Vector3(0.5, -0.06, 0.0)
+	_rod.rotation = Vector3(ROD_TILT, -0.06, 0.0)
 	if _eyes:
 		_eyes.add_child(_rod)
 	else:
 		_walker.add_child(_rod)
+	if ResourceLoader.exists(ROD_MODEL):
+		# The models thread's rod: butt at its origin, lying along +Z, raised
+		# 0.143 onto its reel. Turn it to point -Z with the grip in the hand.
+		var model := (load(ROD_MODEL) as PackedScene).instantiate() as Node3D
+		model.rotation.y = PI
+		model.position = Vector3(0, -0.143, 0.2)
+		_rod.add_child(model)
+		for m: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_rod_tip = model.find_child("Tip", true, false) as Node3D
+		if _rod_tip:
+			return
+		model.queue_free()
 	var cork := PS1Material.make(Color(0.62, 0.48, 0.32))
 	var blank := PS1Material.make(Color(0.12, 0.13, 0.14) if FieldJournal.rod > 0 else Color(0.5, 0.36, 0.22))
 	var handle := _rod_part(0.022, 0.018, 0.4, cork)
@@ -817,6 +876,9 @@ func _rod_part(r0: float, r1: float, length: float, mat: Material) -> MeshInstan
 func _bend(amount: float) -> void:
 	for i in _rod_joints.size():
 		_rod_joints[i].rotation.x = amount * (0.12 + 0.1 * i)
+	if _rod_joints.is_empty() and is_instance_valid(_rod):
+		# One piece: dip the whole rod instead.
+		_rod.rotation.x = ROD_TILT + amount * 0.35
 
 
 func _make_float() -> Node3D:

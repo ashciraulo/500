@@ -26,6 +26,8 @@ signal fish_landed(fish: Dictionary)
 signal esky_changed(count: int, size: int)
 ## The tackle shop weighed in the esky: `fish` [{species, name, kg, pay, ...}], `pay` in total.
 signal weighed_in(fish: Array, pay: int)
+## A rod, esky or crab net bought (the car shows a tackle box once you have some).
+signal gear_changed
 
 const BIRDS_PATH := "res://data/field/birds.json"
 const HABITATS_PATH := "res://data/field/habitats.json"
@@ -620,6 +622,7 @@ func upgrade_fishing(kind: String) -> bool:
 			if has_crab_net or not Wallet.spend(CRAB_NET_PRICE):
 				return false
 			has_crab_net = true
+			gear_changed.emit()
 			return true
 		"rod", "esky":
 			var list := RODS if kind == "rod" else ESKIES
@@ -631,6 +634,7 @@ func upgrade_fishing(kind: String) -> bool:
 			else:
 				esky_level += 1
 				esky_changed.emit(esky.size(), esky_size())
+			gear_changed.emit()
 			return true
 	return false
 
@@ -681,3 +685,4 @@ func load_state(data: Dictionary) -> void:
 	crab_nets = data.get("crab_nets", {})
 	film_changed.emit(film_left(), roll_size())
 	esky_changed.emit(esky.size(), esky_size())
+	gear_changed.emit()

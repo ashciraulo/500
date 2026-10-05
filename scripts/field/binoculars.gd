@@ -85,7 +85,8 @@ func blocked_reason() -> String:
 	_walker = null
 	if not _car.player_controlled:
 		return "busy"
-	if _car.linear_velocity.length() > 1.4:
+	var parked: bool = _car.is_parked_for_viewing() if _car.has_method("is_parked_for_viewing") else _car.linear_velocity.length() <= 1.4
+	if not parked:
 		return "Pull over first: the binoculars need a stopped car."
 	return ""
 
@@ -122,8 +123,7 @@ func open() -> bool:
 		_walker.set_process_input(false)
 		_walker.set_process_unhandled_input(false)
 	else:
-		var seat := _car.get_node_or_null(^"DriverSeat") as Node3D
-		var at := seat.global_position if seat else _car.global_position + _car.global_basis.y * 1.1
+		var at := _seat_eye()
 		# Look where the player was already looking, from the driver's seat.
 		var look_basis := world_camera.global_basis if world_camera else _car.global_basis
 		eye = Transform3D(look_basis, at)
@@ -150,6 +150,14 @@ func open() -> bool:
 	_sound_2d("field/binoculars_up")
 	raised.emit()
 	return true
+
+
+## Where the driver's eyes are: the car's own driver_eye() when it has one.
+func _seat_eye() -> Vector3:
+	if _car.has_method("driver_eye"):
+		return (_car.driver_eye() as Transform3D).origin
+	var seat := _car.get_node_or_null(^"DriverSeat") as Node3D
+	return seat.global_position if seat else _car.global_position + _car.global_basis.y * 1.1
 
 
 func close() -> void:
@@ -269,9 +277,7 @@ func _process(delta: float) -> void:
 		if eyes:
 			_camera.global_position = eyes.global_position
 	elif is_instance_valid(_car):
-		var seat := _car.get_node_or_null(^"DriverSeat") as Node3D
-		if seat:
-			_camera.global_position = seat.global_position
+		_camera.global_position = _seat_eye()
 	_update_target(delta)
 	if state == State.FOCUS:
 		_update_dial(delta)
@@ -343,8 +349,10 @@ func _update_target(delta: float) -> void:
 			var b := FieldJournal.bird(target.species)
 			if b.get("wrong", false):
 				Activities.say("There's already a page about this in the journal. It isn't in your handwriting." if b.get("page_by", "") != "you" else "There's already a page about this in the journal. It is in your handwriting.")
+				_sound_2d("field/m_page_found" if b.get("page_by", "") != "you" else "field/m_page_found_yours")
 			else:
 				Activities.say("New for the journal: %s." % b.get("name", target.species))
+				_sound_2d("music/mus_field_new_species", "Music")
 			_sound_2d("field/focus_hit")
 	elif _dwell < need and identified != "" and identified != target.species:
 		identified = ""
@@ -525,7 +533,7 @@ func message() -> String:
 	return _message if _message_time > 0.0 else ""
 
 
-func _sound_2d(sound_name: String) -> void:
+func _sound_2d(sound_name: String, bus := "UI") -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("play_2d") and (not audio.has_method("has") or audio.has(sound_name)):
-		audio.play_2d(sound_name, "UI", -4.0)
+		audio.play_2d(sound_name, bus, -4.0)

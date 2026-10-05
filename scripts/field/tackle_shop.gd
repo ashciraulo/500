@@ -14,6 +14,14 @@ func _color() -> Color:
 	return Color(0.4, 0.75, 0.95)
 
 
+func _place_type() -> String:
+	return "tackle_shop"
+
+
+func _shop_model() -> String:
+	return "res://art/models/props/field/places/shop_tackle.glb"
+
+
 func _sign_text() -> String:
 	return "BAIT & TACKLE\nweigh-ins  ice\nrods  eskies"
 

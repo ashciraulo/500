@@ -2241,7 +2241,8 @@
 			"hint": "The gums on Fraser Avenue at 3 am. Count them.",
 			"note": "Thirteen, silent, in the gums at 3 am. Always thirteen.",
 			"page": "Fraser Avenue, 3 am. Thirteen black cockatoos in the lemon gums. Cockatoos don't sit up at night and they don't sit quiet. I came back three nights running and it was thirteen every time. I've stopped counting. They haven't.",
-			"like": "carnabys_black_cockatoo"
+			"like": "carnabys_black_cockatoo",
+			"bed": "wrong_cockatoos"
 		},
 		{
 			"id": "wrong_ibis",

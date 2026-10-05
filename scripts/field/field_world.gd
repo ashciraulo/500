@@ -60,6 +60,22 @@ func _ready() -> void:
 	for node: Node in [binoculars, journal, lab_screen, tackle_screen, fishing_screen]:
 		host.add_child.call_deferred(node)
 		_ui.append(node)
+	_show_gear.call_deferred()
+
+
+## The gear rides in the car (the driving side places it): the rod and esky
+## from the start, the binoculars and the camera, and a tackle box once
+## you've bought kit at the tackle shop.
+func _show_gear() -> void:
+	if not FieldJournal.gear_changed.is_connected(_show_gear):
+		FieldJournal.gear_changed.connect(_show_gear)
+	var car := get_tree().get_first_node_in_group(&"player_car")
+	if car == null or not car.has_method("set_field_gear"):
+		return
+	var gear := PackedStringArray(["fishing_rod", "esky", "binoculars", "camera"])
+	if FieldJournal.rod > 0 or FieldJournal.esky_level > 0 or FieldJournal.has_crab_net:
+		gear.append("tackle_box")
+	car.set_field_gear(gear)
 
 
 func _exit_tree() -> void:

@@ -17,6 +17,8 @@ var _selected := ""
 ## "birds" or "fish".
 var _tab := "birds"
 var _tab_buttons := {}
+## Room tone while one of M.'s pages is open.
+var _room: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -111,13 +113,16 @@ func open() -> void:
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	refresh()
+	_music(true)
 
 
 func close() -> void:
 	if not visible:
 		return
+	_room_tone(false)
 	visible = false
 	get_tree().paused = false
+	_music(false)
 
 
 func refresh() -> void:
@@ -163,6 +168,7 @@ func refresh() -> void:
 
 func _show(id: String) -> void:
 	FieldUI.clear(_page)
+	_room_tone(false)
 	var b := FieldJournal.bird(id)
 	if b.is_empty():
 		return
@@ -246,6 +252,7 @@ func _spots_found() -> int:
 
 func _show_fish(id: String) -> void:
 	FieldUI.clear(_page)
+	_room_tone(false)
 	if id.begins_with("spot:"):
 		_show_spot(FieldJournal.spot(id.trim_prefix("spot:")))
 		return
@@ -304,6 +311,10 @@ func _show_spot(sp: Dictionary) -> void:
 
 ## A wrong bird: the page that was already there when you found it.
 func _show_wrong(b: Dictionary, e: Dictionary) -> void:
+	var audio := get_node_or_null("/root/Audio")
+	if audio and audio.has_method("has") and audio.has("field/m_page_open"):
+		audio.play_2d("field/m_page_open", "UI", -6.0)
+	_room_tone(true)
 	var yours: bool = b.get("page_by", "") == "you"
 	FieldUI.label(_page, "The page is already filled in. It's your handwriting." if yours else "A loose page, dated 1979, signed M.", 14, INK.lightened(0.3))
 	var hand := FieldUI.label(_page, String(b.get("page", "")), 17, Color(0.18, 0.2, 0.36) if not yours else INK)
@@ -318,6 +329,36 @@ func _show_wrong(b: Dictionary, e: Dictionary) -> void:
 		_page.add_child(pic)
 		FieldUI.label(_page, "Your photo. The lab won't print it.", 14, INK.lightened(0.2))
 	FieldUI.label(_page, "You saw it: day %d, %s, %s." % [int(e.seen), e.get("time", ""), e.get("where", "somewhere")], 14, INK.lightened(0.2))
+
+
+## The journal's own music while it's open, if nothing else is playing (the
+## radio has its own player, and mission music is left alone).
+func _music(on: bool) -> void:
+	var audio := get_node_or_null("/root/Audio")
+	if audio == null or not audio.has_method("play_music") or not audio.has("music/mus_field_journal"):
+		return
+	var playing := String(audio.get("_music_name"))
+	if on and playing == "":
+		audio.play_music("mus_field_journal")
+	elif not on and playing == "mus_field_journal":
+		audio.stop_music()
+
+
+func _room_tone(on: bool) -> void:
+	if not on:
+		if _room:
+			_room.queue_free()
+			_room = null
+		return
+	var audio := get_node_or_null("/root/Audio")
+	if _room or audio == null or not audio.has_method("stream") or not audio.has("field/m_page_room"):
+		return
+	_room = AudioStreamPlayer.new()
+	_room.stream = audio.stream("field/m_page_room", true)
+	_room.bus = "Ambience"
+	_room.volume_db = -10.0
+	add_child(_room)
+	_room.play()
 
 
 static func _when(b: Dictionary) -> String:

@@ -358,7 +358,7 @@ records).
 
 Design: `docs/FIELD_JOURNAL.md`. Species in `data/field/birds.json`, places
 in `data/field/habitats.json` (lat/lon of the real place; x/z from
-`tools/field/gen_field.py`, lake heights from `tools/field/water_levels.gd`).
+`tools/field/gen_field.py`; lake heights from the map, `MapStreamer.water_level_at`).
 Fish in `data/field/fish.json`, spots in `data/field/fishing_spots.json`
 (where to stand found in the map by `tools/field/place_spots.gd`; rerun it
 after a map rebuild).
@@ -371,7 +371,7 @@ after a map rebuild).
 - Career stats (`Progression`): `species_seen`, `species_photographed`,
   `prints_sold`, `fish_caught`, `fish_species`.
 - Fishing: signals `fish_landed(catch)`, `esky_changed(count, size)`,
-  `weighed_in(fish, pay)`; `is_caught(id)`, `caught_count()`, `catches`,
+  `weighed_in(fish, pay)`, `gear_changed`; `is_caught(id)`, `caught_count()`, `catches`,
   `esky`, `rod`, `esky_level`, `has_crab_net`, `crab_nets`;
   `upgrade_fishing("rod" | "esky" | "crab_net")`, `buy_ice()`, `weigh_in()`.
   Discoveries: `fishing/<spot id>` when a spot is found, `fishing/fiat_hubcap`
@@ -402,3 +402,22 @@ after a map rebuild).
   `field/esky_lid`, `field/reel_in`, `field/splash_big` (crab net in),
   `field/bucket_drop` (crab net up). Saved under `field_journal`.
 - `FieldJournal.stat(name)` reads the career stats above live.
+- Place ambience (the audio side's `"poi"` group nodes with `poi_type` and
+  `radius` meta): fishing spots near the player are `jetty` (decks) or
+  `groyne` (rocks), the shops `photo_lab` and `tackle_shop`; a wrong bird
+  with a `bed` in birds.json (the cockatoos) carries that place type while
+  it's there. Wrong birds call `field/bird_<wrong id>` when it exists, else
+  the bird they look like. `field/m_page_found` (or `_yours`) plays when the
+  binoculars first find one; `field/m_page_open` and the `field/m_page_room`
+  loop while one of M.'s pages is open in the journal.
+- Music: `music/mus_field_journal` plays while the journal is open (only if
+  no other music is), and `music/mus_field_new_species` on a new bird; both
+  are skipped until the audio side ships them.
+- Models: the shops put `shop_photo_lab` / `shop_tackle` on the building
+  line beside their bays; the rod in first person is `fishing_rod.glb` (line
+  from `Tip`), and `esky.glb` sits beside you while fishing (`Lid` opens as a
+  fish goes in).
+- Car: binoculars use `CarController.is_parked_for_viewing()` and
+  `driver_eye()` when the car has them; the field world calls
+  `set_field_gear(["fishing_rod", "esky", "binoculars", "camera"])`, adding
+  `"tackle_box"` once a rod, esky or crab net has been bought (`gear_changed`).

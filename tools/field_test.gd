@@ -256,6 +256,11 @@ func _process(_delta: float) -> bool:
 			elif _frames == 70:
 				_car.freeze = false
 				_car.set_physics_process(true)
+			elif _frames == 100:
+				_view_shop(lab)
+			elif _frames == 110:
+				_shot("06_lab_front")
+				_view_shop(null)
 			elif _frames == 120:
 				_check(lab.in_reach(), "parked in the lab's bay (local %s, speed %.1f)" % [lab.to_local(_car.global_position), _car.linear_velocity.length()])
 				_money = root.get_node("Wallet").balance
@@ -301,6 +306,11 @@ func _process(_delta: float) -> bool:
 			elif _frames == 220:
 				_car.freeze = false
 				_car.set_physics_process(true)
+			elif _frames == 260:
+				_view_shop(shop)
+			elif _frames == 270:
+				_shot("10_tackle_front")
+				_view_shop(null)
 			elif _frames == 280:
 				_check(shop.in_reach(), "parked in the tackle shop's bay (local %s)" % shop.to_local(_car.global_position))
 				var wallet := root.get_node("Wallet")
@@ -319,6 +329,10 @@ func _process(_delta: float) -> bool:
 				_shot("10_tackle")
 				_field.tackle_screen.close()
 				_check(not paused, "closing the tackle counter unpauses")
+				# The crab net went on the journal directly back at the jetty.
+				_check(_car.field_gear.has("esky") and _car.field_gear.has("fishing_rod"), "the rod and esky ride in the car")
+				_fj.gear_changed.emit()
+				_check(_car.field_gear.has("tackle_box"), "a tackle box rides in the car once you've bought kit")
 				_field.journal.open()
 				_field.journal._tab = "fish"
 				_field.journal._selected = "black_bream"
@@ -352,12 +366,7 @@ func _stage_fishing(clock: Node) -> void:
 		_check(_ids(_fj.fish_candidates(_spot, 12.0, "net")) == ["blue_swimmer_crab"], "the crab net catches crabs")
 		clock.set_time(18.5)
 		_teleport(Vector3(-4.0, 9.6, 2873.0), 2.0)
-		var hud := get_first_node_in_group(&"hud")
-		if hud and _shots != "":
-			for c in hud.get_children():
-				for l in c.get_children():
-					if l is Label and l.text.begins_with("W/S"):
-						l.visible = false
+		_hide_help()
 	elif _frames == 90:
 		_car.freeze = false
 		_car.set_physics_process(true)
@@ -450,6 +459,44 @@ func _stage_fishing(clock: Node) -> void:
 	elif _frames > 4000:
 		_check(false, "fishing stalled (state %d, tries %d, lost %s)" % [_fishing.state, _tries, str(_lost)])
 		_next()
+
+
+var _shop_cam: Camera3D
+var _cam_before: Camera3D
+
+
+## Look at a shop's front from across the road (null puts the camera back).
+func _view_shop(bay: Node3D) -> void:
+	if bay == null:
+		if is_instance_valid(_shop_cam):
+			_shop_cam.queue_free()
+		if is_instance_valid(_cam_before):
+			_cam_before.current = true
+		return
+	var front := bay.get_node_or_null(^"Shopfront") as Node3D
+	_check(front != null, "the %s has its shopfront" % bay.name)
+	if front == null:
+		return
+	_cam_before = _car.get_viewport().get_camera_3d()
+	_shop_cam = Camera3D.new()
+	_shop_cam.fov = 60.0
+	_car.get_parent().add_child(_shop_cam)
+	_hide_help()
+	# Across the road and off to one side, so a car in the bay doesn't hide it.
+	var at := front.global_position + front.global_basis.z * 16.0 + front.global_basis.x * 7.0 + Vector3.UP * 3.5
+	_shop_cam.look_at_from_position(at, front.global_position + Vector3.UP * 2.2)
+	_shop_cam.current = true
+
+
+## The driving help overlay gets in the way of the shots.
+func _hide_help() -> void:
+	var hud := get_first_node_in_group(&"hud")
+	if hud == null or _shots == "":
+		return
+	for c in hud.get_children():
+		for l in c.get_children():
+			if l is Label and l.text.begins_with("W/S"):
+				l.visible = false
 
 
 ## Make sure `id` is what bites next, straight away.

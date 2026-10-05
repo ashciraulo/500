@@ -20,6 +20,10 @@ var _prompt_layer: CanvasLayer
 
 func _ready() -> void:
 	add_to_group(_group())
+	# The shop's own sound, in the audio side's place ambience.
+	add_to_group(&"poi")
+	set_meta("poi_type", _place_type())
+	set_meta("radius", 14.0)
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = _color()
@@ -107,6 +111,40 @@ func _snap_to_ground() -> void:
 	if not hit.is_empty():
 		global_position.y = hit.position.y
 		_grounded = true
+		_place_shop()
+
+
+## The shopfront (art/models/props/field/places): on the building line
+## behind the footpath, facing the bay, or out on the footpath if the map
+## has no building there.
+func _place_shop() -> void:
+	var path := _shop_model()
+	if path == "" or not ResourceLoader.exists(path):
+		return
+	var space := get_world_3d().direct_space_state
+	var side := global_basis.x
+	var from := global_position + Vector3.UP * 1.5
+	var q := PhysicsRayQueryParameters3D.create(from, from + side * 20.0, 2)
+	var hit := space.intersect_ray(q)
+	var at := global_position + side * 7.0
+	var facing := -side
+	if not hit.is_empty():
+		var n: Vector3 = hit.normal * Vector3(1, 0, 1)
+		if n.length() > 0.5:
+			facing = n.normalized()
+		at = hit.position + facing * 0.12
+	var down := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 4.0, at + Vector3.DOWN * 6.0, 1)
+	var ground := space.intersect_ray(down)
+	at.y = ground.position.y if not ground.is_empty() else global_position.y
+	var shop := (load(path) as PackedScene).instantiate() as Node3D
+	shop.name = "Shopfront"
+	add_child(shop)
+	# The model's front is +Z.
+	shop.global_transform = Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)), at)
+	# The shopfront carries its own sign.
+	for c in _sign.get_children():
+		if not c is Light3D:
+			c.visible = false
 
 
 # The tackle shop overrides these.
@@ -116,6 +154,14 @@ func _group() -> StringName:
 
 func _color() -> Color:
 	return COLOR
+
+
+func _place_type() -> String:
+	return "photo_lab"
+
+
+func _shop_model() -> String:
+	return "res://art/models/props/field/places/shop_photo_lab.glb"
 
 
 func _sign_text() -> String:
