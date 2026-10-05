@@ -61,8 +61,9 @@ FONT = {
 }
 
 
-def plate(text, name="plate", ink=(0.09, 0.16, 0.50), w=64, h=16):
-    """WA style: white plate, blue characters, thin state banner line on top."""
+def plate(text, name="plate", ink=(0.09, 0.16, 0.50), w=64, h=16, bg=(0.95, 0.95, 0.93)):
+    """WA style: white plate, blue characters, thin state banner line on top.
+    Custom plates pass their own ink and background."""
     text = text.upper()
     cw = 7  # 3 px glyph doubled + 1 gap
     x0 = (w - cw * len(text)) // 2 + 1
@@ -81,7 +82,7 @@ def plate(text, name="plate", ink=(0.09, 0.16, 0.50), w=64, h=16):
                 bits = FONT.get(ch, FONT[" "])
                 if bits[(4 - ly) * 3 + lx] == "1":
                     return ink
-        return (0.95, 0.95, 0.93)
+        return bg
     return C.make_image(name, w, h, px)
 
 
