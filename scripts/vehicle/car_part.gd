@@ -8,7 +8,8 @@ extends Resource
 ##
 ## Modifier keys (anything missing is left alone):
 ##   torque_mult, final_drive_mult, shift_time_mult, grip_mult, spring_mult,
-##   damper_mult, anti_roll_mult, brake_mult, drag_mult, wet_penalty_mult
+##   damper_mult, anti_roll_mult, brake_mult, drag_mult, wet_penalty_mult,
+##   dirt_mult
 ##                               multiply the car's stock value
 ##   limiter_add (rpm), ride_height_add (m, negative = lower), mass_add (kg),
 ##   lateral_stiffness_add       add to the stock value

@@ -145,6 +145,23 @@ the spotlights add two lamps (group `car_spotlights`) that follow the
 headlights. Without a fitted wheels part the car uses its model's own
 `WheelStyle_<style>` wheels.
 
+A part model can come in one per body family: the car loads
+`<visual>_classic.glb` on classics and `<visual>_modern.glb` on everything
+else when it exists, else `<visual>.glb`. Roof racks (`roof_plain_rack`,
+`roof_luggage`, `roof_bike`, the found `roof_surf_rack`) carry a `Mount_Rod`
+empty where the field fishing rod lies; cars with `"no_roof_rack": true` in
+cars.json (the 500C, the Jolly) take no roof parts.
+
+Body and interior slots: `rear_rack` (Mount_RearRack, classics with an engine
+lid), `bumpers` (`<visual>_f` at Mount_BumperF and `<visual>_r` at
+Mount_BumperR; a part with one model goes on the front only), `towbar`
+(Mount_TowBar), `mudflaps` (the same model at Mount_MudFlap_L and _R;
+`mudflap_short` on the Giardiniera), `steering_wheel` (Mount_SteeringWheel;
+hides `SteeringWheel` and turns with the steering), `gear_knob`
+(Mount_GearKnob; hides `GearKnob`) and `seat_covers` (Seat_L, and mirrored at
+Seat_R). See `CarController.PART_MOUNTS`, `PART_PLACES` and `PART_HIDES`.
+The modifier `dirt_mult` scales how fast the car gets dirty.
+
 `ladders` limits a part to cars whose cars.json `ladder` is listed (empty fits
 everything). `found_only` parts can't be bought: each is somewhere in the city
 (`data/world/found_parts.json`, `FoundPart` nodes in group `found_parts`), and
@@ -321,6 +338,10 @@ records).
 - Trinkets are built in code (`scripts/vehicle/trinkets.gd`). A car model can
   mark where they go with `Mount_Mirror`, `Mount_Dash`, `Mount_Shelf` and
   `Mount_Gear` nodes; without them the Pop's measured spots are used.
+- Field journal rewards: cosmetics with `species` are granted at that many
+  species seen (`FieldJournal.seen_count()`, checked on `species_seen`): the
+  nodding dash wagtail (`dash_bird.glb`, its `Head` on a "Bob") at 10 and the
+  naturalists' club sticker (slot `glovebox`) at 20.
 - Liveries are drawn by `shaders/ps1_surface.gdshader` in the car's own space
   over the `Body` mesh's bounds (`car_body.gd` `apply_cosmetics()`).
 - The spray shop also paints its own liveries (`Garage.LIVERIES`, in one of

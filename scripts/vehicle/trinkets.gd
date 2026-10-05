@@ -15,6 +15,12 @@ const SLOT_FALLBACK := {
 	"dash": Vector3(-0.18, 0.99, -0.77),
 	"shelf": Vector3(-0.32, 0.95, 1.38),
 	"gear": Vector3(0.0, 0.64, -0.46),
+	"glovebox": Vector3(-0.36, 0.76, -0.552),
+}
+## Where the classics differ (their glovebox is a parcel tray under a painted
+## metal dash), measured on the Nuova: [position, tilt about X].
+const SLOT_CLASSIC := {
+	"glovebox": [Vector3(-0.27, 0.80, -0.508), 0.52],
 }
 
 
@@ -75,17 +81,81 @@ static func build(item: Dictionary) -> Node3D:
 			label.position = Vector3(0, 0.023, 0.004)
 			label.rotation.x = -0.5
 			root.add_child(label)
+		"trinket_dash_wagtail":  # The field journal's 10-species reward.
+			if ResourceLoader.exists(DASH_BIRD):
+				var bird := (load(DASH_BIRD) as PackedScene).instantiate() as Node3D
+				bird.rotation.y = PI  # Facing back into the cabin, watching you.
+				root.add_child(bird)
+				var head := bird.find_child("Head", true, false) as Node3D
+				if head:
+					# Nod from the neck: the head rides on a "Bob" at its origin.
+					var neck := _swing(head.get_parent() as Node3D, head.position, true)
+					head.get_parent().remove_child(head)
+					head.owner = null
+					head.position = Vector3.ZERO
+					neck.add_child(head)
+				PS1Model.apply(bird)
+			else:
+				_box(root, Vector3(0.03, 0.05, 0.06), Vector3(0, 0.025, 0), color)
+		"trinket_naturalist_sticker":  # 20 species: stuck on the glovebox lid.
+			var sticker := MeshInstance3D.new()
+			var quad := QuadMesh.new()
+			quad.size = Vector2(0.07, 0.07)
+			sticker.mesh = quad
+			sticker.material_override = PS1Material.textured(_sticker_texture(color))
+			root.add_child(sticker)
 		_:
 			_box(root, Vector3(0.04, 0.04, 0.04), Vector3(0, 0.02, 0), color)
 	return root
 
 
+const DASH_BIRD := "res://art/models/props/field/dash_bird.glb"
+## A wagtail in profile, for the naturalists' club sticker ("#" is ink).
+const STICKER_BIRD := [
+	"..........##....",
+	".........####...",
+	"........######..",
+	"..#....#######..",
+	"..##..########..",
+	"...##########...",
+	"....#########...",
+	".....#######....",
+	"......#..#......",
+	"......#..#......",
+]
+
+
+## The club's sticker: a green square, a cream border, a wagtail and two
+## lines of lettering too small to read.
+static func _sticker_texture(green: Color) -> ImageTexture:
+	var size := 24
+	var image := Image.create(size, size, false, Image.FORMAT_RGB8)
+	var cream := Color(0.93, 0.9, 0.8)
+	image.fill(cream)
+	image.fill_rect(Rect2i(2, 2, size - 4, size - 4), green)
+	for row in STICKER_BIRD.size():
+		var line: String = STICKER_BIRD[row]
+		for col in line.length():
+			if line[col] == "#":
+				image.set_pixel(4 + col, 4 + row, cream)
+	image.fill_rect(Rect2i(5, 16, 14, 1), cream)
+	image.fill_rect(Rect2i(7, 18, 10, 1), cream)
+	return ImageTexture.create_from_image(image)
+
+
 ## Where a slot is on this model, in its own space.
-static func slot_position(model: Node3D, slot: String) -> Vector3:
+static func slot_position(model: Node3D, slot: String, classic := false) -> Vector3:
 	var mount := model.find_child("Mount_" + slot.capitalize(), true, false) as Node3D
 	if mount:
 		return model.global_transform.affine_inverse() * mount.global_position if mount.is_inside_tree() else mount.position
+	if classic and SLOT_CLASSIC.has(slot):
+		return SLOT_CLASSIC[slot][0]
 	return SLOT_FALLBACK.get(slot, Vector3(0, 1.0, -0.7))
+
+
+## How far a slot's trinket tilts back about X (the classics' sloped dash).
+static func slot_tilt(slot: String, classic := false) -> float:
+	return SLOT_CLASSIC[slot][1] if classic and SLOT_CLASSIC.has(slot) else 0.0
 
 
 static func _swing(parent: Node3D, at := Vector3.ZERO, upright := false) -> Node3D:

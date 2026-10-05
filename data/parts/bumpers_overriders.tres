@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"bumpers_overriders"
+display_name = "Chrome overriders"
+description = "Upright chrome guards front and back. They catch the light and the odd shopping trolley."
+slot = &"bumpers"
+price = 220
+modifiers = {"mass_add": 6.0}
+visual = "bumper_overriders"
+ladders = PackedStringArray("classic")

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"seat_covers_beaded"
+display_name = "Beaded seat covers"
+description = "Wooden beads, like every taxi in the eighties. Good for the back."
+slot = &"seat_covers"
+price = 45
+visual = "seatcover_beaded"

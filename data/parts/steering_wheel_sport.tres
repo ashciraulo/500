@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"steering_wheel_sport"
+display_name = "Small sports wheel"
+description = "A small leather-rimmed sports wheel, like the Abarths have."
+slot = &"steering_wheel"
+price = 340
+visual = "wheel_sport"

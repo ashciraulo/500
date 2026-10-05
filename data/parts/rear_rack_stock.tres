@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"rear_rack_stock"
+display_name = "Bare engine lid"
+description = "Nothing on the back."
+slot = &"rear_rack"
+fits = PackedStringArray("classic_nuova", "classic_sport", "classic_d", "classic_500f", "classic_500l", "classic_500r", "classic_jolly")

@@ -70,6 +70,7 @@ func _ready() -> void:
 	Wallet.changed.connect(func(_b: int, _d: int) -> void: check())
 	Discoveries.discovered.connect(func(_id: String) -> void: check())
 	SaveGame.register("progression", self)
+	_hook_journal.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -139,6 +140,7 @@ func progress(challenge: Dictionary) -> float:
 ## Mark finished challenges and advance the tier when all are done.
 func check() -> void:
 	_check_mileage()
+	_check_journal_rewards()
 	var tier := current_tier()
 	if tier.is_empty():
 		return
@@ -200,6 +202,24 @@ func check_meet_rewards(visits: int) -> void:
 		var need := int(cosmetics[id].get("meet", 0))
 		if need > 0 and visits >= need:
 			grant_reward(id, "%d night%s at the meet" % [need, "" if need == 1 else "s"])
+
+
+## Rewards for species seen in the field journal (cosmetics with `species`).
+func _check_journal_rewards() -> void:
+	var journal := get_node_or_null(^"/root/FieldJournal")
+	if journal == null or not journal.has_method("seen_count"):
+		return
+	var seen: int = journal.seen_count()
+	for id: String in cosmetics:
+		var need := int(cosmetics[id].get("species", 0))
+		if need > 0 and seen >= need:
+			grant_reward(id, "%d species in the field journal" % need)
+
+
+func _hook_journal() -> void:
+	var journal := get_node_or_null(^"/root/FieldJournal")
+	if journal and journal.has_signal("species_seen"):
+		journal.species_seen.connect(func(_id: String) -> void: _check_journal_rewards())
 
 
 ## The next mileage reward still to earn, or {}.

@@ -222,6 +222,69 @@ func _field_gear() -> void:
 	_car.load_vehicle_state({"car_id": "classic_nuova"})
 	_check(_car.wear.brakes == 0.0, "another car has its own wear")
 	_car.load_vehicle_state({"car_id": "pop_12"})
+	# Roof racks: none on open-topped cars; the rod lies where the rack says.
+	var rack: CarPart = PartsCatalogue.get_part(&"roof_plain_rack")
+	_check(rack != null and PartsCatalogue.fits(rack, "pop_12"), "a plain roof rack fits the Pop")
+	_check(rack != null and not PartsCatalogue.fits(rack, "lounge_c_14") and not PartsCatalogue.fits(rack, "classic_jolly"),
+		"but not the 500C or the Jolly")
+	if rack and ResourceLoader.exists("res://art/models/cars/parts/roofrack_plain_modern.glb"):
+		_car.install_part(rack)
+		var fitted := _car.get_node("Body").get_node_or_null(^"Part_roof") as Node3D
+		_check(fitted != null and fitted.scene_file_path.ends_with("roofrack_plain_modern.glb"), "the Pop gets the modern rack")
+		_car.set_field_gear(PackedStringArray(["fishing_rod"]))
+		var rack_rod := _car.get_node("Body").get_node_or_null(^"Gear_fishing_rod") as Node3D
+		var rod_spot := fitted.find_child("Mount_Rod", true, false) as Node3D if fitted else null
+		_check(rack_rod != null and rod_spot != null and rack_rod.global_position.distance_to(rod_spot.global_position) < 0.01,
+			"the rod lies at the rack's Mount_Rod")
+		_car.set_field_gear(PackedStringArray())
+		_car.remove_part(&"roof")
+	# Body and interior parts.
+	for slot: StringName in PartsCatalogue.SLOTS:
+		_check(PartsCatalogue.get_part(StringName(String(slot) + "_stock")) != null, "%s has a stock part" % slot)
+	var lid_rack: CarPart = PartsCatalogue.get_part(&"rear_rack_classic")
+	_check(PartsCatalogue.fits(lid_rack, "classic_500f") and not PartsCatalogue.fits(lid_rack, "pop_12")
+		and not PartsCatalogue.fits(lid_rack, "classic_giardiniera"), "lid racks only on classics with an engine lid")
+	_check(PartsCatalogue.fits(PartsCatalogue.get_part(&"bumpers_overriders"), "classic_nuova")
+		and not PartsCatalogue.fits(PartsCatalogue.get_part(&"bumpers_overriders"), "pop_12")
+		and PartsCatalogue.fits(PartsCatalogue.get_part(&"bumpers_nudge"), "pop_12"), "overriders for classics, nudge bars for moderns")
+	_car.install_part(PartsCatalogue.get_part(&"mudflaps_rubber"))
+	_check(is_equal_approx(_car.dirt_multiplier, 0.85), "mud flaps keep some dirt off")
+	pop_body = _car.get_node("Body") as Node3D
+	if ResourceLoader.exists("res://art/models/cars/parts/mudflap.glb"):
+		_check(pop_body.get_node_or_null(^"Part_mudflaps") != null and pop_body.get_node_or_null(^"Part_mudflaps_2") != null, "a flap behind each rear wheel")
+	_car.remove_part(&"mudflaps")
+	_check(_car.dirt_multiplier == 1.0 and pop_body.get_node_or_null(^"Part_mudflaps") == null, "and off again")
+	if ResourceLoader.exists("res://art/models/cars/parts/wheel_wood.glb"):
+		_car.install_part(PartsCatalogue.get_part(&"steering_wheel_wood"))
+		var stock_wheel := pop_body.find_child("SteeringWheel", true, false) as Node3D
+		var wood := pop_body.get_node_or_null(^"Part_steering_wheel") as Node3D
+		_check(wood != null and stock_wheel != null and not stock_wheel.visible, "the wooden wheel replaces the stock one")
+		if wood:
+			var rest := wood.basis
+			_car.steer_angle = 0.3
+			pop_body._process(0.016)
+			_check(not wood.basis.is_equal_approx(rest), "and turns with the steering")
+			_car.steer_angle = 0.0
+		_car.remove_part(&"steering_wheel")
+		_check(stock_wheel == null or stock_wheel.visible, "the stock wheel comes back")
+	if ResourceLoader.exists("res://art/models/cars/parts/seatcover_sheepskin_modern.glb"):
+		_car.install_part(PartsCatalogue.get_part(&"seat_covers_sheepskin"))
+		var cover_r := pop_body.get_node_or_null(^"Part_seat_covers_2") as Node3D
+		_check(pop_body.get_node_or_null(^"Part_seat_covers") != null and cover_r != null and cover_r.basis.determinant() < 0.0,
+			"sheepskin on both seats, mirrored for the driver's")
+		_car.remove_part(&"seat_covers")
+	if ResourceLoader.exists("res://art/models/cars/parts/bumper_nudge.glb"):
+		_car.install_part(PartsCatalogue.get_part(&"bumpers_nudge"))
+		_check(pop_body.get_node_or_null(^"Part_bumpers") != null and pop_body.get_node_or_null(^"Part_bumpers_2") == null, "a nudge bar only goes on the front")
+		_car.remove_part(&"bumpers")
+	# Field journal rewards on the dash and the glovebox.
+	var wagtail := Trinkets.build({"id": "trinket_dash_wagtail"})
+	_check(wagtail.find_child("Bob", true, false) != null, "the dash wagtail nods")
+	wagtail.free()
+	var sticker := Trinkets.build({"id": "trinket_naturalist_sticker", "color": "#3d6b3a"})
+	_check(sticker.find_children("*", "MeshInstance3D", true, false).size() == 1, "the club sticker is a sticker")
+	sticker.free()
+	_check(int(root.get_node("Progression").cosmetics.get("trinket_dash_wagtail", {}).get("species", 0)) == 10, "the wagtail comes at 10 species")
 	# Spray shop: clear coats and liveries.
 	var paint_mat: ShaderMaterial = _car.get_node("Body")._materials.get("Paint")
 	var stock_rough: float = paint_mat.get_shader_parameter("roughness") if paint_mat else 0.0

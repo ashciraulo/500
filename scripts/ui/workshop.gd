@@ -9,13 +9,15 @@ const SLOT_NAMES := {
 	"engine": "Engine", "intake": "Intake", "exhaust": "Exhaust", "gearbox": "Gearbox",
 	"suspension": "Suspension", "tyres": "Tyres", "wheels": "Wheels", "brakes": "Brakes",
 	"weight": "Weight", "roof": "Roof", "lights": "Driving lights",
+	"rear_rack": "Engine lid", "bumpers": "Bumpers", "towbar": "Tow bar", "mudflaps": "Mud flaps",
+	"steering_wheel": "Steering wheel", "gear_knob": "Gear knob", "seat_covers": "Seat covers",
 }
 ## Tab order; a spot shows the tabs for its kinds.
 ## "cars" lets you swap between cars you own; "dealer" also sells them.
 ## "extras" (trinkets and liveries you've earned) shows wherever parts,
 ## paint or your cars are.
 const TAB_KINDS := ["parts", "tuning", "service", "paint", "fuel", "wash", "cars", "restore", "extras"]
-const SLOT_TITLES := {"mirror": "Mirror", "dash": "Dash", "shelf": "Parcel shelf", "gear": "Gear lever"}
+const SLOT_TITLES := {"mirror": "Mirror", "dash": "Dash", "shelf": "Parcel shelf", "gear": "Gear lever", "glovebox": "Glovebox"}
 const PLACE_NAMES := {"parts": "workshop", "tuning": "workshop", "paint": "paint booth",
 	"dealer": "car yard", "cars": "garage", "restore": "restoration bench",
 	"fuel": "servo", "wash": "car wash"}
@@ -292,10 +294,13 @@ func _refresh_stats() -> void:
 func _refresh_parts() -> void:
 	_clear(_parts_list)
 	for slot in PartsCatalogue.SLOTS:
-		_heading(_parts_list, SLOT_NAMES.get(String(slot), String(slot).capitalize()))
 		var fitted: CarPart = _car.parts.get(slot)
 		var choices := PartsCatalogue.for_car(slot, _car.car_id).filter(func(p: CarPart) -> bool:
 			return not p.found_only or Garage.is_found(p))
+		# Slots this car has nothing for (a lid rack on a Pop) stay out of the list.
+		if not slot in [&"roof", &"lights"] and PartsCatalogue.for_car(slot, _car.car_id).all(func(p: CarPart) -> bool: return p.is_stock()):
+			continue
+		_heading(_parts_list, SLOT_NAMES.get(String(slot), String(slot).capitalize()))
 		if choices.size() <= 1 and slot in [&"roof", &"lights"]:
 			_text(_parts_list, "Nothing yet. Some parts can't be bought; they turn up around the city.")
 			continue
@@ -653,7 +658,7 @@ func _refresh_extras() -> void:
 			_change.text = "Livery: %s." % item.title.to_lower()))
 	if not trinkets.is_empty():
 		_heading(_extras_list, "Trinkets")
-		_text(_extras_list, "One per spot: the mirror, the dash, the parcel shelf and the gear lever.")
+		_text(_extras_list, "One per spot: the mirror, the dash, the parcel shelf, the gear lever and the glovebox.")
 	for item: Dictionary in trinkets:
 		var id: String = item.id
 		var fitted := _car.has_trinket(id)

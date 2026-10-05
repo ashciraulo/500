@@ -6,6 +6,8 @@ const DIR := "res://data/parts/"
 const SLOTS: Array[StringName] = [
 	&"engine", &"intake", &"exhaust", &"gearbox", &"suspension",
 	&"tyres", &"wheels", &"brakes", &"weight", &"roof", &"lights",
+	&"rear_rack", &"bumpers", &"towbar", &"mudflaps",
+	&"steering_wheel", &"gear_knob", &"seat_covers",
 ]
 
 static var _parts := {}
@@ -45,6 +47,9 @@ static func fits(part: CarPart, car_id: String) -> bool:
 	var car := CarCatalogue.get_car(car_id)
 	if not part.ladders.is_empty() and not part.ladders.has(String(car.get("ladder", "modern"))):
 		return false
+	# Open-topped cars (the 500C, the Jolly) have nothing to bolt a rack to.
+	if part.slot == &"roof" and car.get("no_roof_rack", false):
+		return part.is_stock()
 	if car.get("electric", false) and COMBUSTION_SLOTS.has(part.slot):
 		return part.is_stock()
 	return true

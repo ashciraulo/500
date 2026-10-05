@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"roof_luggage"
+display_name = "Roof rack and luggage"
+description = "Bars, an old suitcase and a tarp bundle, strapped down for a long weekend."
+slot = &"roof"
+price = 320
+modifiers = {"drag_mult": 1.1, "mass_add": 28.0}
+visual = "roofrack_luggage"

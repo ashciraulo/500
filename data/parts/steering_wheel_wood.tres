@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"steering_wheel_wood"
+display_name = "Wooden steering wheel"
+description = "Thin-rimmed varnished wood with polished spokes. Lovely in the hands on a long drive."
+slot = &"steering_wheel"
+price = 280
+visual = "wheel_wood"

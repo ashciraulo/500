@@ -1,5 +1,5 @@
 {
-	"_comment": "How each cosmetic reward looks and where else it comes from. Mileage rewards are listed in mileage_rewards.json (same ids); `meet` rewards come from nights at the car meet (number of visits). Trinket `slot`: mirror (hangs from the rear-view mirror), dash (top of the dash), shelf (parcel shelf), gear (on the gear lever). Livery `mode`: stripes, chequered_roof, scorpion, side_stripe, two_tone, rally_numbers (with `number`), centre_stripe. Garage decorations are shown at home (see docs/HOOKS.md).",
+	"_comment": "How each cosmetic reward looks and where else it comes from. Mileage rewards are listed in mileage_rewards.json (same ids); `meet` rewards come from nights at the car meet (number of visits). Trinket `slot`: mirror (hangs from the rear-view mirror), dash (top of the dash), shelf (parcel shelf), gear (on the gear lever), glovebox (a sticker on its lid). `species`: earned at that many species in the field journal. Livery `mode`: stripes, chequered_roof, scorpion, side_stripe, two_tone, rally_numbers (with `number`), centre_stripe. Garage decorations are shown at home (see docs/HOOKS.md).",
 	"items": {
 		"trinket_fluffy_dice": {"kind": "trinket", "slot": "mirror", "color": "#e8e4dc"},
 		"trinket_nodding_dog": {"kind": "trinket", "slot": "shelf", "color": "#8a5a32"},
@@ -14,6 +14,8 @@
 		"livery_two_tone": {"kind": "livery", "mode": "two_tone", "color": "#efece4", "meet": 6, "title": "A two-tone white roof"},
 		"trinket_meet_plaque": {"kind": "trinket", "slot": "dash", "color": "#b8b8b0", "meet": 10, "title": "A Roe Street meet dash plaque"},
 		"trinket_night_drive_tape": {"kind": "trinket", "slot": "dash", "color": "#1e1e21", "title": "The NIGHT DRIVE 13 tape, from the shed"},
+		"trinket_dash_wagtail": {"kind": "trinket", "slot": "dash", "color": "#2a2622", "species": 10, "title": "A nodding willie wagtail for the dash"},
+		"trinket_naturalist_sticker": {"kind": "trinket", "slot": "glovebox", "color": "#3d6b3a", "species": 20, "title": "A naturalists' club sticker on the glovebox"},
 		"garage_road_map": {"kind": "garage"},
 		"garage_neon_sign": {"kind": "garage"}
 	}

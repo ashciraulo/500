@@ -23,6 +23,7 @@ var _materials := {}
 var _steering_wheel: Node3D
 var _steering_rest: Basis
 var _brake_lights: Node3D
+var _fitted_wheels: Array = []  # [node, rest basis]: fitted steering wheels
 var _stock_paint: Color
 var _stock_wear: Texture2D
 var _stock_finish := Vector2(0.9, 0.0)  # roughness, metallic
@@ -81,6 +82,9 @@ func _process(_delta: float) -> void:
 		return
 	if _steering_wheel:
 		_steering_wheel.basis = _steering_rest * Basis(Vector3.BACK, -car.steer_angle * steering_ratio)
+	for fitted: Array in _fitted_wheels:
+		if is_instance_valid(fitted[0]):
+			(fitted[0] as Node3D).basis = (fitted[1] as Basis) * Basis(Vector3.BACK, -car.steer_angle * steering_ratio)
 	if _livery_mode > 0:
 		_set_paint_param("livery_space", Projection(global_transform.affine_inverse()))
 	if not _swings.is_empty():
@@ -113,6 +117,13 @@ func _set_door(amount: float, side: String) -> void:
 	_door_amount[side] = amount
 	var d: Array = _doors[side]
 	(d[0] as Node3D).basis = (d[1] as Basis).slerp(d[2] as Basis, amount)
+
+
+## Turn a fitted steering wheel (a part model at Mount_SteeringWheel, which
+## turns about its local Z like the stock one) with the steering.
+func turn_with_steering(wheel: Node3D) -> void:
+	_fitted_wheels = _fitted_wheels.filter(func(f: Array) -> bool: return is_instance_valid(f[0]) and not (f[0] as Node).is_queued_for_deletion())
+	_fitted_wheels.append([wheel, wheel.basis])
 
 
 ## Respray. A fresh coat drops the sun-faded wear texture.
@@ -160,7 +171,10 @@ func apply_cosmetics(livery: Dictionary, trinkets: Array) -> void:
 	add_child(_trinkets)
 	for item: Dictionary in trinkets:
 		var node := Trinkets.build(item)
-		node.position = Trinkets.slot_position(self, item.get("slot", "dash"))
+		var car := get_parent() as CarController
+		var classic: bool = car != null and CarCatalogue.get_car(car.car_id).get("ladder", "") == "classic"
+		node.position = Trinkets.slot_position(self, item.get("slot", "dash"), classic)
+		node.rotation.x = Trinkets.slot_tilt(item.get("slot", "dash"), classic)
 		_trinkets.add_child(node)
 		for swing in node.find_children("Swing", "Node3D", true, false) + node.find_children("Bob", "Node3D", true, false):
 			_swings.append(swing)

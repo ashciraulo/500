@@ -59,7 +59,8 @@ const LIVERY_COLOURS := [
 const FIT_HOURS := {
 	"engine": 4.0, "gearbox": 3.0, "suspension": 2.5, "exhaust": 1.0,
 	"intake": 0.5, "brakes": 1.5, "tyres": 1.0, "wheels": 0.5, "weight": 0.5,
-	"roof": 0.5, "lights": 1.0,
+	"roof": 0.5, "lights": 1.0, "rear_rack": 0.5, "bumpers": 1.0, "towbar": 1.5,
+	"mudflaps": 0.5, "steering_wheel": 0.5, "gear_knob": 0.1, "seat_covers": 0.3,
 }
 const RESPRAY_HOURS := 6.0
 ## Jobs on the consumables (CarController.wear), done in your carport:

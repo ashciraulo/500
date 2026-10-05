@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"mudflaps_rubber"
+display_name = "Mud flaps"
+description = "Rubber flaps behind the rear wheels. Keeps the gravel off the paint, mostly."
+slot = &"mudflaps"
+price = 60
+modifiers = {"mass_add": 2.0, "dirt_mult": 0.85}
+visual = "mudflap"

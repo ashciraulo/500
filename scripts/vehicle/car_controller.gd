@@ -236,6 +236,8 @@ var fuel_litres := 35.0
 const LOW_FUEL_FRACTION := 0.12
 ## How dirty the car is, 0 (fresh from the car wash) to 1 (filthy).
 var dirt := 0.35
+## How fast dirt builds up (mud flaps keep some off).
+var dirt_multiplier := 1.0
 ## Dirt gained per km by surface; rain on a wet road adds more.
 const DIRT_PER_KM := {&"asphalt": 0.004, &"concrete": 0.004, &"gravel": 0.05, &"grass": 0.03, &"dirt": 0.06, &"sand": 0.05}
 ## Garage tuning values by CarTuning option key.
@@ -268,7 +270,22 @@ var body_size := POP_SIZE
 var _model_wheels := {}
 const PART_MODEL_PATH := "res://art/models/cars/parts/%s.glb"
 ## Slots whose parts sit on the body, and the empty each sits at.
-const PART_MOUNTS := {&"exhaust": "Mount_Exhaust", &"roof": "Mount_Roof", &"lights": "Mount_Spotlights"}
+const PART_MOUNTS := {&"exhaust": "Mount_Exhaust", &"roof": "Mount_Roof", &"lights": "Mount_Spotlights",
+	&"rear_rack": "Mount_RearRack", &"towbar": "Mount_TowBar", &"steering_wheel": "Mount_SteeringWheel",
+	&"gear_knob": "Mount_GearKnob"}
+## Slots whose part shows at more than one empty: [mount, model suffix, whether
+## the plain model may stand in when the suffixed one doesn't exist, mirror
+## across the car]. The first one's node is Body/Part_<slot>, the rest
+## Part_<slot>_2 and on.
+const PART_PLACES := {
+	&"bumpers": [["Mount_BumperF", "_f", true, false], ["Mount_BumperR", "_r", false, false]],
+	&"mudflaps": [["Mount_MudFlap_L", "", true, false], ["Mount_MudFlap_R", "", true, false]],
+	&"seat_covers": [["Seat_L", "", true, false], ["Seat_R", "", true, true]],
+}
+## Stock model nodes a part replaces, hidden while it's fitted.
+const PART_HIDES := {&"steering_wheel": "SteeringWheel", &"gear_knob": "GearKnob"}
+## Body-specific stand-ins: model -> {visual: replacement}.
+const PART_VISUAL_SWAPS := {"giardiniera": {"mudflap": "mudflap_short"}}
 ## CarController values a car spec may set (data/cars/cars.json).
 const SPEC_KEYS := [
 	"mass", "idle_rpm", "redline_rpm", "limiter_rpm", "torque_curve", "gear_ratios",
@@ -474,7 +491,7 @@ func _physics_process(delta: float) -> void:
 		var km := absf(forward_speed) * delta / 1000.0
 		odometer_km += km
 		var rate: float = DIRT_PER_KM.get(surface, 0.01) + Weather.wetness * 0.02
-		dirt = minf(1.0, dirt + km * rate)
+		dirt = minf(1.0, dirt + km * rate * dirt_multiplier)
 		_add_wear("tyres", km * (1.0 + 2.5 * tire_slip))
 		_add_wear("brakes", km * (0.3 + 2.0 * brake))
 		if not is_electric:
@@ -745,9 +762,15 @@ func _field_gear_spot(body: Node3D, id: StringName) -> Variant:
 	if id == &"fishing_rod":
 		# Only on a rack: a 2.1 m rod is longer than a 500's roof. Without one
 		# it travels in the boot, out of sight.
+		var rack := body.get_node_or_null(^"Part_roof") as Node3D
 		var mount := body.find_child(PART_MOUNTS[&"roof"], true, false) as Node3D
-		if mount == null or body.get_node_or_null(^"Part_roof") == null:
+		if mount == null or rack == null:
 			return null
+		# Racks mark where the rod lies: Mount_Rod at the butt, the blank
+		# running forward along its -Z (the rod model runs along +Z).
+		var rod_spot := rack.find_child("Mount_Rod", true, false) as Node3D
+		if rod_spot:
+			return _in_body_space(body, rod_spot) * Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
 		# Butt forward along +Z, the blank resting on the rack's bars beside
 		# the board, the reel hanging just ahead of the front bar.
 		return Transform3D(Basis.IDENTITY, _in_body_space(body, mount).origin + Vector3(-0.43, -0.03, -1.05))
@@ -988,6 +1011,7 @@ func _rebuild_stats() -> void:
 		set(key, _copy(_stock[key]))
 	torque_multiplier = 1.0
 	wet_penalty_multiplier = 1.0
+	dirt_multiplier = 1.0
 	var multipliers := {
 		"final_drive_mult": "final_drive", "shift_time_mult": "shift_time",
 		"grip_mult": "tire_grip", "spring_mult": "spring_strength",
@@ -1002,6 +1026,7 @@ func _rebuild_stats() -> void:
 	for m in modifier_sets:
 		torque_multiplier *= m.get("torque_mult", 1.0)
 		wet_penalty_multiplier *= m.get("wet_penalty_mult", 1.0)
+		dirt_multiplier *= m.get("dirt_mult", 1.0)
 		for key in multipliers:
 			if m.has(key):
 				set(multipliers[key], get(multipliers[key]) * m[key])
@@ -1191,23 +1216,62 @@ func _apply_part_visuals() -> void:
 	var body := get_node_or_null("Body") as Node3D
 	if body == null:
 		return
-	for slot: StringName in PART_MOUNTS:
-		var old := body.get_node_or_null(NodePath("Part_" + String(slot)))
-		if old:
+	for old in body.get_children():
+		if old.name.begins_with("Part_"):
 			body.remove_child(old)
 			old.queue_free()
-		var part: CarPart = parts.get(slot)
-		if part == null or part.visual == "" or not ResourceLoader.exists(PART_MODEL_PATH % part.visual):
+	for slot: StringName in PART_HIDES:
+		var stock := body.find_child(PART_HIDES[slot], true, false) as Node3D
+		if stock:
+			stock.visible = true
+	for slot: StringName in PartsCatalogue.SLOTS:
+		var places: Array = PART_PLACES.get(slot, [[PART_MOUNTS.get(slot, ""), "", true, false]])
+		if places[0][0] == "":
 			continue
-		var model := (load(PART_MODEL_PATH % part.visual) as PackedScene).instantiate() as Node3D
-		model.name = "Part_" + String(slot)
-		var mount := body.find_child(PART_MOUNTS[slot], true, false) as Node3D
-		model.transform = _in_body_space(body, mount) if mount else Transform3D.IDENTITY
-		body.add_child(model)
-		PS1Model.apply(model)
-		if slot == &"lights":
-			_add_spotlights(model)
+		var part: CarPart = parts.get(slot)
+		var shown := 0
+		for place: Array in places:
+			var visual := _part_visual(part, place[1], place[2])
+			var mount := body.find_child(place[0], true, false) as Node3D
+			if visual == "" or (mount == null and place[0] != PART_MOUNTS.get(slot, "")):
+				continue
+			var model := (load(PART_MODEL_PATH % visual) as PackedScene).instantiate() as Node3D
+			shown += 1
+			model.name = "Part_" + String(slot) + ("" if shown == 1 else "_%d" % shown)
+			var spot := _in_body_space(body, mount) if mount else Transform3D.IDENTITY
+			if place[3]:
+				# The other side: mirror across the car's centreline.
+				spot.basis = spot.basis * Basis.from_scale(Vector3(-1, 1, 1))
+			model.transform = spot
+			body.add_child(model)
+			PS1Model.apply(model)
+			if slot == &"lights":
+				_add_spotlights(model)
+			if slot == &"steering_wheel" and body.has_method("turn_with_steering"):
+				body.turn_with_steering(model)
+		if shown > 0 and PART_HIDES.has(slot):
+			var stock := body.find_child(PART_HIDES[slot], true, false) as Node3D
+			if stock:
+				stock.visible = false
 	_apply_field_gear()
+
+
+## The model to show for a part on this car: `<visual>_classic` or
+## `<visual>_modern` when the part comes in one per body family, else
+## `<visual>`; "" when there's nothing to show.
+func _part_visual(part: CarPart, suffix := "", plain_ok := true) -> String:
+	if part == null or part.visual == "":
+		return ""
+	var car := CarCatalogue.get_car(car_id)
+	var base: String = PART_VISUAL_SWAPS.get(car.get("model", ""), {}).get(part.visual, part.visual)
+	var family := "classic" if car.get("ladder", "") == "classic" else "modern"
+	var names := ["%s%s_%s" % [base, suffix, family], base + suffix]
+	if suffix != "" and plain_ok:
+		names.append_array(["%s_%s" % [base, family], base])
+	for name: String in names:
+		if ResourceLoader.exists(PART_MODEL_PATH % name):
+			return name
+	return ""
 
 
 ## Two lamps for the period spotlights, on with the headlights.

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"gear_knob_wood"
+display_name = "Wooden gear knob"
+description = "A turned wooden knob, warm to the touch."
+slot = &"gear_knob"
+price = 35
+visual = "knob_wood"
