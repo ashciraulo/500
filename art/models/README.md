@@ -29,6 +29,24 @@ centre on the floor, the wall side toward Godot +Z (it fits `Shed_Sheeted`'s
 1.0 x 0.55 x 0.78 m box); empties `DeckLight`, `TxLight`, `Valve` and `Bulb`
 for its lamps.
 
+`scripts/build_m_journal.py` writes M.'s 1979 field journal and its props to
+`home/mystery/`:
+
+- `m_journal.glb`: the journal closed, in the same green cloth as the open
+  copy in the shed. `Journal` holds the back board and pages. Its child
+  `Cover` has its origin on the spine hinge. To open it, turn `Cover`'s
+  rotation.z up to +178 degrees; the frogmouth page is on top.
+- `m_page_<bird>.glb`: one loose page per wrong night bird (`frogmouth`,
+  `magpie`, `swan`, `cockatoos`, `ibis`, `boobook`, `grey_bird`). Each lies
+  face up, centred, torn along the left edge, with a pencil sketch, the
+  handwriting and 1979 in the corner. The `grey_bird` page is in the
+  player's blue biro, with no year.
+- `boobook_hollow.glb`: a 1.5 m dead marri stump with the hollow facing +Z.
+  The nest is lined with brown cassette tape, with a NIGHT DR label scrap
+  on a twig. The `Bird` empty on the lip is where the boobook sits.
+- `bream_tag.glb`: the yellow dart tag printed 1979, with its origin at the
+  barb so it can be set in the bream's jaw.
+
 The night shift's city vehicles (`lib/city_vehicles.py`):
 `python3.11 art/models/scripts/build_city.py` writes `props/city/sweeper.glb`,
 `bin_truck.glb`, `wheelie_bin.glb` and `food_van.glb` for `traffic/`. They
@@ -290,6 +308,13 @@ transform:
 | `wheel_wood.glb`, `wheel_sport.glb` | `Mount_SteeringWheel` | Dished wood rim on slotted alloy spokes; smaller leather sport rim with a red band at twelve. |
 | `knob_wood.glb`, `knob_chrome.glb`, `knob_8ball.glb` | `Mount_GearKnob` | Walnut ball on a brass collar; chrome ball; black 8 ball. |
 | `seatcover_<sheepskin\|beaded>_<modern\|classic>.glb` | `Seat_L` | Covers shaped to the Pop's and the Nuova's seats; mirror X for `Seat_R`. |
+| `foglamps_yellow.glb` | `Mount_Spotlights` | A pair of small yellow fog lamps in black bowls with the period cross-strap, either side of the front plate (`scripts/build_mod_parts.py`). The lenses use `LampFog`, so light them with the headlights. |
+| `sump_finned.glb` | `Mount_Exhaust` (classics) | The finned alloy oil sump of a big-bore and carb kit, hanging under the engine ahead of the exhaust. It's the outside tell for the classic engine kits. The turbo kit has no outside part. |
+
+Custom number plates: `cars/plates/plate_<id>.png` (64 x 16, the same size as
+the plate texture in every car) for `standard` (1CIN-500), `ciao`, `pop_500`,
+`nite_drv`, `birdo`, `slow` and `bream`. Swap the albedo of the car's `Plate`
+material to fit one. Every number is made up.
 
 ## Home: 15 Little Shenton Lane
 
