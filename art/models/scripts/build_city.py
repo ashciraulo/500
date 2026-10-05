@@ -25,11 +25,11 @@ from lib import furniture as F  # noqa: E402
 OUT = "art/models/props/city/"
 
 
-def build(name, offset=None):
+def build(name, offset=None, table=None):
     """Build one vehicle. For exports its nodes sit at the top of the scene
     (Godot's scene root is the file); for previews they hang off a root
     empty moved to `offset`."""
-    objs, empties = CV.VEHICLES[name]()
+    objs, empties = (table or CV.VEHICLES)[name]()
     root = C.empty(name, (0, 0, 0), size=0.3) if offset is not None else None
     made = {}
     for nm, parts, pivot, parent in objs:

@@ -19,12 +19,14 @@ import bpy  # noqa: E402,F401
 from lib import coast_landmarks as LM  # noqa: E402
 from lib import common as C  # noqa: E402
 from lib import furniture as F  # noqa: E402
+from lib import river_landmarks as RL  # noqa: E402
 
 OUT = "art/models/props/landmarks/"
+ALL = dict(LM.LANDMARKS, **RL.LANDMARKS)
 
 
 def build(name):
-    parts, sockets, col = LM.LANDMARKS[name]()
+    parts, sockets, col = ALL[name]()
     title = "".join(w.capitalize() for w in name.split("_"))
     objs = [F.item(title, parts, (0, 0, 0))]
     cmat = C.mat("Collision", "#ff00ff")
@@ -39,12 +41,20 @@ VIEWS = {   # camera, target, lens: front three-quarter and a closer look
     "mole_light_south": [((9, -14, 6), (0, 0, 4.6), 40)],
     "herdsman_hide": [((-9, -9, 5), (0.5, 3.0, 1.2), 32), ((1.0, 6.0, 2.4), (0.0, -1.0, 1.4), 30),
                       ((1.0, 0.9, 1.95), (-0.4, -1.2, 1.45), 22)],
+    "kent_st_weir": [((-30, -34, 12), (0, 0, 0.0), 32), ((-8, -9, 2.5), (-2, 0, 0.0), 30),
+                     ((28, -12, 4), (24, -2, 0.0), 32), ((-1.0, -0.8, 3.0), (6, 0.4, 2.0), 30)],
+    "jetty_rail": [((-5, 3, 2.5), (0, -5, 0.5), 32)],
+    "jetty_lamp": [((-3, -3, 2.5), (0, 0, 1.8), 32)],
+    "pelican_fence": [((6, -14, 3), (10, 0, 0.9), 32), ((10, -2.2, 1.4), (10, 0, 1.3), 30)],
+    "pelican_lookout": [((-4, -7, 3), (0, 0, 0.6), 32), ((2.3, -0.3, 1.6), (1.55, -1.15, 1.5), 30)],
+    "pelican_sailing_club": [((-18, -26, 9), (0, -2, 2.0), 32), ((14, -14, 3), (2, -5, 2.5), 32)],
     "trigg_surf_club": [((-26, -30, 10), (0, 0, 4.0), 32), ((22, -18, 5), (4, -6, 4.5), 32)],
 }
 
 
 def main():
-    for name in LM.LANDMARKS:
+    only = [a for a in sys.argv[sys.argv.index("--") + 1:] if a in ALL] if "--" in sys.argv else []
+    for name in (only or ALL):
         C.reset()
         C.clear_material_cache()
         objs, cobj = build(name)

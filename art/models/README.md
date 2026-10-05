@@ -42,6 +42,19 @@ their pivots: `BroomL`/`BroomR` (sweeper), `BinArm` with `Rail` and `Grip`
 van, shown open). The food van has empties `HatchLight`, `SignSide` (faces
 -X) and `SignFront` for its lamp and Label3D signs; no baked text.
 
+Everyday traffic (`lib/traffic_vehicles.py`):
+`python3.11 art/models/scripts/build_traffic.py` writes
+`vehicles/traffic/<type>.glb` for hatch, sedan, suv, ute, van, taxi, bus,
+police, ambulance, fire, carriage_cab and carriage_mid, with the same
+conventions as the night shift (front -Z, kerb -X, origin on the ground at
+the footprint centre, rail level for the railcar, no wheel nodes, no
+logos). Body on `Paint`, a stripe or band on `Livery`, windows on `Glass`;
+`HeadL`/`HeadR`/`TailL`/`TailR` and the amber `IndL`/`IndR` (front and back
+on one mesh a side) are their own meshes. The bus has a lit `Dest` panel;
+police, ambulance and fire a `LightBar` with `Red` and `Blue` under it and
+a `Siren` empty; each railcar `DoorsL`/`DoorsR` (two double doors a side,
+origins on the body side at floor height). About 0.7-1.9k triangles each.
+
 Stage 5 landmarks for the map: `python3.11 art/models/scripts/build_landmarks.py`
 (`lib/coast_landmarks.py`) writes `props/landmarks/mole_light_north.glb` (the
 red 1906 North Mole light), `mole_light_south.glb` (the green 1903 South Mole
@@ -52,6 +65,21 @@ viewing slot and the club's beach side. Each has a `<Name>_Col` static body of
 plain boxes and empties: `Lamp` and `Door` (lights), `View` and `Entry` (hide;
 the boardwalk runs 14 m back toward -Z and ramps down to the bank), `Front`,
 `Apron` and `Tower` (surf club).
+
+Stage 6 river pieces (`lib/river_landmarks.py`, same build):
+`kent_st_weir.glb` (Kent Street Weir as rebuilt in 2017: 17 bays of lay-flat
+gates, the fishway and the footbridge; origin on the weir's centre line at
+the upstream pool surface, the downstream side toward Godot +Z, the
+footbridge deck at 1.35 m landing on concrete abutments at x +-28 m;
+sockets `BridgeMid`, `WestEnd`, `EastEnd`, `Fishway`, `Spill`),
+`jetty_rail.glb` (kerbs and handrails for a 10 m run of a 3 m jetty deck,
+origin on the deck at the run's landward end, running toward +Z) and
+`jetty_lamp.glb` (a lamp post, `Lamp` socket) to dress the map's plain OSM
+jetty at Garratt Rd, and for Pelican Point `pelican_fence.glb` (20 m of the
+sanctuary's chain-wire fence along +X, the public side +Z, a reserve sign
+at the middle), `pelican_lookout.glb` (the viewing deck, `View` and `Bench`)
+and `pelican_sailing_club.glb` (a 20 x 10 m clubhouse and boatshed with
+dinghies out front; made-up name).
 
 ## Conventions
 
