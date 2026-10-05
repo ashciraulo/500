@@ -5,6 +5,13 @@
                  holding the fresh pool back from the tide, a fishway
                  stepping down beside them, and the footbridge across the
                  top with timber decking and steel balustrades.
+  jetty_rail, jetty_lamp
+                 Railings and a lamp to dress the map's plain OSM jetty deck
+                 at Garratt Rd.
+  pelican_fence, pelican_lookout, pelican_sailing_club
+                 Pelican Point: a run of the sanctuary's chain-wire fence,
+                 the viewing deck with its waders board, and a sailing club
+                 on the north side (a made-up club).
 
 Each builder returns (parts, sockets, collision boxes). Front toward -Y in
 Blender (Godot +Z). Heights are from the upstream pool's surface (0); see
@@ -144,6 +151,205 @@ def kent_st_weir():
     return p, sockets, col
 
 
+# ------------------------------------------------------------------ Garratt Rd jetty dressing
+
+def jetty_rail():
+    """Dressing for an existing 3 m jetty deck (the map's OSM deck): kerbs
+    and a galvanised two-rail handrail down both sides of a 10 m run.
+    Origin on the deck surface at the centre of the run's landward end; the
+    run goes toward -Y (Godot +Z). Repeat it every 10 m."""
+    galv = _m("Galv", "#a9adab", 0.45, 0.7)
+    jarrah = _m("Jarrah", "#6a4632", 0.9)
+    W, L = 3.0, 10.0
+    p = []
+    for sx in (-1, 1):
+        x = sx * (W / 2 - 0.08)
+        p.append(bx((x - 0.08, -L, 0.0), (x + 0.08, 0.0, 0.15), jarrah))
+        for y in (-0.1, -2.5, -5.0, -7.5, -L + 0.1):
+            p.append(bx((x - 0.03, y - 0.03, 0.15), (x + 0.03, y + 0.03, 1.0), galv))
+        for z in (0.55, 1.0):
+            p.append(cyl(0.022, L, (x, -L / 2, z), galv, segs=6, axis="Y"))
+    sockets = {"Cast_L": (-(W / 2 - 0.4), -L / 2, 0.0), "Cast_R": (W / 2 - 0.4, -L / 2, 0.0)}
+    col = [((-W / 2, -L, 0.0), (-W / 2 + 0.16, 0.0, 1.0)), ((W / 2 - 0.16, -L, 0.0), (W / 2, 0.0, 1.0))]
+    return p, sockets, col
+
+
+def jetty_lamp():
+    """A jetty lamp post, its arm reaching over the deck toward -X. Origin
+    at the foot of the post; `Lamp` is the lantern."""
+    galv = _m("Galv", "#a9adab", 0.45, 0.7)
+    lamp = _m("JettyLamp", "#f2e2b0", 0.3, emit="#f2d890", emit_strength=2.0)
+    p = [cyl(0.09, 0.12, (0, 0, 0.06), galv, segs=8),
+         cyl(0.05, 3.4, (0, 0, 1.7), galv, segs=8),
+         bx((-0.45, -0.03, 3.33), (0.02, 0.03, 3.39), galv),
+         bx((-0.52, -0.09, 3.18), (-0.34, 0.09, 3.33), lamp),
+         cyl(0.12, 0.06, (-0.43, 0, 3.36), galv, segs=8)]
+    return p, {"Lamp": (-0.43, 0.0, 3.15)}, [((-0.06, -0.06, 0.0), (0.06, 0.06, 3.4))]
+
+
+# ------------------------------------------------------------------ Pelican Point
+
+def pelican_fence():
+    """A 20 m run of the sanctuary's chain-wire fence. Origin on the ground
+    at the run's west end, running along +X; the public side is -Y
+    (Godot +Z). A reserve sign hangs at the middle, facing the public."""
+    galv = _m("Galv", "#a9adab", 0.45, 0.7)
+    wire = _m("ChainWire", "#8e9493", 0.6, 0.6, alpha=0.4)
+    post = _m("Post", "#5a4a3a", 0.95)
+    L, H = 20.0, 1.8
+    p = []
+    for k in range(9):
+        x = k * L / 8
+        p.append(cyl(0.03, H + 0.05, (x, 0, (H + 0.05) / 2), galv, segs=6))
+    p.append(cyl(0.02, L, (L / 2, 0, H), galv, segs=6, axis="X"))
+    p.append(bx((0, -0.003, 0.05), (L, 0.003, H), wire))
+    for z in (0.05, H * 0.5):
+        p.append(cyl(0.006, L, (L / 2, 0, z), galv, segs=4, axis="X"))
+    img = FP._sign("reserve_sign", ["NATURE RESERVE", "BIRDS NESTING", "NO ENTRY"], 64, 24, "#f2efe4", "#2f5a3e")
+    p.append(bx((L / 2 - 0.45, -0.03, 1.0), (L / 2 + 0.45, -0.01, 1.6), post))
+    p.append(FP._sign_quad(img, "ReserveSign", 0.86, 0.32, (L / 2, -0.035, 1.3), facing=-1))
+    return p, {}, [((0, -0.05, 0.0), (L, 0.05, H))]
+
+
+def pelican_lookout():
+    """The viewing spot at the sanctuary edge: a low timber deck with a
+    rail, a bench and an interpretive board of the waders. Origin on the
+    ground at the deck's centre; front (toward the birds) is -Y (Godot +Z)."""
+    deck = _m("Deck", "#8b7258", 0.9)
+    gap = _m("DeckGap", "#3b3027", 0.9)
+    post = _m("Post", "#5a4a3a", 0.95)
+    galv = _m("Galv", "#a9adab", 0.45, 0.7)
+    p = []
+    W, D, Z = 4.5, 3.0, 0.3
+    for x in (-W / 2 + 0.15, 0.0, W / 2 - 0.15):
+        for y in (-D / 2 + 0.15, D / 2 - 0.15):
+            p.append(bx((x - 0.06, y - 0.06, 0.0), (x + 0.06, y + 0.06, Z - 0.05), post))
+    p.append(bx((-W / 2, -D / 2, Z - 0.05), (W / 2, D / 2, Z), deck))
+    for k in range(1, 15):
+        x = -W / 2 + k * W / 15
+        p.append(bx((x - 0.008, -D / 2 + 0.02, Z), (x + 0.008, D / 2 - 0.02, Z + 0.002), gap))
+    # rail along the front and the sides
+    for k in range(7):
+        x = -W / 2 + 0.05 + k * (W - 0.1) / 6
+        p.append(bx((x - 0.04, -D / 2, Z), (x + 0.04, -D / 2 + 0.08, Z + 1.0), post))
+    p.append(bx((-W / 2, -D / 2 - 0.02, Z + 1.0), (W / 2, -D / 2 + 0.1, Z + 1.06), deck))
+    p.append(bx((-W / 2 + 0.08, -D / 2 + 0.02, Z + 0.5), (W / 2 - 0.08, -D / 2 + 0.06, Z + 0.55), post))
+    for sx in (-1, 1):
+        x = sx * (W / 2 - 0.04)
+        for y in (-D / 2 + 0.75, -D / 2 + 1.45, D / 2 - 0.84):
+            p.append(bx((x - 0.04, y - 0.04, Z), (x + 0.04, y + 0.04, Z + 1.0), post))
+        p.append(bx((x - 0.05, -D / 2 + 0.1, Z + 1.0), (x + 0.05, D / 2 - 0.8, Z + 1.06), deck))
+        p.append(bx((x - 0.02, -D / 2 + 0.08, Z + 0.5), (x + 0.02, D / 2 - 0.8, Z + 0.55), post))
+    # a bench facing the water
+    p.append(bx((-1.0, 0.3, Z + 0.42), (1.0, 0.7, Z + 0.47), deck))
+    p.append(bx((-1.0, 0.68, Z + 0.47), (1.0, 0.72, Z + 0.85), deck))
+    for x in (-0.85, 0.85):
+        p.append(bx((x - 0.04, 0.35, Z), (x + 0.04, 0.7, Z + 0.42), galv))
+    # the interpretive board, angled up from the rail at one end
+    img = FP._sign("waders_board", ["PELICAN POINT", "WADERS OF THE", "SWAN ESTUARY", "",
+                                   "WATCH QUIETLY"], 64, 40, "#efe8d4", "#2f4a5a")
+    bx_, by_ = W / 2 - 0.7, -D / 2 + 0.35
+    for dx in (-0.35, 0.35):
+        p.append(bx((bx_ + dx - 0.04, by_ - 0.04, Z), (bx_ + dx + 0.04, by_ + 0.04, Z + 0.95), galv))
+    p.append(bx((bx_ - 0.45, by_ - 0.02, Z + 0.95), (bx_ + 0.45, by_ + 0.02, Z + 1.5), post))
+    p.append(FP._sign_quad(img, "WadersBoard", 0.84, 0.52, (bx_, by_ + 0.025, Z + 1.225), facing=1))
+    sockets = {"View": (0.0, -D / 2 + 0.5, Z), "Bench": (0.0, 0.5, Z + 0.45)}
+    col = [((-W / 2, -D / 2, 0.0), (W / 2, D / 2, Z)),
+           ((-W / 2, -D / 2, Z), (W / 2, -D / 2 + 0.1, Z + 1.06)),
+           ((-W / 2, -D / 2, Z), (-W / 2 + 0.08, D / 2 - 0.8, Z + 1.06)),
+           ((W / 2 - 0.08, -D / 2, Z), (W / 2, D / 2 - 0.8, Z + 1.06))]
+    return p, sockets, col
+
+
+def _dinghy(x, y, hull, deck_col, z=0.0):
+    """A little sailing dinghy on its trolley, bow toward -Y."""
+    Lh, Wh = 3.4, 1.3
+    v = [(0, -Lh / 2, 0.15), (Wh * 0.35, -Lh / 2 + 0.6, 0.12), (Wh / 2, 0.0, 0.1), (Wh * 0.45, Lh / 2, 0.15),
+         (-Wh * 0.45, Lh / 2, 0.15), (-Wh / 2, 0.0, 0.1), (-Wh * 0.35, -Lh / 2 + 0.6, 0.12)]
+    top = [(a, b, 0.55 if i else 0.62) for i, (a, b, _) in enumerate(v)]
+    keel = [(a * 0.4, b * 0.95, 0.0) for a, b, _ in v]
+    n = len(v)
+    verts = [(x + a, y + b, z + c + 0.35) for a, b, c in keel + top]
+    faces = [tuple(range(n - 1, -1, -1)), tuple(range(n, 2 * n))]
+    faces += [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
+    out = [C.mesh_obj("hull", verts, faces, hull)]
+    out.append(C.mesh_obj("deck", [(x + a, y + b, z + 0.355 + c + 0.002) for a, b, c in top], [tuple(range(n))],
+                          deck_col))
+    # trolley: an axle and two wheels
+    out.append(cyl(0.02, 1.4, (x, y + 0.2, z + 0.2), deck_col, segs=6, axis="X"))
+    for sx in (-1, 1):
+        out.append(cyl(0.18, 0.08, (x + sx * 0.7, y + 0.2, z + 0.18), hull, segs=8, axis="X"))
+    return out
+
+
+def pelican_sailing_club():
+    """A sailing club on the north side of the point: a long single-storey
+    clubhouse and boatshed in pale blockwork, the roller doors and a deep
+    verandah facing the water, dinghies on trolleys out front and the
+    club's flagpole. Origin on the ground at the footprint centre; front
+    (the water side) is -Y (Godot +Z). Footprint 20 x 10 m. The name is
+    made up."""
+    block = _m("Block", "#ddd5c4", 0.95)
+    roof = _m("Roof", "#4c6f8c", 0.45, 0.4)                # deep ocean colorbond
+    trim = _m("Trim", "#f1efe8", 0.6)
+    door = _m("Roller", "#c3c8c8", 0.5, 0.5)
+    glass = _m("Glass", "#3a5664", 0.08, 0.3)
+    post = _m("SteelPost", "#e9e9e4", 0.5, 0.4)
+    conc = _m("Concrete", "#b3aea3", 0.95)
+    hulls = [_m("HullWhite", "#f2f2ee", 0.4), _m("HullRed", "#b8352a", 0.4), _m("HullBlue", "#2f5d8c", 0.4)]
+    deck_col = _m("DinghyDeck", "#d8d4c8", 0.6)
+    flag = _m("ClubFlag", "#2f5d8c", 0.7)
+    p = []
+    L, D, H = 20.0, 10.0, 3.4
+    x0, x1, y0, y1 = -L / 2, L / 2, -D / 2, D / 2
+    p.append(bx((x0 - 2.0, y0 - 8.0, 0.0), (x1 + 2.0, y1 + 0.5, 0.06), conc))     # hardstand to the water
+    p.append(bx((x0, y0, 0.06), (x1, y1, H), block))
+    # the boatshed's roller doors at the west end and the clubroom's glass at the east
+    for xc in (-7.2, -3.6):
+        p.append(bx((xc - 1.5, y0 - 0.04, 0.06), (xc + 1.5, y0 + 0.02, 2.8), door))
+        for k in range(8):
+            z = 0.35 + k * 0.3
+            p.append(bx((xc - 1.5, y0 - 0.05, z), (xc + 1.5, y0 - 0.04, z + 0.025), trim))
+    p.append(bx((-1.0, y0 - 0.04, 0.3), (x1 - 1.0, y0 + 0.02, 2.7), glass))
+    for k in range(7):
+        x = -1.0 + k * (x1 - 1.0 + 1.0) / 6 - (0.04 if k == 6 else 0.0)
+        p.append(bx((x - 0.04, y0 - 0.06, 0.3), (x + 0.04, y0 + 0.02, 2.7), trim))
+    p.append(bx((-1.0, y0 - 0.06, 2.7), (x1 - 1.0, y0 + 0.02, 2.76), trim))
+    # skillion roof falling to the back, the verandah running out over the front
+    ry0, ry1 = y0 - 3.0, y1 + 0.4
+    z_f, z_b = H + 0.6, H + 0.1
+
+    def rz(y):
+        return z_f + (z_b - z_f) * (y - ry0) / (ry1 - ry0)
+    v = [(x0 - 0.3, ry0, rz(ry0)), (x1 + 0.3, ry0, rz(ry0)), (x1 + 0.3, ry1, rz(ry1)), (x0 - 0.3, ry1, rz(ry1))]
+    v2 = [(a, b, c + 0.18) for a, b, c in v]
+    p.append(_prism("roof", v + v2, roof))
+    p.append(bx((x0 - 0.32, ry0 - 0.05, rz(ry0) - 0.12), (x1 + 0.32, ry0, rz(ry0) + 0.2), trim))
+    for k in range(6):
+        x = x0 + 0.3 + k * (L - 0.6) / 5
+        p.append(bx((x - 0.06, ry0 + 0.1, 0.06), (x + 0.06, ry0 + 0.22, rz(ry0 + 0.16)), post))
+    # the sign over the glass, no real club's name
+    img = FP._sign("club_sign2", ["POINT SAILING CLUB"], 80, 8, "#2f5d8c", "#f1efe8")
+    p.append(TS._quad_image(img, "SailClubSign", 6.0, 0.6, (4.5, y0 - 0.07, 3.05), facing="-y"))
+    # dinghies out front and the flagpole with its yardarm
+    for i, (x, y) in enumerate(((-8.0, y0 - 5.0), (-6.2, y0 - 5.2), (-4.4, y0 - 5.0), (-2.6, y0 - 5.3))):
+        p += _dinghy(x, y, hulls[i % 3], deck_col, 0.06)
+    fx, fy = x1 + 1.2, y0 - 5.0
+    p.append(cyl(0.3, 0.2, (fx, fy, 0.16), conc, segs=8))
+    p.append(_beam((fx, fy, 0.2), (fx, fy, 9.0), 0.06, post))
+    p.append(_beam((fx - 1.2, fy, 6.5), (fx + 1.2, fy, 6.5), 0.03, post))
+    p.append(bx((fx, fy - 0.01, 8.2), (fx + 1.0, fy + 0.01, 8.8), flag))
+    sockets = {"Door": (6.0, y0 - 1.0, 0.06), "Dinghies": (-5.3, y0 - 5.0, 0.06), "Flag": (fx, fy, 9.0)}
+    col = [((x0, y0, 0.0), (x1, y1, H)),
+           ((fx - 0.3, fy - 0.3, 0.0), (fx + 0.3, fy + 0.3, 9.0))]
+    return p, sockets, col
+
+
 LANDMARKS = {
     "kent_st_weir": kent_st_weir,
+    "jetty_rail": jetty_rail,
+    "jetty_lamp": jetty_lamp,
+    "pelican_fence": pelican_fence,
+    "pelican_lookout": pelican_lookout,
+    "pelican_sailing_club": pelican_sailing_club,
 }

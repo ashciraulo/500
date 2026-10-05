@@ -53,6 +53,21 @@ plain boxes and empties: `Lamp` and `Door` (lights), `View` and `Entry` (hide;
 the boardwalk runs 14 m back toward -Z and ramps down to the bank), `Front`,
 `Apron` and `Tower` (surf club).
 
+Stage 6 river pieces (`lib/river_landmarks.py`, same build):
+`kent_st_weir.glb` (Kent Street Weir as rebuilt in 2017: 17 bays of lay-flat
+gates, the fishway and the footbridge; origin on the weir's centre line at
+the upstream pool surface, the downstream side toward Godot +Z, the
+footbridge deck at 1.35 m landing on concrete abutments at x +-28 m;
+sockets `BridgeMid`, `WestEnd`, `EastEnd`, `Fishway`, `Spill`),
+`jetty_rail.glb` (kerbs and handrails for a 10 m run of a 3 m jetty deck,
+origin on the deck at the run's landward end, running toward +Z) and
+`jetty_lamp.glb` (a lamp post, `Lamp` socket) to dress the map's plain OSM
+jetty at Garratt Rd, and for Pelican Point `pelican_fence.glb` (20 m of the
+sanctuary's chain-wire fence along +X, the public side +Z, a reserve sign
+at the middle), `pelican_lookout.glb` (the viewing deck, `View` and `Bench`)
+and `pelican_sailing_club.glb` (a 20 x 10 m clubhouse and boatshed with
+dinghies out front; made-up name).
+
 ## Conventions
 
 - Metres, Y up in Godot. Cars face **-Z** (Godot forward); origin on the
