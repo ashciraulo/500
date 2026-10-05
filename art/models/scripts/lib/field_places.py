@@ -306,6 +306,12 @@ def shopfront(kind="photo_lab"):
     return p, {"Door": (dx, -0.4, 0.0), "Counter": (-0.1, 2.2, 0.0)}
 
 
+def _tackle_shop():
+    """The Mends Street tackle shop has its own module (a walk-in room)."""
+    from . import tackle_shop as TS
+    return TS.shop()
+
+
 PLACES = {
     "jetty_bay": (lambda: jetty(False, 1)),
     "jetty_end": (lambda: jetty(True, 2)),
@@ -313,5 +319,5 @@ PLACES = {
     "groyne_section": (lambda: groyne(False, 3)),
     "groyne_head": (lambda: groyne(True, 4)),
     "shop_photo_lab": (lambda: shopfront("photo_lab")),
-    "shop_tackle": (lambda: shopfront("tackle")),
+    "shop_tackle": (lambda: _tackle_shop()),
 }

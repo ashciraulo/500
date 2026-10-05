@@ -24,9 +24,14 @@ OUT = "art/models/props/field/places/"
 
 
 def build(name, pos=(0, 0, 0)):
-    parts, sockets = FP.PLACES[name]()
+    built = FP.PLACES[name]()
+    parts, sockets = built[0], built[1]
     title = "".join(w.capitalize() for w in name.split("_"))
     objs = [F.item(title, parts, pos)]
+    if len(built) > 2:
+        # plain boxes Godot turns into a static body (the `-colonly` suffix)
+        cmat = C.mat("Collision", "#ff00ff")
+        objs.append(F.item(title + "_Col-colonly", [F.bx(lo, hi, cmat) for lo, hi in built[2]], pos))
     for nm, loc in sockets.items():
         C.empty(nm, tuple(a + b for a, b in zip(loc, pos)), size=0.2)
     return objs
