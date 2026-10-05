@@ -9,7 +9,7 @@ extends Node
 ##   counters kept here (bump with `add_stat`): deliveries, night_deliveries,
 ##     rain_deliveries, storm_deliveries, fragile_perfect, trials_completed,
 ##     trials_medalled, trials_silver, trials_gold, parts_bought, cars_bought,
-##     washes, resprays, litres_bought
+##     washes, resprays, litres_bought, services_done
 ##   read live: earned (Wallet.total_earned), km_driven (every car's odometer),
 ##     km_tier_car (most km in one car of the current tier), discoveries
 ##     (Discoveries count), upgrades_fitted (non-stock parts on the car you're
@@ -36,7 +36,7 @@ const KNOWN_STATS := [
 	"discoveries", "upgrades_fitted", "suburbs_delivered", "cars_owned", "badges",
 	"barn_finds", "restoration_stages", "classics_restored", "photos_taken", "photo_spots",
 	"parking_done", "parking_gold", "scenic_drives", "meets_attended", "lifts_given",
-	"trains_raced", "trains_beaten", "parts_found",
+	"trains_raced", "trains_beaten", "parts_found", "services_done",
 	"species_seen", "species_photographed", "prints_sold", "fish_caught", "fish_species",
 ]
 ## Stats the field journal keeps (birds and fish); read live from it.

@@ -178,9 +178,51 @@ func _field_gear() -> void:
 	var rev_angle := rad_to_deg((rev_rest.inverse() * rev.basis).get_euler().y)
 	_check(absf(rev_angle + 120.0) < 2.0, "the rev needle points straight up at 3,500 rpm (%.0f deg)" % rev_angle)
 	_check(speedo.basis.is_equal_approx(speedo_rest), "the speedo rests on zero when parked")
+	var odo_window := pop_body.find_child("Odometer_*", true, false) as Node3D
+	if odo_window == null:
+		odo_window = Node3D.new()
+		odo_window.name = "Odometer_7"
+		pop_body.add_child(odo_window)
+		added.append(odo_window)
+		_car._needles_body = null
+	var km_before: float = _car.odometer_km
+	_car.odometer_km = 1234.6
+	_car._update_needles(0.1)
+	var digits := odo_window.get_node_or_null(^"Digits") as Label3D
+	_check(digits != null and digits.text == "001234", "the odometer shows the distance (%s)" % (digits.text if digits else "none"))
+	_car.odometer_km = km_before
 	for stand_in in added:
 		stand_in.free()
 	_car._needles_body = null
+	# Wear and servicing.
+	var garage := root.get_node("Garage")
+	var wallet := root.get_node("Wallet")
+	var due: Array[String] = []
+	_car.service_due.connect(func(item: String) -> void: due.append(item))
+	_car._add_wear("tyres", 400.0)
+	_check(_car.wear.tyres > 0.85 and due.has("tyres"), "tyres wear with distance and say when they're due")
+	_check(_car.tyre_grip_factor() < 0.9, "worn tyres grip less (%.2f)" % _car.tyre_grip_factor())
+	_car._add_wear("oil", 300.0)
+	_check(_car.oil_factor() < 0.95, "old oil takes the edge off (%.2f)" % _car.oil_factor())
+	var wear_state: Dictionary = _car.vehicle_state()
+	_car.load_vehicle_state({"car_id": _car.car_id})
+	_check(_car.wear.tyres == 0.0, "a state without wear means fresh")
+	_car.load_vehicle_state(wear_state)
+	_check(_car.wear.tyres > 0.85, "wear is saved with the car")
+	wallet.balance = maxi(wallet.balance, 1000)
+	var money_before: int = wallet.balance
+	var hour_before: float = root.get_node("GameClock").time_of_day
+	_check(garage.service(_car, "tyres") and _car.wear.tyres == 0.0, "new tyres at the carport")
+	_check(wallet.balance == money_before - garage.SERVICES.tyres[1], "and they cost money")
+	_check(not is_equal_approx(root.get_node("GameClock").time_of_day, hour_before), "and take a while")
+	_check(not garage.service(_car, "tyres"), "nothing to do on new tyres")
+	_check(not _car.logbook.is_empty() and String(_car.logbook[-1].text).contains("tyres"), "the service book says so")
+	_check(_car.vehicle_state().logbook.size() == _car.logbook.size(), "the service book is saved")
+	_car._add_wear("brakes", 300.0)
+	_car.load_vehicle_state({"car_id": "classic_nuova"})
+	_check(_car.wear.brakes == 0.0, "another car has its own wear")
+	_car.load_vehicle_state({"car_id": "pop_12"})
+	root.get_node("GameClock").set_time(10.0)
 	# The time of day, for birds.
 	var clock := root.get_node("GameClock")
 	var phases := {}

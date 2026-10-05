@@ -40,6 +40,8 @@ signal fuel_empty
 ## The driver stopped (true) or moved off (false): binoculars and the camera
 ## can be raised from the seat while parked. See `is_parked_for_viewing()`.
 signal parked_changed(parked: bool)
+## A consumable (tyres, brakes, oil) has worn far enough to want doing.
+signal service_due(item: String)
 
 enum Transmission { MANUAL, AUTOMATIC }
 
@@ -104,6 +106,13 @@ const STEP_CLIMB := 0.9
 const ROOF_MAX_KMH := 12.0
 ## Below this the driver counts as stopped for looking out of the window.
 const PARKED_MAX_KMH := 2.0
+## Consumables wear with use (0 new .. 1 worn out): tyres faster when they
+## slide, pads when you brake hard, oil just with distance (petrol cars).
+## In-game km: a careful driver changes the oil every few evenings of play,
+## tyres and pads every week or two. See Garage.SERVICES.
+const WEAR_KM := {"tyres": 450.0, "brakes": 650.0, "oil": 300.0}
+## Wear at which the car tells you it's due.
+const WEAR_DUE := 0.8
 ## Field gear the car can carry and show: the rod on a roof rack, the rest on
 ## the seats. Models are art/models/props/field/<id>.glb.
 const FIELD_GEAR_PATH := "res://art/models/props/field/%s.glb"
@@ -196,10 +205,17 @@ var roof_open := false
 ## player's, not the car's: it moves to whichever car they drive.
 var field_gear: PackedStringArray = []
 var _parked := false
+## Consumable wear for this car, 0 (new) to 1 (worn out). Saved with the car.
+var wear := {"tyres": 0.0, "brakes": 0.0, "oil": 0.0}
+## The car's service book: [{day, km, text}], oldest first, saved with it.
+var logbook: Array = []
+const LOGBOOK_MAX := 60
 ## Dashboard needles on the body (Needle_<dial>_<full scale>, see
 ## art/models/README.md): [node, rest basis, dial, full scale, shown value].
 var _needles: Array = []
 var _needles_body: Node = null
+## Odometer readouts on the body: [Label3D, last km shown].
+var _odometers: Array = []
 ## Engine torque multiplier from installed parts.
 var torque_multiplier := 1.0
 ## How much rain hurts grip (1 = stock tyres).
@@ -364,6 +380,8 @@ func _physics_process(delta: float) -> void:
 	var worst_slip := 0.0
 	grounded_wheels = 0
 	var wet_grip := lerpf(1.0, 1.0 - 0.22 * wet_penalty_multiplier, Weather.wetness)
+	var wear_grip := tyre_grip_factor()
+	var wear_brakes := brake_factor()
 	for i in _wheels.size():
 		var wheel: Dictionary = _wheels[i]
 		var forward := -global_basis.z
@@ -393,14 +411,14 @@ func _physics_process(delta: float) -> void:
 		var v_long := point_velocity.dot(forward)
 		var v_lat := point_velocity.dot(right)
 		var surface_info: Dictionary = SURFACES.get(wheel.surface, SURFACES[DEFAULT_SURFACE])
-		var max_force: float = tire_grip * load * surface_info.grip * wet_grip
+		var max_force: float = tire_grip * load * surface_info.grip * wet_grip * wear_grip
 		var stop_force := absf(v_long) * corner_mass / delta
 
 		var lateral := -v_lat * corner_mass / delta * lateral_stiffness
 		var longitudinal := 0.0
 		if wheel.driven:
 			longitudinal += drive_torque * 0.5 / wheel_radius
-		var braking := brake * brake_force * (0.3 if wheel.front else 0.2)
+		var braking := brake * brake_force * wear_brakes * (0.3 if wheel.front else 0.2)
 		if not wheel.front:
 			braking += handbrake_input * handbrake_force * 0.5
 			if handbrake_input > 0.1:
@@ -451,6 +469,10 @@ func _physics_process(delta: float) -> void:
 		odometer_km += km
 		var rate: float = DIRT_PER_KM.get(surface, 0.01) + Weather.wetness * 0.02
 		dirt = minf(1.0, dirt + km * rate)
+		_add_wear("tyres", km * (1.0 + 2.5 * tire_slip))
+		_add_wear("brakes", km * (0.3 + 2.0 * brake))
+		if not is_electric:
+			_add_wear("oil", km)
 
 
 func _process(delta: float) -> void:
@@ -472,15 +494,18 @@ func _process(delta: float) -> void:
 			_update_lights()
 
 
-## Swing the dashboard needles: the speedo, rev counter and fuel gauge on
-## bodies that have them. A needle rests on zero and turns 240 degrees
+## Swing the dashboard needles (the speedo, rev counter and fuel gauge) and
+## roll the odometer, on bodies that have them. A needle rests on zero and turns 240 degrees
 ## clockwise (negative about its local Y) at full scale, with a little lag.
 func _update_needles(delta: float) -> void:
 	var body := get_node_or_null("Body")
 	if body != _needles_body:
 		_needles_body = body
 		_needles.clear()
+		_odometers.clear()
 		if body:
+			for node: Node3D in body.find_children("Odometer_*", "Node3D", true, false):
+				_odometers.append([_odometer_label(node), -1])
 			for node: Node3D in body.find_children("Needle_*", "Node3D", true, false):
 				var parts := node.name.split("_")
 				if parts.size() >= 3 and parts[2].is_valid_float() and float(parts[2]) > 0.0:
@@ -497,6 +522,32 @@ func _update_needles(delta: float) -> void:
 		value = clampf(value, 0.0, needle[3] * 1.04)
 		needle[4] = lerpf(needle[4], value, 1.0 - exp(-10.0 * delta))
 		(needle[0] as Node3D).basis = needle[1] * Basis(Vector3.UP, -deg_to_rad(240.0) * needle[4] / needle[3])
+	for odo: Array in _odometers:
+		var km := int(odometer_km) % 1000000
+		if km != odo[1] and is_instance_valid(odo[0]):
+			odo[1] = km
+			(odo[0] as Label3D).text = "%06d" % km
+
+
+## The digits in an Odometer_<digit height in mm> window: a Label3D at the
+## empty, reading along its +X and facing the driver (+Z).
+func _odometer_label(window: Node3D) -> Label3D:
+	var existing := window.get_node_or_null(^"Digits") as Label3D
+	if existing:
+		return existing
+	var height_mm := float(String(window.name).get_slice("_", 1))
+	var label := Label3D.new()
+	label.name = "Digits"
+	label.font_size = 32
+	label.outline_size = 0
+	label.pixel_size = maxf(height_mm, 1.0) / 1000.0 / label.font_size
+	label.shaded = false
+	label.double_sided = false
+	# The modern cars' window is an LCD; the classics' a drum of white digits.
+	label.modulate = Color(0.62, 0.9, 1.0) if height_mm >= 6.0 else Color(0.94, 0.92, 0.86)
+	label.position = Vector3(0, 0, 0.0005)
+	window.add_child(label)
+	return label
 
 
 ## Everything audio (or a HUD) needs in one place. See docs/HOOKS.md.
@@ -590,6 +641,44 @@ func _apply_roof() -> void:
 		body.set_roof_open(roof_open)
 	elif not body.ready.is_connected(_apply_roof):
 		body.ready.connect(_apply_roof, CONNECT_ONE_SHOT)
+
+
+func _add_wear(item: String, km: float) -> void:
+	var before: float = wear[item]
+	wear[item] = minf(1.0, before + km / WEAR_KM[item])
+	if before < WEAR_DUE and wear[item] >= WEAR_DUE:
+		service_due.emit(item)
+
+
+## Write a line in the service book, stamped with the day and the odometer.
+func log_entry(text: String) -> void:
+	logbook.append({"day": GameClock.day, "km": roundi(odometer_km), "text": text})
+	if logbook.size() > LOGBOOK_MAX:
+		logbook.pop_front()
+
+
+## Grip left in the tyres: bald tyres let go about a fifth sooner.
+func tyre_grip_factor() -> float:
+	return lerpf(1.0, 0.8, pow(wear.tyres, 1.5))
+
+
+## Worn pads stop about a quarter less hard.
+func brake_factor() -> float:
+	return lerpf(1.0, 0.75, pow(wear.brakes, 1.5))
+
+
+## Old oil takes the edge off the engine once it's well overdue.
+func oil_factor() -> float:
+	return lerpf(1.0, 0.92, smoothstep(0.7, 1.0, wear.oil))
+
+
+## Items at or past WEAR_DUE, for the HUD and the workshop.
+func services_due() -> PackedStringArray:
+	var due := PackedStringArray()
+	for item: String in wear:
+		if wear[item] >= WEAR_DUE and not (item == "oil" and is_electric):
+			due.append(item)
+	return due
 
 
 ## The driver is in the seat and the car is stopped: a moment to look out of
@@ -757,6 +846,9 @@ func apply_car(id: String) -> void:
 		push_warning("Unknown car '%s'" % id)
 		return
 	car_id = id
+	for item: String in wear:
+		wear[item] = 0.0  # Another car, its own wear (load_vehicle_state restores it).
+	logbook = []
 	# Take the old car's parts off first, while its stock values still apply.
 	for slot in parts.keys():
 		remove_part(slot)
@@ -805,6 +897,8 @@ func vehicle_state() -> Dictionary:
 		"paint": paint_color.to_html() if has_custom_paint() else "",
 		"cosmetics": cosmetics.duplicate(true),
 		"roof_open": roof_open,
+		"wear": wear.duplicate(),
+		"logbook": logbook.duplicate(true),
 	}
 
 
@@ -829,6 +923,10 @@ func load_vehicle_state(data: Dictionary) -> void:
 		_apply_paint()
 	roof_open = bool(data.get("roof_open", false))
 	_apply_roof()
+	var saved_wear: Dictionary = data.get("wear", {})
+	for item: String in wear:
+		wear[item] = clampf(float(saved_wear.get(item, 0.0)), 0.0, 1.0)
+	logbook = Array(data.get("logbook", [])).duplicate(true)
 
 
 func save_state() -> Dictionary:
@@ -1349,7 +1447,7 @@ func _update_engine(delta: float) -> float:
 		clutch = clampf(wheel_rpm / launch_rpm, 0.0, 1.0) if launch_rpm > 1.0 else 1.0
 		var target := maxf(wheel_rpm, launch_rpm)
 		rpm = lerpf(rpm, target, 1.0 - exp(-20.0 * delta))
-		torque = _torque_at(rpm) * throttle
+		torque = _torque_at(rpm) * throttle * oil_factor()
 		if rpm >= limiter_rpm:
 			torque = 0.0
 		torque -= engine_brake_per_krpm * rpm / 1000.0 * (1.0 - throttle) * clutch

@@ -41,10 +41,19 @@ Signals:
 - `headlights_changed(on: bool)`
 - `parked_changed(parked: bool)`: the driver stopped or moved off.
 
+Wear: `car.wear` holds tyres, brakes and oil from 0 (new) to 1 (worn
+out), saved with each car. Worn tyres grip less, worn pads stop less hard,
+and overdue oil takes a little torque. `service_due(item)` fires at 0.8, and
+`services_due()` lists what's due. `Garage.service(car, item)` does the job
+at the carport (`Garage.SERVICES`: price and hours), and fitting a tyres or
+brakes part also resets that item. Audio could use `wear.brakes` for a pad
+squeal and `wear.tyres` for a thinner tyre note.
+
 Dashboard needles: any node under the body named `Needle_<dial>_<full
 scale>` (`Needle_Speed_200`, `Needle_Rev_7` in thousands of rpm,
 `Needle_Fuel_1` as a share of the tank) is swung by the car, 240 degrees
-clockwise from its rest pose at full scale.
+clockwise from its rest pose at full scale. An `Odometer_<digit height in mm>`
+empty gets a six-digit Label3D (`Digits`) showing the car's `odometer_km`.
 
 Bird-watching and fishing from the car:
 

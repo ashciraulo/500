@@ -14,7 +14,7 @@ const SLOT_NAMES := {
 ## "cars" lets you swap between cars you own; "dealer" also sells them.
 ## "extras" (trinkets and liveries you've earned) shows wherever parts,
 ## paint or your cars are.
-const TAB_KINDS := ["parts", "tuning", "paint", "fuel", "wash", "cars", "restore", "extras"]
+const TAB_KINDS := ["parts", "tuning", "service", "paint", "fuel", "wash", "cars", "restore", "extras"]
 const SLOT_TITLES := {"mirror": "Mirror", "dash": "Dash", "shelf": "Parcel shelf", "gear": "Gear lever"}
 const PLACE_NAMES := {"parts": "workshop", "tuning": "workshop", "paint": "paint booth",
 	"dealer": "car yard", "cars": "garage", "restore": "restoration bench",
@@ -37,6 +37,7 @@ var _tuning_list: VBoxContainer
 var _paint_list: VBoxContainer
 var _fuel_list: VBoxContainer
 var _wash_list: VBoxContainer
+var _service_list: VBoxContainer
 var _cars_list: VBoxContainer
 var _restore_list: VBoxContainer
 var _extras_list: VBoxContainer
@@ -123,6 +124,7 @@ func _set_open(open_it: bool) -> void:
 	_change.text = ""
 	for i in TAB_KINDS.size():
 		var shown: bool = _spot.offers(TAB_KINDS[i]) or (TAB_KINDS[i] == "cars" and _spot.offers("dealer")) \
+			or (TAB_KINDS[i] == "service" and _spot.offers("parts")) \
 			or (TAB_KINDS[i] == "extras" and (_spot.offers("parts") or _spot.offers("paint") or _spot.offers("cars")))
 		_tabs.set_tab_hidden(i, not shown)
 	for i in TAB_KINDS.size():
@@ -202,6 +204,7 @@ func _build() -> void:
 	body.add_child(_tabs)
 	_parts_list = _scroll_tab("Parts")
 	_tuning_list = _scroll_tab("Tuning")
+	_service_list = _scroll_tab("Service")
 	_paint_list = _scroll_tab("Paint")
 	_fuel_list = _scroll_tab("Fuel")
 	_wash_list = _scroll_tab("Wash")
@@ -247,6 +250,7 @@ func _refresh() -> void:
 	_refresh_stats()
 	_refresh_parts()
 	_refresh_tuning()
+	_refresh_service()
 	_refresh_paint()
 	_refresh_fuel()
 	_refresh_wash()
@@ -627,6 +631,68 @@ func _refresh_wash() -> void:
 			_change.text = "Squeaky clean."
 		_refresh_after_action())
 	_wash_list.add_child(button)
+
+
+## Wear on the tyres, pads and oil, and a job to put each one right.
+func _refresh_service() -> void:
+	_clear(_service_list)
+	_heading(_service_list, "Servicing")
+	_text(_service_list, "Tyres wear quicker when you slide them, pads when you brake hard. Old oil takes the edge off the engine. Doing it yourself takes a while.")
+	for item: String in Garage.SERVICES:
+		if item == "oil" and _car.is_electric:
+			continue
+		var job: Array = Garage.SERVICES[item]
+		var worn: float = _car.wear.get(item, 0.0)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		_service_list.add_child(row)
+		var name_label := Label.new()
+		name_label.text = "%s: %s" % [item.capitalize(), _wear_text(item, worn)]
+		name_label.custom_minimum_size.x = 230
+		name_label.add_theme_color_override("font_color",
+			Color(1.0, 0.6, 0.45) if worn >= CarController.WEAR_DUE else Color.WHITE)
+		row.add_child(name_label)
+		var meter := ProgressBar.new()
+		meter.max_value = 1.0
+		meter.value = 1.0 - worn
+		meter.show_percentage = false
+		meter.custom_minimum_size = Vector2(120, 14)
+		meter.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(meter)
+		var button := Button.new()
+		button.text = "%s   $%d, %s" % [job[0], job[1], _hours_text(job[2])]
+		button.disabled = worn < 0.02 or not Wallet.can_afford(job[1])
+		button.pressed.connect(func() -> void:
+			if Garage.service(_car, item):
+				_change.text = "%s done. It's %s now." % [job[0], GameClock.time_string()]
+			_refresh_after_action())
+		row.add_child(button)
+
+
+	_heading(_service_list, "Service book")
+	if _car.logbook.is_empty():
+		_text(_service_list, "Nothing written in it yet.")
+	else:
+		var recent := _car.logbook.slice(maxi(0, _car.logbook.size() - 8))
+		recent.reverse()
+		for entry: Dictionary in recent:
+			_text(_service_list, "Day %d, %s km   %s" % [int(entry.day), _number(int(entry.km)), entry.text])
+
+
+func _wear_text(item: String, worn: float) -> String:
+	if worn < 0.15:
+		return "like new"
+	if worn < 0.5:
+		return "fine"
+	if worn < CarController.WEAR_DUE:
+		return "getting worn"
+	if worn < 0.98:
+		return {"tyres": "nearly bald", "brakes": "pads squealing", "oil": "overdue"}.get(item, "due")
+	return {"tyres": "bald", "brakes": "metal on metal", "oil": "black sludge"}.get(item, "worn out")
+
+
+func _hours_text(hours: float) -> String:
+	return "%d h" % hours if is_equal_approx(hours, roundf(hours)) else "%.1f h" % hours
 
 
 # --- Actions -----------------------------------------------------------------

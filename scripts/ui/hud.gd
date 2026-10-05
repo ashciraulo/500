@@ -145,6 +145,10 @@ func _ready() -> void:
 		_car.fuel_low.connect(func() -> void: toast("Fuel's getting low. Time to find a servo."))
 		_car.fuel_empty.connect(func() -> void:
 			toast("Out of fuel. Call roadside assist from your phone (Tab / X)."))
+		_car.service_due.connect(func(item: String) -> void:
+			toast({"tyres": "The tyres are getting bald. New ones at the carport workshop.",
+				"brakes": "The brakes have started to squeal. Pads are due.",
+				"oil": "The oil's due for a change. Do it at the carport."}.get(item, "Something's due for a service.")))
 
 
 ## Show a message for a few seconds. Messages queue up.

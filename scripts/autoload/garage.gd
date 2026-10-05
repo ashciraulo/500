@@ -35,6 +35,13 @@ const FIT_HOURS := {
 	"roof": 0.5, "lights": 1.0,
 }
 const RESPRAY_HOURS := 6.0
+## Jobs on the consumables (CarController.wear), done in your carport:
+## item -> [what it's called, price in dollars, hours spent on it].
+const SERVICES := {
+	"oil": ["Oil and filter change", 60, 1.0],
+	"brakes": ["New brake pads", 140, 1.5],
+	"tyres": ["Set of four tyres", 320, 2.0],
+}
 
 ## Unleaded per litre through the week, Monday first. Perth prices run on a
 ## weekly cycle: cheap early in the week, a jump midweek.
@@ -92,7 +99,25 @@ func buy_and_fit(part: CarPart, car: CarController) -> bool:
 	if car.get_part_ids().has(String(part.id)) or (part.is_stock() and not car.parts.has(part.slot)):
 		return true
 	car.install_part(part)
+	# New tyres or brakes come fresh.
+	if car.wear.has(String(part.slot)):
+		car.wear[String(part.slot)] = 0.0
+	car.log_entry("Fitted the %s." % part.display_name)
 	GameClock.advance(FIT_HOURS.get(String(part.slot), 1.0))
+	return true
+
+
+## Do a service job (see SERVICES) on the car: pay, spend the time, and the
+## item is as good as new. False if it can't be done or afforded.
+func service(car: CarController, item: String) -> bool:
+	if not SERVICES.has(item) or not car.wear.has(item) or (item == "oil" and car.is_electric):
+		return false
+	if car.wear[item] < 0.02 or not Wallet.spend(SERVICES[item][1], String(SERVICES[item][0]).to_lower()):
+		return false
+	car.wear[item] = 0.0
+	car.log_entry(String(SERVICES[item][0]) + ".")
+	GameClock.advance(SERVICES[item][2])
+	Progression.add_stat("services_done")
 	return true
 
 
@@ -102,6 +127,7 @@ func respray(car: CarController, index: int) -> bool:
 	if not Wallet.spend(paint[2]):
 		return false
 	car.set_paint(paint[1])
+	car.log_entry("Resprayed in %s." % paint[0])
 	GameClock.advance(RESPRAY_HOURS)
 	Progression.add_stat("resprays")
 	resprayed.emit(paint[1])
