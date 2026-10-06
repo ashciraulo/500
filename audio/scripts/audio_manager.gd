@@ -13,8 +13,12 @@ extends Node
 ## - Audio.set_player_inside(true/false) switches the world to the muffled
 ##   "heard from inside the car" mix, and Audio.set_indoors(true/false) the
 ##   "heard from inside the townhouse" one (the street dull and far off).
+## - Audio.set_player_driving(true/false): at the wheel. In the chase view
+##   (not inside) the street keeps its outside sound, but the radio stays the
+##   loudest thing and the storm ducks under it.
 
 signal player_inside_changed(inside: bool)
+signal player_driving_changed(driving: bool)
 
 const ROOT := "res://audio"
 
@@ -54,6 +58,7 @@ var _cache := {}
 var _last_variant := {}
 var _inside := false
 var _indoors := false
+var _driving := false
 var _base_db := {}          # mixed levels of the buses set_indoors() turns down
 var _effects_db := 0.0      # the Effects slider, which also covers the Cabin bus
 var _world_lp: AudioEffectLowPassFilter
@@ -282,6 +287,28 @@ func is_player_inside() -> bool:
 	return _inside
 
 
+## At the wheel of the player's car (CarSounds sets it), in either view.
+func set_player_driving(driving: bool) -> void:
+	if driving == _driving:
+		return
+	_driving = driving
+	_apply_inside()
+	player_driving_changed.emit(driving)
+
+
+func is_player_driving() -> bool:
+	return _driving
+
+
+## The radio's trim for where the player hears it from: in the car, at the
+## wheel in the chase view (a touch down and duller, still over the street),
+## or on foot outside (faint, through the glass).
+func radio_trim_db() -> float:
+	if _inside:
+		return 0.0
+	return CHASE_RADIO_DB if _driving else -14.0
+
+
 ## On foot inside the townhouse (Audio.hooks sets it as you come and go).
 func set_indoors(indoors: bool) -> void:
 	if indoors == _indoors:
@@ -298,20 +325,28 @@ func is_indoors() -> bool:
 ## slider. In the car it sits under the radio.
 const CABIN_DB := -6.0
 const CABIN_OUT_DB := -20.0
+## At the wheel in the chase view: the radio's trim and tone, and how far the
+## rain and wind (and a little, the street) duck so the radio stays on top.
+const CHASE_RADIO_DB := -3.0
+const CHASE_RADIO_LP_HZ := 4000.0
+const CHASE_WEATHER_DB := -22.0
+const CHASE_AMBIENCE_DB := -4.0
 
 
 func _apply_inside() -> void:
 	var world := AudioServer.get_bus_index("World")
 	AudioServer.set_bus_effect_enabled(world, 0, _inside)
 	AudioServer.set_bus_effect_enabled(world, 1, _inside)
-	# Out of the car the radio is faint and dull, coming through the glass.
+	# Out of the car the radio is faint and dull, coming through the glass;
+	# at the wheel in the chase view only a little duller.
+	var chase := _driving and not _inside
 	if _radio_lp:
-		_radio_lp.cutoff_hz = 7500.0 if _inside else 1200.0
+		_radio_lp.cutoff_hz = 7500.0 if _inside else (CHASE_RADIO_LP_HZ if chase else 1200.0)
 	# Cabin sounds (indicator, wipers, rain on the roof) are distant from outside.
-	# The radio applies its own outside trim (radio.gd listens for the signal).
+	# The radio applies its own trim (radio.gd asks radio_trim_db() on the signals).
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), (CABIN_DB if _inside else CABIN_OUT_DB) + _effects_db)
 	# Inside, the street and the weather drop well under the radio and engine.
-	var levels := {"Ambience": -9.0 if _inside else 0.0, "Weather": -12.0 if _inside else -4.0,
+	var levels := {"Ambience": -9.0 if _inside else (CHASE_AMBIENCE_DB if chase else 0.0), "Weather": -18.0 if _inside else (CHASE_WEATHER_DB if chase else -4.0),
 			"Vehicles": _base_db.get("Vehicles", 0.0), "Tyres": _base_db.get("Tyres", 0.0),
 			"Engine": _base_db.get("Engine", 0.0)}
 	# Indoors at home the street is through the walls: dull and well down.

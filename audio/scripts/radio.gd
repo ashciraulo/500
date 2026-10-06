@@ -75,11 +75,17 @@ func _ready() -> void:
 	add_child(_static)
 	ensure_music_folder()
 	var audio := get_parent()
-	if audio and audio.has_signal("player_inside_changed"):
-		audio.player_inside_changed.connect(func(inside: bool) -> void:
-			_outside_trim = 0.0 if inside else -14.0
-			_apply_volume())
-		_outside_trim = 0.0 if audio.is_player_inside() else -14.0
+	if audio and audio.has_method("radio_trim_db"):
+		audio.player_inside_changed.connect(func(_inside: bool) -> void: _update_trim())
+		audio.player_driving_changed.connect(func(_driving: bool) -> void: _update_trim())
+		_outside_trim = audio.radio_trim_db()
+
+
+## Where the player hears the radio from (in the car, at the wheel in the
+## chase view, or outside): Audio.radio_trim_db().
+func _update_trim() -> void:
+	_outside_trim = get_parent().radio_trim_db()
+	_apply_volume()
 
 
 func _process(delta: float) -> void:

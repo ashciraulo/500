@@ -167,7 +167,12 @@ start swapping in your own recordings, regenerate only what you need.
   Sound section, next to an "Open My Music folder" button). Effects covers
   everything in the world and the car's cabin sounds (rain on the roof,
   wipers, indicator); only menu sounds ignore it. `tools/sound_check.gd`
-  fails if anything else bypasses the sliders straight to Master.
+  fails if anything else bypasses the sliders straight to Master, and if
+  in a storm in the car (interior view) the rain, wind and wipers aren't
+  well under the radio at default levels, or if at the wheel in the chase
+  view the storm isn't under the radio. In the chase view the street sounds
+  as it does outside, but the radio stays near its in-car level and the rain
+  and wind duck under it (`Audio.set_player_driving`, set by CarSounds).
 - **`Audio.radio`** (`radio.gd`): Radio Cinquecento, Notte FM, My Music and
   (after midnight only) an unlisted station. The two built-in stations run
   like real broadcasts: each keeps its place while you listen elsewhere,

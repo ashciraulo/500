@@ -14,6 +14,11 @@ extends SceneTree
 ## - Sirens: none sprinkled into the ambience, a few emergency calls per
 ##   in-game day (most of them far off), and a drive-by's siren stops once
 ##   it has gone past.
+## - In a storm, in the car (interior view) with the radio on, the radio sits
+##   well over the rain on the roof, the wipers and the storm outside at
+##   default levels; turning Effects down turns all of that down as heard
+##   (after the World bus, which the Weather bus feeds) and leaves the radio.
+##   At the wheel in the chase view the radio still sits over the storm.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/sound_check.gd -- --no-save
 ##
@@ -27,6 +32,15 @@ const MIN_DROP_DB := 10.0
 const MAX_SIRENS_PER_DAY := 5.0
 ## Buses that are "out in the world" (muffled inside the car).
 const WORLD_BUSES := [&"World", &"Engine", &"Vehicles", &"Tyres", &"SFX", &"Ambience", &"Weather"]
+## In a storm in the car, how far under the radio the cabin (rain on the roof,
+## wipers) and the rain and wind outside must sit at loud moments (dB, 90th
+## percentile of the meters over 8 s; thunder aside). The rain loops start at
+## random points and have louder and quieter stretches, so readings swing by
+## a few dB: these sit about 3 dB under the quietest of 8 tries.
+const CABIN_UNDER_RADIO_DB := 5.0
+const STORM_UNDER_RADIO_DB := 8.0
+## The same for the rain and wind at the wheel in the chase view.
+const CHASE_STORM_UNDER_RADIO_DB := 6.0
 
 var _main: Node
 var _audio: Node
@@ -81,6 +95,7 @@ func _run() -> void:
 	_check_flat_sounds()
 	_check_sliders()
 	await _check_falloff()
+	await _check_storm_in_car()
 	_check_sirens(traffic, ear)
 	_finish()
 
@@ -238,6 +253,82 @@ func _on_world_bus(bus: StringName) -> bool:
 			return false
 		b = AudioServer.get_bus_send(idx)
 	return false
+
+
+# ---------------------------------------------------------------------------
+# The car in a storm
+# ---------------------------------------------------------------------------
+
+## Sits in the car in the interior view, then the chase view, in a storm with
+## the radio on, and compares what each bus sends on. Weather feeds World, so it is heard after
+## the World fader (the one the Effects slider moves); its own meter is not.
+func _check_storm_in_car() -> void:
+	var weather: Node = root.get_node("Weather")
+	weather.set_state(weather.State.STORM, true)
+	weather._seconds_until_lightning = 1e9  # no thunder in the middle of a reading
+	var rig: Node = _world.get_node("CameraRig")
+	if rig.mode != rig.Mode.INTERIOR:
+		rig.toggle_mode()
+	_audio.radio.set_station("cinquecento")
+	await _wait(10.0)  # the rain and wipers fade in
+	_check(_audio.is_player_inside(), "the interior view puts the player in the car")
+	var loud: Dictionary = await _bus_levels(8.0)
+	var radio: float = loud["Radio"]
+	var cabin: float = loud["Cabin"]
+	var storm: float = loud["Weather"] + AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
+	print("storm in the car: radio %.1f dB, cabin %.1f dB, storm outside %.1f dB" % [radio, cabin, storm])
+	_check(radio - cabin >= CABIN_UNDER_RADIO_DB,
+			"in a storm the rain on the roof and the wipers sit under the radio (%.1f dB under)" % (radio - cabin))
+	_check(radio - storm >= STORM_UNDER_RADIO_DB,
+			"in a storm the rain and wind outside the car sit under the radio (%.1f dB under)" % (radio - storm))
+	var settings: Node = root.get_node("Settings")
+	var keep: float = settings.volume_effects
+	settings.volume_effects = 0.1
+	settings.apply()
+	await _wait(1.0)
+	var low: Dictionary = await _bus_levels(4.0)
+	settings.volume_effects = keep
+	settings.apply()
+	var drops := {}
+	for b in ["Radio", "Cabin", "World"]:
+		drops[b] = loud[b] - low[b]
+	print("Effects at 10%%: radio %.1f dB down, cabin %.1f dB down, world (storm, engine, street) %.1f dB down" % [drops["Radio"], drops["Cabin"], drops["World"]])
+	_check(drops["Cabin"] >= 12.0 and drops["World"] >= 12.0,
+			"Effects at 10%% turns the storm and the wipers down in the car (%.1f and %.1f dB)" % [drops["World"], drops["Cabin"]])
+	_check(absf(drops["Radio"]) < 2.0, "Effects leaves the radio alone (%.1f dB)" % drops["Radio"])
+	# Back to the chase view, still at the wheel: the street sounds like
+	# outside again, but the storm ducks under the radio.
+	rig.toggle_mode()
+	await _wait(4.0)
+	_check(not _audio.is_player_inside() and _audio.has_method("is_player_driving") and _audio.is_player_driving(),
+			"the chase view hears the car from outside, at the wheel")
+	var chase: Dictionary = await _bus_levels(8.0)
+	var chase_storm: float = chase["Weather"] + AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
+	print("storm in the chase view: radio %.1f dB, storm %.1f dB" % [chase["Radio"], chase_storm])
+	_check(chase["Radio"] - chase_storm >= CHASE_STORM_UNDER_RADIO_DB,
+			"in a storm in the chase view the rain and wind sit under the radio (%.1f dB under)" % (chase["Radio"] - chase_storm))
+	weather.set_state(weather.State.CLEAR, true)
+
+
+## Each bus's level at loud moments over `seconds`: the 90th percentile of
+## its meter (dB, after its own fader).
+func _bus_levels(seconds: float) -> Dictionary:
+	var readings := {}
+	var until := _frame + int(seconds * FPS)
+	while _frame < until:
+		await process_frame
+		for i in AudioServer.bus_count:
+			var b := AudioServer.get_bus_name(i)
+			if not readings.has(b):
+				readings[b] = []
+			readings[b].append(maxf(-100.0, maxf(AudioServer.get_bus_peak_volume_left_db(i, 0),
+					AudioServer.get_bus_peak_volume_right_db(i, 0))))
+	var out := {}
+	for b in readings:
+		var r: Array = readings[b]
+		r.sort()
+		out[b] = r[int(r.size() * 0.9)]
+	return out
 
 
 # ---------------------------------------------------------------------------

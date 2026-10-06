@@ -112,6 +112,8 @@ func _process(delta: float) -> void:
 
 
 func _update_inside() -> void:
+	if _car and "player_controlled" in _car:
+		Audio.set_player_driving(bool(_car.player_controlled))
 	if _car and "is_player_inside" in _car:
 		Audio.set_player_inside(bool(_car.is_player_inside))
 		return
@@ -160,7 +162,7 @@ func set_wipers(speed: int) -> void:
 		_wipers.stop()
 		return
 	_wipers.stream = Audio.stream("car/car_wipers_fast" if speed == 2 else "car/car_wipers_slow", true)
-	_wipers.volume_db = -19.0
+	_wipers.volume_db = -28.0
 	_wipers.play()
 
 
