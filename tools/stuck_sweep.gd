@@ -287,7 +287,8 @@ func _sweep_tile(key: String) -> void:
 			var c := g / MAX_LAYERS
 			var p := Vector3(rect.position.x + (c % nx + 0.5) * _step, h[g], rect.position.y + (c / nx + 0.5) * _step)
 			sum += p
-			kinds[KINDS[kind[g]]] = int(kinds.get(KINDS[kind[g]], 0)) + 1
+			var kn := _kind_names[kind[g]]
+			kinds[kn] = int(kinds.get(kn, 0)) + 1
 			for src: int in in_edges[g]:
 				if back[src] == 1 and reach[src] == 1 and entry == Vector3.INF:
 					var sc := src / MAX_LAYERS
@@ -321,34 +322,20 @@ func _sweep_tile(key: String) -> void:
 			home_m = snappedf(Vector2(centre.x - _home_at.x, centre.z - _home_at.z).length(), 1.0)})
 
 
-## Floors by what they are: the collider's mesh name (ground_grass,
-## buildings_roof_flat, Site_..., props).
-const KINDS := ["other", "ground", "road", "path", "building", "bridge", "water", "home", "landmark"]
+## What each floor is: the collider's name ("ground_grass", "roads_asphalt",
+## "props", or "home" for the townhouse), numbered as first seen.
+var _kind_names: Array[String] = []
+var _kind_ids := {}
 
 
 func _kind_of(body: Node) -> int:
-	if body == null:
-		return 0
-	var n := String(body.name)
-	var surface := String(body.get_meta(&"surface", ""))
-	if surface == "sand" and (n.contains("riverbed") or n.contains("water")):
-		return 6
-	if _home and _home.is_ancestor_of(body):
-		return 7
-	for i in KINDS.size():
-		if n.begins_with(KINDS[i]):
-			return i
-	if n.begins_with("roads") or n.begins_with("road"):
-		return 2
-	if n.begins_with("buildings") or n.begins_with("roof"):
-		return 4
-	if n.begins_with("bridges"):
-		return 5
-	if n.begins_with("landmarks"):
-		return 8
-	if n.begins_with("paths") or n.begins_with("sidewalk"):
-		return 3
-	return 0
+	var n := "none"
+	if body:
+		n = "home" if _home and _home.is_ancestor_of(body) else String(body.name)
+	if not _kind_ids.has(n):
+		_kind_ids[n] = _kind_names.size()
+		_kind_names.append(n)
+	return mini(int(_kind_ids[n]), 255)
 
 
 func _flood(seeds: PackedInt32Array, edges: Array[PackedInt32Array], nodes: int) -> PackedByteArray:
@@ -400,5 +387,5 @@ func _finish() -> void:
 	print("STUCK SWEEP %d traps (%d of 4 m² or more) in %d tiles, %.0f s, written to %s" % [_traps.size(), big.size(),
 		_tiles.size(), (Time.get_ticks_msec() - _started) / 1000.0, _out])
 	for t: Dictionary in _traps.slice(0, 15):
-		print("  %s  %5.1f m²  %-9s climb %.2f m  %4d m from home  in from %s" % [t.at, t.area, t.floor, t.climb, t.home_m, t.entry])
+		print("  %s  %5.1f m²  %-16s climb %.2f m  %4d m from home  in from %s" % [t.at, t.area, t.floor, t.climb, t.home_m, t.entry])
 	quit(0)
