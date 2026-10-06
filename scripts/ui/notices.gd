@@ -112,7 +112,6 @@ func _ready() -> void:
 	SaveGame.loaded.connect(func(_p) -> void: _quiet_until = _now() + QUIET_AFTER_LOAD_S)
 	SaveGame.saved.connect(_on_saved)
 	_listen.call_deferred()
-	get_tree().node_added.connect(_on_node_added)
 
 
 ## Put a notice up. `kind` picks its heading, icon, colour and sound (KINDS);
@@ -185,8 +184,8 @@ func _held() -> bool:
 
 
 func _process(delta: float) -> void:
-	if is_instance_valid(_phone) and _phone.is_open():
-		_jobs_told = false
+	if _jobs_told:
+		_check_phone()
 	var held := _held()
 	visible = not held
 	if held:
@@ -379,11 +378,12 @@ func _on_offers() -> void:
 	post("Have a look on your phone (Tab / X).", "jobs")
 
 
-## Once the phone's been opened, the next fresh board gets a notice again
-## (_process watches it; the phone is caught as it joins the tree).
-func _on_node_added(node: Node) -> void:
-	if node.name == &"Phone" and node.has_method("is_open"):
-		_phone = node
+## Once the phone's been opened, the next fresh board gets a notice again.
+func _check_phone() -> void:
+	if not is_instance_valid(_phone):
+		_phone = get_tree().get_first_node_in_group(&"phone")
+	if _phone and _phone.is_open():
+		_jobs_told = false
 
 
 ## Counters a career challenge in the current tier is waiting on: a small

@@ -16,6 +16,7 @@ var _clock: Label
 
 func _ready() -> void:
 	layer = 9
+	add_to_group(&"phone")  # Notices watches for it opening
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
 	_set_open(false)
