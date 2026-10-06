@@ -493,6 +493,60 @@ def musk_duck(seed):
     return series([(0.02, plonk + splash, 1.0), (0.32, whistle_, 0.6), (0.7, grunt, 0.7)])
 
 
+def australian_reed_warbler(seed):
+    """Australian reed warbler: a loud, rich, churring song from deep in the
+    reeds, phrases repeated two to four times, like a rusty clock being wound:
+    'chut-chut-chut, twee-twee-twee, churr-churr'."""
+    r = np.random.default_rng(seed)
+    parts, at = [], 0.02
+    for k in range(int(r.integers(4, 7))):
+        kind = int(r.integers(3))
+        for j in range(int(r.integers(2, 5))):
+            if kind == 0:
+                y = whistle(r.uniform(2400, 3200), 0.06, seed + k * 10 + j, r.uniform(1800, 2400), harm=0.3, attack=0.004)
+            elif kind == 1:
+                y = whistle(r.uniform(3200, 4200), 0.09, seed + k * 10 + j, r.uniform(3800, 4800), harm=0.12)
+            else:  # the wound-clock churr: a rough, gated rasp
+                y = trill(r.uniform(2200, 2800), 0.16, seed + k * 10 + j, rate=r.uniform(45, 60), duty=0.4, harm=0.35)
+                y = y + 0.3 * S.resonator(bp(r.standard_normal(len(y)), 1500, 4500, 1), 2600, 3.0) * soft_env(len(y), 0.01, 0.05)
+            parts.append((at, y, r.uniform(0.6, 1.0)))
+            at += len(y) / SR + r.uniform(0.04, 0.08)
+        at += r.uniform(0.12, 0.3)
+    return series(parts)
+
+
+def buff_banded_rail(seed):
+    """Buff-banded rail: a short, creaky 'swit' or 'krek', and a soft low
+    grunt, from the reed edge."""
+    r = np.random.default_rng(seed)
+    parts, at = [], 0.02
+    for k in range(int(r.integers(1, 4))):
+        L = r.uniform(0.09, 0.14)
+        f = r.uniform(1800, 2300)
+        creak = croak(f / 3, L, seed + k, formants=((f, 6, 1.0), (f * 1.9, 7, 0.4)), drop=-0.3, rough=0.6, attack=0.004)
+        parts.append((at, creak, 1.0))
+        at += L + r.uniform(0.25, 0.6)
+    if seed % 2 == 0:
+        grunt = croak(r.uniform(110, 140), 0.18, seed + 9, formants=((400, 2.5, 1.0), (900, 3, 0.4)), rough=0.6)
+        parts.append((at, grunt, 0.5))
+    return series(parts)
+
+
+def black_winged_stilt(seed):
+    """Black-winged stilt: a sharp, high yapping, like a small dog, in a
+    run of quick notes as it lifts off the shallows."""
+    r = np.random.default_rng(seed)
+    parts, at = [], 0.02
+    for k in range(int(r.integers(3, 8))):
+        L = r.uniform(0.07, 0.11)
+        f0 = r.uniform(900, 1100)
+        yap = croak(f0, L, seed + k, formants=((1900, 4, 1.0), (3100, 5, 0.6), (4500, 6, 0.25)), drop=0.25, rough=0.25,
+                    attack=0.003)
+        parts.append((at, yap, 1.0 - 0.05 * k))
+        at += L + r.uniform(0.08, 0.16)
+    return series(parts)
+
+
 SPECIES = {
     "australian_white_ibis": australian_white_ibis, "white_faced_heron": white_faced_heron,
     "galah": galah, "little_corella": little_corella, "red_wattlebird": red_wattlebird,
@@ -506,4 +560,7 @@ SPECIES = {
     "splendid_fairywren": splendid_fairywren, "welcome_swallow": welcome_swallow,
     "rock_dove": rock_dove, "little_pied_cormorant": little_pied_cormorant,
     "australasian_darter": australasian_darter, "great_egret": great_egret, "musk_duck": musk_duck,
+    # new species go at the end: the index sets each one's seeds and variant count
+    "australian_reed_warbler": australian_reed_warbler, "buff_banded_rail": buff_banded_rail,
+    "black_winged_stilt": black_winged_stilt,
 }

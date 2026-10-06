@@ -84,4 +84,6 @@ Play the one-shots with `Audio.play_at(name, pos)` and the loops with
 | traffic_bin_tip | no | A side-loader bin truck emptying a wheelie bin | The diesel revving for the hydraulics, the arm's whine, the lid flapping, rubbish and a bottle thudding into the hopper, the bin set down (3.6 s) |
 | traffic_sweeper_loop | yes (8 s) | A street sweeper working the gutter | Diesel at working speed, the suction fan's whine, the gutter brooms scratching, the water spray |
 | traffic_food_van_hum_loop | yes (12 s) | A late-night food van at the kerb | Its generator on the footpath, the extraction fan, the fridge compressor, the fryer bubbling, two sizzles on the hotplate. For the customers, add traffic_crowd_small_loop |
+| traffic_food_van_chatter_loop | yes (20 s) | A few late customers round the van | Wordless talk from the quieter bar recording, close and dry |
+| traffic_bunch_loop | yes (6 s) | A weekend bunch of road cyclists | A dozen freewheels ticking at different speeds, chains whirring, skinny tyres hissing, chatter in the pack. Pitch with speed |
 
