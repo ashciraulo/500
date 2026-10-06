@@ -367,6 +367,9 @@ UI_SOUNDS = {
 def render_ui():
     for name, fn in UI_SOUNDS.items():
         S.save(f"field/{name}", S.fade(fn(), 0.0, 0.03), norm="peak", **FX_ENC)
+    # A hidden quiet place found: hushed, quieter than the new-species figure.
+    import music_tracks_field as MF
+    S.save("field/quiet_place", MF.field_quiet_place(), norm="lufs:-24", quality=3, rate=32000)
 
 
 # --------------------------------------------------------------------------

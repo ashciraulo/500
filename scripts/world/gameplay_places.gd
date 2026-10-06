@@ -37,6 +37,15 @@ func _ready() -> void:
 	var life := HomeLife.new()
 	life.name = "HomeLife"
 	add_child(life)
+	var furniture := HomeFurniture.new()
+	furniture.name = "HomeFurniture"
+	add_child(furniture)
+	var crate := RecordCrate.new()
+	crate.name = "Records"
+	add_child(crate)
+	var pad := Skidpad.new()
+	pad.name = "Skidpad"
+	add_child(pad)
 	var odd_home := HomeOddities.new()
 	odd_home.name = "HomeOddities"
 	add_child(odd_home)

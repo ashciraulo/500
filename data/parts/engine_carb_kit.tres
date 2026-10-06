@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"engine_carb_kit"
+display_name = "Twin-choke carb kit"
+description = "A bigger carburettor and a finned sump to keep it cool."
+slot = &"engine"
+price = 900
+modifiers = {"torque_mult": 1.12, "limiter_add": 200}
+ladders = PackedStringArray("classic")
+visual = "sump_finned"

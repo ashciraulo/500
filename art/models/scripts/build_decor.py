@@ -11,6 +11,12 @@ feature; one glb each:
                                 plant_cactus, chair_rattan, chair_velvet,
                                 chair_eames_style.
 
+  props/home/magnets/magnet_<name>.glb
+                                fridge magnets from places round Perth
+                                (lib/magnets.py), origin at the middle of
+                                the back; they go on the Magnet_1..12 empties
+                                on the townhouse fridge door.
+
 Origin at the base centre, front toward -Y in Blender (+Z in Godot).
 
     python3.11 art/models/scripts/build_decor.py [--render out/prefix]
@@ -26,8 +32,10 @@ from mathutils import Vector  # noqa: E402
 from lib import common as C  # noqa: E402
 from lib import decor as D  # noqa: E402
 from lib import furniture as F  # noqa: E402
+from lib import magnets as MG  # noqa: E402
 
 OUT = "art/models/props/home/decor/"
+MAGNETS = "art/models/props/home/magnets/"
 
 
 def fresh():
@@ -54,6 +62,12 @@ def main():
         build_decor(kind, name)
         print("%s_%s triangles:" % (kind, name), C.tri_count([x for x in bpy.data.objects if x.type == "MESH"]))
         C.export_glb(OUT + "%s_%s.glb" % (kind, name))
+    os.makedirs(MAGNETS, exist_ok=True)
+    for name in MG.NAMES:
+        fresh()
+        o = F.item("Magnet_" + name, MG.magnet(name), (0, 0, 0))
+        print("magnet_%s triangles:" % name, C.tri_count([o]))
+        C.export_glb(MAGNETS + "magnet_%s.glb" % name)
 
     if "--render" in sys.argv:
         prefix = sys.argv[sys.argv.index("--render") + 1]
@@ -82,6 +96,17 @@ def main():
         C.render(prefix + "_decor_left.png")
         C.camera_look((3.6, -1.6, 1.3), (2.3, 0.9, 0.5), lens=35)
         C.render(prefix + "_decor_right.png")
+
+        # the magnets on a fridge door
+        fresh()
+        door = D._m("FridgeDoor", "#e9e7e2", 0.4)
+        F.item("Door", [F.bx((-0.42, 0.0, -0.32), (0.42, 0.04, 0.32), door)], (0, 0, 0))
+        for i, name in enumerate(MG.NAMES):
+            F.item("Magnet_" + name, MG.magnet(name), (-0.3 + (i % 5) * 0.15, 0.0, 0.2 - (i // 5) * 0.16))
+        C.render_setup((960, 720), 24, world="#c9d6e0", strength=0.9)
+        C.sun(rot=(40, 10, 200), energy=3.0)
+        C.camera_look((0.25, -0.75, 0.25), (0.0, 0.0, 0.03), lens=40)
+        C.render(prefix + "_magnets.png")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"flywheel_light"
+display_name = "Lightened flywheel"
+description = "Revs pick up and fall away quicker; snappier shifts."
+slot = &"flywheel"
+price = 550
+modifiers = {"free_rev_mult": 1.6, "shift_time_mult": 0.88}
+visual = ""

@@ -31,7 +31,7 @@ Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.
 | hydepark | Atmos, Park, Hyde Park, Perth, Light Traffic, Children.wav | arefrashidan | https://freesound.org/s/691375/ | amb_cbd_day, amb_suburbs_day |
 | traffic_peak | Car Traffic Main Road Peak Hour (Brisbane) | EarJuice | https://freesound.org/s/680419/ | amb_cbd_day, amb_northbridge_day, amb_freeway_day; place_carpark |
 | traffic_night | traffic ambience at night.wav (Australian suburbs) | soundofsong | https://freesound.org/s/640635/ | amb_cbd_night, amb_northbridge_night, amb_suburbs_night; place_carpark_night |
-| bar_wa | Bar Atmos (Melbourne) | veronicalyn | https://freesound.org/s/490288/ | amb_northbridge_day, amb_northbridge_night, amb_carmeet; place_quay; traffic_crowd_small_loop, traffic_crowd_busy_loop |
+| bar_wa | Bar Atmos (Melbourne) | veronicalyn | https://freesound.org/s/490288/ | amb_northbridge_day, amb_northbridge_night, amb_carmeet; place_quay; traffic_crowd_small_loop, traffic_crowd_busy_loop; traffic_food_van_chatter_loop, traffic_bunch_loop |
 | pub_crowd | Bar crowd ambience | wjb_88 | https://freesound.org/s/828867/ | amb_northbridge_night; traffic_crowd_busy_loop; traffic_crowd_roar_loop; traffic_crowd_cheer |
 | highway_wa | Afternoon Highway.wav (Western Australia) | Kalaji | https://freesound.org/s/418097/ | amb_freeway_night |
 | freeway | Traffic passing by on freeway | nickeverest69 | https://freesound.org/s/795499/ | amb_freeway_day |

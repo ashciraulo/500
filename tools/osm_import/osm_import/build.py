@@ -21,7 +21,7 @@ import shapely
 from shapely.geometry import LineString, Point, Polygon, box as sbox
 from shapely.geometry.polygon import orient
 
-from . import fetch, landmarks, places, pois, styles, textures
+from . import fetch, landmarks, places, pois, streets, styles, textures
 from .traffic import TrafficNetwork
 from .common import (CACHE_DIR, MAP_DIR, TILES_DIR, Projector, TileKey, load_config,
                      stable_rng, tiles_for_bbox)
@@ -39,6 +39,8 @@ RIVER_LEVEL = 0.0
 SEA_NAME = "Indian Ocean"
 SEA_SHELF = 0.05   # sea floor drop per metre from the shore
 SEA_FLOOR = -6.0
+COAST_BAND = 80.0  # metres inland of the sea where low unmapped ground becomes beach
+MOLE_CREST = {"breakwater": 3.0, "groyne": 2.0}  # rock walls stand this high above the sea
 HOME_RAMP = 30.0        # roads ease to the townhouse's ground over this distance
 PIER_WIDTH = {"pier": 3.0, "breakwater": 6.0, "groyne": 5.0}  # metres, when OSM has no width
 ROAD_OFFSET = 0.02      # road surface above terrain
@@ -110,6 +112,12 @@ class World:
         if self.home:
             self.home.h = self._home_ground()
             src_ways = [_split_at_edge(w, self.home.footprint) for w in feats.ways]
+        # One width per street, and no car park decks or roads inside buildings.
+        src_ways = streets.normalise(src_ways, [
+            a.geom for a in feats.areas
+            if "building" in a.tags and a.tags.get("building") not in ("no", "roof", "construction")])
+        self.lifted_tiles = set()  # tiles whose ground _raise_moles / _sculpt_sea lifted
+        self._raise_moles(feats)
         node_h = compute_node_heights(src_ways, hf)
         self.carriageway_moves = _level_carriageways(src_ways, node_h)
         if self.home:
@@ -197,6 +205,14 @@ class World:
         if zones:
             self.buildings = [b for b in self.buildings
                               if not self.landmark_zone.contains(b.geom.representative_point())]
+        # Hand-made models placed on the map (config "placed_props", props.json)
+        # replace the OSM buildings under them.
+        self.placed = []
+        for spec, e, n in _expand_placed(cfg.get("placed_props", []), proj):
+            self.placed.append((spec, e, n))
+            if spec.get("clear"):
+                zone = Point(e, n).buffer(spec["clear"])
+                self.buildings = [b for b in self.buildings if not zone.contains(b.geom.representative_point())]
         self.trees = feats.trees
         if zones and len(self.trees):
             self.trees = self.trees[~shapely.contains(self.landmark_zone, shapely.points(self.trees))]
@@ -296,6 +312,45 @@ class World:
             keep.append(b)
         self.buildings = keep + self.parts
 
+    def _raise_moles(self, feats):
+        """Breakwaters and groynes drawn as areas stand up out of the sea as rock
+        walls (the DEM has them at sea level). Done before road heights, so a
+        road along a mole rides on top."""
+        hf = self.hf
+        es, ns = hf.node_coords()
+        moles = [(MOLE_CREST[a.tags["man_made"]], a.geom) for a in feats.areas
+                 if a.tags.get("man_made") in MOLE_CREST]
+        # Moles drawn only as a line (South Mole): the land OSM's coastline gives them, out to
+        # 25 m from the line (the sea sculpt takes back whatever of that is water).
+        coast = [LineString(w.coords) for w in feats.ways if w.tags.get("natural") == "coastline"]
+        coast = shapely.union_all(coast) if coast else None
+        for w in feats.ways:
+            if w.tags.get("man_made") == "breakwater" and len(w.coords) > 1 and coast is not None:
+                line = LineString(w.coords)
+                if line.distance(coast) < 50.0:  # on the sea, not in the river
+                    moles.append((MOLE_CREST["breakwater"], line.buffer(25.0)))
+        for crest, geom in moles:
+            for p in polygons_of(geom):
+                if p.area < 200:
+                    continue
+                b = p.bounds
+                i0, i1 = np.searchsorted(es, [b[0] - 5, b[2] + 5])
+                j0, j1 = np.searchsorted(ns, [b[1] - 5, b[3] + 5])
+                if i1 <= i0 or j1 <= j0:
+                    continue
+                E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
+                ins = shapely.contains_xy(p, E, N)
+                core = shapely.contains_xy(p.buffer(-3.0), E, N)
+                sub = hf.H[j0:j1, i0:i1]
+                lift = np.where(core, crest, np.where(ins, crest * 0.6, -np.inf))
+                self._note_lift(E[lift > sub], N[lift > sub])
+                hf.H[j0:j1, i0:i1] = np.maximum(sub, lift)
+
+    def _note_lift(self, e, n):
+        size = self.tile_size
+        self.lifted_tiles.update(f"{int(i)}_{int(j)}" for i, j in
+                                 set(zip(np.floor(np.ravel(e) / size), np.floor(np.ravel(n) / size))))
+
     def _sculpt_sea(self, wb: WaterBody):
         """The sea floor shelves gently away from the shore (no bank lip, so
         beaches run into the water)."""
@@ -309,6 +364,15 @@ class World:
         dist = distance_transform_edt(wet) * hf.step
         bed = np.maximum(-0.3 - SEA_SHELF * dist, SEA_FLOOR)
         hf.H[wet] = np.minimum(hf.H[wet], bed[wet])
+        # Low ground just inland that OSM leaves unmapped (Trigg, Leighton) would
+        # sit below the water line as lawn: lift it clear and make it beach.
+        near = ~wet & (distance_transform_edt(~wet) * hf.step <= COAST_BAND) & (hf.H < 0.6)
+        if near.any():
+            self._note_lift(E[near], N[near])
+            hf.H[near] = np.maximum(hf.H[near], 0.25)
+            h = hf.step / 2
+            cells = shapely.box(E[near] - h, N[near] - h, E[near] + h, N[near] + h)
+            self.cover.append(("sand", 62, shapely.union_all(cells)))
 
     def _sculpt_terrain(self):
         """Lower riverbeds and fit the ground to road and rail profiles."""
@@ -1088,6 +1152,8 @@ def build(cfg: dict, keys: list[TileKey], region_of: dict, out_dir: Path = TILES
     index = json.loads(index_path.read_text()) if index_path.exists() else {"tiles": {}}
     total = 0
     if index_only:
+        if world.lifted_tiles:
+            print("Moles and low coast lifted in tiles: " + " ".join(sorted(world.lifted_tiles)))
         _write_index(cfg, proj, world, index, index_path, region_of)
         print(f"Index: {len(index.get('pois', []))} points of interest")
         return
@@ -1189,9 +1255,59 @@ def _write_index(cfg, proj, world: World, index: dict, path: Path, region_of: di
     lakes_path.write_text("[\n" + ",\n".join(rows) + "\n]\n")
     index.pop("lakes", None)
     _write_habitats(world, path.with_name("habitats.json"), inside_hf, owned)
+    _write_placed(world, path.with_name("props.json"), inside_hf, region_of, size)
     _write_places(cfg, proj, world, index, inside_hf, region_of)
     index["tiles"] = dict(sorted(index["tiles"].items(), key=lambda kv: (kv[1]["j"], kv[1]["i"])))
     path.write_text(json.dumps(index, indent=1) + "\n")
+
+
+def _expand_placed(specs: list, proj: Projector):
+    """Config placed_props as (spec, e, n). A spec with `run` ({"to": [lat, lon],
+    "step": m, "axis": "z" or "x"}) repeats its model every `step` metres from
+    lat/lon toward `to`, the model's local axis along the line; ids get _1, _2..."""
+    for spec in specs:
+        e, n = (float(v) for v in proj.fwd(spec["lon"], spec["lat"]))
+        run = spec.get("run")
+        if not run:
+            yield spec, e, n
+            continue
+        e1, n1 = (float(v) for v in proj.fwd(run["to"][1], run["to"][0]))
+        length = math.hypot(e1 - e, n1 - n)
+        ue, un = (e1 - e) / length, (n1 - n) / length
+        along = math.degrees(math.atan2(ue, un)) % 360
+        bearing = along if run.get("axis", "z") == "z" else (along + 90) % 360
+        step = float(run["step"])
+        for k in range(int(length // step + 1e-6)):
+            one = {key: v for key, v in spec.items() if key != "run"}
+            one.update(id=f"{spec['id']}_{k + 1}", bearing=round(bearing, 2))
+            yield one, e + ue * step * k, n + un * step * k
+
+
+def _write_placed(world: World, path: Path, inside_hf, region_of: dict, size: float):
+    """Hand-made models to place (MapStreamer._add_placed_props): id, scene,
+    p (Godot, on the ground) and yaw turning the model's +Z front to its
+    compass bearing. Each belongs to the stage owning its tile."""
+    own = {k.name for k in region_of}
+    fresh = {}
+    for spec, e, n in world.placed:
+        key = f"{math.floor(e / size)}_{math.floor(n / size)}"
+        if key not in own or not inside_hf(e, n):
+            continue
+        if "y" in spec:
+            y = float(spec["y"])
+        elif "deck" in spec:
+            # On a jetty: the deck top MeshBuilder draws (deck_heights).
+            g = next(g for g, _, oid in world.decks if oid == spec["deck"])
+            y = deck_heights(world.hf, max(polygons_of(g), key=lambda q: q.area), "pier")[0]
+        else:
+            y = float(world.hf.sample(e, n))
+        fresh[spec["id"]] = {"id": spec["id"], "scene": spec["scene"],
+                             "p": [round(e, 2), round(y, 2), round(-n, 2)],
+                             "yaw": round(math.pi - math.radians(spec["bearing"]), 4)}
+    old = json.loads(path.read_text()) if path.exists() else []
+    kept = [p for p in old if p["id"] not in fresh and
+            f"{math.floor(p['p'][0] / size)}_{math.floor(-p['p'][2] / size)}" not in own]
+    path.write_text(json.dumps(sorted(kept + list(fresh.values()), key=lambda p: p["id"]), indent=1) + "\n")
 
 
 def _write_habitats(world: World, path: Path, inside_hf, owned):

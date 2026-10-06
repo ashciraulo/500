@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"engine_turbo_hybrid"
+display_name = "Hybrid turbo"
+description = "A bigger turbo on the stock manifold. Lag, then a shove."
+slot = &"engine"
+price = 3400
+modifiers = {"torque_mult": 1.2, "limiter_add": 100}
+fits = PackedStringArray("twinair_09", "abarth_500", "abarth_595_turismo", "abarth_595_comp", "abarth_695_tributo", "abarth_695_biposto")
+visual = ""

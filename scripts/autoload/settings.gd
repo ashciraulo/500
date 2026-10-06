@@ -28,7 +28,7 @@ var dither_enabled := true
 var vertex_snap_scale := 1.0
 var color_levels := 64.0
 var dither_strength := 0.35
-var affine_strength := 0.25
+var affine_strength := 0.0
 var softness := 0.5
 var show_help := true
 var fullscreen := false
@@ -121,6 +121,10 @@ func load_settings() -> void:
 		# Saved before the filter strengths: the old look was harsh, so
 		# start from the softer default rather than keep it.
 		use_lofi_preset(RenderSettings.DEFAULT_PRESET)
+	# The menu has no affine slider, so it always follows the filter strength
+	# (older saves kept Soft's old warp, which made the map's textures swim).
+	lofi_preset = clampi(lofi_preset, 0, RenderSettings.PRESETS.size() - 1)
+	affine_strength = RenderSettings.PRESETS[lofi_preset].affine_strength
 
 
 func _keys() -> PackedStringArray:

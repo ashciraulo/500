@@ -13,6 +13,10 @@ art/models/cars/parts/, plus custom number plates:
                        custom WA-style number plates, 64 x 16 like the
                        plate texture in every car: swap the albedo of the
                        car's Plate material. Every number is made up.
+  ../roofs/roof_<colour>.png
+                       canvas roof colours for the 500C and the canvas-roof
+                       classics, 32 x 32 like the roof_canvas texture: swap
+                       the albedo of the car's RoofFabric material.
 
     python3.11 art/models/scripts/build_mod_parts.py [--render out/prefix]
 """
@@ -29,6 +33,18 @@ from lib import textures as TX  # noqa: E402
 
 PARTS = "art/models/cars/parts/"
 PLATES = "art/models/cars/plates/"
+ROOFS = "art/models/cars/roofs/"
+
+# Canvas roof colours, the period and factory-style choices.
+ROOF_COLOURS = [
+    ("black", "#1f1e1d"),
+    ("red", "#7a1c20"),
+    ("ivory", "#cdbf9c"),
+    ("navy", "#26344f"),
+    ("grey", "#6a6866"),
+    ("tan", "#9a7650"),
+    ("bottle_green", "#2c4632"),
+]
 
 # Custom plates: (id, text, ink, background). Personalised-plate style
 # words, nothing real; at most 8 characters so they fit the 64 px plate.
@@ -107,10 +123,22 @@ def plates():
         print("plate", pid, text)
 
 
+def roofs():
+    os.makedirs(ROOFS, exist_ok=True)
+    for rid, col in ROOF_COLOURS:
+        # same weave and seed as the cars' own roof_canvas
+        img = TX.fabric("roof_" + rid, col, seed=31, seams=False)
+        img.filepath_raw = os.path.abspath(ROOFS + "roof_%s.png" % rid)
+        img.file_format = "PNG"
+        img.save()
+        print("roof", rid)
+
+
 def main():
     export(foglamps, "foglamps_yellow.glb")
     export(sump, "sump_finned.glb")
     plates()
+    roofs()
     if "--render" in sys.argv:
         out = sys.argv[sys.argv.index("--render") + 1]
         for builder, name, far, tgt in ((foglamps, "foglamps", 1.2, (0, 0, 0.08)),
