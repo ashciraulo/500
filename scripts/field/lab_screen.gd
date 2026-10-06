@@ -75,9 +75,11 @@ func refresh() -> void:
 		for p: Dictionary in _last_result.prints:
 			var stars := UiStyle.stars(int(p.stars))
 			if p.wrong:
-				FieldUI.shop_row(_list, "%s  ·  %s" % [p.name, stars], "Came out blank. \"Odd, that. The rest of the roll's fine.\"")
+				FieldUI.shop_row(_list, "%s  ·  %s" % [p.name, stars], "Came out blank. \"Odd, that. The rest of the roll's fine.\"",
+					"", true, SpeciesIcon.bird(FieldJournal.bird(String(p.species)), 44, true))
 			else:
-				FieldUI.shop_row(_list, "%s  ·  %s  ·  $%d" % [p.name, stars, p.pay], "First print: the magazine pays extra" if p.first else "")
+				FieldUI.shop_row(_list, "%s  ·  %s  ·  $%d" % [p.name, stars, p.pay], "First print: the magazine pays extra" if p.first else "",
+					"", true, SpeciesIcon.bird(FieldJournal.bird(String(p.species)), 44))
 		var paid := UiStyle.label(_list, "Paid $%d, after $%d developing" % [_last_result.pay, _last_result.fee], "", 18)
 		paid.add_theme_font_override("font", UiStyle.BOLD_FONT)
 		paid.add_theme_color_override("font_color", UiStyle.GOOD)

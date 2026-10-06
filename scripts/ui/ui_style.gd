@@ -232,6 +232,9 @@ static func theme() -> Theme:
 	t.set_stylebox("focus", "ListButton", _focus_ring(6))
 	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		t.set_color(c, "ListButton", INK)
+	# Rows carry pictures (the journal's plates): show them in their own colours.
+	for c in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color", "icon_hover_pressed_color", "icon_disabled_color"]:
+		t.set_color(c, "ListButton", Color.WHITE)
 	t.set_font("font", "ListButton", BODY_FONT)
 
 	# Popups (the option buttons' lists) and tooltips.
@@ -527,7 +530,40 @@ static func centred_card(parent: Node, min_size: Vector2, variation := "") -> Ar
 	b.custom_minimum_size = min_size
 	b.add_theme_constant_override("separation", 10)
 	panel.add_child(b)
+	animate(panel)
 	return [panel, b]
+
+
+## Menus pop in (a quick fade and a small grow from the centre) and make a
+## soft sound as they open and close. centred_card() does this for you.
+static func animate(panel: Control) -> void:
+	panel.visibility_changed.connect(func() -> void:
+		var shown := panel.is_inside_tree() and panel.is_visible_in_tree()
+		if shown == bool(panel.get_meta(&"ui_shown", false)):
+			return  # not a real open or close (being built, or a parent toggling twice)
+		panel.set_meta(&"ui_shown", shown)
+		if shown:
+			panel.pivot_offset = panel.size * 0.5
+			panel.modulate.a = 0.0
+			panel.scale = Vector2(0.97, 0.97)
+			var tween := panel.create_tween().set_parallel().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+			tween.tween_property(panel, "modulate:a", 1.0, 0.12)
+			tween.tween_property(panel, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			# The size settles a frame later; keep growing from the middle.
+			tween.tween_callback(func() -> void: panel.pivot_offset = panel.size * 0.5).set_delay(0.01)
+			sound("ui_menu_select")
+		else:
+			panel.modulate.a = 1.0
+			panel.scale = Vector2.ONE
+			sound("ui_menu_back"))
+
+
+## A quiet UI sound from the audio thread's set (audio/ui), if audio is up.
+static func sound(sound_name: String, volume_db := -8.0) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var audio := tree.root.get_node_or_null(^"Audio") if tree else null
+	if audio and audio.has_method("ui"):
+		audio.ui(sound_name, volume_db)
 
 
 ## A title bar for a card: icon, serif title, a subtitle under it, and a

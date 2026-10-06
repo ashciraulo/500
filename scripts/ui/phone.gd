@@ -67,6 +67,7 @@ func _build() -> void:
 	_panel.set_anchors_preset(Control.PRESET_CENTER)
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	UiStyle.animate(_panel)
 	var bezel := UiStyle.box(UiStyle.NIGHT, UiStyle.INK, 3, 34, 12)
 	bezel.content_margin_top = 14
 	bezel.content_margin_bottom = 22
