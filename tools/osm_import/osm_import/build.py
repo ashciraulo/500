@@ -22,7 +22,7 @@ from shapely.geometry import LineString, Point, Polygon, box as sbox
 from shapely.geometry.polygon import orient
 from scipy.ndimage import distance_transform_edt, gaussian_filter
 
-from . import fetch, landmarks, places, pois, styles, textures
+from . import fetch, landmarks, places, pois, streets, styles, textures
 from .traffic import TrafficNetwork
 from .common import (CACHE_DIR, MAP_DIR, TILES_DIR, Projector, TileKey, load_config,
                      stable_rng, tiles_for_bbox)
@@ -66,6 +66,8 @@ CHUNK = 12            # segments per vectorised corridor step
 OVERLAP_BLEND = 6.0   # metres over which overlapping roads at different heights ease into each other
 DECK_THICKNESS = 1.1
 PARAPET_H = 0.9
+KERB_RADIUS = 1.5       # road gaps narrower than twice this close up; junction corners round off
+SLIVER = 0.4            # path pieces thinner than twice this are dropped
 
 
 @dataclass
@@ -128,6 +130,10 @@ class World:
         if self.home:
             self.home.h = self._home_ground()
             src_ways = [_split_at_edge(w, self.home.footprint) for w in feats.ways]
+        # One width per street, and no car park decks or roads inside buildings.
+        src_ways = streets.normalise(src_ways, [
+            a.geom for a in feats.areas
+            if "building" in a.tags and a.tags.get("building") not in ("no", "roof", "construction")])
         self.lifted_tiles = set()  # tiles whose ground _raise_moles / _sculpt_sea lifted
         # Ground the road fit must leave as the DEM shaped it: water, banks, moles.
         self.keep_dem = np.zeros(hf.H.shape, dtype=bool)
@@ -178,6 +184,7 @@ class World:
             self.decks.append((LineString(np.c_[e, n]).buffer(width / 2, cap_style=2),
                                "pier" if d["kind"] == "pier" else "groyne", -(i + 1)))
         self.junctions = self._junction_nodes()
+        self.doubled_paths = streets.doubled_footways(self.ways)
 
         self.water: list[WaterBody] = []
         self.cover: list[tuple[str, int, object]] = []
@@ -881,16 +888,21 @@ class TileBuilder:
     def _road_geoms(self):
         clip = self.box.buffer(20)
         at_grade = [w for w in self.ways if w.group == "road" and not w.grade_separated]
-        self.road_area = self._buffer_ways(at_grade).intersection(clip)
+        # Closing the union fills slivers of ground between carriageways and
+        # rounds the kerb at junction corners instead of leaving a notch.
+        self.road_area = streets.close_gaps(self._buffer_ways(at_grade), KERB_RADIUS).intersection(clip)
         side = [w for w in at_grade if w.sidewalk]
-        self.sidewalk_area = (self._buffer_ways(side, styles.SIDEWALK_WIDTH, cap=2)
+        self.sidewalk_area = (self._buffer_ways(side, styles.SIDEWALK_WIDTH)
                               .intersection(clip).difference(self.road_area)
                               .difference(self.w.water_union))
         foot = [w for w in self.ways if w.group == "foot" and not w.grade_separated
-                and w.tags.get("highway") != "corridor"]
+                and w.tags.get("highway") != "corridor" and w.id not in self.w.doubled_paths]
         self.path_area = (self._buffer_ways(foot).intersection(clip)
                           .difference(self.road_area).difference(self.sidewalk_area)
                           .difference(self.w.water_union))
+        # Paths that end up as thin slivers along a kerb or a road edge.
+        self.path_area = self.path_area.buffer(-SLIVER, quad_segs=1).buffer(SLIVER, quad_segs=1) \
+            .intersection(self.path_area)
         rails = [w for w in self.ways if w.group == "rail" and not w.grade_separated]
         self.rail_area = self._buffer_ways(rails).intersection(clip)
         if self.w.home:
@@ -1228,17 +1240,24 @@ class TileBuilder:
         hf = self.w.hf
         items = []
         rng = stable_rng("trees", self.key.i, self.key.j)
+        bld = [p for b in self.w.buildings for p in polygons_of(b.geom)
+               if p.intersects(self.box)]
+        bld = shapely.union_all(bld) if bld else Polygon()
         if len(self.w.trees):
             m = ((self.w.trees[:, 0] >= self.bounds[0]) & (self.w.trees[:, 0] < self.bounds[2]) &
                  (self.w.trees[:, 1] >= self.bounds[1]) & (self.w.trees[:, 1] < self.bounds[3]))
+            # OSM's own trees keep their spot, but not on a carriageway, the
+            # railway or inside a building (street trees drawn at the kerb
+            # land on our wider roads).
+            hard = shapely.union_all([self.road_area, self.rail_area.buffer(1.0), bld.buffer(0.5)])
+            shapely.prepare(hard)
             for e, n in self.w.trees[m]:
-                items.append(("tree_round" if rng.random() < 0.6 else "tree_gum", e, n))
+                kind = "tree_round" if rng.random() < 0.6 else "tree_gum"
+                items.append((kind, e, n, not shapely.contains_xy(hard, e, n)))
         blockers = shapely.union_all([self.road_area, self.path_area, self.sidewalk_area,
                                       self.rail_area.buffer(3)])
-        bld = [p for b in self.w.buildings for p in polygons_of(b.geom)
-               if p.intersects(self.box)]
-        if bld:
-            blockers = blockers.union(shapely.union_all(bld).buffer(2.0))
+        if not bld.is_empty:
+            blockers = blockers.union(bld.buffer(2.0))
         if self.w.home:
             blockers = blockers.union(self.w.home.footprint.buffer(1.0))
         if not self.w.landmark_zone.is_empty:
@@ -1260,14 +1279,20 @@ class TileBuilder:
             shapely.prepare(g)
             ok = shapely.contains_xy(g, pts[:, 0], pts[:, 1])
             for e, n in pts[ok][:count]:
-                items.append((kinds[rng.integers(len(kinds))], e, n))
-        for kind, e, n in items:
+                items.append((kinds[rng.integers(len(kinds))], e, n, True))
+        # Dropped trees still take their random draws, so the rest keep their look.
+        for kind, e, n, keep in items:
             hgt = float(hf.sample(e, n))
             scale = 0.75 + rng.random() * 0.6
-            self.instances.setdefault(kind, []).append((e, n, hgt, rng.random() * math.tau, scale))
+            yaw = rng.random() * math.tau
+            if keep:
+                self.instances.setdefault(kind, []).append((e, n, hgt, yaw, scale))
 
     def _street_lights(self):
         hf = self.w.hf
+        bld = [p for b in self.w.buildings for p in polygons_of(b.geom) if p.intersects(self.box)]
+        bld = shapely.union_all(bld).buffer(0.5) if bld else Polygon()
+        shapely.prepare(bld)
         for w in self.ways:
             if w.group != "road" or w.grade_separated or w.tags.get("highway") not in (
                     "primary", "secondary", "tertiary", "trunk", "residential", "motorway"):
@@ -1285,6 +1310,8 @@ class TileBuilder:
                 if not (self.bounds[0] <= e < self.bounds[2] and self.bounds[1] <= n < self.bounds[3]):
                     continue
                 if self.road_area.contains(Point(e, n)):
+                    continue
+                if shapely.contains_xy(bld, e, n):
                     continue
                 if self.w.home and self.w.home.footprint.buffer(1.0).contains(Point(e, n)):
                     continue

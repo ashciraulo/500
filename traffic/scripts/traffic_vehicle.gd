@@ -81,6 +81,9 @@ var serial := 0
 var bunch := 0
 var bunch_side := 0.0
 var ride_roads := {}
+## In a bunch: the lanes this rider has ridden lately, oldest first, so the
+## rider behind can follow the same way even after a red light splits them.
+var trail: Array = []
 var lifetime := 0.0
 
 ## Sideways offset from the lane centre (to dodge the player), metres; + = left.

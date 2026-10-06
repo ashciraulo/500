@@ -7,10 +7,12 @@ extends CanvasLayer
 const ACCENT := UiStyle.RED
 const SLOT_NAMES := {
 	"engine": "Engine", "intake": "Intake", "exhaust": "Exhaust", "gearbox": "Gearbox",
+	"flywheel": "Flywheel", "diff": "Differential", "anti_roll": "Anti-roll bars",
 	"suspension": "Suspension", "tyres": "Tyres", "wheels": "Wheels", "brakes": "Brakes",
 	"weight": "Weight", "roof": "Roof", "lights": "Driving lights",
 	"rear_rack": "Engine lid", "bumpers": "Bumpers", "towbar": "Tow bar", "mudflaps": "Mud flaps",
 	"steering_wheel": "Steering wheel", "gear_knob": "Gear knob", "seat_covers": "Seat covers",
+	"plate": "Number plate",
 }
 ## Tab order; a spot shows the tabs for its kinds.
 ## "cars" lets you swap between cars you own; "dealer" also sells them.
@@ -389,6 +391,18 @@ func _refresh_tuning() -> void:
 		_car.set_tuning({})
 		_refresh())
 	_tuning_list.add_child(reset)
+	var pad := get_tree().root.find_child("Skidpad", true, false)
+	if pad:
+		_heading(_tuning_list, "Skidpad")
+		var mine: Dictionary = pad.best_for(String(_car.car_id))
+		_text(_tuning_list, "Try the setup on the skidpad out the back." + (
+			"" if mine.is_empty() else " Best: %.2f g, %.1f s a lap." % [mine.g, mine.lap]))
+		var go := Button.new()
+		go.text = "Take it to the skidpad"
+		go.pressed.connect(func() -> void:
+			close()
+			pad.start(_car))
+		_tuning_list.add_child(go)
 
 
 ## "tyre pressure soft, grippy; damping tight" style summary of a saved setup, defaults left out.

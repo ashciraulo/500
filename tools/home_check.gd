@@ -8,7 +8,7 @@ extends SceneTree
 const DOORS := [&"Door_Front", &"Door_French_L", &"Door_French_R", &"Door_Balcony_L", &"Door_Balcony_R",
 	&"Door_Sliding", &"Door_Storage", &"Door_Laundry", &"Door_Toilet",
 	&"Door_Bed1", &"Door_Bath_Bed", &"Door_Bath_Landing", &"Door_WC_Up", &"Door_Bed2",
-	&"Door_Gate", &"Shed_Door"]
+	&"Door_Gate", &"Door_Front_Gate", &"Shed_Door"]
 const MARKERS := [&"Spawn_Player", &"Spawn_Front", &"Spawn_Courtyard", &"Spawn_Car"]
 
 var _home: Node3D

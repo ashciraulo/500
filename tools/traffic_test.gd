@@ -581,6 +581,10 @@ func _run_step() -> bool:
 		12:  # The night shift: sweepers, bin day and the bin truck, food vans.
 			var nt: TrafficNight = _traffic.night
 			if _frame == 1:
+				# Start from the same streets every run, whatever the earlier
+				# steps left behind (how far they got depends on the machine),
+				# so the bunch ride meets the same traffic and lights each time.
+				_settle()
 				var clock := root.get_node("GameClock")
 				var hours := []
 				for t in [[1, 2.0, "sweep"], [1, 14.0, "sweep"], [1, 19.0, "bins"], [3, 9.0, "bins"], [2, 7.0, "truck"], [2, 13.0, "truck"],
@@ -1110,6 +1114,33 @@ func parents_has(sc, par: Dictionary) -> bool:
 
 func _seconds() -> float:
 	return float(_frame) / FPS
+
+
+## Empty the streets, reseed everyone's dice and restart the lights, so a
+## step plays out the same on any machine.
+func _settle() -> void:
+	_traffic.clear_all()
+	# Fresh cars and people, not ones from the pools carrying odd bits of
+	# state from earlier steps.
+	for pool in _traffic._pool.values():
+		for v in pool:
+			v.body.queue_free()
+	_traffic._pool.clear()
+	for p in _traffic._ped_pool:
+		p.node.queue_free()
+	_traffic._ped_pool.clear()
+	# No ambulance on a random call pulling everyone over mid-step.
+	_traffic.emergency_interval = Vector2.ZERO
+	for module in [_traffic, _traffic.rides, _traffic.night, _traffic.paths, _traffic.kerbside, _traffic.schools, _traffic.events, _traffic.wildlife, _traffic.boats]:
+		module._rng.seed = hash([_traffic.random_seed, _step])
+	for c in _graph.signal_controllers:
+		c.phase = 0
+		c.timer = 0.0
+	_traffic._spawn_timer = 0.0
+	_traffic._train_timer = 20.0
+	_traffic._density_timer = 0.0
+	_traffic.rides._timer = 0.0
+	_traffic.night._timer = 0.0
 
 
 func _next() -> void:

@@ -328,6 +328,8 @@ func _build_plate(index: int) -> void:
 			BirdModels.set_flying(bird, true)
 			BirdModels.flap(bird, 0.5 + i * 0.4)
 			bird.rotation = Vector3(0.5, -2.3, 0.0)
+			# Spread wings are two to three times the bird's length.
+			bird.scale *= 0.5
 		var label := Label3D.new()
 		label.text = "%s\n%.2f m" % [b.name, float(b.size)]
 		label.font_size = 26

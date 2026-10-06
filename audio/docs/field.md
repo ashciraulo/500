@@ -64,6 +64,9 @@ Drop a real file with the alias's name in `audio/field/` and it wins.
 | australasian_darter | 3 | day | Dry clicking "kah-kah-kah" rattle |
 | great_egret | 3 | day | Loud harsh low "kraak" |
 | musk_duck | 3 | day | The male's display: a water "plonk", a shrill whistle, a grunt |
+| australian_reed_warbler | 3 | day | Loud, rich churring song from the reeds, phrases repeated, like a rusty clock being wound |
+| buff_banded_rail | 3 | day | A short creaky "swit" or two, sometimes a soft grunt |
+| black_winged_stilt | 2 | day | Sharp yapping run, like a small dog |
 
 Everything but the recordings is synthesised from field-guide descriptions
 (whistles, screeches, trills, coos and croaks): no CC0 recordings of those
@@ -143,3 +146,10 @@ played near map points of kind `jetty` or `fishing_spot`, or through
 `Audio.ambience.add_place("jetty", pos)`.
 
 Encodes: calls Vorbis q3 at 32 kHz, foley q4.
+
+## Quiet places
+
+`field/quiet_place` (3 s, stereo): finding one of the hidden quiet places.
+A reed-flute phrase on the motif's first two notes over a held pad, a
+celesta note at the end, quieter than `mus_field_new_species` (-24 LUFS).
+The bird-watching code plays it on the UI bus at -4 dB.

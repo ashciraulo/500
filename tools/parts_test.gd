@@ -15,6 +15,10 @@ var _main: Node
 var _car: Node
 var _failures: Array[String] = []
 var _frames := 0
+var _pad: Node
+var _pad_from := Vector3.ZERO
+var _laps := 0
+var _pad_done := false
 
 
 func _process(_delta: float) -> bool:
@@ -37,12 +41,54 @@ func _process(_delta: float) -> bool:
 		_field_gear()
 	elif _frames == 64:
 		_decor_earned()
+		_drivetrain()
+		_looks()
 		_setups()
 		_shelf()
 	elif _frames == 70:
 		_decor_shows()
+		_records()
+		_furniture()
+		_pad = _main.find_child("Skidpad", true, false)
+		_check(_pad != null, "there's a skidpad")
+		if _pad == null:
+			return _finish()
+		_pad_from = _car.global_position
+		_pad.lap_done.connect(func(_s: float, _g: float) -> void: _laps += 1)
+		_pad.start(_car)
+		_check(_car.global_position.distance_to(_pad.global_position) < 25.0, "the car is out on the skidpad")
+		_check(root.get_node("SaveGame").hold, "and isn't saved out there")
+		_car.player_controlled = false
+	elif _frames > 70 and _laps == 0 and _frames < 70 + 60 * 45:
+		_circle()
+	elif _frames > 70 and not _pad_done:
+		_pad_done = true
+		_car.throttle_input = 0.0
+		_check(_laps > 0, "a lap of the ring counts (%d)" % _laps)
+		_check(_pad.last_g > 0.2 and _pad.last_g < 1.3, "with a believable sideways g (%.2f in %.1f s)" % [_pad.last_g, _pad.last_lap])
+		_check(not _pad.best_for(String(_car.car_id)).is_empty(), "and it's the car's best")
+		_pad.finish()
+		_check(_car.global_position.distance_to(_pad_from) < 1.0, "finishing puts the car back at the carport")
+		_check(not root.get_node("SaveGame").hold, "and saving carries on")
+		_car.player_controlled = true
 		return _finish()
 	return false
+
+
+## Drive round the skidpad ring at about 30 km/h.
+func _circle() -> void:
+	var flat: Vector3 = _car.global_position - _pad.global_position
+	flat.y = 0.0
+	var out := flat.normalized()
+	var tangent := out.cross(Vector3.UP)
+	var want := (tangent - out * (flat.length() - 17.0) * 0.25).normalized()
+	var forward: Vector3 = -_car.global_basis.z
+	forward.y = 0.0
+	var turn := forward.normalized().signed_angle_to(want, Vector3.UP)
+	_car.steer_input = clampf(turn * 2.5, -1.0, 1.0)
+	if _frames % 30 == 0 and OS.get_environment("PAD_DEBUG") != "":
+		print("pad r=%.1f y=%.1f v=%.1f turn=%.2f active=%s" % [flat.length(), _car.global_position.y - _pad.global_position.y, _car.linear_velocity.length(), turn, _pad.active])
+	_car.throttle_input = clampf((8.5 - _car.linear_velocity.length()) * 0.4 + 0.2, 0.0, 1.0)
 
 
 func _parts_on_the_car() -> void:
@@ -72,6 +118,74 @@ func _parts_on_the_car() -> void:
 		"taking the rack off takes it off the car")
 	_car.remove_part(&"lights")
 	_car.remove_part(&"exhaust")
+
+
+## The diff, flywheel and anti-roll bars change how the car drives.
+func _drivetrain() -> void:
+	var catalogue: Variant = load("res://scripts/vehicle/parts_catalogue.gd")
+	for slot: String in ["diff", "flywheel", "anti_roll"]:
+		_check(catalogue.get_part(StringName(slot + "_stock")) != null, "there's a stock %s" % slot)
+	var lock: float = _car.diff_lock
+	var revs: float = _car.free_rev_up
+	var roll: float = _car.anti_roll_strength
+	var shift: float = _car.shift_time
+	# The inside wheel can only take 500 N; the outside one has 3000 N of grip.
+	var inside := {"cap": 500.0, "driven": true}
+	var outside := {"cap": 3000.0, "driven": true}
+	var open_drive: float = _car._drive_share(2000.0, outside, inside)
+	_check(_car._drive_share(2000.0, inside, outside) == 2000.0, "the inside wheel gets its half (and spins)")
+	_car.install_part(catalogue.get_part(&"diff_lsd"))
+	_check(_car.diff_lock > lock + 0.3, "the LSD locks the diff up (%.2f to %.2f)" % [lock, _car.diff_lock])
+	var lsd_drive: float = _car._drive_share(2000.0, outside, inside)
+	_check(lsd_drive > open_drive * 1.5, "out of a corner the LSD puts more down (%d N vs %d N open)" % [lsd_drive, open_drive])
+	_car.install_part(catalogue.get_part(&"flywheel_light"))
+	_check(_car.free_rev_up > revs * 1.5 and _car.shift_time < shift, "a light flywheel revs quicker and shifts sooner")
+	_car.install_part(catalogue.get_part(&"anti_roll_sport"))
+	_check(_car.anti_roll_strength > roll * 1.3, "sport anti-roll bars stiffen it up")
+	var tuning: Variant = load("res://scripts/vehicle/car_tuning.gd")
+	_check(tuning.is_available(tuning.option("diff_lock_add"), _car.get_part_ids()), "the LSD can be tuned")
+	_check(not tuning.is_available(tuning.option("anti_roll_mult"), _car.get_part_ids()), "fixed bars can't be")
+	_car.install_part(catalogue.get_part(&"anti_roll_adjustable"))
+	_check(tuning.is_available(tuning.option("anti_roll_mult"), _car.get_part_ids()), "adjustable bars can")
+	for slot: String in ["diff", "flywheel", "anti_roll"]:
+		_car.remove_part(StringName(slot))
+	_check(is_equal_approx(_car.diff_lock, lock) and is_equal_approx(_car.free_rev_up, revs)
+		and is_equal_approx(_car.anti_roll_strength, roll), "stock comes back")
+
+
+## Fog lamps light up yellow with the headlights, a custom plate goes on the
+## Plate material, and the carb and big-bore kits show a finned sump.
+func _looks() -> void:
+	var catalogue: Variant = load("res://scripts/vehicle/parts_catalogue.gd")
+	var body := _car.get_node("Body")
+	var plate_mat: ShaderMaterial = body._materials.get("Plate")
+	_check(plate_mat != null, "the car has a number plate")
+	var stock_tex: Variant = plate_mat.get_shader_parameter("albedo_texture") if plate_mat else null
+	_car.install_part(catalogue.get_part(&"plate_bream"))
+	var tex: Texture2D = plate_mat.get_shader_parameter("albedo_texture") if plate_mat else null
+	_check(tex != null and tex.resource_path.ends_with("plate_bream.png"), "a custom plate goes on")
+	_car.remove_part(&"plate")
+	_check(plate_mat != null and plate_mat.get_shader_parameter("albedo_texture") == stock_tex, "and comes off again")
+	_car.install_part(catalogue.get_part(&"lights_fog"))
+	var lamps := _car.find_child("Part_lights", true, false)
+	_check(lamps != null and lamps.has_meta("fog_lens"), "fog lamps sit on the bumper")
+	if lamps and lamps.has_meta("fog_lens"):
+		var lens: ShaderMaterial = lamps.get_meta("fog_lens")
+		var was: bool = _car.headlights_on
+		_car.headlights_on = true
+		_car._update_lights()
+		_check(float(lens.get_shader_parameter("emission_energy")) > 0.5, "their lenses light with the headlights")
+		_car.headlights_on = false
+		_car._update_lights()
+		_check(float(lens.get_shader_parameter("emission_energy")) == 0.0, "and go out with them")
+		_car.headlights_on = was
+		_car._update_lights()
+	_car.remove_part(&"lights")
+	for id: String in ["engine_carb_kit", "engine_big_bore"]:
+		var kit: Resource = catalogue.get_part(StringName(id))
+		_check(kit != null and kit.visual == "sump_finned" and catalogue.fits(kit, "classic_500f")
+			and not catalogue.fits(kit, "pop_12"), "%s is a classic kit with a finned sump" % id)
+	_check(ResourceLoader.exists("res://art/models/cars/parts/sump_finned.glb"), "the finned sump model is in")
 
 
 func _found_parts() -> void:
@@ -385,6 +499,54 @@ func _shelf() -> void:
 	_car.remove_part(&"gear_knob")
 	garage.owned = owned_before
 	shelf.refresh()
+
+
+## Furniture ordered from the catalogue arrives the next morning.
+func _furniture() -> void:
+	var shop := _main.find_child("HomeFurniture", true, false)
+	_check(shop != null and shop.spots.size() >= 10 and shop.items.size() >= 15, "there's a home catalogue")
+	if shop == null:
+		return
+	var wallet := root.get_node("Wallet")
+	wallet.balance = 1000
+	_check(not shop.order("rug_jute", "Decor_Lamp_Lounge"), "a rug can't go where the lamp goes")
+	_check(shop.order("rug_jute", "Decor_Rug_Lounge") and wallet.balance == 820, "ordering a rug takes the money")
+	_check(not shop.owned.has("rug_jute"), "it isn't here yet")
+	var home: Node3D = get_first_node_in_group(&"home_base")
+	home.slept.emit(2)
+	_check(shop.owned.has("rug_jute") and shop.placed.get("Decor_Rug_Lounge") == "rug_jute", "it arrives in the morning")
+	_check(home.find_child("Furniture_Decor_Rug_Lounge", true, false) != null, "and it's down in the lounge")
+	var old := home.find_child("Rug_Lounge", true, false) as Node3D
+	_check(old == null or not old.visible, "in place of the old rug")
+	_check(shop.place("rug_jute", "Decor_Rug_Bedroom") and not shop.placed.has("Decor_Rug_Lounge"), "it can move upstairs")
+	_check(old == null or old.visible, "and the old rug comes back")
+	_check(not shop.order("chair_eames_style", "Decor_Chair") or wallet.balance >= 0, "money is checked")
+	wallet.balance = 10
+	_check(not shop.order("lamp_arc", "Decor_Lamp_Lounge"), "you can't order what you can't afford")
+
+
+## Songs heard on the radio go in the record crate, and play at home.
+func _records() -> void:
+	var crate := _main.find_child("Records", true, false)
+	_check(crate != null, "there's a record crate")
+	if crate == null:
+		return
+	_check(crate.records.size() >= 2, "it starts with the themes (%d)" % crate.records.size())
+	var before: int = crate.records.size()
+	crate.heard("cinquecento", "Spiaggia")
+	crate.heard("cinquecento", "Spiaggia")
+	crate.heard("nottefm", "Radio Cinquecento")
+	_check(crate.records.size() == before + 1 and crate.has_record("mus_cinquecento_02"),
+		"a song heard on the radio is added once (%d)" % crate.records.size())
+	var home: Node3D = get_first_node_in_group(&"home_base")
+	_check(home.find_child("Records_RecordPlayer", true, false) != null
+		and home.find_child("Records_RecordCrate", true, false) != null, "the record player and crate are in the lounge")
+	crate.play("mus_cinquecento_02")
+	_check(crate.playing == "mus_cinquecento_02", "a record plays")
+	crate.stop()
+	_check(crate.playing == "", "and stops")
+	var state: Dictionary = crate.save_state()
+	_check(state.records.size() == crate.records.size(), "the crate is saved")
 
 
 func _decor_shows() -> void:
