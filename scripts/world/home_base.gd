@@ -36,6 +36,15 @@ const STAIR_X := Vector2(0.0, 1.0)
 const STAIR_FOOT := Vector2(9.053, 0.15)  # (y, z) where the nosing line meets the hall floor
 const STAIR_HEAD := Vector2(5.0, 3.16)    # (y, z) at the landing edge
 
+## Roofed boxes in house coordinates [min, max], keep in step with
+## build_shenton.py: the house to the ridge, the porch under the balcony, and
+## the carport roof over the bays and the sheds.
+const RAIN_SHELTERS := [
+	[Vector3(-0.2, -0.2, -0.5), Vector3(5.6, 12.2, 7.6)],
+	[Vector3(0.0, -1.6, -0.5), Vector3(5.4, -0.2, 2.9)],
+	[Vector3(-0.2, 17.18, -0.5), Vector3(11.2, 23.0, 2.6)],
+]
+
 ## Lamp colour, energy and range by marker name. Unlisted markers use DEFAULT_LAMP.
 const LAMPS := {
 	&"Light_Lounge_Lamp": [Color(1.0, 0.78, 0.5), 0.9, 4.0],
@@ -61,6 +70,7 @@ var _markers := {}  # StringName -> Node3D
 
 func _ready() -> void:
 	add_to_group(&"home_base")
+	add_to_group(&"rain_shelters")
 	for model in get_children():
 		PS1Model.apply(model)
 	_collect(self)
@@ -123,6 +133,22 @@ func unlock_shed() -> void:
 	if lock:
 		lock.visible = false
 	shed_unlocked.emit()
+
+
+## Where rain doesn't fall (EnvironmentController): the house up to its
+## ridge, the porch under the balcony, and the carport with its sheds. Each is
+## the unit cube [-1, 1] mapped to the box in the world.
+func rain_shelters() -> Array:
+	var out := []
+	for box: Array in RAIN_SHELTERS:
+		var lo: Vector3 = box[0]
+		var hi: Vector3 = box[1]
+		# House (x, y, z) is local (x, z, -y).
+		var centre := (lo + hi) * 0.5
+		var half := (hi - lo) * 0.5
+		out.append(global_transform * Transform3D(Basis.from_scale(Vector3(half.x, half.z, half.y)),
+			Vector3(centre.x, centre.z, -centre.y)))
+	return out
 
 
 func spawn_transform(marker_name: StringName) -> Transform3D:

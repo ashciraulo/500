@@ -34,6 +34,10 @@ var _sky: ProceduralSkyMaterial
 var _sun: DirectionalLight3D
 var _moon: DirectionalLight3D
 var _rain: GPUParticles3D
+## Keep in step with MAX_SHELTERS in shaders/rain_drop.gdshader.
+const MAX_SHELTERS := 8
+var _car_body: Node3D
+var _car_aabb := AABB()
 var _flash := 0.0
 ## -1 until the first update, so lights start in the right state.
 var _night_lights_on := -1
@@ -122,6 +126,8 @@ func _update(delta: float) -> void:
 		var camera := get_viewport().get_camera_3d()
 		if camera:
 			_rain.global_position = camera.global_position + Vector3.UP * 8.0
+			if _rain.emitting:
+				_update_shelters(camera.global_position)
 
 	# Street lights and anything else that glows at night.
 	var night_amount := clampf(1.0 - daylight * 1.6 + overcast * 0.3, 0.0, 1.0)
@@ -132,6 +138,54 @@ func _update(delta: float) -> void:
 		elif int(lights_on) != _night_lights_on:
 			node.visible = lights_on
 	_night_lights_on = int(lights_on)
+
+
+## Rain stops at roofs: boxes from everything in the "rain_shelters" group
+## (`rain_shelters() -> Array` of Transform3D, each taking the unit cube
+## [-1, 1] to a sheltered box in the world) plus the player's car while its
+## roof is up. The nearest MAX_SHELTERS go to the drop shader.
+func _update_shelters(eye: Vector3) -> void:
+	var material := (_rain.draw_pass_1 as Mesh).surface_get_material(0) as ShaderMaterial if _rain.draw_pass_1 else null
+	if material == null:
+		return
+	var boxes: Array[Transform3D] = []
+	for node in get_tree().get_nodes_in_group(&"rain_shelters"):
+		if node.has_method("rain_shelters"):
+			for box: Transform3D in node.rain_shelters():
+				boxes.append(box)
+	var car_box := _car_shelter()
+	if car_box != Transform3D():
+		boxes.append(car_box)
+	if boxes.size() > MAX_SHELTERS:
+		boxes.sort_custom(func(a: Transform3D, b: Transform3D) -> bool:
+			return a.origin.distance_squared_to(eye) < b.origin.distance_squared_to(eye))
+		boxes.resize(MAX_SHELTERS)
+	var inverse: Array[Projection] = []
+	for box in boxes:
+		inverse.append(Projection(box.affine_inverse()))
+	material.set_shader_parameter(&"shelter_count", inverse.size())
+	material.set_shader_parameter(&"shelters", inverse)
+
+
+## The player's car, roof up: its body's box (rain in the cabin was seen from
+## the seat).
+func _car_shelter() -> Transform3D:
+	var car := get_tree().get_first_node_in_group(&"player_car") as Node3D
+	var body := car.get_node_or_null(^"Body") as Node3D if car else null
+	if body == null or bool(body.get("roof_open")):
+		return Transform3D()
+	if body != _car_body:
+		_car_body = body
+		_car_aabb = AABB()
+		var first := true
+		for mesh: MeshInstance3D in body.find_children("*", "MeshInstance3D", true, false):
+			var box: AABB = body.global_transform.affine_inverse() * mesh.global_transform * mesh.get_aabb()
+			_car_aabb = box if first else _car_aabb.merge(box)
+			first = false
+	if _car_aabb.size == Vector3.ZERO:
+		return Transform3D()
+	var local := Transform3D(Basis.from_scale(_car_aabb.size * 0.5), _car_aabb.get_center())
+	return body.global_transform * local
 
 
 func _on_lightning(strength: float, distance_m: float) -> void:

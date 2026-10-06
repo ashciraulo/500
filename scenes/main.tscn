@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Shader" path="res://shaders/lofi_post.gdshader" id="2_post"]
@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://scripts/world/gameplay_places.gd" id="12_places"]
 [ext_resource type="Script" path="res://scripts/ui/photo_mode.gd" id="13_photo"]
 [ext_resource type="Script" path="res://scripts/player/on_foot.gd" id="14_on_foot"]
+[ext_resource type="Shader" path="res://shaders/rain_drop.gdshader" id="rain_drop_shader"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
 shader = ExtResource("2_post")
@@ -56,15 +57,12 @@ initial_velocity_min = 16.0
 initial_velocity_max = 20.0
 gravity = Vector3(0, -9.8, 0)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_drop"]
-transparency = 1
-shading_mode = 0
-albedo_color = Color(0.72, 0.78, 0.88, 0.35)
-billboard_mode = 2
-billboard_keep_scale = true
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_drop"]
+render_priority = 0
+shader = ExtResource("rain_drop_shader")
 
 [sub_resource type="QuadMesh" id="QuadMesh_drop"]
-material = SubResource("StandardMaterial3D_drop")
+material = SubResource("ShaderMaterial_drop")
 size = Vector2(0.025, 0.55)
 
 [node name="Main" type="Node"]
