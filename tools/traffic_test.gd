@@ -10,6 +10,8 @@ const FPS := 60
 
 var _failures: Array[String] = []
 var _step := 0
+var _calls := 0
+var _elapsed := 0.0
 var _frame := 0
 var _root3d: Node3D
 var _traffic: Node3D  # TrafficManager
@@ -19,10 +21,18 @@ var _mark := {}
 var _main: Node
 
 
-func _process(_delta: float) -> bool:
+func _process(delta: float) -> bool:
 	if _root3d == null:
 		_setup()
 		return false
+	# The steps count frames as 1/60 s: at another rate every timed check
+	# fails in confusing ways, so stop with the reason instead.
+	_calls += 1
+	_elapsed += delta
+	if _calls == 30 and absf(_elapsed / _calls - 1.0 / FPS) > 0.002:
+		print("TRAFFIC TEST FAILED: run it with --fixed-fps %d (frames are %.1f ms)" % [FPS, _elapsed / _calls * 1000.0])
+		quit(1)
+		return true
 	_frame += 1
 	return _run_step()
 
