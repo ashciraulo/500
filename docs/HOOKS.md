@@ -199,6 +199,54 @@ everything). `found_only` parts can't be bought: each is somewhere in the city
 picking it up records the discovery `part/<id>`, after which `Garage.owns()` is
 true for every car it fits. The phone lists their rumours.
 
+Drivetrain slots: `flywheel` (`flywheel_light`: `free_rev_mult` speeds how the
+engine revs, in and out of gear), `diff` (`diff_lsd`: `diff_lock_add`) and
+`anti_roll` (`anti_roll_sport`, `anti_roll_adjustable`, which unlocks the
+anti-roll tuning slider). The car's `diff_lock` (0 open, 0.5 even split, 1
+locked; stock 0.25) decides how much drive the wheel with grip gets when the
+other driven wheel can't use its half (`_drive_share`). The LSD also unlocks a
+"Diff lock" tuning slider.
+
+Engine kits: `engine_turbo_hybrid` (turbo cars), `engine_carb_kit` and
+`engine_big_bore` (classics; both show `sump_finned` at Mount_Exhaust as
+`Part_engine`). `lights_fog` shows `foglamps_yellow` at Mount_Spotlights with
+wide yellow lamps. `plate` parts swap `art/models/cars/plates/<visual>.png` into
+the body's Plate material (`CarBody.set_plate`); `plate_stock` keeps the car's
+own.
+
+## Skidpad (`Skidpad`, `scripts/world/skidpad.gd`)
+
+A fenced concrete pad with a painted ring, off the edge of the map at
+`Skidpad.ORIGIN`. The workshop's tuning tab sends the car there
+(`start(car)`; saving is held while it's out there). Each full lap of the ring
+emits `lap_done(seconds, g)` with the average sideways g, and the best per car is
+kept (`best_for(car_id)`, saved as "skidpad"). Stopping and pressing interact,
+or driving off the pad, calls `finish()`, which puts the car back where it was.
+
+## Furniture (`HomeFurniture`, `scripts/world/home_furniture.gd`)
+
+Rugs, lamps, armchairs, posters and plants from the catalogue on the lounge
+coffee table (`open_catalogue()`; the townhouse's `Catalogue` empty if it has
+one). Spots and items are in `data/home/furniture.json`: each spot is a
+townhouse empty (`Decor_Rug_Lounge`, `Decor_Lamp_Bedroom`, `Decor_Poster_1`..4,
+`Decor_Plant_1`..3, `Decor_Chair`, ...) with a stand-in place until the model
+has it, and can name a model it replaces (`Rug_Lounge`). Items are
+`art/models/props/home/decor/<id>.glb` (a `Light` empty gets a lamp) with a
+stand-in box until they exist. `order(item, spot)` pays now; `deliver()` runs
+on `home.slept` and puts it out. `place(item, spot)` moves something you own
+(free). Saved as "furniture".
+
+## Records (`RecordCrate`, `scripts/world/record_crate.gd`)
+
+Every song the radio plays (`Radio.now_playing`, matched to the station
+programmes' titles) goes in the record crate once; the main and home themes
+are there from the start. At home, the townhouse's `RecordPlayer` plays the
+next record and the `RecordCrate` opens a list to pick one (`play(id)`,
+`stop()`); it plays through a `RecordSpeaker` on the Music bus and stops when
+you leave the house. A `Platter` empty spins and `Sleeve_1..12` show as you
+collect, if the models have them. Saved as "records". Sound hook:
+`home/home_record_needle`.
+
 ## Home decorations (`HomeDecor`, `scripts/world/home_decor.gd`)
 
 Built at the home model's empties, refreshed when rewards, tiers, photos or
@@ -428,6 +476,11 @@ records).
   something knocks back (discovery `oddity/shed_knock`).
 - Walking up to the sheet in the open shed hides `Shed_Sheeted` and puts the
   card table, cassette deck and transmitter (`MysteryProps.build_shed`) there.
+- `MJournal` (`scripts/world/m_journal.gd`): M.'s closed 1979 journal
+  (`m_journal.glb`) turns up at the back of the cupboard boxes with the first
+  find. Interact opens it (its `Cover` swings to rotation.z +178 degrees);
+  the first time is discovery `mystery/m_journal`. Its pages are torn out:
+  they're the field journal's M.'s pages.
 - Sounds (missing ones play nothing): `oddity/odd_clue` (variants) for the
   voice and each find, `oddity/odd_key_found` (Music bus),
   `oddity/odd_shed_interior_loop` (Ambience, in the open shed),
@@ -474,8 +527,11 @@ after a map rebuild).
   Birds are in group `field_birds` with meta `species`.
 - `FieldBirds.spawn(species, habitat, near)` places a sighting by hand (tests
   set `auto_spawn = false`); `flush(node, from)` scares one off.
-- `BirdModels.build(species)` makes a bird (nodes `Trunk`, `Tail`, `Head`,
-  `Legs`, `WingL`, `WingR`); `set_flying`, `flap`.
+- `BirdModels.build(species)` makes a bird facing -Z, feet at the origin
+  (nodes `Trunk` with `Tail` and `Folds`, `Head`, `Legs`, `WingL`, `WingR`;
+  meta `rest`); `set_flying`, `flap`. Looks come from birds.json (`model`,
+  `colours`, `marks`, `shape`). `tools/bird_sheet.gd` renders every bird side
+  on, from the front and in flight for checking against photos.
 - Input: `binoculars` (B, R3), `photo_take` for the shot, `journal` (J),
   `interact` (F / A) to fish, cast, strike and reel.
 - Sounds (missing ones play nothing): `field/bird_<id>` calls (magpie and

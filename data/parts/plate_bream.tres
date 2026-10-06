@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"plate_bream"
+display_name = "Custom plate: BREAM"
+description = "Personalised plates, BREAM."
+slot = &"plate"
+price = 350
+modifiers = {}
+
+visual = "plate_bream"

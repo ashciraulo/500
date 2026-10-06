@@ -1,7 +1,8 @@
 extends SceneTree
 ## Walks the player around the townhouse on foot: out of the car in the
-## carport, the courtyard, the lounge, up the stairs, through a door, to bed,
-## the locked shed, and back into the car.
+## carport, in through the courtyard gate and the sliding door, out the front
+## door and gate to the lane and back in, then the courtyard, the lounge, up
+## the stairs, through a door, to bed, the locked shed, and back into the car.
 ##
 ##   godot --headless --path . --fixed-fps 120 --script res://tools/on_foot_test.gd -- --no-save
 ##
@@ -26,6 +27,13 @@ var _t := 0.0
 var _shots := ""
 var _day := 0
 var _rig_cam: Camera3D
+# Walking a route (_start_walk / _walk)
+var _route: Array[Vector3] = []
+var _leg := 0
+var _stuck := 0.0
+var _was := Vector3.ZERO
+var _wait := 0.0
+var _opened: Array[StringName] = []
 
 
 func _process(delta: float) -> bool:
@@ -65,7 +73,7 @@ func _process(delta: float) -> bool:
 			if _t > 1.3 and _t - delta <= 1.3:
 				var body := _car.get_node("Body")
 				_check(not body.has_method("is_door_open") or body.is_door_open("R"), "the driver's door opens to get out")
-			if _t > 2.4:
+			if _t > 2.7:  # the door shuts about 2.5 s after F goes down
 				var body := _car.get_node("Body")
 				_check(not body.has_method("is_door_open") or not body.is_door_open("R"), "and shuts behind you")
 				var workshop := _main.find_child("Workshop", true, false)
@@ -76,9 +84,42 @@ func _process(delta: float) -> bool:
 				_check(_player.global_position.distance_to(_car.global_position) < 3.0, "got out beside the car")
 				_check(not _car.player_controlled, "the car ignores input while you're out")
 				_shot("02_out_of_car")
+				# Turned round toward the courtyard gate, the car at your back: F is for the gate.
+				_put(Vector3(2.9, 19.2, 0.0), Vector3(2.9, 17.0, 1.1))
+				_check(_player._target()[0] != "car", "with your back to the car, F doesn't get you back in (%s)" % [_player._target()])
+				_start_walk([Vector3(2.9, 19.5, 0.0), Vector3(2.95, 16.0, 0.0), Vector3(3.15, 13.2, 0.0),
+					Vector3(3.15, 11.2, FZ0), Vector3(2.55, 9.7, FZ0), Vector3(1.55, 8.9, FZ0),
+					Vector3(1.55, 5.5, FZ0), Vector3(1.2, 2.0, FZ0)])
+				_next()
+		2:  # walk in like a player: courtyard gate, sliding door, through to the lounge
+			if _walk(delta, "the back way in"):
+				_check(_opened.has(&"Door_Gate") and _home.is_door_open(&"Door_Gate"), "F opens the courtyard gate")
+				_check(_opened.has(&"Door_Sliding") and _home.is_door_open(&"Door_Sliding"), "F opens the sliding door")
+				var p := _local(_player.global_position)
+				_check(p.y < 2.5 and absf(p.z - FZ0) < 0.1, "walked from the carport into the lounge (%s)" % p)
+				_shot("03_walked_in")
+				_start_walk([Vector3(0.95, 0.6, FZ0), Vector3(0.95, -2.4, 0.0), Vector3(0.95, -5.0, 0.0)])
+				_next()
+		3:  # out the front door and the front gate onto Little Shenton Lane
+			if _walk(delta, "out the front"):
+				_check(_opened.has(&"Door_Front"), "F opens the front door")
+				_check(_opened.has(&"Door_Front_Gate"), "F opens the front gate")
+				_check(_local(_player.global_position).y < -4.5, "out on Little Shenton Lane")
+				_shot("04_out_front")
+				_home.toggle_door(&"Door_Front_Gate")
+				_home.toggle_door(&"Door_Front")
+				_start_walk([Vector3(0.95, -2.4, 0.0), Vector3(0.95, 0.6, FZ0), Vector3(1.55, 3.0, FZ0)])
+				_next()
+		4:  # and back in from the lane
+			if _t > 0.8 and _walk(delta, "in the front"):
+				_check(_opened.has(&"Door_Front_Gate") and _home.is_door_open(&"Door_Front_Gate"), "the front gate opens from the lane")
+				_check(_opened.has(&"Door_Front") and _home.is_door_open(&"Door_Front"), "the front door opens from the garden")
+				var p := _local(_player.global_position)
+				_check(p.y > 2.5 and absf(p.z - FZ0) < 0.1, "walked in the front door (%s)" % p)
+				_shot("05_in_the_front")
 				_put(Vector3(3.2, 14.2, 0.0), Vector3(3.0, 11.5, 1.3))
 				_next()
-		2:
+		5:
 			if _t > 0.6:
 				_check(_player.surface() == "brick", "courtyard footsteps are brick (%s)" % _player.surface())
 				var fs = _player.get_node_or_null("FootstepAudio")
@@ -86,14 +127,14 @@ func _process(delta: float) -> bool:
 				_shot("03_courtyard")
 				_put(Vector3(2.6, 3.6, FZ0), Vector3(0.2, 3.2, FZ0 + 1.0))
 				_next()
-		3:
+		6:
 			if _t > 0.6:
 				_check(_player.is_on_floor(), "standing in the lounge")
 				_check(_player.surface() == "timber", "lounge footsteps are timber (%s)" % _player.surface())
 				_shot("04_lounge")
 				_put(Vector3(0.5, 9.3, FZ0), Vector3(0.5, 5.0, FZ1 + 0.9))
 				_next()
-		4:  # walk up the stairs
+		7:  # walk up the stairs
 			if _t > 0.4 and _t < 0.5:
 				Input.action_press("accelerate")
 			if _t > 0.42 and _t - delta <= 0.42:
@@ -107,7 +148,7 @@ func _process(delta: float) -> bool:
 				_check(_player._footsteps.steps >= 4, "footsteps played on the way up (%d)" % _player._footsteps.steps)
 				_put(Vector3(1.55, 7.3, FZ1), Vector3(1.55, 8.4, FZ1 + 1.1))
 				_next()
-		5:  # open the studio door and walk in
+		8:  # open the studio door and walk in
 			if _t > 0.6 and _t - delta <= 0.6:
 				_check(_player._target() == ["door", &"Door_Bed2"], "looking at the studio door (%s)" % [_player._target()])
 				_player.interact()
@@ -120,7 +161,7 @@ func _process(delta: float) -> bool:
 				_shot("06_studio")
 				_put(Vector3(2.4, 2.05, FZ1), Vector3(4.4, 2.05, FZ1 + 0.4))
 				_next()
-		6:  # go to bed
+		9:  # go to bed
 			if _t > 0.6 and _t - delta <= 0.6:
 				_check(_player._target() == ["bed", null], "the bed is in reach")
 				_shot("07_bedroom")
@@ -137,7 +178,7 @@ func _process(delta: float) -> bool:
 					"sleeping ends the day (day %d, %.1f h)" % [clock.day, clock.time_of_day])
 				_check(_player.wake_choice() == null, "the choice goes away")
 				_next()
-		7:  # and again, waking at dusk this time
+		10:  # and again, waking at dusk this time
 			if _t > 0.3 and _t - delta <= 0.3:
 				_day = root.get_node("GameClock").day
 				_player.interact()
@@ -152,7 +193,7 @@ func _process(delta: float) -> bool:
 				clock.set_locked(true)
 				_put(Vector3(2.35, 7.75, FZ0), Vector3(2.35, 8.35, FZ0 + 0.1))
 				_next()
-		8:  # the cat
+		11:  # the cat
 			if _t > 0.5 and _t - delta <= 0.5:
 				var life := _main.find_child("HomeLife", true, false)
 				_check(life != null, "home life is running")
@@ -175,7 +216,7 @@ func _process(delta: float) -> bool:
 				root.get_node("GameClock").set_time(17.5)
 				_put(Vector3(2.05, 10.6, FZ0), Vector3(1.2, 10.6, FZ0 + 0.7))
 				_next()
-		9:  # the cuttings and the odd things
+		12:  # the cuttings and the odd things
 			if _t > 0.5 and _t - delta <= 0.5:
 				var life := _main.find_child("HomeLife", true, false)
 				_check(_main.get_tree().get_nodes_in_group(&"interactables").filter(
@@ -205,7 +246,7 @@ func _process(delta: float) -> bool:
 				root.get_node("Settings").cozy_mode = false
 				_put_at_shed()
 				_next()
-		10:  # the shed is locked
+		13:  # the shed is locked
 			if _t > 0.6 and _t - delta <= 0.6:
 				_check(_player._target() == ["door", &"Shed_Door"], "looking at the shed door (%s)" % [_player._target()])
 				_player.interact()
@@ -216,7 +257,7 @@ func _process(delta: float) -> bool:
 				var side := _car.global_basis * Vector3(1.4, 0, 0.1)
 				_player.teleport(_ground(_car.global_position + side), _car.global_position + Vector3.UP * 0.8)
 				_next()
-		11:  # back in the car
+		14:  # back in the car
 			if _t > 0.6 and _t - delta <= 0.6:
 				_check(_player._target() == ["car", null], "the car is in reach")
 				_shot("09_back_to_car")
@@ -232,6 +273,53 @@ func _process(delta: float) -> bool:
 				_check(_car.player_controlled, "the car drives again")
 				_check(_rig_cam.current, "the driving camera is back")
 				return _finish()
+	return false
+
+
+func _start_walk(route: Array[Vector3]) -> void:
+	_route = route
+	_leg = 0
+	_stuck = 0.0
+	_wait = 0.0
+	_was = _local(_player.global_position)
+	_opened.clear()
+
+
+## Walks the route (house coordinates) as a player would: face the next point,
+## hold W, and at a closed door in the way check the prompt and press F.
+## True when the route is done, or stuck (a failed check).
+func _walk(delta: float, what: String) -> bool:
+	var p := _local(_player.global_position)
+	var goal := _route[_leg]
+	if Vector2(goal.x - p.x, goal.y - p.y).length() < 0.3:
+		_leg += 1
+		if _leg >= _route.size():
+			Input.action_release("accelerate")
+			return true
+		goal = _route[_leg]
+	var to: Vector3 = _world(goal) - _player.global_position
+	_player._yaw = atan2(-to.x, -to.z)
+	_player._pitch = 0.0
+	_wait -= delta
+	var target: Array = _player._target()
+	if target[0] == "door" and not _home.is_door_open(target[1]):
+		Input.action_release("accelerate")
+		if _wait <= 0.0:
+			_check(_player._hint() == "F  Open", "%s: the %s says F  Open (%s)" % [what, target[1], _player._hint()])
+			_shot("door_" + String(target[1]).to_lower())
+			_action("interact", true)
+			_action("interact", false)
+			_opened.append(target[1])
+			_wait = 0.5
+		_stuck = 0.0
+		return false
+	Input.action_press("accelerate")
+	_stuck = _stuck + delta if p.distance_to(_was) < 0.002 else 0.0
+	_was = p
+	if _stuck > 1.5:
+		Input.action_release("accelerate")
+		_check(false, "%s: got stuck at %s on the way to %s" % [what, p, goal])
+		return true
 	return false
 
 

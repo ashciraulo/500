@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://b0gnstrnthio3"
+path="res://.godot/imported/magnet_pelican_magnet_pelican.png-52f9a7af539c99a609d85121ed6e086b.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "295b4c7c64ce07f3e34e741f82e10e1c"
+}
+
+[deps]
+
+source_file="res://art/models/props/home/magnets/magnet_pelican_magnet_pelican.png"
+dest_files=["res://.godot/imported/magnet_pelican_magnet_pelican.png-52f9a7af539c99a609d85121ed6e086b.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1

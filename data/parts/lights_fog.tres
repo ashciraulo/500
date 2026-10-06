@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"lights_fog"
+display_name = "Yellow fog lamps"
+description = "A pair of yellow fog lamps under the bumper. On with the headlights."
+slot = &"lights"
+price = 220
+modifiers = {"mass_add": 3.0}
+
+visual = "foglamps_yellow"

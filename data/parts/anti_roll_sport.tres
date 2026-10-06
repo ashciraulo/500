@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"anti_roll_sport"
+display_name = "Sport anti-roll bars"
+description = "Thicker bars: flatter through corners, a little busier over bumps."
+slot = &"anti_roll"
+price = 380
+modifiers = {"anti_roll_mult": 1.35}
+visual = ""

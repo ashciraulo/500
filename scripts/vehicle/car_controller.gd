@@ -80,6 +80,10 @@ const RPM_PER_RAD_S := 60.0 / TAU
 ## How quickly the engine revs freely (out of gear or clutch in), rpm/s.
 @export var free_rev_up := 9000.0
 @export var free_rev_down := 3500.0
+## How much the differential sends to the wheel with grip when the other one
+## can't use its share: 0 open (both get what the weaker wheel can take),
+## 0.5 even split, 1 locked. A limited-slip diff raises it.
+@export_range(0.0, 1.0) var diff_lock := 0.25
 
 @export_group("Gearbox")
 @export var transmission := Transmission.MANUAL
@@ -273,8 +277,10 @@ var body_size := POP_SIZE
 ## Each wheel's model from the body (its WheelStyle), before any wheel part.
 var _model_wheels := {}
 const PART_MODEL_PATH := "res://art/models/cars/parts/%s.glb"
+## The yellow glow of lit fog lamp lenses.
+const FOG_GLOW := Color(1.0, 0.68, 0.12)
 ## Slots whose parts sit on the body, and the empty each sits at.
-const PART_MOUNTS := {&"exhaust": "Mount_Exhaust", &"roof": "Mount_Roof", &"lights": "Mount_Spotlights",
+const PART_MOUNTS := {&"engine": "Mount_Exhaust", &"exhaust": "Mount_Exhaust", &"roof": "Mount_Roof", &"lights": "Mount_Spotlights",
 	&"rear_rack": "Mount_RearRack", &"towbar": "Mount_TowBar", &"steering_wheel": "Mount_SteeringWheel",
 	&"gear_knob": "Mount_GearKnob"}
 ## Slots whose part shows at more than one empty: [mount, model suffix, whether
@@ -297,13 +303,13 @@ const SPEC_KEYS := [
 	"engine_brake_per_krpm", "spring_strength", "damper_strength", "anti_roll_strength",
 	"brake_force", "handbrake_force", "tire_grip", "suspension_length", "lateral_stiffness",
 	"drag_coefficient", "tank_litres", "fuel_per_kwh", "fuel_idle_per_hour", "fuel_use_scale",
-	"rear_wheel_drive", "is_electric",
+	"rear_wheel_drive", "is_electric", "diff_lock",
 ]
 const _TUNABLE := [
 	"limiter_rpm", "redline_rpm", "final_drive", "gear_ratios", "shift_time",
 	"tire_grip", "lateral_stiffness", "spring_strength", "damper_strength",
 	"anti_roll_strength", "suspension_length", "brake_force", "handbrake_force",
-	"mass", "drag_coefficient",
+	"mass", "drag_coefficient", "diff_lock", "free_rev_up", "free_rev_down",
 ]
 
 var _wheels: Array[Dictionary] = []
@@ -346,6 +352,7 @@ func _ready() -> void:
 			"spin_angle": 0.0,
 			"spin_speed": 0.0,
 			"surface": DEFAULT_SURFACE,
+			"cap": INF,  # drive force the tyre had left last step, N
 		})
 	_capture_rig()
 	var lower := get_node_or_null("LowerBodyCollision") as CollisionShape3D
@@ -416,6 +423,7 @@ func _physics_process(delta: float) -> void:
 			forward = forward.rotated(up, steer_angle)
 		if not wheel.grounded:
 			wheel.spin_speed = lerpf(wheel.spin_speed, 0.0, delta * 0.5)
+			wheel.cap = 0.0
 			continue
 		grounded_wheels += 1
 		surface_votes[wheel.surface] = surface_votes.get(wheel.surface, 0) + 1
@@ -444,7 +452,8 @@ func _physics_process(delta: float) -> void:
 		var lateral := -v_lat * corner_mass / delta * lateral_stiffness
 		var longitudinal := 0.0
 		if wheel.driven:
-			longitudinal += drive_torque * 0.5 / wheel_radius
+			longitudinal += _drive_share(drive_torque * 0.5 / wheel_radius, wheel, opposite)
+		wheel.cap = sqrt(maxf(max_force * max_force - lateral * lateral, 0.0))
 		var braking := brake * brake_force * wear_brakes * (0.3 if wheel.front else 0.2)
 		if not wheel.front:
 			braking += handbrake_input * handbrake_force * 0.5
@@ -1046,7 +1055,7 @@ func _rebuild_stats() -> void:
 		"final_drive_mult": "final_drive", "shift_time_mult": "shift_time",
 		"grip_mult": "tire_grip", "spring_mult": "spring_strength",
 		"damper_mult": "damper_strength", "anti_roll_mult": "anti_roll_strength",
-		"drag_mult": "drag_coefficient",
+		"drag_mult": "drag_coefficient", "free_rev_mult": "free_rev_up",
 	}
 	var modifier_sets: Array[Dictionary] = []
 	for part in parts.values():
@@ -1068,6 +1077,9 @@ func _rebuild_stats() -> void:
 		suspension_length += m.get("ride_height_add", 0.0)
 		mass += m.get("mass_add", 0.0)
 		lateral_stiffness = clampf(lateral_stiffness + m.get("lateral_stiffness_add", 0.0), 0.1, 1.0)
+		diff_lock = clampf(diff_lock + m.get("diff_lock_add", 0.0), 0.0, 1.0)
+		if m.has("free_rev_mult"):
+			free_rev_down *= m.free_rev_mult
 		if m.has("gear_ratios"):
 			gear_ratios = PackedFloat32Array(m.gear_ratios)
 
@@ -1274,15 +1286,22 @@ func _apply_part_visuals() -> void:
 				spot.basis = spot.basis * Basis.from_scale(Vector3(-1, 1, 1))
 			model.transform = spot
 			body.add_child(model)
-			PS1Model.apply(model)
+			var fog := PS1Model.apply(model).get("LampFog") as ShaderMaterial
+			if fog:
+				model.set_meta("fog_lens", fog)
+				fog.set_shader_parameter("emission_color", FOG_GLOW)
+				fog.set_shader_parameter("emission_energy", 1.1 if headlights_on else 0.0)
 			if slot == &"lights":
-				_add_spotlights(model)
+				_add_spotlights(model, part.id == &"lights_fog")
 			if slot == &"steering_wheel" and body.has_method("turn_with_steering"):
 				body.turn_with_steering(model)
 		if shown > 0 and PART_HIDES.has(slot):
 			var stock := body.find_child(PART_HIDES[slot], true, false) as Node3D
 			if stock:
 				stock.visible = false
+	if body.has_method("set_plate"):
+		var plate: CarPart = parts.get(&"plate")
+		body.set_plate(plate.visual if plate else "")
 	_apply_field_gear()
 
 
@@ -1304,15 +1323,16 @@ func _part_visual(part: CarPart, suffix := "", plain_ok := true) -> String:
 	return ""
 
 
-## Two lamps for the period spotlights, on with the headlights.
-func _add_spotlights(model: Node3D) -> void:
+## Two lamps for the period spotlights (or wide yellow fog lamps), on with
+## the headlights.
+func _add_spotlights(model: Node3D, fog := false) -> void:
 	for x in [-0.28, 0.28]:
 		var lamp := SpotLight3D.new()
 		lamp.position = Vector3(x, 0.1, -0.1)
-		lamp.light_color = Color(1.0, 0.9, 0.7)
-		lamp.light_energy = 3.0
-		lamp.spot_range = 45.0
-		lamp.spot_angle = 18.0
+		lamp.light_color = Color(1.0, 0.82, 0.35) if fog else Color(1.0, 0.9, 0.7)
+		lamp.light_energy = 2.2 if fog else 3.0
+		lamp.spot_range = 22.0 if fog else 45.0
+		lamp.spot_angle = 38.0 if fog else 18.0
 		lamp.visible = headlights_on
 		lamp.add_to_group(&"car_spotlights")
 		model.add_child(lamp)
@@ -1554,6 +1574,20 @@ func _gear_ratio(g: int) -> float:
 	return gear_ratios[g - 1]
 
 
+## One driven wheel's drive force from its half of the torque, `share` (N).
+## The wheel with less grip left takes its half (and spins if it can't use
+## it); the other gets what the diff passes it: as little as the weaker
+## wheel can take when open, its full half at 0.5, more when locked.
+func _drive_share(share: float, wheel: Dictionary, other: Dictionary) -> float:
+	if not other.driven:
+		return share
+	var weak := minf(wheel.cap, other.cap)
+	var excess := maxf(absf(share) - weak, 0.0)
+	if excess <= 0.0 or wheel.cap <= other.cap:
+		return share
+	return signf(share) * (absf(share) - excess + 2.0 * excess * diff_lock)
+
+
 ## Returns the torque at the driven wheels (both together), Nm.
 func _update_engine(delta: float) -> float:
 	var ratio := _gear_ratio(gear) * final_drive
@@ -1575,7 +1609,9 @@ func _update_engine(delta: float) -> float:
 		# An electric motor (idle 0) has no clutch: it's always connected.
 		clutch = clampf(wheel_rpm / launch_rpm, 0.0, 1.0) if launch_rpm > 1.0 else 1.0
 		var target := maxf(wheel_rpm, launch_rpm)
-		rpm = lerpf(rpm, target, 1.0 - exp(-20.0 * delta))
+		# A lighter flywheel (free_rev_up above stock) picks up revs quicker.
+		var response := 20.0 * free_rev_up / maxf(float(_stock.get("free_rev_up", free_rev_up)), 1.0)
+		rpm = lerpf(rpm, target, 1.0 - exp(-response * delta))
 		torque = _torque_at(rpm) * throttle * oil_factor()
 		if rpm >= limiter_rpm:
 			torque = 0.0
@@ -1641,6 +1677,12 @@ func _update_lights() -> void:
 	for lamp in find_children("*", "SpotLight3D", true, false):
 		if lamp.is_in_group(&"car_spotlights"):
 			lamp.visible = headlights_on
+	var body := get_node_or_null("Body")
+	var fog_part := body.get_node_or_null(^"Part_lights") if body else null
+	if fog_part and fog_part.has_meta("fog_lens"):
+		var lens: ShaderMaterial = fog_part.get_meta("fog_lens")
+		lens.set_shader_parameter("emission_color", FOG_GLOW)
+		lens.set_shader_parameter("emission_energy", 1.1 if headlights_on else 0.0)
 	headlights_changed.emit(headlights_on)
 
 

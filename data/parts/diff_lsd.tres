@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"diff_lsd"
+display_name = "Limited-slip diff"
+description = "Puts the power down out of corners instead of spinning the inside wheel."
+slot = &"diff"
+price = 1400
+modifiers = {"diff_lock_add": 0.4}
+visual = ""

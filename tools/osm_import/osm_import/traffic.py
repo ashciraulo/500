@@ -187,6 +187,7 @@ class TrafficNetwork:
         self.footways = self._event_footways()
         self.footways += self._city_footways({id(f["_way"]) for f in self.footways})
         self.cycleways = self._cycleways()
+        self.service_roads = self._service_roads()
         nj, ni = hf.H.shape
         self.schools = []
         schools = [(t, e, n) for _, t, e, n in world.poi_nodes if t.get("amenity") == "school"]
@@ -274,6 +275,19 @@ class TrafficNetwork:
             if hw == "cycleway" or (hw in ("path", "footway") and t.get("bicycle") in ("designated", "yes")
                                     and t.get("footway") != "sidewalk"):
                 out.append(_path(w))
+        return out
+
+    def _service_roads(self) -> list:
+        """Lanes, driveways, car park aisles and tracks: drawn on the map but
+        not driven by traffic, so the minimap and full map can show them."""
+        out = []
+        for w in self.w.ways:
+            hw = w.tags.get("highway")
+            if w.group != "road" or hw not in ("service", "track") or w.grade_separated or len(w.xy) < 2:
+                continue
+            f = _path(w)
+            f["kind"] = w.tags.get("service", hw)
+            out.append(f)
         return out
 
     def _spread_signals(self, ways):
@@ -440,6 +454,10 @@ class TrafficNetwork:
                      for f in self.cycleways if inside(*f["_mid"])]
         if cycleways:
             data["cycleways"] = cycleways
+        service = [{k: v for k, v in f.items() if k not in ("_mid", "_way") and (k != "name" or v)}
+                   for f in self.service_roads if inside(*f["_mid"])]
+        if service:
+            data["service_roads"] = service
         return data
 
     def _bus_routes_in(self, inside) -> list:

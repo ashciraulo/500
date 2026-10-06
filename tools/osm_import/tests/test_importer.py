@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from osm_import import places, styles
 from osm_import.extract import Way
 from osm_import.heights import compute_node_heights
-from osm_import.meshbuild import CellGrid, MeshBuilder, Surface, drape, ribbon, triangulate, walls
+from osm_import.meshbuild import CellGrid, MeshBuilder, Surface, drape, polygons_of, ribbon, triangulate, walls
 from osm_import.terrain import HeightField
 from osm_import.tilewriter import encode_surface
 from osm_import.variant import MAGIC, encode, pack_tile, unpack_tile
@@ -256,3 +256,115 @@ def test_bike_lane_tags():
     assert _bike_lane({"cycleway": "shared_lane"})
     assert not _bike_lane({"cycleway": "track"})
     assert not _bike_lane({})
+
+
+def _street(wid, tags, xs, z=0.0, first_node=None):
+    xs = np.asarray(xs, dtype=float)
+    coords = np.column_stack([xs, np.full(len(xs), z)])
+    start = first_node if first_node is not None else wid * 100
+    return Way(wid, {"highway": "primary", **tags}, np.arange(start, start + len(xs), dtype=np.int64), coords)
+
+
+def test_one_width_per_street():
+    from osm_import import streets
+    ways = [
+        _street(1, {"name": "Roe Street", "lanes": "2"}, [0, 100, 200]),
+        _street(2, {"name": "Roe Street", "lanes": "4", "lanes:forward": "3", "lanes:backward": "1"},
+                [200, 230], first_node=102),  # turn lanes at the lights
+        _street(3, {"name": "Roe Street", "width": "14"}, [230, 380], first_node=201),
+        _street(4, {"name": "Roe Street", "lanes": "1", "oneway": "yes"}, [380, 500], first_node=301),
+        _street(5, {"name": "Lake Street", "highway": "residential", "lanes": "6"}, [0, 100], z=50.0),
+    ]
+    out = {w.id: w for w in streets.normalise(ways)}
+    widths = [styles.road_width(out[i].tags) for i in (1, 2, 3)]
+    assert np.allclose(widths, 2 * styles.LANE_WIDTH)  # the flare and the width tag don't change it
+    assert styles.road_lanes(out[2].tags) == 2 and "lanes:forward" not in out[2].tags
+    # The one-way block stays as wide as a street, not a single 3.3 m lane.
+    assert styles.road_width(out[4].tags) >= styles.ONEWAY_MIN_WIDTH
+    assert styles.road_lanes(out[5].tags) == 2  # residential streets get at most two lanes
+    # Raw tags: width tags are ignored and one-ways keep a street's width.
+    assert np.isclose(styles.road_width({"highway": "residential", "width": "12"}), 2 * styles.LANE_WIDTH)
+    assert styles.road_width({"highway": "residential", "oneway": "yes"}) == styles.ONEWAY_MIN_WIDTH
+
+
+def test_divided_road_halves_are_narrower_than_lone_oneways():
+    from osm_import import streets
+    ways = [
+        _street(1, {"name": "Wellington Street", "highway": "tertiary", "oneway": "yes"}, [0, 100, 200]),
+        _street(2, {"name": "Wellington Street", "highway": "tertiary", "oneway": "yes"}, [200, 100, 0], z=9.0),
+        _street(3, {"name": "James Street", "highway": "tertiary", "oneway": "yes"}, [0, 100, 200], z=300.0),
+    ]
+    assert streets.paired_oneways(ways) == {1, 2}
+    out = {w.id: w for w in streets.normalise(ways)}
+    assert np.isclose(styles.road_width(out[1].tags), streets.styles.PAIRED_MIN_WIDTH)
+    assert np.isclose(styles.road_width(out[3].tags), styles.ONEWAY_MIN_WIDTH)
+
+
+def test_car_park_decks_and_roads_in_buildings_are_dropped():
+    from osm_import import streets
+    ways = [
+        _street(1, {"highway": "service", "service": "parking_aisle", "layer": "1"}, [0, 50]),
+        _street(2, {"highway": "service", "service": "parking_aisle", "level": "-1"}, [0, 50], z=10.0),
+        _street(3, {"highway": "service", "level": "0;1"}, [0, 50], z=20.0),       # a ramp up from the street
+        _street(4, {"highway": "service"}, [100, 160], z=0.0),                   # inside a building
+        _street(5, {"highway": "service"}, [100, 160], z=30.0),                  # beside it
+        _street(6, {"highway": "primary", "name": "Wellington Street"}, [100, 160], z=1.0),
+        Way(7, {"highway": "footway"}, np.array([700, 701]), np.array([[100.0, 0.0], [160.0, 0.0]])),
+    ]
+    building = box(95, -10, 170, 10)
+    kept = {w.id for w in streets.normalise(ways, [building])}
+    assert kept == {3, 5, 6, 7}
+
+
+def test_road_gaps_close_and_junction_corners_round():
+    from osm_import import streets
+    from shapely.geometry import LineString as L
+    pair = L([(0, 0), (100, 0)]).buffer(3, cap_style=2).union(L([(0, 8), (100, 8)]).buffer(3, cap_style=2))
+    assert len(polygons_of(pair)) == 2                     # a 2 m strip of ground between them
+    assert len(polygons_of(streets.close_gaps(pair, 1.5))) == 1
+    tee = L([(-50, 0), (50, 0)]).buffer(3, cap_style=2).union(L([(0, 0), (0, 50)]).buffer(3, cap_style=2))
+    closed = streets.close_gaps(tee, 1.5)
+    assert closed.area > tee.area                          # fillets in the two corners
+    assert closed.buffer(0.5).contains(tee)                # and nothing of the road lost
+    wide = L([(0, 0), (100, 0)]).buffer(3, cap_style=2).union(L([(0, 20), (100, 20)]).buffer(3, cap_style=2))
+    assert len(polygons_of(streets.close_gaps(wide, 1.5))) == 2  # a real median stays
+
+
+def test_mapped_sidewalks_beside_streets_are_not_drawn_twice():
+    from osm_import import streets
+    from types import SimpleNamespace as NS
+
+    def way(wid, group, tags, xy, width=2.0, sidewalk=False):
+        return NS(id=wid, group=group, tags=tags, xy=np.asarray(xy, float), width=width,
+                  sidewalk=sidewalk, grade_separated=False)
+
+    ways = [
+        way(1, "road", {"highway": "residential"}, [(0, 0), (200, 0)], width=6.6, sidewalk=True),
+        way(2, "foot", {"highway": "footway", "footway": "sidewalk"}, [(0, 7), (200, 7)]),     # beside it
+        way(3, "foot", {"highway": "footway", "footway": "sidewalk"}, [(0, 40), (200, 40)]),   # across a park
+        way(4, "foot", {"highway": "footway"}, [(0, 6), (200, 6)]),                            # a plain path
+        way(5, "foot", {"highway": "footway", "footway": "crossing"}, [(50, -8), (50, 8)]),
+        way(6, "road", {"highway": "service"}, [(0, 80), (200, 80)], width=4.0),
+        way(7, "foot", {"highway": "footway", "footway": "sidewalk"}, [(0, 84), (200, 84)]),   # lane has no footpath
+    ]
+    assert streets.doubled_footways(ways) == {2, 5}
+
+
+def test_service_roads_listed_for_the_maps():
+    from osm_import.traffic import TrafficNetwork
+    from types import SimpleNamespace as NS
+
+    def way(tags, xy, group="road"):
+        xy = np.asarray(xy, float)
+        return NS(group=group, tags=tags, xy=xy, h=np.zeros(len(xy)), grade_separated=False)
+
+    net = TrafficNetwork.__new__(TrafficNetwork)
+    net.w = NS(ways=[
+        way({"highway": "service", "service": "alley", "name": "Little Shenton Lane"}, [(0, 0), (40, 0)]),
+        way({"highway": "service"}, [(0, 10), (40, 10)]),
+        way({"highway": "residential"}, [(0, 20), (40, 20)]),
+        way({"highway": "footway"}, [(0, 30), (40, 30)], group="foot"),
+    ])
+    lanes = net._service_roads()
+    assert [(f["kind"], f["name"]) for f in lanes] == [("alley", "Little Shenton Lane"), ("service", "")]
+    assert np.allclose(lanes[0]["pts"][:, 2], 0) and np.isclose(lanes[0]["pts"][-1, 0], 40)
