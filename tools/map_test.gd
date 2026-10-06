@@ -61,6 +61,8 @@ func _process(_delta: float) -> bool:
 			_check(not galup.is_empty() and absf(_map.water_level_at(Vector3(mid.x, 0, mid.y)) - galup.level) < 0.01,
 				"Lake Monger has a water level (%.2f)" % galup.get("level", NAN))
 			_check(is_nan(_map.water_level_at(_spawn.origin)), "no lake at home")
+			var overview := _map.get_node_or_null(^"Overview")
+			_check(overview != null and overview.lake_water != null, "far-off lakes have water past the streamed tiles")
 			_next()
 		1:
 			# Tiles load on worker threads in real time while frames run as fast
