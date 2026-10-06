@@ -49,6 +49,13 @@ func _process(_delta: float) -> bool:
 
 func _run() -> void:
 	await _wait(4.0)
+	# The city's roads reach traffic as map tiles stream in, on worker threads
+	# in real time: on a busy runner, wait for the ones round home first.
+	var map: Node = _world.get_node_or_null("PerthMap")
+	var traffic_node: Node = _world.get_node("Traffic")
+	var give_up := _frame + 30 * FPS
+	while _frame < give_up and ((map and map.loaded_tile_count() < 6) or not traffic_node._pending_networks.is_empty()):
+		await process_frame
 	var ear: Node3D = _audio.listener()
 	_check(ear != null and ear is Camera3D and (ear as Camera3D).current, "the player hears from the game camera")
 	var traffic: Node = _world.get_node("Traffic")
