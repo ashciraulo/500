@@ -16,6 +16,10 @@ const NRM_SCALE := 1.0 / 127.0
 ## Collision layer bits.
 const LAYER_WORLD := 1
 const LAYER_BUILDINGS := 2
+## Water surfaces: nothing collides with them (no body's mask has this layer,
+## and rays that look for the ground leave it out); the player asks how deep
+## it is to stop at wading depth (OnFoot).
+const LAYER_WATER := 1 << 9
 
 ## Which `surface` the car feels on each material (see CarController.SURFACES).
 const SURFACE_OF := {
@@ -109,7 +113,14 @@ static func build(path: String, materials: Dictionary, props: Dictionary) -> Til
 			if VISIBILITY_END.has(mesh_name):
 				instance.visibility_range_end = VISIBILITY_END[mesh_name]
 			root.add_child(instance)
-			if collision != &"":
+			if mesh_name == &"water":
+				result.collision.append({
+					faces = _faces(arrays),
+					surface = &"water",
+					layer = LAYER_WATER,
+					name = instance.name,
+				})
+			elif collision != &"":
 				result.collision.append({
 					faces = _faces(arrays),
 					surface = SURFACE_OF.get(material_name, &"concrete"),

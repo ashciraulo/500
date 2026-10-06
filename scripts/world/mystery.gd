@@ -261,7 +261,7 @@ func _clear_waiting() -> void:
 func _ground(at: Vector3) -> Vector3:
 	var space := get_world_3d().direct_space_state if is_inside_tree() else null
 	if space:
-		var query := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 6.0, at + Vector3.DOWN * 20.0)
+		var query := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 6.0, at + Vector3.DOWN * 20.0, ~MapTileLoader.LAYER_WATER)
 		if _car is CollisionObject3D:
 			query.exclude = [(_car as CollisionObject3D).get_rid()]
 		var hit := space.intersect_ray(query)

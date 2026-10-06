@@ -28,7 +28,8 @@ const HELP := [
 	[["Out and about", [
 		["Hold F", "Hold A", "Get out of the car"],
 		["F", "A", "Use, open, get in, sleep"],
-		["W A S D", "L stick", "Walk (Space to hurry)"],
+		["W A S D", "L stick", "Walk (Shift to hurry)"],
+		["Space", "Y", "Hop up a ledge"],
 		["Tab", "X", "Phone: jobs and leads"],
 		["P", "L3", "Photo mode"],
 		["B", "R3", "Binoculars (stopped or on foot)"],

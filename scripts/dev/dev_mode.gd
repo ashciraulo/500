@@ -10,8 +10,8 @@ extends CanvasLayer
 ##
 ##   U  Unstuck: on foot, back up the last drop you couldn't climb (or back
 ##      along the way you walked); in the car, back along the road, upright
-##   V  Fly (on foot): W/S where you look, A/D sideways, E/Q up and down,
-##      Space fast. Walls don't stop you.
+##   V  Fly (on foot): W/S where you look, A/D sideways, E/Q (or Space) up
+##      and down, Shift fast. Walls don't stop you.
 ##   1  Home: on foot, out the front gate; in the car, back to the carport
 ##   2  To the car (on foot)
 ##   3  Car to me (on foot): the car is parked beside you
@@ -32,6 +32,9 @@ const CAR_TRAIL_SIZE := 40
 const CAR_BACK := 8.0
 
 var enabled := false
+## Where the on/off setting and marked spots go (tests point these elsewhere).
+var settings_path := SETTINGS_PATH
+var marks_path := MARKS_PATH
 
 var _player: OnFoot
 var _car: CarController
@@ -54,7 +57,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
 	var cfg := ConfigFile.new()
-	if cfg.load(SETTINGS_PATH) == OK:
+	if cfg.load(settings_path) == OK:
 		enabled = bool(cfg.get_value("dev", "enabled", false))
 	_panel.visible = enabled
 
@@ -96,7 +99,7 @@ func set_enabled(on: bool) -> void:
 		_player.noclip = false
 	var cfg := ConfigFile.new()
 	cfg.set_value("dev", "enabled", on)
-	cfg.save(SETTINGS_PATH)
+	cfg.save(settings_path)
 
 
 func _physics_process(_delta: float) -> void:
@@ -142,7 +145,7 @@ func toggle_fly() -> void:
 		_say("Get out of the car to fly.")
 		return
 	_player.noclip = not _player.noclip
-	_say("Flying. E up, Q down, Space fast." if _player.noclip else "Landed.")
+	_say("Flying. E up, Q down, Shift fast." if _player.noclip else "Landed.")
 
 
 func go_home() -> void:
@@ -185,6 +188,8 @@ func bring_car() -> void:
 		var at := _ground(_player.global_position + offset + Vector3.UP * 1.5, 6.0)
 		if at != Vector3.INF and _car_fits(at):
 			_place_car(Transform3D(Basis(Vector3.UP, yaw), at + Vector3.UP * 0.6))
+			# Turn round to it if it had to go beside or behind you.
+			_player.face(_car.global_position + Vector3.UP * 0.5)
 			_say("Car's here.")
 			return
 	_say("No room for the car here.")
@@ -197,7 +202,7 @@ func mark_spot() -> String:
 	var p := _here()
 	var line := "%s  %.2f, %.2f, %.2f  tile %d_%d  %s" % [Time.get_datetime_string_from_system(), p.x, p.y, p.z,
 		floori(p.x / 500.0), floori(-p.z / 500.0), "car" if _player.in_car else "on foot"]
-	var file := FileAccess.open(MARKS_PATH, FileAccess.READ_WRITE if FileAccess.file_exists(MARKS_PATH) else FileAccess.WRITE)
+	var file := FileAccess.open(marks_path, FileAccess.READ_WRITE if FileAccess.file_exists(marks_path) else FileAccess.WRITE)
 	if file:
 		file.seek_end()
 		file.store_line(line)

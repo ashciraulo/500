@@ -39,6 +39,7 @@ var _ray_query := PhysicsRayQueryParameters3D.new()
 
 
 func _ready() -> void:
+	_ray_query.collision_mask = ~MapTileLoader.LAYER_WATER  # the water surface isn't a wall
 	top_level = true
 	_car = get_node_or_null(car_path) as CarController
 	_camera = get_node("Camera3D")

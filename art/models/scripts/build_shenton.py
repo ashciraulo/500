@@ -735,6 +735,9 @@ def neighbour(x0, x1, M, render, seed):
                 A.block((a0, fy0, q1 - 0.45), (a1, fy1, q1 - 0.4), M["trim"], "Site")
             A.block((a0 - 0.06, y - 0.03 * face if face < 0 else y, q1), (a1 + 0.06, y if face < 0 else y + 0.03, q1 + 0.08),
                     M["trim"], "Site")
+    # tiled porch under the balcony, like ours (without it the ground dropped
+    # away here, too low to step back out of)
+    A.block((x0, -1.6, 0), (x1, -EXT, 0.12), M["tiles"], b)
     # front balcony with iron railing
     A.block((x0, -1.6, CZ0), (x1, -EXT, FZ1), render, b)
     A.block((x0 + 0.05, -1.6, FZ1 + 0.95), (x1 - 0.05, -1.55, FZ1 + 1.0), M["iron"], "Site")
@@ -776,6 +779,10 @@ def front_fence(x0, x1, gate_x, M, number=None, ends=(True, True)):
 
 def site(M):
     b = "Site-col"
+    # A slab under the whole block (the config's home footprint), just below
+    # everything else, so no gap between the pieces drops you onto the map's
+    # terrain, which sits lower under the block.
+    A.block((-12, -9.0, -0.1), (24, 28.4, -0.06), M["concrete"], b, uv=2.0)
     # Little Shenton Lane out front: herringbone brick, shared
     A.block((-12, -9.0, -0.05), (24, -3.25, 0.0), M["pavers"], b, uv=1.6)
     # front gardens
@@ -810,6 +817,10 @@ def site(M):
     A.wall("x", y1, -PARTY, W + PARTY, 0, 1.9, 0.18, M["render"], b, [(2.4, 3.4, 0, 1.9)], side=1)
     for x in (2.36, 3.44):
         A.block((x - 0.05, y1, 0), (x + 0.05, y1 + 0.18, 2.0), M["post"], b)
+    # the neighbours' courtyards: paved, behind a wall with their gate shut
+    for x0, x1 in ((-5.8, -PARTY), (W + PARTY, 11.2)):
+        A.block((x0, y0, -0.02), (x1, y1, 0.02), M["pavers"], b, uv=1.6)
+        A.wall("x", y1, x0, x1, 0, 1.9, 0.18, M["render"], b, side=1)
     gate = C.box_minmax("Door_Gate", (0, -0.03, 0), (0.98, 0.03, 1.8), M["timber"])
     C.apply_transform(gate)
     C.box_uv(gate, 1.0)
