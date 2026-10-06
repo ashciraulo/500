@@ -112,6 +112,8 @@ func _process(delta: float) -> void:
 
 
 func _update_inside() -> void:
+	if _car and "player_controlled" in _car:
+		Audio.set_player_driving(bool(_car.player_controlled))
 	if _car and "is_player_inside" in _car:
 		Audio.set_player_inside(bool(_car.is_player_inside))
 		return
