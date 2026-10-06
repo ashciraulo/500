@@ -98,6 +98,22 @@ def field_new_species():
     return _sting_produce(s, {"lead": 0, "keys": -3}, {"lead": 0.5, "keys": 0.45}, fade_out=1.5, length=6.0)
 
 
+def field_quiet_place():
+    """Finding one of the hidden quiet places: hushed and a little wondrous,
+    under the new-species figure. A reed-flute phrase on the motif's first
+    two notes over a held chord, a far bird twittering under it."""
+    s = _sting_song("field_quiet_place", 1205, bpm=60)
+    s.chords(0, ["Cmaj9", "Cmaj9"])
+    flu = s.part("reed flute", 75, "lead", vol=84, pan=0.1, ht=0.01, hv=2, expr=True)
+    pad = s.part("pad", WARM_PAD, "pad", vol=74, ht=0.01, hv=2)
+    cel = s.part("celesta", CELESTA, "keys", vol=80, pan=-0.3, ht=0.004, hv=2)
+    pt.pad(pad, s, 0, 1, lo=55, hi=76, n=4, vel=40, swell=True)
+    flu.melody(0, "r/.5 d5/1 b4/1.5 r/1", vel=50)
+    cel.note(2.5, mc.midi("g5"), 1.5, 36)
+    return _sting_produce(s, {"lead": 0, "pad": -5, "keys": -8}, {"lead": 0.55, "pad": 0.6, "keys": 0.5},
+                          fade_out=1.0, length=3.2)
+
+
 TRACKS = {
     "mus_field_journal": lambda: {"mus_field_journal": (field_journal(), True)},
     "mus_field_dawn": lambda: {"mus_field_dawn": (field_dawn(), False)},

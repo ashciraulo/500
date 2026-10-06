@@ -863,6 +863,47 @@ def food_van_loop(seconds=12.0) -> np.ndarray:
     return x
 
 
+def food_van_chatter_loop(seconds=20.0) -> np.ndarray:
+    """A few late customers round a food van (mono, loops): wordless talk
+    from the quieter bar recording, closer and drier than the footpath
+    crowds, and a laugh or two."""
+    import gen_amb as A
+    x = A.texture(A.src("bar_wa", True), seconds, 301, chunk=5, avoid_peaks_db=5).mean(axis=1)
+    x = S.circ_bp(x, 250, 5500, 2)
+    return x * (1 + 0.2 * S.smooth_noise(len(x), 0.3, 302))
+
+
+def bunch_loop(seconds=6.0) -> np.ndarray:
+    """A weekend bunch of road cyclists rolling by (mono, loops): a dozen
+    freewheels ticking at slightly different speeds, skinny tyres hissing
+    on the bitumen, chains, and a little wordless chatter in the pack."""
+    import gen_amb as A
+    n = secs(seconds)
+    t = t_axis(n)
+    r = np.random.default_rng(310)
+    x = np.zeros(n)
+    k = secs(0.01)
+    tk = t_axis(k)
+    for rider in range(12):
+        rate = round(r.uniform(26, 34) * seconds) / seconds
+        if r.random() < 0.4:  # pedalling: freewheel silent, chain whirr instead
+            whirr = S.circ_bp(noise(n, 320 + rider), 1500, 5000) * (1 + 0.5 * np.sin(2 * np.pi * round(1.5 * seconds) / seconds * t))
+            x += whirr / (np.std(whirr) + 1e-12) * 0.03
+            continue
+        f = r.uniform(5000, 7500)
+        click = np.sin(2 * np.pi * f * tk) * np.exp(-tk / 0.0012)
+        g = r.uniform(0.15, 0.35)
+        phase = r.uniform(0, 1 / rate)
+        for i in range(int(rate * seconds)):
+            S.place(x, click * g * r.uniform(0.6, 1.0), int((phase + i / rate) * SR) % n, wrap=True)
+    hiss = S.circ_bp(S.pink(n, 340), 900, 7000)
+    x += hiss / np.std(hiss) * 0.12
+    talk = A.texture(A.src("bar_wa", True), seconds, 341, chunk=3, avoid_peaks_db=6).mean(axis=1)
+    talk = S.circ_bp(talk, 300, 4000, 2)
+    x += talk / (np.std(talk) + 1e-12) * 0.06
+    return x
+
+
 def render_events():
     S.save(f"{OUT}/traffic_guard_whistle", guard_whistle(), "peak", quality=4)
     S.save(f"{OUT}/traffic_crowd_roar_loop", crowd_roar_loop(), "lufs:-24", quality=2, rate=24000)
@@ -870,6 +911,8 @@ def render_events():
     S.save(f"{OUT}/traffic_bin_tip", bin_tip(), "peak", quality=4)
     S.save(f"{OUT}/traffic_sweeper_loop", sweeper_loop(), "peak", quality=3, rate=32000)
     S.save(f"{OUT}/traffic_food_van_hum_loop", food_van_loop(), "peak", quality=3, rate=32000)
+    S.save(f"{OUT}/traffic_food_van_chatter_loop", food_van_chatter_loop(), "lufs:-26", quality=2, rate=24000)
+    S.save(f"{OUT}/traffic_bunch_loop", bunch_loop(), "peak", quality=3, rate=32000)
 
 
 def main(argv=()):

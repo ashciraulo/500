@@ -98,6 +98,18 @@ func _build() -> void:
 	var head: Array = UiStyle.header(box, "Phone", "phone", "Jobs, leads and how you're going", "Close")
 	_close = head[2]
 	_close.pressed.connect(toggle)
+	# The full map, for gamepads (keyboards have M).
+	var map := Button.new()
+	map.text = "Map"
+	map.icon = UiStyle.icon("pin", 18, UiStyle.INK, Vector2.ZERO, UiStyle.TEAL)
+	map.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	map.pressed.connect(func() -> void:
+		var map_screen := get_tree().get_first_node_in_group(&"map_screen")
+		if map_screen:
+			toggle()
+			map_screen.open())
+	(head[3] as HBoxContainer).add_child(map)
+	(head[3] as HBoxContainer).move_child(map, _close.get_index())
 
 	_tabs = TabContainer.new()
 	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL

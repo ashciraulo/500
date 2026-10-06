@@ -750,7 +750,11 @@ def front_fence(x0, x1, gate_x, M, number=None, ends=(True, True)):
     """ends: whether to put a pillar at each end (a neighbour's fence shares
     the boundary pillar with ours)."""
     b = "Site-col"
-    A.block((x0, -3.25, 0), (x1, -3.05, 0.45), M["render"], b)
+    # the low wall stops either side of the gate, which hangs from the ground
+    # (as in the photos), with a brick threshold across the opening
+    A.block((x0, -3.25, 0), (gate_x - 0.05, -3.05, 0.45), M["render"], b)
+    A.block((gate_x + 0.95, -3.25, 0), (x1, -3.05, 0.45), M["render"], b)
+    A.block((gate_x - 0.05, -3.25, 0), (gate_x + 0.95, -3.05, 0.03), M["pavers"], b, uv=1.6)
     A.block((x0, -3.2, 0.45), (gate_x - 0.05, -3.1, 1.15), M["pickets"], b, uv=1.0)
     A.block((gate_x + 0.95, -3.2, 0.45), (x1, -3.1, 1.15), M["pickets"], b, uv=1.0)
     pillars = [gate_x - 0.21 - 0.05, gate_x + 0.95 + 0.21]
@@ -763,9 +767,10 @@ def front_fence(x0, x1, gate_x, M, number=None, ends=(True, True)):
     if number:
         # letterbox slot and house number plaque on the gate pillar
         A.block((gate_x - 0.36, -3.37, 0.95), (gate_x - 0.16, -3.36, 1.15), M["trim"], "Site")
-    gate = C.box_minmax("g", (0, -0.03, 0), (0.9, 0.03, 1.1), M["pickets"])
+    gate = C.box_minmax("g", (0, -0.03, 0), (0.9, 0.03, 1.12), M["pickets"])
     C.apply_transform(gate)
     C.box_uv(gate, 1.0)
+    gate.location = (gate_x, -3.15, 0.03)
     return gate
 
 
@@ -779,14 +784,13 @@ def site(M):
     it("PencilPine", F.pencil_pine(6.5, 1), (4.2, -2.4, 0))
     it("Shrub_Front", F.shrub(0.45, 2), (2.6, -2.5, 0))
     it("Shrub_Front2", F.shrub(0.35, 3), (5.0, -2.8, 0))
+    # our gate opens like a door (origin on the hinge, swings in toward the house)
     gate15 = front_fence(-PARTY, W + PARTY, 0.5, M, number=15)
-    gate15.name = "Gate_Front"
-    gate15.location = (0.5, -3.15, 0.45)
+    gate15.name = "Door_Front_Gate"
     for x0, x1, s in ((-5.8, -PARTY, 13), (W + PARTY, 11.2, 17)):
         A.block((x0, -3.05, -0.02), (x1, -1.6, 0.02), M["mulch"], b)
         gate = front_fence(x0, x1, x0 + 0.6, M, ends=(s != 17, s != 13))
-        gate.name = "Site_Gate_%d" % s      # neighbours' gates stay shut
-        gate.location = (x0 + 0.6, -3.15, 0.45)
+        gate.name = "Site_Gate_%d-col" % s      # neighbours' gates stay shut
         it("Shrub", F.shrub(0.5, s), ((x0 + x1) / 2 + 1, -2.4, 0))
     # street trees on the lane
     it("StreetTree1", F.street_tree(6.5, 2, bare=True), (-3.0, -6.5, 0))

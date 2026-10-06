@@ -1,7 +1,8 @@
 // PS1-style surface shader for world geometry.
 //
 // - Vertices snap to the low-res pixel grid (the classic PS1 wobble).
-// - Textures are partly affine-mapped (they swim a little on big polygons).
+// - Textures can be partly affine-mapped (Strong and Medium filters only),
+//   capped to a few pixels so they never slide across big map polygons.
 // - Nearest-neighbour texture filtering.
 // - Optional world-space grid pattern for test/blockout geometry.
 // - Surfaces marked `wet_response` darken and turn glossy as the roads get wet.
@@ -88,7 +89,16 @@ float seven_segment(vec2 p, int digit) {
 }
 
 void fragment() {
-	vec2 uv = mix(UV * uv_scale, affine_uv / affine_w, ps1_affine_strength);
+	// Affine warp, capped to a few low-res pixels: on the map's big road and
+	// ground triangles the full warp slides whole paving lines and windows
+	// across the surface as the camera moves. Off at the Soft default.
+	vec2 uv = UV * uv_scale;
+	if (ps1_affine_strength > 0.0) {
+		vec2 warp = (affine_uv / affine_w - uv) * ps1_affine_strength;
+		float uv_per_px = max(max(length(dFdx(uv)), length(dFdy(uv))), 1e-6);
+		float max_px = 4.0 * ps1_affine_strength;
+		uv += warp * min(1.0, max_px * uv_per_px / max(length(warp), 1e-6));
+	}
 	vec4 tex = texture(albedo_texture, uv);
 	vec3 color = albedo_color.rgb * tex.rgb;
 

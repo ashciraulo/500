@@ -465,7 +465,7 @@ func _test_traffic(audio: Node) -> void:
 			"traffic_van_rear_door_open", "traffic_van_rear_door_close", "traffic_trolley_roll_loop",
 			"traffic_taxi_door_close", "traffic_taxi_door_open", "traffic_ticket_printer", "traffic_guard_whistle",
 			"traffic_crowd_roar_loop", "traffic_crowd_cheer", "traffic_bin_tip", "traffic_sweeper_loop",
-			"traffic_food_van_hum_loop"]:
+			"traffic_food_van_hum_loop", "traffic_food_van_chatter_loop", "traffic_bunch_loop"]:
 		check(audio.has("traffic/" + n), "city sound " + n)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -665,8 +665,10 @@ func _test_field(audio: Node) -> void:
 			"black_swan", "silver_gull", "willie_wagtail", "australian_pelican", "australian_magpie",
 			"laughing_kookaburra", "australian_raven", "australian_white_ibis", "galah", "osprey",
 			"rainbow_bee_eater", "splendid_fairywren", "eastern_barn_owl", "rock_dove", "little_pied_cormorant",
-			"australasian_darter", "great_egret", "musk_duck"]:
+			"australasian_darter", "great_egret", "musk_duck", "australian_reed_warbler", "buff_banded_rail",
+			"black_winged_stilt"]:
 		check(audio.has("field/bird_" + id), "bird " + id)
+	check(audio.has("field/quiet_place"), "quiet place sting")
 	check(audio.variant("field/bird_australian_magpie") != null, "aliased magpie resolves to the amb recording")
 	check(not audio.has("field/bird_dodo"), "unknown species is missing (the journal plays nothing)")
 	check(audio.play_at("field/bird_black_swan", Vector3.ZERO, 0.0, "Ambience") != null, "a call plays in 3D")

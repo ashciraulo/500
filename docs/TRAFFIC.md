@@ -246,6 +246,7 @@ World coordinates in metres, matching the game: -Z north, +X east, +Y up.
 	"footways": [{ "pts": [[x, y, z], ...], "name": "Matagarup Bridge" }],  # optional extra paths for people (event paths, CBD and Northbridge malls and footpaths; malls have "kind": "mall"); name optional
 	"cycleways": [{ "pts": [[x, y, z], ...], "name": "Kwinana Freeway PSP" }],  # optional bike and shared paths; name optional
 	"schools": [{ "p": [x, y, z], "name": "Highgate Primary School" }],     # optional; amenity=school, for school zones
+	"service_roads": [{ "pts": [[x, y, z], ...], "kind": "alley", "name": "Little Shenton Lane" }],  # optional lanes, driveways, car park aisles ("parking_aisle") and tracks for the maps; traffic doesn't drive them; name optional
 	# Optional parking spots, clear of footpaths, street lights and driveways.
 	# yaw: the way the nose points, radians about +Y (0 faces -Z).
 	"parking": [{ "pos": [x, y, z], "yaw": 1.57, "kind": "street" }],  # kind: "street" | "lot"
