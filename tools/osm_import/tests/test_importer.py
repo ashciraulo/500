@@ -421,5 +421,27 @@ def test_tunnel_roofs_stay_under_the_ground_with_no_holes_beside_them():
     v, _, _, _ = tb.mb.meshes["tunnels"]["tunnel_wall"].arrays()
     ceiling = v[np.abs(v[:, 0] - 260) < 2.5, 2].max() - 5.02
     assert TUNNEL_HEADROOM["road"] <= ceiling < 10.0 - 5.02 - TUNNEL_ROOF
-    # 3 m down there is no room for it: the box shows, near the portal, with the ground cut to it.
-    assert np.isclose(top(340, 250), 7.02 + TUNNEL_HEIGHT + TUNNEL_ROOF, atol=0.05)
+    # 3 m down there is no room for it: the box shows, near the portal, as low as it goes,
+    # with the ground cut to it.
+    assert np.isclose(top(340, 250), 7.02 + TUNNEL_HEADROOM["road"] + TUNNEL_ROOF, atol=0.05)
+
+
+def test_no_cracks_along_footpaths_on_curved_streets():
+    import shapely
+    from types import SimpleNamespace as NS
+    from osm_import.build import LinearWay, TileBuilder
+    from osm_import.common import TileKey
+
+    hf = flat_field(10.0, size=1200.0)
+    a = np.linspace(0.2, 1.4, 80)
+    xy = np.column_stack([250 + 120 * np.cos(a), 150 + 120 * np.sin(a)])
+    street = LinearWay(1, {"highway": "residential"}, "road", xy, np.full(len(xy), 10.0), np.arange(1, 81),
+                       6.6, False, False, True)
+    world = NS(hf=hf, tile_size=500, ways=[street], ways_near=lambda b: [street], doubled_paths=set(), home=None,
+               water=[], water_union=Polygon(), cover=[])
+    tb = TileBuilder(world, TileKey(0, 0))
+    tb._road_geoms(); tb._tunnel_cut(); tb._ground(); tb._roads(); tb._sidewalks_paths()
+    tris = np.concatenate([s.arrays()[0][s.arrays()[3]] for mats in tb.mb.meshes.values()
+                           for s in mats.values() if s.arrays() is not None])
+    solid = shapely.union_all(shapely.polygons(np.concatenate([tris[:, :, :2], tris[:, :1, :2]], axis=1)))
+    assert tb.box.difference(solid).area < 0.5  # drape drops specks under 0.01 m²

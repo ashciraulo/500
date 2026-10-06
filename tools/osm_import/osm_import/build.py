@@ -50,7 +50,7 @@ MARK_OFFSET = 0.07
 TUNNEL_HEIGHT = 5.6
 TUNNEL_ROOF = 0.6       # thickness of a tunnel's roof
 TUNNEL_SLOT = 0.3       # ground less than this above a tunnel's roof comes away over it
-TUNNEL_HEADROOM = {"road": 3.5, "service": 2.5, "foot": 2.5}  # least a ceiling comes down to
+TUNNEL_HEADROOM = {"road": 4.0, "service": 2.5, "foot": 2.5}  # least a ceiling comes down to
 TUNNEL_STEP = 4.0
 DECK_THICKNESS = 1.1
 PARAPET_H = 0.9
@@ -578,19 +578,15 @@ def _split_at_edge(w, poly):
 
 def _clip_runs(xy, h, bounds):
     """Split a polyline into runs whose segment midpoints lie inside bounds."""
+    return [(xy[a:b + 1], h[a:b + 1]) for a, b in _clip_spans(xy, bounds)]
+
+
+def _clip_spans(xy, bounds):
+    """(first, last) point index of each run of _clip_runs."""
     e0, n0, e1, n1 = bounds
     mid = (xy[:-1] + xy[1:]) / 2
     inside = (mid[:, 0] >= e0) & (mid[:, 0] < e1) & (mid[:, 1] >= n0) & (mid[:, 1] < n1)
-    runs, k = [], 0
-    while k < len(inside):
-        if not inside[k]:
-            k += 1
-            continue
-        start = k
-        while k < len(inside) and inside[k]:
-            k += 1
-        runs.append((xy[start:k + 1], h[start:k + 1]))
-    return runs
+    return [(int(a), int(b)) for a, b in _runs(inside)]
 
 
 def _runs(mask):
@@ -670,6 +666,9 @@ class TileBuilder:
             self.road_area = self.road_area.difference(fp)
             self.sidewalk_area = self.sidewalk_area.difference(fp)
             self.path_area = self.path_area.difference(fp)
+        # Simplified once here, so the ground leaves exactly the gap the footpaths fill
+        # (simplifying only the drawn footpaths opened sky-coloured cracks along them).
+        self.sidewalk_area = self.sidewalk_area.simplify(0.2)
 
     def _box_tunnels(self):
         return [w for w in self.ways if w.tunnel and w.group != "rail" and not self._shallow_path(w)]
@@ -692,7 +691,11 @@ class TileBuilder:
         ground = np.minimum.reduce([hf.sample(p[:, 0], p[:, 1]) for p in lines])
         fits = ground - floor - TUNNEL_ROOF - TUNNEL_SLOT - 0.05
         least = TUNNEL_HEADROOM["service" if w.tags.get("highway") == "service" else w.group]
-        ceiling = floor + np.where(fits >= least, np.minimum(fits, TUNNEL_HEIGHT), TUNNEL_HEIGHT)
+        head = np.clip(fits, least, TUNNEL_HEIGHT)
+        # Steady along the tunnel, and never above what fits under the ground either side.
+        p = np.pad(head, 1, mode="edge")
+        p = np.pad(np.minimum.reduce([p[:-2], p[1:-1], p[2:]]), 1, mode="edge")
+        ceiling = floor + (p[:-2] + p[1:-1] + p[2:]) / 3
         roof = ceiling + TUNNEL_ROOF
         near = ground < roof + TUNNEL_SLOT
         mid_ground = np.minimum.reduce([hf.sample((p[:-1, 0] + p[1:, 0]) / 2, (p[:-1, 1] + p[1:, 1]) / 2)
@@ -771,7 +774,7 @@ class TileBuilder:
 
     def _sidewalks_paths(self):
         hf = self.w.hf
-        sw = self.sidewalk_area.intersection(self.box).simplify(0.2)
+        sw = self.sidewalk_area.intersection(self.box)
         drape(self.mb.surface("roads", "sidewalk", "world"), sw.difference(self.tunnel_cut), self.grid,
               SIDEWALK_TOP, textures.UV_SCALE["sidewalk"])
         kerb = self.mb.surface("roads", "kerb", "world")
@@ -902,9 +905,11 @@ class TileBuilder:
         hf = self.w.hf
         for w in self._box_tunnels():
             xy, h = densify(w.xy, w.h, TUNNEL_STEP)
-            for rxy, rh in _clip_runs(xy, h, self.bounds):
-                if len(rxy) < 2:
-                    continue
+            outline = self._tunnel_outline(w, xy, h)
+            for a, b in _clip_spans(xy, self.bounds):
+                rxy, rh = xy[a:b + 1], h[a:b + 1]
+                lo, ro, ceiling, roof = (v[a:b + 1] for v in outline[:4])
+                low = outline[4][a:b]
                 floor = rh + 0.02
                 mat = "asphalt" if w.group == "road" else "path"
                 ribbon(self.mb.surface("tunnels", mat, "world"), rxy, floor, w.width + 1.0,
@@ -913,7 +918,6 @@ class TileBuilder:
                 half = w.width / 2 + 0.5
                 left = offset_polyline(rxy, half)
                 right = offset_polyline(rxy, -half)
-                lo, ro, ceiling, roof, low = self._tunnel_outline(w, rxy, rh)
                 walls(surf, left, floor, ceiling, 3.0, TUNNEL_HEIGHT, closed=False)
                 walls(surf, right[::-1], floor[::-1], ceiling[::-1], 3.0, TUNNEL_HEIGHT, closed=False)
                 ribbon(surf, rxy, ceiling, w.width + 1.0, 4.0, up=False)
