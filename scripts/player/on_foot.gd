@@ -184,7 +184,11 @@ func _physics_process(delta: float) -> void:
 
 	var before := global_position
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z) * delta
-	if is_on_floor() and horizontal.length() > 0.0005 and test_move(global_transform, horizontal):
+	# Look a few centimetres ahead, not just this tick's move: resting against a
+	# sill or a slab edge, a tick's move is smaller than the collision margin
+	# and the step would never be tried.
+	if is_on_floor() and horizontal.length() > 0.0005 \
+			and test_move(global_transform, horizontal.normalized() * maxf(horizontal.length(), 0.06)):
 		_step_up(horizontal)
 	move_and_slide()
 	var moved := Vector2(global_position.x - before.x, global_position.z - before.z).length()
@@ -473,14 +477,21 @@ func _target() -> Array:
 	var q := PhysicsRayQueryParameters3D.create(from, from - _camera.global_basis.z * reach, MASK)
 	q.exclude = [get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
-	if not hit.is_empty() and home:
-		var n: Node = hit.collider
-		while n and n != home:
-			var nm := StringName(n.name)
-			if home.is_door(nm):
-				return ["door", nm]
-			n = n.get_parent()
-	if _car and _driver_door().distance_to(global_position) < CAR_REACH:
+	if home:
+		var door := _door_hit(home, hit)
+		if door == &"" and _pitch > -0.5:
+			# Low gates sit under your eye line: look again at waist height.
+			var flat := Vector3(-sin(_yaw), 0.0, -cos(_yaw))
+			var waist := from + Vector3.DOWN * 0.7
+			q = PhysicsRayQueryParameters3D.create(waist, waist + flat * reach, MASK)
+			q.exclude = [get_rid()]
+			var low := get_world_3d().direct_space_state.intersect_ray(q)
+			# Only if the eye-height look didn't stop at something nearer first.
+			if hit.is_empty() or (not low.is_empty() and from.distance_to(hit.position) > waist.distance_to(low.position)):
+				door = _door_hit(home, low)
+		if door != &"":
+			return ["door", door]
+	if _car and _driver_door().distance_to(global_position) < CAR_REACH and _facing_car():
 		return ["car", null]
 	var thing := _nearest_thing()
 	if thing:
@@ -492,6 +503,16 @@ func _target() -> Array:
 		if absf(bed.y - global_position.y) < 0.8 and Vector2(bed.x - global_position.x, bed.z - global_position.z).length() < 1.4:
 			return ["bed", null]
 	return ["", null]
+
+
+## The door (or gate) a ray hit, or &"".
+func _door_hit(home: HomeBase, hit: Dictionary) -> StringName:
+	var n: Node = hit.get("collider")
+	while n and n != home:
+		if home.is_door(StringName(n.name)):
+			return StringName(n.name)
+		n = n.get_parent()
+	return &""
 
 
 ## The closest interactable within reach that you're looking towards and that
@@ -512,6 +533,17 @@ func _nearest_thing() -> Node:
 		best = node
 		best_d = d
 	return best
+
+
+## Looking toward the car, not away from it: with your back to the car, F is
+## for the gate or shed in front of you, not for getting back in.
+func _facing_car() -> bool:
+	var to := _car.global_position - global_position
+	to.y = 0.0
+	if to.length() < 0.5:
+		return true
+	var look := Vector3(-sin(_yaw), 0.0, -cos(_yaw))
+	return look.dot(to.normalized()) > 0.2
 
 
 func _driver_door() -> Vector3:

@@ -527,8 +527,11 @@ after a map rebuild).
   Birds are in group `field_birds` with meta `species`.
 - `FieldBirds.spawn(species, habitat, near)` places a sighting by hand (tests
   set `auto_spawn = false`); `flush(node, from)` scares one off.
-- `BirdModels.build(species)` makes a bird (nodes `Trunk`, `Tail`, `Head`,
-  `Legs`, `WingL`, `WingR`); `set_flying`, `flap`.
+- `BirdModels.build(species)` makes a bird facing -Z, feet at the origin
+  (nodes `Trunk` with `Tail` and `Folds`, `Head`, `Legs`, `WingL`, `WingR`;
+  meta `rest`); `set_flying`, `flap`. Looks come from birds.json (`model`,
+  `colours`, `marks`, `shape`). `tools/bird_sheet.gd` renders every bird side
+  on, from the front and in flight for checking against photos.
 - Input: `binoculars` (B, R3), `photo_take` for the shot, `journal` (J),
   `interact` (F / A) to fish, cast, strike and reel.
 - Sounds (missing ones play nothing): `field/bird_<id>` calls (magpie and
