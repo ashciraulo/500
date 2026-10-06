@@ -16,6 +16,8 @@ const SHOTS := [
 	{name = "newcastle_st", from = Vector3(1050, 0, 236), to = Vector3(943, 0, 178)},
 	{name = "wellington_st", from = Vector3(-422, 0, 258), to = Vector3(-325, 0, 296)},
 	{name = "northbridge_oblique", from = Vector3(-60, 45, 180), to = Vector3(260, 10, 520), air = true},
+	{name = "herdsman_west_bank", from = Vector3(-5620, 30, -2900), to = Vector3(-5470, 4, -2960), air = true},
+	{name = "herdsman_east_bank", from = Vector3(-3720, 35, -2900), to = Vector3(-3900, 4, -2960), air = true},
 ]
 
 var _main: Node

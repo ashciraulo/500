@@ -157,7 +157,8 @@ def test_lake_shore_is_graded_not_a_wall():
     from shapely.geometry import Point
     from osm_import.build import SHORE_GRADE, WaterBody
     lake = Point(0, 0).buffer(120)
-    hf = field(lambda E, N: np.where(np.hypot(E, N) < 120, 4.0, 9.0))
+    # On the west side the reeds reach 10 m into the outline too.
+    hf = field(lambda E, N: np.where((np.hypot(E, N) < 110) | ((np.hypot(E, N) < 120) & (E > 0)), 4.0, 9.0))
     w = _world(hf, [])
     w.water = [w._water_body(type("A", (), {"geom": lake, "tags": {"natural": "water"}})())]
     w._sculpt_terrain()
@@ -171,5 +172,7 @@ def test_lake_shore_is_graded_not_a_wall():
     dry = np.hypot(E, N) >= 120
     assert (np.abs(np.diff(H, axis=0)) / STEP)[dry[1:] & dry[:-1]].max() <= SHORE_GRADE + 0.03
     assert (np.abs(np.diff(H, axis=1)) / STEP)[dry[:, 1:] & dry[:, :-1]].max() <= SHORE_GRADE + 0.03
+    # Nothing inside the outline stands above the water.
+    assert H[np.hypot(E, N) < 119].max() <= level + 0.4
     # Away from the water the ground is untouched.
     assert abs(hf.sample(250.0, 250.0) - 9.0) < 0.05

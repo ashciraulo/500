@@ -439,7 +439,7 @@ class World:
                     wet = shapely.contains(p, pts).reshape(E.shape)
                     d_out = (distance_transform_edt(~wet) - 0.5) * hf.step  # to the shoreline
                     cap = wb.level + 0.35 + SHORE_GRADE * np.maximum(d_out - 3.0, 0.0)
-                    ramp = ~wet & (d_out <= SHORE_REACH) & (sub > cap)
+                    ramp = ~ins & (d_out <= SHORE_REACH) & (sub > cap)
                     sub[ramp] = cap[ramp]
                     kept |= ramp
                 H[j0:j1, i0:i1] = sub
