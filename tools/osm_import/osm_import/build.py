@@ -1030,17 +1030,24 @@ class TileBuilder:
         hf = self.w.hf
         items = []
         rng = stable_rng("trees", self.key.i, self.key.j)
+        bld = [p for b in self.w.buildings for p in polygons_of(b.geom)
+               if p.intersects(self.box)]
+        bld = shapely.union_all(bld) if bld else Polygon()
         if len(self.w.trees):
             m = ((self.w.trees[:, 0] >= self.bounds[0]) & (self.w.trees[:, 0] < self.bounds[2]) &
                  (self.w.trees[:, 1] >= self.bounds[1]) & (self.w.trees[:, 1] < self.bounds[3]))
+            # OSM's own trees keep their spot, but not on a carriageway, the
+            # railway or inside a building (street trees drawn at the kerb
+            # land on our wider roads).
+            hard = shapely.union_all([self.road_area, self.rail_area.buffer(1.0), bld.buffer(0.5)])
+            shapely.prepare(hard)
             for e, n in self.w.trees[m]:
-                items.append(("tree_round" if rng.random() < 0.6 else "tree_gum", e, n))
+                kind = "tree_round" if rng.random() < 0.6 else "tree_gum"
+                items.append((kind, e, n, not shapely.contains_xy(hard, e, n)))
         blockers = shapely.union_all([self.road_area, self.path_area, self.sidewalk_area,
                                       self.rail_area.buffer(3)])
-        bld = [p for b in self.w.buildings for p in polygons_of(b.geom)
-               if p.intersects(self.box)]
-        if bld:
-            blockers = blockers.union(shapely.union_all(bld).buffer(2.0))
+        if not bld.is_empty:
+            blockers = blockers.union(bld.buffer(2.0))
         if self.w.home:
             blockers = blockers.union(self.w.home.footprint.buffer(1.0))
         if not self.w.landmark_zone.is_empty:
@@ -1062,14 +1069,20 @@ class TileBuilder:
             shapely.prepare(g)
             ok = shapely.contains_xy(g, pts[:, 0], pts[:, 1])
             for e, n in pts[ok][:count]:
-                items.append((kinds[rng.integers(len(kinds))], e, n))
-        for kind, e, n in items:
+                items.append((kinds[rng.integers(len(kinds))], e, n, True))
+        # Dropped trees still take their random draws, so the rest keep their look.
+        for kind, e, n, keep in items:
             hgt = float(hf.sample(e, n))
             scale = 0.75 + rng.random() * 0.6
-            self.instances.setdefault(kind, []).append((e, n, hgt, rng.random() * math.tau, scale))
+            yaw = rng.random() * math.tau
+            if keep:
+                self.instances.setdefault(kind, []).append((e, n, hgt, yaw, scale))
 
     def _street_lights(self):
         hf = self.w.hf
+        bld = [p for b in self.w.buildings for p in polygons_of(b.geom) if p.intersects(self.box)]
+        bld = shapely.union_all(bld).buffer(0.5) if bld else Polygon()
+        shapely.prepare(bld)
         for w in self.ways:
             if w.group != "road" or w.grade_separated or w.tags.get("highway") not in (
                     "primary", "secondary", "tertiary", "trunk", "residential", "motorway"):
@@ -1087,6 +1100,8 @@ class TileBuilder:
                 if not (self.bounds[0] <= e < self.bounds[2] and self.bounds[1] <= n < self.bounds[3]):
                     continue
                 if self.road_area.contains(Point(e, n)):
+                    continue
+                if shapely.contains_xy(bld, e, n):
                     continue
                 if self.w.home and self.w.home.footprint.buffer(1.0).contains(Point(e, n)):
                     continue
