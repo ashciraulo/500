@@ -74,6 +74,10 @@ func _process(_delta: float) -> bool:
 				# James Street, round the corner from home.
 				var hit := _ray_down(Vector3(-29, 20, 54))
 				_check(not hit.is_empty() and hit.collider.get_meta("surface", &"") == &"asphalt", "map roads are asphalt colliders")
+				var poles := 0
+				for body in _map.find_children("props", "StaticBody3D", true, false):
+					poles += body.get_child_count()
+				_check(poles > 50, "trees and street lights near the car are solid (%d)" % poles)
 				_next()
 		2:  # Gentle drive out of the carport.
 			Input.action_press("accelerate", 0.4)

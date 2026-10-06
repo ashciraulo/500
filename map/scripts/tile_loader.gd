@@ -29,6 +29,12 @@ const SURFACE_OF := {
 ## Detail meshes are hidden past these distances (metres from the camera to
 ## the mesh's bounds centre, so roughly tile centre: keep them generous).
 const VISIBILITY_END := {&"markings": 600.0, &"rail": 750.0, &"landmark_detail": 600.0}
+## Props the car and the player bump into: [trunk or pole radius, height] at
+## scale 1. Shrubs stay soft.
+const PROP_COLLIDERS := {
+	&"tree_round": [0.18, 3.0], &"tree_gum": [0.22, 4.5], &"tree_palm": [0.25, 7.0],
+	&"street_light": [0.09, 6.5],
+}
 ## Meshes that cast shadows (the rest only receive them).
 const SHADOW_MESHES := [&"buildings", &"bridges", &"props", &"landmarks"]
 
@@ -41,6 +47,8 @@ class TileResult:
 	var collision: Array[Dictionary] = []
 	## Street light positions in world space (for the night light pool).
 	var lights := PackedVector3Array()
+	## Trunks and poles to collide with: [kind, tile-local base, scale].
+	var props: Array = []
 	## Road data for traffic (the tile's .p5r), filled in by MapStreamer.
 	var traffic: Dictionary = {}
 	var error := ""
@@ -111,6 +119,10 @@ static func build(path: String, materials: Dictionary, props: Dictionary) -> Til
 		var count := values.size() / 5
 		if count == 0:
 			continue
+		if PROP_COLLIDERS.has(StringName(kind)):
+			for i in count:
+				var o := i * 5
+				result.props.append([StringName(kind), Vector3(values[o], values[o + 1], values[o + 2]), values[o + 4]])
 		if kind == "street_light":
 			var pools := MultiMesh.new()
 			pools.transform_format = MultiMesh.TRANSFORM_3D
@@ -166,7 +178,76 @@ static func make_collision(result: TileResult) -> Node3D:
 		collision_shape.shape = shape
 		body.add_child(collision_shape)
 		holder.add_child(body)
+	var props := _off_road(result.props, result.collision)
+	if not props.is_empty():
+		holder.add_child(_prop_body(props))
 	return holder
+
+
+## The trunks that don't stand on a road. Tiles built before the importer kept
+## trees off the carriageway still have some there, and a solid tree in the
+## middle of a lane would be a worse bug than a ghost one.
+static func _off_road(props: Array, collision: Array[Dictionary]) -> Array:
+	const CELL := 8.0
+	var trees := {}  # Vector2i cell -> [index into props]
+	for i in props.size():
+		if props[i][0] != &"street_light":
+			var at: Vector3 = props[i][1]
+			var cell := Vector2i(floori(at.x / CELL), floori(at.z / CELL))
+			if not trees.has(cell):
+				trees[cell] = []
+			trees[cell].append(i)
+	var on_road := {}
+	for entry: Dictionary in collision:
+		if entry.surface != &"asphalt" or trees.is_empty():
+			continue
+		var faces: PackedVector3Array = entry.faces
+		for t in range(0, faces.size(), 3):
+			var a := faces[t]
+			var b := faces[t + 1]
+			var c := faces[t + 2]
+			var lo := Vector2i(floori(minf(a.x, minf(b.x, c.x)) / CELL), floori(minf(a.z, minf(b.z, c.z)) / CELL))
+			var hi := Vector2i(floori(maxf(a.x, maxf(b.x, c.x)) / CELL), floori(maxf(a.z, maxf(b.z, c.z)) / CELL))
+			for cx in range(lo.x, hi.x + 1):
+				for cz in range(lo.y, hi.y + 1):
+					for i: int in trees.get(Vector2i(cx, cz), []):
+						var p: Vector3 = props[i][1]
+						var hit: Variant = Geometry3D.ray_intersects_triangle(p + Vector3.UP, Vector3.DOWN, a, b, c)
+						if hit != null and absf((hit as Vector3).y - p.y) < 1.0:
+							on_road[i] = true
+	if on_road.is_empty():
+		return props
+	var kept := []
+	for i in props.size():
+		if not on_road.has(i):
+			kept.append(props[i])
+	return kept
+
+
+## One body holding a cylinder for every trunk and pole in the tile.
+static func _prop_body(props: Array) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = "props"
+	body.collision_layer = LAYER_WORLD
+	body.collision_mask = 0
+	body.set_meta("surface", &"concrete")
+	var shapes := {}  # "kind_tenths" -> CylinderShape3D
+	for entry: Array in props:
+		var kind: StringName = entry[0]
+		var tenths := roundi(float(entry[2]) * 10.0)
+		var key := "%s_%d" % [kind, tenths]
+		var shape: CylinderShape3D = shapes.get(key)
+		if shape == null:
+			var size: Array = PROP_COLLIDERS[kind]
+			shape = CylinderShape3D.new()
+			shape.radius = maxf(float(size[0]) * tenths / 10.0, 0.12)
+			shape.height = float(size[1]) * tenths / 10.0
+			shapes[key] = shape
+		var node := CollisionShape3D.new()
+		node.shape = shape
+		node.position = entry[1] + Vector3.UP * shape.height * 0.5
+		body.add_child(node)
+	return body
 
 
 static func _decode_surface(s: Dictionary) -> Array:
