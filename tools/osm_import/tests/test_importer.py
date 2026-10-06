@@ -368,3 +368,80 @@ def test_service_roads_listed_for_the_maps():
     lanes = net._service_roads()
     assert [(f["kind"], f["name"]) for f in lanes] == [("alley", "Little Shenton Lane"), ("service", "")]
     assert np.allclose(lanes[0]["pts"][:, 2], 0) and np.isclose(lanes[0]["pts"][-1, 0], 40)
+
+
+def test_tunnel_roofs_stay_under_the_ground_with_no_holes_beside_them():
+    import shapely
+    from types import SimpleNamespace as NS
+    from osm_import.build import TUNNEL_HEADROOM, TUNNEL_HEIGHT, TUNNEL_ROOF, LinearWay, TileBuilder
+    from osm_import.common import TileKey
+    from shapely.geometry import Point
+
+    hf = flat_field(10.0, size=1200.0)
+    xs = np.linspace(150, 350, 41)
+    # A road tunnel under flat ground: 12 m down, then 5 m (less than a full
+    # height box), then 3 m near its east portal.
+    floor = np.interp(xs, [150, 210, 230, 290, 310, 350], [-2.0, -2.0, 5.0, 5.0, 7.0, 7.0])
+    tunnel = LinearWay(1, {"highway": "primary", "tunnel": "yes"}, "road", np.column_stack([xs, np.full(41, 250.0)]),
+                       floor, np.arange(1, 42), 8.0, False, True, False)
+    above = LinearWay(2, {"highway": "residential"}, "road", np.array([[260.0, 200.0], [260.0, 300.0]]),
+                      np.full(2, 10.0), np.array([50, 51]), 6.6, False, False, True)
+    ways = [tunnel, above]
+    world = NS(hf=hf, tile_size=500, ways=ways, ways_near=lambda b: ways, doubled_paths=set(), home=None,
+               water=[], water_union=Polygon(), cover=[])
+    tb = TileBuilder(world, TileKey(0, 0))
+    tb._road_geoms(); tb._tunnel_cut(); tb._ground(); tb._roads(); tb._sidewalks_paths(); tb._tunnels()
+
+    tris = []
+    for mesh, mats in tb.mb.meshes.items():
+        if tb.mb.collision.get(mesh):
+            for surf in mats.values():
+                if surf.arrays() is not None:
+                    v, _, _, idx = surf.arrays()
+                    tris.append(v[idx])
+    tris = np.concatenate(tris)
+    solid = shapely.union_all(shapely.polygons(np.concatenate([tris[:, :, :2], tris[:, :1, :2]], axis=1)))
+    assert box(140, 225, 360, 275).difference(solid).area < 0.05  # nothing to fall through
+
+    def top(x, y):
+        """Height of the highest collision surface over (x, y)."""
+        best = -1e9
+        for a, b, c in tris:
+            if not shapely.Polygon([a[:2], b[:2], c[:2]]).buffer(1e-6).contains(Point(x, y)):
+                continue
+            n = np.cross(b - a, c - a)
+            if abs(n[2]) > 1e-9:
+                best = max(best, a[2] - (n[0] * (x - a[0]) + n[1] * (y - a[1])) / n[2])
+        return best
+
+    assert np.isclose(top(170, 250), 10.0, atol=0.05)  # deep: the ground over it is whole
+    assert np.isclose(top(270, 250), 10.0, atol=0.05)  # 5 m down: so is the ground
+    assert np.isclose(top(260, 250), 10.02, atol=0.05)  # and the street over it
+    # ... because the ceiling comes down, keeping the headroom.
+    v, _, _, _ = tb.mb.meshes["tunnels"]["tunnel_wall"].arrays()
+    ceiling = v[np.abs(v[:, 0] - 260) < 2.5, 2].max() - 5.02
+    assert TUNNEL_HEADROOM["road"] <= ceiling < 10.0 - 5.02 - TUNNEL_ROOF
+    # 3 m down there is no room for it: the box shows, near the portal, as low as it goes,
+    # with the ground cut to it.
+    assert np.isclose(top(340, 250), 7.02 + TUNNEL_HEADROOM["road"] + TUNNEL_ROOF, atol=0.05)
+
+
+def test_no_cracks_along_footpaths_on_curved_streets():
+    import shapely
+    from types import SimpleNamespace as NS
+    from osm_import.build import LinearWay, TileBuilder
+    from osm_import.common import TileKey
+
+    hf = flat_field(10.0, size=1200.0)
+    a = np.linspace(0.2, 1.4, 80)
+    xy = np.column_stack([250 + 120 * np.cos(a), 150 + 120 * np.sin(a)])
+    street = LinearWay(1, {"highway": "residential"}, "road", xy, np.full(len(xy), 10.0), np.arange(1, 81),
+                       6.6, False, False, True)
+    world = NS(hf=hf, tile_size=500, ways=[street], ways_near=lambda b: [street], doubled_paths=set(), home=None,
+               water=[], water_union=Polygon(), cover=[])
+    tb = TileBuilder(world, TileKey(0, 0))
+    tb._road_geoms(); tb._tunnel_cut(); tb._ground(); tb._roads(); tb._sidewalks_paths()
+    tris = np.concatenate([s.arrays()[0][s.arrays()[3]] for mats in tb.mb.meshes.values()
+                           for s in mats.values() if s.arrays() is not None])
+    solid = shapely.union_all(shapely.polygons(np.concatenate([tris[:, :, :2], tris[:, :1, :2]], axis=1)))
+    assert tb.box.difference(solid).area < 0.5  # drape drops specks under 0.01 m²
