@@ -21,7 +21,7 @@ import shapely
 from shapely.geometry import LineString, Point, Polygon, box as sbox
 from shapely.geometry.polygon import orient
 
-from . import fetch, landmarks, places, pois, styles, textures
+from . import fetch, landmarks, places, pois, streets, styles, textures
 from .traffic import TrafficNetwork
 from .common import (CACHE_DIR, MAP_DIR, TILES_DIR, Projector, TileKey, load_config,
                      stable_rng, tiles_for_bbox)
@@ -112,6 +112,10 @@ class World:
         if self.home:
             self.home.h = self._home_ground()
             src_ways = [_split_at_edge(w, self.home.footprint) for w in feats.ways]
+        # One width per street, and no car park decks or roads inside buildings.
+        src_ways = streets.normalise(src_ways, [
+            a.geom for a in feats.areas
+            if "building" in a.tags and a.tags.get("building") not in ("no", "roof", "construction")])
         self.lifted_tiles = set()  # tiles whose ground _raise_moles / _sculpt_sea lifted
         self._raise_moles(feats)
         node_h = compute_node_heights(src_ways, hf)

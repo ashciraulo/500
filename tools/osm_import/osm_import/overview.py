@@ -13,7 +13,7 @@ import shapely
 from shapely.geometry import box as sbox
 from PIL import Image, ImageDraw
 
-from . import styles
+from . import streets, styles
 from .common import Projector
 from .extract import extract
 from .fetch import osm_pbf
@@ -83,7 +83,7 @@ def build_overview(cfg: dict, proj: Projector, tiles: dict, out_path):
         if "building" in a.tags:
             lv = styles._num(a.tags.get("building:levels"), 1)
             fill(a.geom, COLORS["tower"] if lv and lv > 8 else COLORS["building"])
-    for wy in feats.ways:
+    for wy in streets.normalise(feats.ways):
         t = wy.tags
         hw = t.get("highway")
         if hw in styles.DRIVABLE and hw not in ("service", "track") and not styles.is_tunnel(t):

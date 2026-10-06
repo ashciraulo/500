@@ -24,6 +24,9 @@ LANES = {
     "service": 1, "busway": 2, "track": 1, "road": 2,
 }
 LANE_WIDTH = 3.3
+ONEWAY_MIN_WIDTH = 6.0   # a one-way street: one lane plus kerbside parking
+PAIRED_MIN_WIDTH = 5.0   # one carriageway of a divided road
+LINK_MIN_WIDTH = 4.5     # slip roads and ramps
 # Classes that get a footpath strip alongside them.
 SIDEWALK = {"primary", "secondary", "tertiary", "residential", "unclassified",
             "living_street", "primary_link", "secondary_link", "tertiary_link", "trunk"}
@@ -45,6 +48,8 @@ def is_oneway(tags) -> bool:
 
 
 def road_lanes(tags) -> int:
+    if "_lanes" in tags:  # one lane count for the whole street (streets.normalise)
+        return int(tags["_lanes"])
     hw = tags.get("highway")
     lanes = _num(tags.get("lanes"))
     if lanes is None:
@@ -54,16 +59,23 @@ def road_lanes(tags) -> int:
     return max(1, int(lanes))
 
 
-def road_width(tags) -> float:
-    w = _num(tags.get("width"))
-    if w and 2.0 <= w <= 40.0:
-        return w
+def road_width(tags, paired: bool = False) -> float:
+    """Carriageway width. OSM `width` tags are ignored: some give the
+    carriageway, some the whole road reserve, and they disagree from one
+    segment to the next. `paired`: one carriageway of a divided road."""
+    if "_width" in tags:  # set per street by streets.normalise
+        return float(tags["_width"])
     hw = tags.get("highway")
     if hw == "service":
         return 4.0 if tags.get("service") in ("alley", "driveway", "parking_aisle") else 5.0
     if hw == "track":
         return 3.0
-    return road_lanes(tags) * LANE_WIDTH + (0.8 if hw in ("motorway", "trunk") else 0.0)
+    w = road_lanes(tags) * LANE_WIDTH + (0.8 if hw in ("motorway", "trunk") else 0.0)
+    if hw.endswith("_link"):
+        return max(w, LINK_MIN_WIDTH)
+    if (is_oneway(tags) or tags.get("oneway") == "-1") and hw != "motorway":
+        return max(w, PAIRED_MIN_WIDTH if paired else ONEWAY_MIN_WIDTH)
+    return w
 
 
 def is_bridge(tags) -> bool:
