@@ -346,7 +346,8 @@ func _keep_out_of_deep_water() -> void:
 
 ## How deep the water is over `feet` (0 on dry ground).
 func water_depth(feet: Vector3) -> float:
-	var q := PhysicsRayQueryParameters3D.create(feet + Vector3.UP * 3.0, feet + Vector3.DOWN * 0.2, MapTileLoader.LAYER_WATER)
+	# From well up: the sea off a jetty is metres deep.
+	var q := PhysicsRayQueryParameters3D.create(feet + Vector3.UP * 30.0, feet + Vector3.DOWN * 0.2, MapTileLoader.LAYER_WATER)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	return maxf((hit.position as Vector3).y - feet.y, 0.0) if not hit.is_empty() else 0.0
 

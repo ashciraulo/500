@@ -350,7 +350,7 @@ func _sweep_tile(key: String) -> void:
 func _depth(body: Node, x: float, y: float, z: float) -> float:
 	if body == null or not String(body.name).ends_with("riverbed"):
 		return 0.0
-	_water_ray.from = Vector3(x, y + 4.0, z)
+	_water_ray.from = Vector3(x, y + 30.0, z)
 	_water_ray.to = Vector3(x, y, z)
 	var hit := _space().intersect_ray(_water_ray)
 	return (hit.position as Vector3).y - y if not hit.is_empty() else 0.0
