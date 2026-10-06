@@ -22,7 +22,7 @@ const HELP := [
 	]], ["Radio", [
 		["/", "", "On and off"],
 		[". / ,", "", "Next or last station"],
-		["M", "", "Next track"],
+		[";", "", "Next track"],
 		["N", "", "Next playlist (My Music)"],
 	]]],
 	[["Out and about", [
@@ -34,6 +34,7 @@ const HELP := [
 		["B", "R3", "Binoculars (stopped or on foot)"],
 		["Enter", "A", "Take the photo"],
 		["J", "", "Field journal"],
+		["M", "", "Map (on the phone too)"],
 	]], ["The world", [
 		["F5 / F6", "D-pad right", "Next weather / hold it"],
 		["F7 / F8", "D-pad left", "An hour on / stop the clock"],
@@ -60,6 +61,8 @@ var _help: PanelContainer
 var _help_pad := false
 var _challenge: ChallengeCard
 var _night := 0.0
+var _minimap: Minimap
+var _map_screen: MapScreen
 
 
 func _ready() -> void:
@@ -81,6 +84,7 @@ func _ready() -> void:
 	_root.add_child(_dash)
 
 	_build_strip()
+	_build_map()
 	_challenge = ChallengeCard.new()
 	_root.add_child(_challenge)
 	_challenge.place_top_right()
@@ -132,6 +136,7 @@ func _process(delta: float) -> void:
 		return
 	_night = move_toward(_night, 1.0 if _car.headlights_on else 0.0, delta * 2.5)
 	_dash.night = _night
+	_minimap.set_night(_night * 0.6)
 	_dash.speed_kmh = _car.speed_kmh()
 	_dash.rpm = _car.rpm
 	_dash.redline_rpm = _car.redline_rpm
@@ -145,6 +150,24 @@ func _process(delta: float) -> void:
 	_dash.automatic = _car.transmission == CarController.Transmission.AUTOMATIC
 	_dash.fuel = _car.fuel_fraction()
 	_dash.fuel_low = _dash.fuel < CarController.LOW_FUEL_FRACTION
+
+
+# --- the minimap and the full map --------------------------------------------------------
+
+func _build_map() -> void:
+	# Bottom left, standing on the status strip.
+	_minimap = Minimap.new()
+	_minimap.name = "Minimap"
+	_minimap.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_minimap.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_minimap.offset_left = 16
+	_minimap.offset_bottom = -62
+	_minimap.offset_top = _minimap.offset_bottom - _minimap.custom_minimum_size.y
+	_root.add_child(_minimap)
+	# The full map goes last in the scene so Esc reaches it before the pause menu.
+	_map_screen = MapScreen.new()
+	_map_screen.name = "MapScreen"
+	get_parent().add_child.call_deferred(_map_screen)
 
 
 # --- the status strip ---------------------------------------------------------------------

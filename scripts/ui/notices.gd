@@ -15,7 +15,7 @@ extends CanvasLayer
 ## steps aside sooner when others are waiting. Nothing shows on the title
 ## screen, in menus or in photo mode; the queue waits.
 ##
-## Autosaves are silent: a small "Saved" mark shows by the status strip.
+## Autosaves are silent: a small "Saved" mark shows above the dial.
 
 ## [heading, icon, accent, sound, bus, volume_db] for each kind of notice.
 ## An empty heading shows the text alone.
@@ -283,15 +283,17 @@ func _build() -> void:
 	_heading = UiStyle.label(words, "", "SectionLabel", 13)
 	_heading.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_text = UiStyle.label(words, "", "", 19)
-	# The little "Saved" mark above the status strip.
+	# The little "Saved" mark above the dial (the minimap has the bottom left).
 	_saved = PanelContainer.new()
 	_saved.theme_type_variation = &"ChipPanel"
 	_saved.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_saved.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_saved.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_saved.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_saved.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_saved.offset_left = 16
-	_saved.offset_top = -66
-	_saved.offset_bottom = -66
+	_saved.offset_right = -16
+	_saved.offset_left = -16
+	_saved.offset_top = -236
+	_saved.offset_bottom = -236
 	_saved.visible = false
 	root.add_child(_saved)
 	var saved_row := HBoxContainer.new()
