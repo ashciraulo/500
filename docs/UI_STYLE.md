@@ -79,7 +79,6 @@ Set `theme_type_variation` to one of these:
   keys or a pad and click when pressed (the `UiTheme` autoload), using the
   audio thread's `audio/ui` sounds.
 
-<<<<<<< HEAD
 ## Notices and the challenge card
 
 - **Something happened** (a new bird, a place found, a challenge or job
@@ -100,8 +99,6 @@ Set `theme_type_variation` to one of these:
 - `tools/notice_sheet.gd` shoots every kind of notice into one sheet, plus the
   challenge card in play.
 
-=======
->>>>>>> origin/main
 ## Maps
 
 The minimap (`Minimap`, bottom left of the HUD) and the full map
