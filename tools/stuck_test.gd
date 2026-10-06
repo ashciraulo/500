@@ -7,6 +7,8 @@ extends SceneTree
 ##   walk back out to the garden without hopping.
 ## - A hop (Space) gets you up a ledge too high to step, and Shift hurries.
 ## - Falling out of the world puts you back where you last walked.
+## - You wade into a lake to about the knees and no further, can climb back
+##   out up its bank, and are put back on the bank if you fall in deeper.
 ##
 ## With a display and shots=<dir> it saves a screenshot at each stage.
 ## Exits with code 1 if any check fails.
@@ -14,6 +16,9 @@ extends SceneTree
 const LEDGE := 0.55
 ## The test ledge: on the lane in front of the house (house coordinates).
 const LEDGE_AT := Vector3(2.7, -7.0, 0.0)
+## A lake shore (world), and a deep part of the lake out from it.
+const SHORE := Vector3(-346.4, 15.2, -211.3)
+const DEEP := Vector3(-320.2, 12.3, -237.5)
 
 var _quitting := false
 var _main: Node
@@ -44,6 +49,8 @@ func _process(delta: float) -> bool:
 		root.get_node("Weather").set_locked(true)
 		_car = _main.get_node("LoFi/SubViewport/World/Car")
 		_player = _main.get_node("LoFi/SubViewport/World/Player")
+		if _shots != "":
+			_main.get_node("HUD").hide_help()  # well ahead: a shot grabs the last frame drawn
 		return false
 	_t += delta
 	match _stage:
@@ -118,6 +125,37 @@ func _process(delta: float) -> bool:
 			if _t > 8.5:
 				var d := _player.global_position.distance_to(_mark)
 				_check(d < 3.0 and _player.is_on_floor(), "falling out of the world puts you back where you walked (%.1f m)" % d)
+				# Over to the lake shore west of Northbridge, flying while its ground loads.
+				_player.noclip = true
+				_player.teleport(SHORE + Vector3.UP * 0.1, DEEP)
+				_next()
+		6:  # walk into the lake: you stop at wading depth
+			if _t > 3.0 and _t - delta <= 3.0:
+				_player.noclip = false
+			if _t > 4.0 and _t - delta <= 4.0:
+				_check(_player.is_on_floor(), "standing on the shore")
+				Input.action_press("accelerate")
+			if _t > 16.0:
+				Input.action_release("accelerate")
+				var depth: float = _player.water_depth(_player.global_position)
+				var gone := Vector2(_player.global_position.x - SHORE.x, _player.global_position.z - SHORE.z).length()
+				_check(gone > 3.0 and depth > 0.05 and depth < 0.7 and _player.is_on_floor(),
+					"walking into the lake stops you at wading depth (%.2f m deep, %.0f m out)" % [depth, gone])
+				_shot("04_wading")
+				# Hop back out: a bank too steep to step on dry land is a climb out of the water.
+				_player.face(SHORE)
+				Input.action_press("accelerate")
+				_next()
+		7:
+			if _t > 10.0 and _t - delta <= 10.0:
+				Input.action_release("accelerate")
+				_check(_player.water_depth(_player.global_position) < 0.05, "and you can walk back out onto the bank")
+				# Dropped in the deep part (off a jetty): back on dry land.
+				_player.global_position = DEEP + Vector3.UP * 0.5
+			if _t > 13.0:
+				var depth: float = _player.water_depth(_player.global_position)
+				_check(depth < 0.35 and _player.is_on_floor(), "in over your head, you're put back on the bank (%.2f m deep)" % depth)
+				_shot("05_back_on_the_bank")
 				return _finish()
 	return false
 
@@ -157,9 +195,6 @@ func _local(w: Vector3) -> Vector3:
 func _shot(name: String) -> void:
 	if _shots == "":
 		return
-	var hud := _main.get_node_or_null("HUD")
-	if hud and hud.get("_help"):
-		hud._help.visible = false
 	var img := root.get_texture().get_image()
 	img.save_png(_shots.path_join(name + ".png"))
 	print("saved ", name)

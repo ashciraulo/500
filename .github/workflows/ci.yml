@@ -131,6 +131,17 @@ jobs:
             exit 1
           fi
 
+      - name: Stuck test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/stuck_test.gd -- --no-save 2>&1 \
+            | tee stuck.log | grep -E "ok |FAIL|STUCK TEST|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" stuck.log; then
+            echo "::error::GDScript errors in the stuck test"
+            exit 1
+          fi
+
       - name: Mystery test
         if: env.ALREADY_TESTED != 'true'
         run: |

@@ -11,7 +11,7 @@ extends SceneTree
 ##
 ## How: a grid of rays straight down finds every floor you could stand on
 ## (several per column under bridges and in the house, each with headroom for
-## the player). Neighbouring floors are joined when the player could walk
+## the player; not riverbed under water deeper than you wade). Neighbouring floors are joined when the player could walk
 ## from one to the other: a step up of at most OnFoot.step_height, any drop
 ## down, and nothing in the way at knee and chest height. Starting from the
 ## roads, a trap is any floor you can reach but can't get back from. Each trap
@@ -19,15 +19,22 @@ extends SceneTree
 ## would get you out, nearest to home first. Exits 0; the counts are the
 ## result.
 
-## Player capsule (OnFoot): what it can step up, how much headroom it needs.
-const STEP_UP := 0.32
+## Player capsule (OnFoot): what it can step up, how much headroom it needs,
+## and how deep it wades.
+const STEP_UP := 0.4
+const WADE_DEPTH := 0.6
+const WET_STEP := 0.65  # out of the water, up the bank
 const HEADROOM := 1.75
 const MIN_NORMAL_Y := 0.64  # floor_max_angle 50 degrees
 ## Up to this many floors in one column (street, bridge deck, house floors).
 const MAX_LAYERS := 4
 ## Traps smaller than this (m²) are cracks the capsule can't get into.
 const MIN_AREA := 0.5
-const MARGIN := 6.0
+## Each tile is swept with this much of its neighbours around it. Floors on
+## the edge of that window count as joined to the rest of the map both ways
+## (a long tunnel or cutting leads out somewhere past it), so only traps that
+## close up inside the window are reported.
+const MARGIN := 40.0
 const TILE := 500.0
 
 var _out := "user://stuck_sweep.json"
@@ -43,6 +50,7 @@ var _started := 0
 var _traps: Array[Dictionary] = []
 var _area := Rect2()  # around=: only this square (x, z)
 var _ray := PhysicsRayQueryParameters3D.new()
+var _water_ray := PhysicsRayQueryParameters3D.new()
 var _home_at := Vector3.ZERO
 var _part := [0, 1]  # part=k/n: every n-th tile from the k-th, to split a run across processes
 
@@ -89,6 +97,7 @@ func _initialize() -> void:
 		_home.transform = Transform3D(Basis(Vector3.UP, float(home.get("yaw", 0.0))), _home_at)
 		_world.add_child(_home)
 	_ray.collision_mask = 1 | 2
+	_water_ray.collision_mask = MapTileLoader.LAYER_WATER
 	_started = Time.get_ticks_msec()
 	print("STUCK SWEEP %d tiles, %.2f m grid" % [_tiles.size(), _step])
 
@@ -178,6 +187,8 @@ func _sweep_tile(key: String) -> void:
 	road.resize(n * MAX_LAYERS)
 	var kind := PackedByteArray()
 	kind.resize(n * MAX_LAYERS)
+	var wet := PackedByteArray()  # floors under shallow water
+	wet.resize(n * MAX_LAYERS)
 	for c in n:
 		var x := rect.position.x + (c % nx + 0.5) * _step
 		var z := rect.position.y + (c / nx + 0.5) * _step
@@ -189,9 +200,11 @@ func _sweep_tile(key: String) -> void:
 			if hit.is_empty():
 				break
 			var y: float = (hit.position as Vector3).y
-			if (hit.normal as Vector3).y >= MIN_NORMAL_Y and ceiling - y >= HEADROOM:
+			var body := hit.collider as Node
+			var depth := _depth(body, x, y, z)
+			if (hit.normal as Vector3).y >= MIN_NORMAL_Y and ceiling - y >= HEADROOM and depth <= WADE_DEPTH:
 				h[c * MAX_LAYERS + layer] = y
-				var body := hit.collider as Node
+				wet[c * MAX_LAYERS + layer] = 1 if depth > 0.05 else 0
 				if body and body.get_meta(&"surface", &"") == &"asphalt" and String(body.name).begins_with("road"):
 					road[c * MAX_LAYERS + layer] = 1
 				kind[c * MAX_LAYERS + layer] = _kind_of(body)
@@ -219,6 +232,7 @@ func _sweep_tile(key: String) -> void:
 			var a := h[c * MAX_LAYERS + la]
 			if is_nan(a):
 				break
+			var step_up := WET_STEP if wet[c * MAX_LAYERS + la] == 1 else STEP_UP
 			for d: Vector2i in dirs:
 				var ox := cx + d.x
 				var oz := cz + d.y
@@ -231,7 +245,7 @@ func _sweep_tile(key: String) -> void:
 					var b := h[o * MAX_LAYERS + k]
 					if is_nan(b):
 						break
-					if b <= a + STEP_UP:
+					if b <= a + step_up:
 						lb = k
 						break
 				if lb < 0:
@@ -261,10 +275,13 @@ func _sweep_tile(key: String) -> void:
 				var ib := o * MAX_LAYERS + lb
 				out_edges[ia].append(ib)
 				in_edges[ib].append(ia)
-	# From the roads: everywhere you can get to, and everywhere you can get back from.
+	# From the roads and the window's edge (not its roofs): everywhere you can
+	# get to, and everywhere you can get back from.
 	var seeds := PackedInt32Array()
 	for i in nodes:
-		if road[i] == 1:
+		var c := i / MAX_LAYERS
+		var edge_cell := c % nx == 0 or c / nx == 0 or c % nx == nx - 1 or c / nx == nz - 1
+		if road[i] == 1 or (edge_cell and not is_nan(h[i]) and _walk_kind[kind[i]] == 1):
 			seeds.append(i)
 	var reach := _flood(seeds, out_edges, nodes)
 	var back := _flood(seeds, in_edges, nodes)
@@ -322,10 +339,23 @@ func _sweep_tile(key: String) -> void:
 			home_m = snappedf(Vector2(centre.x - _home_at.x, centre.z - _home_at.z).length(), 1.0)})
 
 
+## How deep the water is over a floor. Only the big water's riverbed is
+## under any depth (ponds and streams are drawn just over the ground).
+func _depth(body: Node, x: float, y: float, z: float) -> float:
+	if body == null or not String(body.name).ends_with("riverbed"):
+		return 0.0
+	_water_ray.from = Vector3(x, y + 4.0, z)
+	_water_ray.to = Vector3(x, y, z)
+	var hit := _space().intersect_ray(_water_ray)
+	return (hit.position as Vector3).y - y if not hit.is_empty() else 0.0
+
+
 ## What each floor is: the collider's name ("ground_grass", "roads_asphalt",
 ## "props", or "home" for the townhouse), numbered as first seen.
 var _kind_names: Array[String] = []
 var _kind_ids := {}
+## Per kind: 1 for ground you'd walk on, 0 for roofs, props and the house.
+var _walk_kind := PackedByteArray()
 
 
 func _kind_of(body: Node) -> int:
@@ -335,6 +365,8 @@ func _kind_of(body: Node) -> int:
 	if not _kind_ids.has(n):
 		_kind_ids[n] = _kind_names.size()
 		_kind_names.append(n)
+		_walk_kind.append(0 if n.begins_with("buildings") or n.begins_with("props") or n.begins_with("landmarks")
+			or n == "home" or n == "none" else 1)
 	return mini(int(_kind_ids[n]), 255)
 
 

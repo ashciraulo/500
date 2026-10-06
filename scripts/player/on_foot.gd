@@ -15,7 +15,8 @@ extends CharacterBody3D
 ## Moves with the driving actions (accelerate/brake = forward/back,
 ## steer = strafe), hurry (Shift / B) to go faster, jump (Space / Y) for a
 ## small hop up a ledge too high to step. Looks with the mouse or the right
-## stick. Climbs stairs by stepping up small ledges.
+## stick. Climbs stairs by stepping up small ledges. Wades into water up to
+## about the knees and no deeper (there's no swimming).
 ##
 ## Remembers where it has walked, so `unstuck()` can put the player back on
 ## top of a drop they can't climb back up (dev mode's unstuck key, DevMode).
@@ -29,7 +30,7 @@ signal got_in
 @export var walk_speed := 1.7
 @export var hurry_speed := 3.3
 @export var eye_height := 1.62
-@export var step_height := 0.32
+@export var step_height := 0.4
 @export var reach := 1.9
 @export var stick_look_speed := 2.4
 ## Metres per head-bob cycle (matches FootstepAudio.stride_walk).
@@ -67,6 +68,14 @@ const JUMP_SPEED := 3.6
 ## Falling this long (seconds) means you've gone through the world: back to
 ## the last solid ground you walked on.
 const FALL_RESCUE := 4.0
+## Water deeper than this (metres over your feet) turns you back. Breadcrumbs
+## are only left where it's shallower than TRAIL_WET.
+const WADE_DEPTH := 0.6
+const TRAIL_WET := 0.3
+## Standing in water you can climb a steeper bank than a step on dry land.
+const WET_STEP := 0.65
+## In deeper water than WADE_DEPTH this long (fell in) puts you back on the bank.
+const WATER_RESCUE := 1.0
 ## Flying in dev mode, metres a second (Shift for fast).
 const FLY_SPEED := 8.0
 const FLY_FAST := 40.0
@@ -108,6 +117,7 @@ var _last_floor := Vector3.INF
 var _air_from := Vector3.INF
 var _air_dir := Vector3.ZERO
 var _air_time := 0.0
+var _deep_time := 0.0
 
 
 func _ready() -> void:
@@ -220,6 +230,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y -= GRAVITY * delta
 
+	_keep_out_of_deep_water()
 	var before := global_position
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z) * delta
 	# Look a few centimetres ahead, not just this tick's move: resting against a
@@ -243,7 +254,8 @@ func _physics_process(delta: float) -> void:
 ## Lift over a stair tread or kerb: if there's floor a little ahead at most
 ## step_height up, raise the body onto it and let the slide carry on.
 func _step_up(horizontal: Vector3) -> void:
-	var up := Vector3.UP * step_height
+	var height := WET_STEP if water_depth(global_position) > 0.05 else step_height
+	var up := Vector3.UP * height
 	if test_move(global_transform, up):
 		return
 	var probe := horizontal.normalized() * maxf(horizontal.length(), RADIUS * 0.8)
@@ -254,7 +266,7 @@ func _step_up(horizontal: Vector3) -> void:
 	var hit := KinematicCollision3D.new()
 	if not test_move(t, -up, hit) or hit.get_normal().y < 0.7:
 		return
-	var rise := step_height - hit.get_travel().length()
+	var rise := height - hit.get_travel().length()
 	if rise > 0.01:
 		global_position.y += rise + 0.01
 
@@ -294,10 +306,48 @@ func _track(moved: float, delta: float) -> void:
 				_drops.pop_front()
 		_air_from = Vector3.INF
 	_last_floor = global_position
+	var depth := water_depth(global_position)
+	_deep_time = _deep_time + delta if depth > WADE_DEPTH else 0.0
+	if _deep_time > WATER_RESCUE:
+		# In over your head (off a jetty, down a bank): back to the last dry spot.
+		_deep_time = 0.0
+		_drops.clear()
+		_note("Too deep. There's no swimming.")
+		if not unstuck():
+			_rescue_home()
+		return
+	if depth > TRAIL_WET:
+		return
 	if _trail.is_empty() or _trail.back().distance_to(global_position) >= TRAIL_STEP:
 		_trail.append(global_position)
 		if _trail.size() > TRAIL_SIZE:
 			_trail.pop_front()
+
+
+## Stops at wading depth: walking on into deeper water than WADE_DEPTH (where
+## you'd be after another half step) doesn't move you, though you can turn and
+## walk along the shore or back out.
+func _keep_out_of_deep_water() -> void:
+	var flat := Vector3(velocity.x, 0.0, velocity.z)
+	if not is_on_floor() or flat.length() < 0.05:
+		return
+	var here := water_depth(global_position)
+	var ahead := _ground_at(global_position + flat.normalized() * 0.45 + Vector3.UP * 0.3)
+	if ahead == Vector3.INF:
+		return
+	var there := water_depth(ahead)
+	if there > WADE_DEPTH and there > here:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if _note_timer <= 0.0:
+			_note("Too deep to wade.")
+
+
+## How deep the water is over `feet` (0 on dry ground).
+func water_depth(feet: Vector3) -> float:
+	var q := PhysicsRayQueryParameters3D.create(feet + Vector3.UP * 3.0, feet + Vector3.DOWN * 0.2, MapTileLoader.LAYER_WATER)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	return maxf((hit.position as Vector3).y - feet.y, 0.0) if not hit.is_empty() else 0.0
 
 
 ## Gets the player out of a hole or a wedge: back on top of the last drop they

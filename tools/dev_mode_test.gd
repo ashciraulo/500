@@ -50,6 +50,8 @@ func _process(delta: float) -> bool:
 		root.get_node("Weather").set_locked(true)
 		_car = _main.get_node("LoFi/SubViewport/World/Car")
 		_player = _main.get_node("LoFi/SubViewport/World/Player")
+		if _shots != "":
+			_main.get_node("HUD").hide_help()  # well ahead: a shot grabs the last frame drawn
 		return false
 	_t += delta
 	match _stage:
@@ -249,9 +251,6 @@ func _key(code: Key) -> void:
 func _shot(name: String) -> void:
 	if _shots == "":
 		return
-	var hud := _main.get_node_or_null("HUD")
-	if hud and hud.get("_help"):
-		hud._help.visible = false
 	var img := root.get_texture().get_image()
 	img.save_png(_shots.path_join(name + ".png"))
 	print("saved ", name)

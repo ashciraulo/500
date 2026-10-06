@@ -82,6 +82,12 @@ and these keys work:
 | 3 | Bring the car to you (on foot) |
 | X | Mark this spot: its position goes on the clipboard and into `dev_marks.txt` in the user data folder, to report a stuck spot |
 
+To find spots you can get into on foot but not back out of, without
+walking them: `tools/stuck_sweep.gd` checks the map tiles' colliders (and the
+townhouse) on a grid and lists every trap with where it is, how you got in
+and how high a step would get you out; `tools/stuck_shots.gd` takes a
+screenshot of each. See the top of each script for how to run them.
+
 ## Where things live
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the folder layout and conventions,
@@ -108,6 +114,7 @@ godot --headless --path . --fixed-fps 60 --script res://tools/mystery_test.gd --
 godot --headless --path . --fixed-fps 60 --script res://tools/parts_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/kerb_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/dev_mode_test.gd -- --no-save
+godot --headless --path . --fixed-fps 60 --script res://tools/stuck_test.gd -- --no-save
 # A real-time playthrough from whatever save you have (or none): load, drive
 # out of the carport, workshop, a job, switching cars, walking, sleeping.
 # Without tour=off it also tours the whole map and reports streaming hitches.

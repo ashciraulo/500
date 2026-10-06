@@ -336,6 +336,7 @@ func _ready() -> void:
 	max_contacts_reported = 4
 	body_entered.connect(_on_body_entered)
 	_ray_query.exclude = [get_rid()]
+	_ray_query.collision_mask = ~MapTileLoader.LAYER_WATER  # wheels sit on the riverbed, not the water
 	for wheel_name in ["WheelFL", "WheelFR", "WheelRL", "WheelRR"]:
 		var anchor: Node3D = get_node("Wheels/" + wheel_name)
 		_wheels.append({
