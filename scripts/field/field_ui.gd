@@ -66,13 +66,18 @@ static func photo_texture(file: String, max_width := 360) -> Texture2D:
 
 ## One line on a cream well: a name, a short note under it, and a button or a
 ## price on the right. Returns the button (null if there isn't one).
-static func shop_row(parent: Control, title: String, note := "", action := "", enabled := true) -> Button:
+static func shop_row(parent: Control, title: String, note := "", action := "", enabled := true, icon: Texture2D = null) -> Button:
 	var well := PanelContainer.new()
 	well.theme_type_variation = &"WellPanel"
 	parent.add_child(well)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	well.add_child(row)
+	if icon:
+		var pic := TextureRect.new()
+		pic.texture = icon
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		row.add_child(pic)
 	var text := VBoxContainer.new()
 	text.add_theme_constant_override("separation", 0)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL

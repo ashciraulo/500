@@ -39,6 +39,7 @@ func _ready() -> void:
 	cover.set_anchors_preset(Control.PRESET_CENTER)
 	cover.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	cover.grow_vertical = Control.GROW_DIRECTION_BOTH
+	UiStyle.animate(cover)
 	var cloth := UiStyle.box(COVER, UiStyle.INK, 2, 16, 12)
 	cloth.shadow_color = UiStyle.SHADOW
 	cloth.shadow_offset = Vector2(6, 8)
@@ -205,10 +206,12 @@ func refresh() -> void:
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		var e := FieldJournal.entry(id)
 		if e.is_empty():
-			button.text = "  ? ? ?   (%s)" % FieldJournal.RARITY_NAMES[clampi(int(b.rarity), 1, 4)].to_lower()
+			button.text = "? ? ?   (%s)" % FieldJournal.RARITY_NAMES[clampi(int(b.rarity), 1, 4)].to_lower()
 			button.modulate = Color(1, 1, 1, 0.55)
 		else:
 			button.text = "%s  %s" % [b.name, UiStyle.stars(int(e.get("best", 0))) if int(e.get("best", 0)) > 0 else ""]
+		# A pencil outline until you've seen it; M.'s loose pages give nothing away.
+		button.icon = _blank_icon() if b.get("wrong", false) and e.is_empty() else SpeciesIcon.bird(b, 30, e.is_empty())
 		button.pressed.connect(func() -> void:
 			_selected = id
 			_show(id))
@@ -258,6 +261,8 @@ func _show(id: String) -> void:
 		return
 	var e := FieldJournal.entry(id)
 	if e.is_empty():
+		if not b.get("wrong", false):
+			_plate(SpeciesIcon.bird(b, 96, true))
 		FieldUI.label(_page, "Not yet seen", 22, INK)
 		FieldUI.label(_page, FieldJournal.RARITY_NAMES[clampi(int(b.rarity), 1, 4)], 15, INK.lightened(0.3))
 		_pencil("Pencilled in the margin:", String(b.get("hint", "")))
@@ -278,6 +283,7 @@ func _show(id: String) -> void:
 		_page.add_child(pic)
 		FieldUI.label(_page, "Best photo: %s   (%d taken, %d sold)" % [UiStyle.stars(int(e.best)), int(e.photos), int(e.get("sold", 0))], 14, INK)
 	else:
+		_plate(SpeciesIcon.bird(b, 96))
 		FieldUI.label(_page, "No photo yet. Binoculars (B), then Enter / A.", 14, INK.lightened(0.2))
 	FieldUI.label(_page, b.get("note", ""), 16, INK)
 	FieldUI.label(_page, "First seen: day %d, %s, %s." % [int(e.seen), e.get("time", ""), e.get("where", "somewhere")], 14, INK.lightened(0.2))
@@ -300,9 +306,9 @@ func _refresh_fish() -> void:
 		if (f.get("junk", false) or f.get("wrong", false)) and not FieldJournal.is_caught(id):
 			continue
 		var e: Dictionary = FieldJournal.catches.get(id, {})
-		var label := "  ? ? ?   (%s)" % FieldJournal.RARITY_NAMES[clampi(int(f.get("rarity", 1)), 1, 4)].to_lower() if e.is_empty() \
+		var label := "? ? ?   (%s)" % FieldJournal.RARITY_NAMES[clampi(int(f.get("rarity", 1)), 1, 4)].to_lower() if e.is_empty() \
 			else "%s  %.0f cm" % [f.name, float(e.biggest_cm)]
-		first = _list_button(label, id, e.is_empty(), first)
+		first = _list_button(label, id, e.is_empty(), first, SpeciesIcon.fish(f, 30, e.is_empty()))
 	FieldUI.label(_list, "Fishing spots", 14, ACCENT)
 	for sp: Dictionary in FieldJournal.spots:
 		var found := Discoveries.has("fishing/" + String(sp.id))
@@ -317,8 +323,9 @@ func _refresh_fish() -> void:
 		first.grab_focus()
 
 
-func _list_button(text: String, id: String, dim: bool, first: Button) -> Button:
+func _list_button(text: String, id: String, dim: bool, first: Button, icon: Texture2D = null) -> Button:
 	var button := Button.new()
+	button.icon = icon
 	button.theme_type_variation = &"ListButton"
 	button.toggle_mode = true
 	button.button_group = _group
@@ -359,6 +366,7 @@ func _show_fish(id: String) -> void:
 		return
 	var e: Dictionary = FieldJournal.catches.get(id, {})
 	if e.is_empty():
+		_plate(SpeciesIcon.fish(f, 120, true))
 		FieldUI.label(_page, "Not yet caught", 22, INK)
 		FieldUI.label(_page, FieldJournal.RARITY_NAMES[clampi(int(f.get("rarity", 1)), 1, 4)], 15, INK.lightened(0.3))
 		_pencil("Pencilled in the margin:", String(f.get("hint", "")))
@@ -378,6 +386,8 @@ func _show_fish(id: String) -> void:
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		pic.custom_minimum_size = Vector2(0, 230)
 		_page.add_child(pic)
+	else:
+		_plate(SpeciesIcon.fish(f, 120))
 	FieldUI.label(_page, f.get("note", ""), 16, INK)
 	if not f.get("junk", false):
 		FieldUI.label(_page, "Biggest: %.1f cm, %.2f kg.   Caught %d, kept %d, let go %d." % [float(e.biggest_cm), float(e.biggest_kg),
@@ -501,6 +511,20 @@ func _room_tone(on: bool) -> void:
 
 
 ## A pencilled note: a small printed lead-in, then the note in handwriting.
+## A field-guide plate on the page, left-aligned.
+func _plate(tex: Texture2D) -> void:
+	var pic := TextureRect.new()
+	pic.texture = tex
+	pic.stretch_mode = TextureRect.STRETCH_KEEP
+	pic.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_page.add_child(pic)
+
+
+## Same size as a plate in the list, nothing on it.
+static func _blank_icon() -> Texture2D:
+	return SpeciesIcon.blank(30)
+
+
 func _pencil(lead: String, note: String) -> void:
 	FieldUI.label(_page, lead, 14, INK.lightened(0.3))
 	var hand := FieldUI.label(_page, "\"%s\"" % note, 15, Color("6a6058"))

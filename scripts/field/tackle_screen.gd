@@ -80,7 +80,7 @@ func refresh() -> void:
 				tags.append("gone soft")
 			var note := ", ".join(tags)
 			FieldUI.shop_row(_list, "%s  ·  %.0f cm, %.2f kg  ·  $%d" % [f.name, float(f.cm), float(f.kg), int(f.pay)],
-				note.left(1).to_upper() + note.substr(1))
+				note.left(1).to_upper() + note.substr(1), "", true, SpeciesIcon.fish(FieldJournal.fish_species(String(f.species)), 52))
 		var paid := UiStyle.label(_list, "Paid $%d" % _last_result.pay, "", 18)
 		paid.add_theme_font_override("font", UiStyle.BOLD_FONT)
 		paid.add_theme_color_override("font_color", UiStyle.GOOD)
