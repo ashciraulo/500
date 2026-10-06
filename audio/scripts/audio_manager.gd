@@ -55,6 +55,7 @@ var _last_variant := {}
 var _inside := false
 var _indoors := false
 var _base_db := {}          # mixed levels of the buses set_indoors() turns down
+var _effects_db := 0.0      # the Effects slider, which also covers the Cabin bus
 var _world_lp: AudioEffectLowPassFilter
 var _world_shelf: AudioEffectEQ6
 var _radio_lp: AudioEffectLowPassFilter
@@ -244,6 +245,11 @@ func apply_volume_settings() -> void:
 		if idx >= 0:
 			var v := clampf(float(settings.get(key)), 0.0, 1.0)
 			AudioServer.set_bus_volume_db(idx, SETTINGS_BUSES[key][1] + linear_to_db(maxf(v, 0.0001)))
+	# Cabin sounds (rain on the roof, wipers, indicator, key) are effects too,
+	# but skip World so they aren't muffled with the street: _apply_inside()
+	# adds the Effects slider to the Cabin bus's own level.
+	_effects_db = linear_to_db(maxf(clampf(float(settings.get("volume_effects")), 0.0, 1.0), 0.0001))
+	_apply_inside()
 
 
 ## Settings menu hook: linear volume 0..1 for a bus ("Master", "Music", "Radio", ...).
@@ -288,6 +294,12 @@ func is_indoors() -> bool:
 	return _indoors
 
 
+## Cabin bus level in the car and heard from outside it, before the Effects
+## slider. In the car it sits under the radio.
+const CABIN_DB := -6.0
+const CABIN_OUT_DB := -20.0
+
+
 func _apply_inside() -> void:
 	var world := AudioServer.get_bus_index("World")
 	AudioServer.set_bus_effect_enabled(world, 0, _inside)
@@ -297,7 +309,7 @@ func _apply_inside() -> void:
 		_radio_lp.cutoff_hz = 7500.0 if _inside else 1200.0
 	# Cabin sounds (indicator, wipers, rain on the roof) are distant from outside.
 	# The radio applies its own outside trim (radio.gd listens for the signal).
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), -3.0 if _inside else -17.0)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), (CABIN_DB if _inside else CABIN_OUT_DB) + _effects_db)
 	# Inside, the street and the weather drop well under the radio and engine.
 	var levels := {"Ambience": -9.0 if _inside else 0.0, "Weather": -12.0 if _inside else -4.0,
 			"Vehicles": _base_db.get("Vehicles", 0.0), "Tyres": _base_db.get("Tyres", 0.0),
