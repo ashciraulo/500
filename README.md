@@ -64,6 +64,22 @@ In **automatic**, hold brake at a standstill to reverse. In **manual**, shift
 down past neutral to get reverse (only when nearly stopped). The clutch is
 automatic and the engine can't stall.
 
+### Dev mode (testing)
+
+Running from the Godot editor (or a debug export) adds a developer mode for
+playtesting; release exports leave it out. **F3** turns it on or off, and it
+stays on between runs. While it's on, a panel top right shows where you are
+and these keys work:
+
+| Key | Does |
+| --- | --- |
+| U | Unstuck: on foot, back on top of the drop you just fell down (or back along where you walked); in the car, back along the road and upright |
+| V | Fly on foot, through walls: W/S go where you look, E/Q up and down, Space fast. V again to land |
+| 1 | Home: on foot to the front gate, in the car to the carport |
+| 2 | To the car (on foot) |
+| 3 | Bring the car to you (on foot) |
+| X | Mark this spot: its position goes on the clipboard and into `dev_marks.txt` in the user data folder, to report a stuck spot |
+
 ## Where things live
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the folder layout and conventions,
@@ -89,6 +105,7 @@ godot --headless --path . --fixed-fps 60 --script res://tools/traffic_test.gd
 godot --headless --path . --fixed-fps 60 --script res://tools/mystery_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/parts_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/kerb_test.gd -- --no-save
+godot --headless --path . --fixed-fps 60 --script res://tools/dev_mode_test.gd -- --no-save
 # A real-time playthrough from whatever save you have (or none): load, drive
 # out of the carport, workshop, a job, switching cars, walking, sleeping.
 # Without tour=off it also tours the whole map and reports streaming hitches.

@@ -1,7 +1,7 @@
 extends Node
 ## Root of the game scene. Owns the lo-fi framebuffer (a low-res SubViewport
 ## scaled up with nearest filtering) and the global dev/player hotkeys for
-## weather, time and render settings.
+## weather, time and render settings. Debug builds also get DevMode (F3).
 
 @onready var _lofi: SubViewportContainer = $LoFi
 @onready var _viewport: SubViewport = $LoFi/SubViewport
@@ -13,6 +13,10 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_apply_render_settings)
 	_apply_render_settings()
 	Settings.apply()
+	if DevMode.available():
+		var dev := DevMode.new()
+		dev.name = "DevMode"
+		add_child(dev)
 	if _wants_title():
 		var title := TitleScreen.new()
 		title.name = "TitleScreen"
