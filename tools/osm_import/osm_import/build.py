@@ -50,6 +50,8 @@ MARK_OFFSET = 0.07
 TUNNEL_HEIGHT = 5.6
 DECK_THICKNESS = 1.1
 PARAPET_H = 0.9
+KERB_RADIUS = 1.5       # road gaps narrower than twice this close up; junction corners round off
+SLIVER = 0.4            # path pieces thinner than twice this are dropped
 
 
 @dataclass
@@ -160,6 +162,7 @@ class World:
             self.decks.append((LineString(np.c_[e, n]).buffer(width / 2, cap_style=2),
                                "pier" if d["kind"] == "pier" else "groyne", -(i + 1)))
         self.junctions = self._junction_nodes()
+        self.doubled_paths = streets.doubled_footways(self.ways)
 
         self.water: list[WaterBody] = []
         self.cover: list[tuple[str, int, object]] = []
@@ -635,16 +638,21 @@ class TileBuilder:
     def _road_geoms(self):
         clip = self.box.buffer(20)
         at_grade = [w for w in self.ways if w.group == "road" and not w.grade_separated]
-        self.road_area = self._buffer_ways(at_grade).intersection(clip)
+        # Closing the union fills slivers of ground between carriageways and
+        # rounds the kerb at junction corners instead of leaving a notch.
+        self.road_area = streets.close_gaps(self._buffer_ways(at_grade), KERB_RADIUS).intersection(clip)
         side = [w for w in at_grade if w.sidewalk]
-        self.sidewalk_area = (self._buffer_ways(side, styles.SIDEWALK_WIDTH, cap=2)
+        self.sidewalk_area = (self._buffer_ways(side, styles.SIDEWALK_WIDTH)
                               .intersection(clip).difference(self.road_area)
                               .difference(self.w.water_union))
         foot = [w for w in self.ways if w.group == "foot" and not w.grade_separated
-                and w.tags.get("highway") != "corridor"]
+                and w.tags.get("highway") != "corridor" and w.id not in self.w.doubled_paths]
         self.path_area = (self._buffer_ways(foot).intersection(clip)
                           .difference(self.road_area).difference(self.sidewalk_area)
                           .difference(self.w.water_union))
+        # Paths that end up as thin slivers along a kerb or a road edge.
+        self.path_area = self.path_area.buffer(-SLIVER, quad_segs=1).buffer(SLIVER, quad_segs=1) \
+            .intersection(self.path_area)
         rails = [w for w in self.ways if w.group == "rail" and not w.grade_separated]
         self.rail_area = self._buffer_ways(rails).intersection(clip)
         if self.w.home:

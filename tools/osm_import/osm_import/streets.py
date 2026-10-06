@@ -210,3 +210,51 @@ def normalise(ways, buildings=()) -> list:
             t.pop("lanes:backward", None)
         out.append(replace(w, tags=t))
     return out
+
+
+def close_gaps(area, radius: float):
+    """`area` with gaps narrower than 2 * radius filled and concave corners
+    rounded to `radius`: the slivers of ground left between carriageways
+    whose edges nearly meet, and the sharp notch at a junction's corners."""
+    return area.buffer(radius, quad_segs=2).buffer(-radius, quad_segs=2)
+
+
+# --- footpaths beside streets -------------------------------------------------
+
+VERGE = 6.0          # a mapped footpath this far past the kerbside footpath still runs beside the street
+BESIDE_SHARE = 0.6   # share of a mapped footpath's length beside a street that drops it
+ON_ROAD = ("crossing", "traffic_island")
+
+
+def doubled_footways(ways) -> set[int]:
+    """Ids of OSM footways that only duplicate a street's own footpath.
+
+    Every street of a SIDEWALK class gets a kerbed footpath strip. Perth also
+    maps most footpaths as their own ways (footway=sidewalk), a few metres
+    off the road centre line, so each street had its kerbed strip plus a
+    second, unkerbed path running beside it, or a thin sliver of path along
+    the strip's outer edge. Crossings and traffic islands are on the road
+    itself, so all that showed of them were stubs either side. These ways
+    are left out of the drawn paths; traffic still walks them."""
+    side = [w for w in ways if w.group == "road" and w.sidewalk and not w.grade_separated and len(w.xy) > 1]
+    zones = [LineString(w.xy).buffer(w.width / 2 + styles.SIDEWALK_WIDTH + VERGE, quad_segs=2, cap_style=2)
+             for w in side]
+    tree = shapely.STRtree(zones) if zones else None
+    out = set()
+    for w in ways:
+        if w.group != "foot" or len(w.xy) < 2:
+            continue
+        kind = w.tags.get("footway")
+        if kind in ON_ROAD:
+            out.add(w.id)
+            continue
+        if tree is None or (kind != "sidewalk" and w.tags.get("cycleway") != "sidewalk"):
+            continue
+        line = LineString(w.xy)
+        idx = tree.query(line, predicate="intersects")
+        if not len(idx) or line.length < 1e-6:
+            continue
+        beside = line.intersection(shapely.union_all([zones[i] for i in idx])).length
+        if beside >= BESIDE_SHARE * line.length:
+            out.add(w.id)
+    return out

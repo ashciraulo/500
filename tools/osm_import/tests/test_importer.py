@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from osm_import import places, styles
 from osm_import.extract import Way
 from osm_import.heights import compute_node_heights
-from osm_import.meshbuild import CellGrid, MeshBuilder, Surface, drape, ribbon, triangulate, walls
+from osm_import.meshbuild import CellGrid, MeshBuilder, Surface, drape, polygons_of, ribbon, triangulate, walls
 from osm_import.terrain import HeightField
 from osm_import.tilewriter import encode_surface
 from osm_import.variant import MAGIC, encode, pack_tile, unpack_tile
@@ -314,3 +314,57 @@ def test_car_park_decks_and_roads_in_buildings_are_dropped():
     building = box(95, -10, 170, 10)
     kept = {w.id for w in streets.normalise(ways, [building])}
     assert kept == {3, 5, 6, 7}
+
+
+def test_road_gaps_close_and_junction_corners_round():
+    from osm_import import streets
+    from shapely.geometry import LineString as L
+    pair = L([(0, 0), (100, 0)]).buffer(3, cap_style=2).union(L([(0, 8), (100, 8)]).buffer(3, cap_style=2))
+    assert len(polygons_of(pair)) == 2                     # a 2 m strip of ground between them
+    assert len(polygons_of(streets.close_gaps(pair, 1.5))) == 1
+    tee = L([(-50, 0), (50, 0)]).buffer(3, cap_style=2).union(L([(0, 0), (0, 50)]).buffer(3, cap_style=2))
+    closed = streets.close_gaps(tee, 1.5)
+    assert closed.area > tee.area                          # fillets in the two corners
+    assert closed.buffer(0.5).contains(tee)                # and nothing of the road lost
+    wide = L([(0, 0), (100, 0)]).buffer(3, cap_style=2).union(L([(0, 20), (100, 20)]).buffer(3, cap_style=2))
+    assert len(polygons_of(streets.close_gaps(wide, 1.5))) == 2  # a real median stays
+
+
+def test_mapped_sidewalks_beside_streets_are_not_drawn_twice():
+    from osm_import import streets
+    from types import SimpleNamespace as NS
+
+    def way(wid, group, tags, xy, width=2.0, sidewalk=False):
+        return NS(id=wid, group=group, tags=tags, xy=np.asarray(xy, float), width=width,
+                  sidewalk=sidewalk, grade_separated=False)
+
+    ways = [
+        way(1, "road", {"highway": "residential"}, [(0, 0), (200, 0)], width=6.6, sidewalk=True),
+        way(2, "foot", {"highway": "footway", "footway": "sidewalk"}, [(0, 7), (200, 7)]),     # beside it
+        way(3, "foot", {"highway": "footway", "footway": "sidewalk"}, [(0, 40), (200, 40)]),   # across a park
+        way(4, "foot", {"highway": "footway"}, [(0, 6), (200, 6)]),                            # a plain path
+        way(5, "foot", {"highway": "footway", "footway": "crossing"}, [(50, -8), (50, 8)]),
+        way(6, "road", {"highway": "service"}, [(0, 80), (200, 80)], width=4.0),
+        way(7, "foot", {"highway": "footway", "footway": "sidewalk"}, [(0, 84), (200, 84)]),   # lane has no footpath
+    ]
+    assert streets.doubled_footways(ways) == {2, 5}
+
+
+def test_service_roads_listed_for_the_maps():
+    from osm_import.traffic import TrafficNetwork
+    from types import SimpleNamespace as NS
+
+    def way(tags, xy, group="road"):
+        xy = np.asarray(xy, float)
+        return NS(group=group, tags=tags, xy=xy, h=np.zeros(len(xy)), grade_separated=False)
+
+    net = TrafficNetwork.__new__(TrafficNetwork)
+    net.w = NS(ways=[
+        way({"highway": "service", "service": "alley", "name": "Little Shenton Lane"}, [(0, 0), (40, 0)]),
+        way({"highway": "service"}, [(0, 10), (40, 10)]),
+        way({"highway": "residential"}, [(0, 20), (40, 20)]),
+        way({"highway": "footway"}, [(0, 30), (40, 30)], group="foot"),
+    ])
+    lanes = net._service_roads()
+    assert [(f["kind"], f["name"]) for f in lanes] == [("alley", "Little Shenton Lane"), ("service", "")]
+    assert np.allclose(lanes[0]["pts"][:, 2], 0) and np.isclose(lanes[0]["pts"][-1, 0], 40)
