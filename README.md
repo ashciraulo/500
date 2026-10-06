@@ -96,3 +96,8 @@ godot --headless --path . --script res://tools/playthrough.gd -- tour=off
 # Optional, a few minutes: traffic soak on the Perth map (not in CI)
 godot --headless --path . --fixed-fps 60 --script res://tools/traffic_map_test.gd
 ```
+
+## Credits
+
+Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors,
+available under the Open Database License (ODbL).
