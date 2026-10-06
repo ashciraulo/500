@@ -1,9 +1,14 @@
 extends Node
-## The game's event sounds: jobs and time trials, money, progression, the
-## garage, fuel, the car wash, cargo rattling in the back, and menu clicks.
-## It listens to the other autoloads' signals (Jobs, Progression, Discoveries,
-## SaveGame) and the player's car, so none of that code needs audio calls.
-## Created by the Audio autoload as Audio.hooks.
+## The game's event sounds: jobs and time trials, money, the garage, fuel,
+## the car wash, cargo rattling in the back, and menu clicks. It listens to
+## the other autoloads' signals (Jobs, SaveGame) and the player's car, so none
+## of that code needs audio calls. Created by the Audio autoload as
+## Audio.hooks.
+##
+## Jingles for things that happened (a discovery, a challenge or tier done, a
+## job paid or called off, a fresh job board, dawn and dusk, saving) belong to
+## the Notices autoload, which plays each one as its card appears, so none
+## plays with nothing on screen.
 ##
 ## Music during jobs: deliveries keep the radio on until time runs short (the
 ## last 30% of the par time), when the mission tension loop fades in and
@@ -37,7 +42,6 @@ var _pois_loaded := false    # its points of interest handed to the place ambien
 var _home: Node
 var _zone_timer := 0.0
 var _look_timer := 0.0
-var _last_hour := -1          # GameClock hour last frame, for the dawn and dusk cues
 
 
 func _ready() -> void:
@@ -51,20 +55,8 @@ func _ready() -> void:
 		jobs.job_stage_changed.connect(_on_job_stage)
 		jobs.job_completed.connect(_on_job_completed)
 		jobs.job_abandoned.connect(_on_job_abandoned)
-		jobs.offers_changed.connect(func() -> void: _ui("ui_job_offered", -8.0))
-	var progression := root.get_node_or_null("Progression")
-	if progression and progression.has_signal("tier_completed"):
-		progression.challenge_completed.connect(func(_t, _c) -> void: _ui("ui_badge_pickup"))
-		progression.tier_completed.connect(func(_t, _c) -> void:
-			if _loud():
-				Audio.sting("tier_unlock")
-				_ui("ui_tier_unlocked", -4.0))
-	var discoveries := root.get_node_or_null("Discoveries")
-	if discoveries and discoveries.has_signal("discovered"):
-		discoveries.discovered.connect(func(_id) -> void: _ui("ui_badge_pickup", -3.0))
 	var save := root.get_node_or_null("SaveGame")
-	if save and save.has_signal("saved"):
-		save.saved.connect(func(_p) -> void: Audio.ui("ui_save_confirmed"))
+	if save and save.has_signal("loaded"):
 		save.loaded.connect(func(_p) -> void: _quiet_until = _now() + QUIET_AFTER_LOAD_S)
 	get_tree().node_added.connect(_on_node_added)
 	_room_tone = AudioStreamPlayer.new()
@@ -99,7 +91,6 @@ func _process(delta: float) -> void:
 	_update_job_music()
 	_update_car()
 	_update_zone(delta)
-	_update_light_cues()
 
 
 # ---------------------------------------------------------------------------
@@ -111,22 +102,8 @@ const DAWN_HOUR := 6
 const DUSK_HOUR := 19
 
 
-## A short music cue as the clock passes dawn or dusk, the way Dredge marks
-## the turn of the day. Only in the quiet: radio off, no job music, and only
-## when the clock ran there (not when sleeping skips past it).
-func _update_light_cues() -> void:
-	var clock := get_node_or_null("/root/GameClock")
-	if clock == null:
-		return
-	var hour := int(floor(float(clock.time_of_day)))
-	if hour != _last_hour and _last_hour >= 0 and (_last_hour + 1) % 24 == hour:
-		var cue := light_cue(hour)
-		if cue != "" and _music == "" and not Audio.radio.is_on() and _loud():
-			Audio.play_2d("music/" + cue, "Music", -4.0)
-	_last_hour = hour
-
-
-## The cue for the hour just begun ("" for none).
+## The music cue for the hour just begun ("" for none). Notices plays it with
+## its "First light" or "The sun's going down" card.
 static func light_cue(hour: int) -> String:
 	match hour:
 		DAWN_HOUR:
@@ -166,21 +143,14 @@ func _on_job_completed(job: Dictionary, pay: int, _summary: String) -> void:
 		var record: Dictionary = _jobs.trial_records.get(job.get("trial_id", ""), {})
 		if is_equal_approx(float(record.get("best", -1.0)), float(job.get("elapsed", -2.0))):
 			_ui("ui_new_best_time")
-		if pay > 0:
-			Audio.sting("complete")
-		else:
-			_ui("ui_checkpoint")
-	else:
-		Audio.sting("complete")
-		if _car:
-			Audio.play_at("car/car_boot_open", _car.global_position, -4.0)
+	elif _car:
+		Audio.play_at("car/car_boot_open", _car.global_position, -4.0)
 	if pay > 0:
 		get_tree().create_timer(0.8).timeout.connect(func() -> void: Audio.ui("ui_money_earned"))
 
 
 func _on_job_abandoned(_job: Dictionary) -> void:
 	_set_job_music("")
-	Audio.sting("failed")
 
 
 func _update_job_music() -> void:

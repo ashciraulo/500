@@ -37,16 +37,6 @@ func find_near(p: Vector3) -> Array[String]:
 		var c := FieldJournal.habitat_centre(h)
 		if Vector2(p.x - c.x, p.z - c.z).length() < FIND and Discoveries.discover(FieldJournal.place_key(h)):
 			found.append(String(h.name))
-			Activities.say("A quiet place: %s. Nobody comes here. It's in the journal." % h.name)
-			_sound()
+			# The card plays SOUND (or the new-species cue until it's recorded).
+			Notices.post("%s. Nobody comes here. It's in the journal." % h.name, "quiet")
 	return found
-
-
-func _sound() -> void:
-	var audio := get_node_or_null("/root/Audio")
-	if audio == null or not audio.has_method("has"):
-		return
-	if audio.has(SOUND):
-		audio.play_2d(SOUND, "UI", -4.0)
-	elif audio.has("music/mus_field_new_species"):
-		audio.play_2d("music/mus_field_new_species", "Music", -6.0)

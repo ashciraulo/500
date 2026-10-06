@@ -8,6 +8,8 @@ extends Node
 ## best time per trial is kept, and medals count towards tier challenges.
 
 signal offers_changed
+## A fresh board of jobs came in (not when one is taken or a save loads).
+signal offers_refreshed
 signal job_started(job: Dictionary)
 signal job_stage_changed(job: Dictionary)
 ## `pay` is what was earned (0 for a trial that missed every medal).
@@ -142,6 +144,7 @@ func refresh_offers() -> void:
 		if not lift.is_empty():
 			offers.append(lift)
 	offers_changed.emit()
+	offers_refreshed.emit()
 
 
 func accept(job: Dictionary) -> void:

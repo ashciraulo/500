@@ -355,12 +355,13 @@ func _update_target(delta: float) -> void:
 		var where := FieldJournal.place_name(target.node.global_position)
 		if FieldJournal.see(target.species, where):
 			var b := FieldJournal.bird(target.species)
+			# A card for it (Notices), with its sound as the card shows.
 			if b.get("wrong", false):
-				Activities.say("There's already a page about this in the journal. It isn't in your handwriting." if b.get("page_by", "") != "you" else "There's already a page about this in the journal. It is in your handwriting.")
-				_sound_2d("field/m_page_found" if b.get("page_by", "") != "you" else "field/m_page_found_yours")
+				var theirs: bool = b.get("page_by", "") != "you"
+				Notices.post("There's already a page about this in the journal. It %s in your handwriting." % ("isn't" if theirs else "is"),
+					"mystery", "field/m_page_found" if theirs else "field/m_page_found_yours", "", "UI")
 			else:
-				Activities.say("New for the journal: %s." % b.get("name", target.species))
-				_sound_2d("music/mus_field_new_species", "Music")
+				Notices.post(String(b.get("name", target.species)), "species", "", "", "", SpeciesIcon.bird(b, 40))
 			_sound_2d("field/focus_hit")
 	elif _dwell < need and identified != "" and identified != target.species:
 		identified = ""

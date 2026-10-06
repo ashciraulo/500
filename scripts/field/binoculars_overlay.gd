@@ -94,7 +94,8 @@ func _draw() -> void:
 		_draw_dial(centre, r_view * 0.62)
 	var msg := b.message()
 	if msg != "":
-		_text(msg, Vector2(centre.x, size.y * 0.12), 19, Color(1, 0.95, 0.85))
+		# Below the notice cards that drop in at the top (Notices).
+		_text(msg, Vector2(centre.x, size.y * 0.17), 19, Color(1, 0.95, 0.85))
 	var hint := "Enter / A  Focus dial: press in the bright arcs" if b.state == Binoculars.State.FOCUS \
 		else "Mouse / stick / WASD look    Wheel / E Q zoom    Enter / A photo    B / Esc lower"
 	_text(hint, Vector2(centre.x, size.y - 14.0), 13, Color(0.85, 0.85, 0.8, 0.8))
