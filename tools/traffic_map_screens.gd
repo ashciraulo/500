@@ -56,6 +56,8 @@ func _init() -> void:
 		["night_sweeper", 2.0, 0, 40.0, Vector3(520, 40, 900), 1.3, 7.5, 3],
 		["bin_day_truck", 7.2, 0, 40.0, Vector3(1152, 20, -585), 1.5, 9.0, 2],
 		["northbridge_food_vans", 21.5, 0, 30.0, Vector3(380, 20, 60), 1.6, 8.0, 5],
+		["foreshore_path_morning", 7.0, 0, 30.0, Vector3(885, 10, 1586), 1.5, 9.0, 2],
+		["weekend_bunch_ride", 7.5, 0, 40.0, Vector3(885, 10, 1586), 1.5, 8.0, 6],
 		["stadium_fans_arriving", 18.7, 0, 40.0, Vector3(3170, 6, 560), 2.2, 18.0, 6],
 		["stadium_crowd_leaving", 22.35, 0, 40.0, Vector3(3170, 6, 560), 2.2, 18.0, 6],
 	]
@@ -115,6 +117,10 @@ func _process(_delta: float) -> bool:
 			view = _night_view(shot[0], shot[4], shot[5], shot[6])
 		elif shot[0].begins_with("stadium"):
 			view = _stadium_view(shot[4], shot[5], shot[6])
+		elif shot[0] == "weekend_bunch_ride":
+			view = _bunch_view(shot[4], shot[5], shot[6])
+		elif shot[0] == "foreshore_path_morning":
+			view = _path_view(shot[4], shot[5], shot[6])
 		elif shot[5] <= 12.0:
 			view = _junction_view(shot[4], shot[5], shot[6])
 		else:
@@ -212,6 +218,35 @@ func _night_view(shot_name: String, near: Vector3, height: float, back: float) -
 		var along := -t.basis.z
 		return [t.origin + hatch * back + along * 4.0 + Vector3(0, height, 0), t.origin + hatch * 1.5 + Vector3(0, 1.8, 0)]
 	return [near + Vector3(-back, height + 6.0, back), near]
+
+
+## Ahead of someone riding the path, looking back along it at them.
+func _path_view(near: Vector3, height: float, back: float) -> Array:
+	var pt: TrafficPaths = _traffic.paths
+	if _frames % 600 == 0:
+		print("paths: ", pt.stats, " movers ", pt.movers.size())
+	var best = null
+	for m in pt.movers:
+		if m.rider and (best == null or m.position.distance_to(near) < best.position.distance_to(near)):
+			best = m
+	if best == null:
+		return [near + Vector3(-back, height + 6.0, back), near]
+	var cam: Vector3 = best.position + best.forward * back - TrafficGraph.left_of(best.forward) * 1.6
+	return [cam + Vector3(0, height, 0), best.position + Vector3(0, 1.0, 0)]
+
+
+## Out in front of a bunch ride, by the kerb, looking back down the line.
+func _bunch_view(near: Vector3, height: float, back: float) -> Array:
+	var rides: TrafficRides = _traffic.rides
+	if _frames % 600 == 0:
+		print("rides: ", rides.stats, " bunches ", rides.bunches.size())
+	if rides.bunches.is_empty() or rides.bunches[0].riders.size() < 3:
+		return [near + Vector3(-back, height + 6.0, back), near]
+	var riders: Array = rides.bunches[0].riders
+	var v: TrafficVehicle = riders[0]
+	var kerb := TrafficGraph.left_of(v.forward)
+	var cam := v.position + v.forward * back + kerb * 2.4 + Vector3(0, height, 0)
+	return [cam, riders[mini(3, riders.size() - 1)].position + Vector3(0, 1.0, 0)]
 
 
 ## Behind the thickest knot of fans near `near`, looking on towards the

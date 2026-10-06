@@ -302,6 +302,8 @@ class PedEdge:
 	var ends := {}
 	## Footways from the map can be named (the Matagarup Bridge).
 	var name := ""
+	## A bike or shared path (see TrafficPaths).
+	var cycle := false
 
 	func other(n: PedNode) -> PedNode:
 		return b if n == a else a
@@ -492,6 +494,7 @@ func add_data(data: Dictionary) -> int:
 			_link_footpaths(node)
 
 	_add_footways(data.get("footways", []))
+	_add_footways(data.get("cycleways", []), true)
 	var rail_before := rail_edges.size()
 	for r in data.get("rail", []):
 		_add_rail(_points(r.pts))
@@ -1052,7 +1055,7 @@ func _link_footpaths(node: GNode) -> void:
 ## Footways from the map. OSM paths join at shared points that can be
 ## anywhere along a way, not just at its ends, so split them there; then
 ## tie loose ends to the footpath network close by.
-func _add_footways(list: Array) -> void:
+func _add_footways(list: Array, cycle := false) -> void:
 	if list.is_empty():
 		return
 	var lines: Array = []
@@ -1077,10 +1080,12 @@ func _add_footways(list: Array) -> void:
 				var way := add_footway(piece)
 				if way:
 					way.name = line[1]
+					way.cycle = cycle
 				piece = PackedVector3Array([pts[i]])
 		var last := add_footway(piece)
 		if last:
 			last.name = line[1]
+			last.cycle = cycle
 			ends.append(_ped_node_at(pts[0]))
 			ends.append(last.b)
 	for pn in ends:
@@ -1101,6 +1106,8 @@ func _add_footways(list: Array) -> void:
 		if best:
 			var link := _add_ped_edge(PackedVector3Array([pn.pos, best.pos]), pn, best)
 			link.name = other.name
+			# Onto another path: rideable if both are.
+			link.cycle = cycle and best.edges.any(func(e): return e.cycle)
 
 
 func add_footway(pts: PackedVector3Array) -> PedEdge:

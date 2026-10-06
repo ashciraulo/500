@@ -141,6 +141,27 @@ the old test grid get a network matching the grid's streets instead.
   7pm to 2am, food vans park up in Northbridge's street bays, hatches lit,
   with a few people queuing. Working vehicles use `TrafficVehicle.max_speed`,
   `keep_lane` and `service_stops` ({ lane, s, dwell } stops, marked `done`).
+- **Bunch rides** (`rides`, TrafficRides). Saturday and Sunday mornings, 6
+  to 10 (and one early bunch on weekdays, 5:30 to 7), clubs of road cyclists
+  in matching kit ride the river loop: Mounts Bay Road, Riverside Drive, Mill
+  Point Road, the South Perth Esplanade, Kings Park Road, Lake Monger Drive.
+  Eight to fourteen riders at 31 to 35 km/h, staggered two abreast, each
+  sitting a wheel behind the one in front (`TrafficVehicle.follow`) and
+  taking the same turns; cars queue behind. None in the rain.
+- **Models.** Vehicles use the modelled bodies in
+  art/models/vehicles/traffic/<type>.glb (hatch, sedan, suv, ute, van, taxi,
+  bus, police, ambulance, fire, carriage_cab, carriage_mid) and the night
+  shift's in art/models/props/city/ (sweeper, bin_truck, wheelie_bin,
+  food_van), falling back to the code-built ones when a file is missing.
+  Traffic recolours their "Paint" and "Livery" materials, lights HeadL/HeadR,
+  TailL/TailR and IndL/IndR, and flashes LightBar/Red and Blue (Beacon/A and
+  B on the night shift).
+- **Bike paths** (`paths`, TrafficPaths). The map's `cycleways` join the
+  footpath network as paths marked `cycle` (people walk them too). People
+  ride them at an easy pace and joggers run them, most from 5:30 to 9 and
+  4:30 to 7:30, fewer midday (more riders at weekends), the odd jogger at
+  night, hardly anyone in the rain. They keep left, pull out to pass, and
+  stop short of the player on foot.
 - **Driving** uses the intelligent driver model: each car keeps a safe gap to
   whatever is ahead (the car in front, a stop line, a person, the player).
   Cars slow for bends, change lanes to pass slow traffic, and drive a little
@@ -270,14 +291,19 @@ Vector3)`. `schools` signals `zone_changed(active: bool)` and
 `guard_out(position: Vector3)`. `events` signals `event_changed(event_name:
 String, phase: int)` (TrafficEvents.Phase: NONE, ARRIVING, ON, LEAVING).
 `night` signals `bin_emptied(position: Vector3)` and
-`food_van_opened(position: Vector3, food: String)`. `vehicle_spawned` types
-also include `sweeper` and `bin_truck`.
+`food_van_opened(position: Vector3, food: String)`. `rides` signals
+`bunch_started(position: Vector3, club: String, riders: int)`.
+`vehicle_spawned` types also include `sweeper` and `bin_truck`.
 
 Sounds the traffic plays when the audio thread adds them (all optional):
 `traffic/traffic_guard_whistle` (a crossing guard steps out),
 `traffic/traffic_crowd_roar_loop` and `traffic/traffic_crowd_cheer` (the
 stadium during a game), `traffic/traffic_bin_tip` (the bin truck empties a
-bin).
+bin), `traffic/traffic_sweeper_loop` (a street sweeper's engine and brushes,
+looped on the sweeper), `traffic/traffic_food_van_hum_loop` and
+`traffic/traffic_food_van_chatter_loop` (on each food van: generator and
+fridges, customers), `traffic/traffic_bunch_loop` (freewheels and chatter,
+following the middle of a bunch ride).
 
 Each vehicle body has a child `Audio` (Node3D at the engine) with a `Horn`
 AudioStreamPlayer3D on the Vehicles bus playing a placeholder two-tone horn.

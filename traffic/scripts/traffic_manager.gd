@@ -95,6 +95,7 @@ var _pool := {}
 var _ped_pool: Array = []
 var _hash := {}
 var _next_id := 1
+var _serial := 0
 var _spawn_timer := 0.0
 var _train_timer := 20.0
 var _warm := 2.0
@@ -108,6 +109,9 @@ var network_ms := 0.0
 var network_piece_ms := 0.0
 var network_worst := ""
 var network_frame_pieces := 0
+## Each frame's time spent adding road data (the last 4000), for tests:
+## one slow frame can be the machine, not us.
+var network_frames := PackedFloat32Array()
 ## Emergency vehicles on the road now (lights and siren on).
 var emergencies: Array = []
 var _emergency_timer := 120.0
@@ -142,6 +146,8 @@ var kerbside: TrafficKerbside
 var schools: TrafficSchools
 var events: TrafficEvents
 var night: TrafficNight
+var rides: TrafficRides
+var paths: TrafficPaths
 ## Other things standing in the road that traffic stops for (crossing guards
 ## and the children they see across): anything with position, forward,
 ## velocity, speed, length and width.
@@ -209,6 +215,14 @@ func _ready() -> void:
 	night.name = "Night"
 	add_child(night)
 	night.setup(self, graph)
+	rides = TrafficRides.new()
+	rides.name = "Rides"
+	add_child(rides)
+	rides.setup(self, graph)
+	paths = TrafficPaths.new()
+	paths.name = "Paths"
+	add_child(paths)
+	paths.setup(self, graph)
 	_horn_car = _make_horn(415.0, 523.0, 1.4)
 	_horn_bus = _make_horn(247.0, 311.0, 1.6)
 	_siren = _make_siren()
@@ -343,6 +357,8 @@ func _process_networks() -> void:
 		if (Time.get_ticks_usec() - t0) / 1000.0 > network_budget_ms:
 			break
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	if network_frames.size() < 4000:
+		network_frames.append(ms)
 	if ms > network_ms:
 		network_ms = ms
 		network_frame_pieces = count
@@ -382,6 +398,8 @@ func clear_all() -> void:
 	schools.clear()
 	events.clear()
 	night.clear()
+	rides.clear()
+	paths.clear()
 	_warm = 2.0
 
 
@@ -418,6 +436,8 @@ func _physics_process(delta: float) -> void:
 	schools.update(delta, focus_position())
 	events.update(delta, focus_position())
 	night.update(delta, focus_position())
+	rides.update(delta, focus_position())
+	paths.update(delta, focus_position())
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	step_ms = lerpf(step_ms, ms, 0.05)
 
@@ -684,7 +704,13 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 	var v0: float = lane.limit() * v.eagerness * (1.0 - 0.15 * wet)
 	if v.is_bike:
 		a_max = 0.9
-		v0 = minf(v0, 6.5 * v.eagerness)
+		# A bunch rides at its own pace (max_speed), others pootle along.
+		v0 = minf(v0, v.max_speed if v.max_speed > 0.0 else 6.5 * v.eagerness)
+	# In a bunch, the wheel in front: [gap, speed] (see below).
+	var wheel: Array = []
+	var bunched := _in_bunch(v)
+	if bunched:
+		a_max = 1.5
 	if lane.zone_speed > 0.0:
 		v0 = minf(v0, lane.zone_speed)  # Nobody's eager in a school zone.
 	if v.max_speed > 0.0:
@@ -719,6 +745,12 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 			if o == v:
 				continue
 			if i == 0 and (o.s < v.s or (o.s == v.s and o.id < v.id)):
+				continue
+			if bunched and o.bunch == v.bunch:
+				# Bunch mates: we ride on the wheel in front, the rest look
+				# after themselves.
+				if o == v.follow and wheel.is_empty():
+					wheel = [base + o.s - (o.length + v.length) * 0.5, o.speed]
 				continue
 			if v.emergency and o.pull_over > 0.0 and o.lateral > 0.7:
 				continue  # Pulled over for us: we go round.
@@ -953,7 +985,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 	# the cars that have.
 	v.lateral_base = 0.0
 	if v.is_bike:
-		v.lateral_base = 1.15 if not lane.connector else 0.5
+		v.lateral_base = (1.15 if not lane.connector else 0.5) - v.bunch_side
 	elif v.pass_bike > 0.0:
 		v.pass_bike -= dt
 		if not lane.connector:
@@ -1026,6 +1058,15 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 		var s_star := 2.2 + maxf(0.0, v.speed * headway + v.speed * dv / (2.0 * sqrt(a_max * b_comf)))
 		var q := s_star / maxf(gap, 0.2)
 		a -= a_max * q * q
+	if not wheel.is_empty():
+		# Sitting on the wheel in front, a bike length back: match its speed
+		# and close up, but never faster than anything else ahead allows.
+		var a_wheel: float = 1.2 * (wheel[1] - v.speed) + 0.6 * (wheel[0] - BUNCH_GAP)
+		if wheel[0] < 0.5:
+			a_wheel = minf(a_wheel, -4.0)
+		a = minf(a + a_max * (v.speed / maxf(v0, 0.5)) ** 4, a_wheel)
+		if v.speed > v.max_speed * 1.2:
+			a = minf(a, 0.0)
 	if v.hazard_time > 5.0:
 		a = -6.0  # Just got bumped: stop and put the hazards on.
 	a = clampf(a, -9.0, a_max)
@@ -1215,6 +1256,8 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 		# the road, however tightly a turn cuts the corner.
 		if o is TrafficPedestrian and (o.edge == null or not o.edge.crossing or o.waiting):
 			continue
+		if is_vehicle and v.bunch > 0 and o.bunch == v.bunch:
+			continue  # The bunch rides on each other's wheels: see _drive.
 		if is_vehicle:
 			# Two cars blocking each other: the lower id goes first.
 			if o.blocked_by == v and v.id < o.id:
@@ -1292,6 +1335,13 @@ func _extend_route(v: TrafficVehicle) -> void:
 func _choose_next(v: TrafficVehicle, lane: TrafficGraph.Lane) -> TrafficGraph.Lane:
 	if lane.next.size() == 1:
 		return lane.next[0]
+	if _in_bunch(v):
+		# Go where the rider ahead went.
+		var ahead: TrafficVehicle = v.follow
+		var path: Array = [ahead.prev_lane] + ahead.route
+		var i := path.find(lane)
+		if i >= 0 and i + 1 < path.size() and lane.next.has(path[i + 1]):
+			return path[i + 1]
 	var weights: Array = []
 	var total := 0.0
 	var open_road := false
@@ -1311,7 +1361,10 @@ func _choose_next(v: TrafficVehicle, lane: TrafficGraph.Lane) -> TrafficGraph.La
 		var out: TrafficGraph.Lane = c.next[0]
 		var rank: int = out.road.rank if out.road else 2
 		w *= 1.0 + rank * 0.15
-		if v.is_bike and out.road and (out.road.kind.begins_with("motorway") or out.road.kind.begins_with("trunk")):
+		var ride: bool = out.road != null and v.ride_roads.has(out.road.name)
+		if ride:
+			w *= 40.0  # The bunch keeps to its loop.
+		elif v.is_bike and out.road and (out.road.kind.begins_with("motorway") or out.road.kind.begins_with("trunk")):
 			w *= 0.001  # No bikes on the freeway.
 		if v.is_bus:
 			if v.bus_route != "" and out.road:
@@ -1327,6 +1380,15 @@ func _choose_next(v: TrafficVehicle, lane: TrafficGraph.Lane) -> TrafficGraph.La
 		if r <= 0.0:
 			return lane.next[i]
 	return lane.next[lane.next.size() - 1]
+
+
+## The gap bunch riders leave to the wheel in front, metres.
+const BUNCH_GAP := 1.3
+
+
+## Whether `v` is riding in a bunch behind someone still there.
+func _in_bunch(v: TrafficVehicle) -> bool:
+	return v.follow != null and v.follow.active and v.follow.serial == v.follow_serial
 
 
 func _enter_lane(v: TrafficVehicle, lane: TrafficGraph.Lane) -> void:
@@ -1571,6 +1633,8 @@ func _turn_indicator(turn: int) -> int:
 func _apply_lights(v: TrafficVehicle, key: int) -> void:
 	var changed := key ^ v.lights_key if v.lights_key >= 0 else 0xFF
 	v.lights_key = key
+	if v.model:
+		_apply_model_lights(v, key, changed)
 	var m := v.mesh
 	if changed & 1:
 		var on := (key & 1) != 0
@@ -1590,6 +1654,32 @@ func _apply_lights(v: TrafficVehicle, key: int) -> void:
 		m.set_surface_override_material(TrafficModels.Surf.IND_L, amber_on if key & 4 else amber_off)
 	if changed & 8:
 		m.set_surface_override_material(TrafficModels.Surf.IND_R, amber_on if key & 8 else amber_off)
+
+
+## The lamps on a modelled vehicle: HeadL/HeadR, TailL/TailR.
+func _apply_model_lights(v: TrafficVehicle, key: int, changed: int) -> void:
+	if changed & 1:
+		var head := TrafficModels.material(Color(1.0, 0.95, 0.8), 3.0) if key & 1 else null
+		for n in ["HeadL", "HeadR"]:
+			var lamp: MeshInstance3D = v.model.get_node_or_null(n)
+			if lamp:
+				lamp.material_override = head
+	if changed & 3:
+		var tail: Material = null
+		if key & 2:
+			tail = TrafficModels.material(Color(1.0, 0.1, 0.05), 3.0)
+		elif key & 1:
+			tail = TrafficModels.material(Color(0.8, 0.05, 0.03), 1.2)
+		for n in ["TailL", "TailR"]:
+			var lamp: MeshInstance3D = v.model.get_node_or_null(n)
+			if lamp:
+				lamp.material_override = tail
+	var amber := TrafficModels.material(Color(1.0, 0.55, 0.05), 3.0)
+	for side in [["IndL", 4], ["IndR", 8]]:
+		if changed & side[1]:
+			var lamp: MeshInstance3D = v.model.get_node_or_null(side[0])
+			if lamp:
+				lamp.material_override = amber if key & side[1] else null
 
 
 # --- Spawning and pooling -----------------------------------------------------
@@ -1894,6 +1984,13 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	v.max_speed = 0.0
 	v.keep_lane = false
 	v.service_stops = []
+	v.follow = null
+	v.follow_serial = -1
+	_serial += 1
+	v.serial = _serial
+	v.bunch = 0
+	v.bunch_side = 0.0
+	v.ride_roads = {}
 	v.lateral = 0.0
 	v.lateral_base = 0.0
 	v.pull_over = 0.0
@@ -1954,6 +2051,7 @@ func _paint(v: TrafficVehicle) -> void:
 	else:
 		v.paint = TrafficModels.pick_paint(_rng)
 		v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(v.paint))
+	_paint_model(v)
 
 
 ## Paint a taxi in `colours`: [body, band].
@@ -1961,6 +2059,21 @@ func paint_taxi(v: TrafficVehicle, colours: Array) -> void:
 	v.paint = colours[0]
 	v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(colours[0]))
 	v.mesh.set_surface_override_material(TrafficModels.Surf.LIVERY, TrafficModels.material(colours[1]))
+	_paint_model(v)
+
+
+## A modelled vehicle wears what the code-built one would: its "Paint" and
+## "Livery" materials take the colours just put on the mesh. (The night
+## shift's come in their council colours.)
+func _paint_model(v: TrafficVehicle) -> void:
+	if v.model == null or v.type == &"sweeper" or v.type == &"bin_truck":
+		return
+	var slots := { "Paint": TrafficModels.Surf.PAINT, "Livery": TrafficModels.Surf.LIVERY }
+	for mi in v.model.find_children("*", "MeshInstance3D", true, false):
+		for mat_name in slots:
+			var i := TrafficModels.surface_named(mi, mat_name)
+			if i >= 0:
+				mi.set_surface_override_material(i, v.mesh.get_surface_override_material(slots[mat_name]))
 
 
 ## Perth's CAT colours by name, for routes the map gives without a colour.
@@ -2009,6 +2122,13 @@ func _create_vehicle(type: StringName) -> TrafficVehicle:
 	mesh.mesh = TrafficModels.vehicle_mesh(type)
 	mesh.visibility_range_end = 420.0
 	body.add_child(mesh)
+	if type != &"bike":
+		var night := type == &"sweeper" or type == &"bin_truck"
+		v.model = TrafficModels.model(type, TrafficModels.MODEL_DIR if night else TrafficModels.VEHICLE_DIR)
+		if v.model:
+			v.model.name = "Model"
+			body.add_child(v.model)
+			mesh.visible = false
 	v.mesh = mesh
 	mesh.set_surface_override_material(TrafficModels.Surf.GLASS, TrafficModels.material(Color(0.07, 0.08, 0.1)))
 	mesh.set_surface_override_material(TrafficModels.Surf.TYRES, TrafficModels.material(Color(0.05, 0.05, 0.05)))
@@ -2036,8 +2156,15 @@ func _create_vehicle(type: StringName) -> TrafficVehicle:
 		siren.volume_db = -6.0
 		audio.add_child(siren)
 		v.siren = siren
-		v.light_bar = TrafficModels.light_bar(type)
-		body.add_child(v.light_bar)
+		var bar: Node3D = v.model.get_node_or_null("LightBar") if v.model else null
+		if bar:
+			v.light_bar = bar
+			var at: Node3D = v.model.get_node_or_null("Siren")
+			if at:
+				siren.position = at.position
+		else:
+			v.light_bar = TrafficModels.light_bar(type)
+			body.add_child(v.light_bar)
 	v.body = body
 	add_child(body)
 	stats.created += 1
@@ -2370,7 +2497,25 @@ func _spawn_train(edge: TrafficGraph.RailEdge, s: float, fwd: bool, cars := 0) -
 		body.add_child(shape)
 		var mesh := MeshInstance3D.new()
 		# A cab at each end of every three-car set.
-		mesh.mesh = TrafficModels.carriage_mesh(i % 3 == 0, i % 3 == 2 or i == cars - 1)
+		var cab_front := i % 3 == 0
+		var cab_rear := i % 3 == 2 or i == cars - 1
+		var modelled := TrafficModels.model("carriage_cab" if cab_front or cab_rear else "carriage_mid", TrafficModels.VEHICLE_DIR)
+		if modelled:
+			mesh.visible = false
+			if cab_rear and not cab_front:
+				modelled.rotation.y = PI  # The cab at the back of the set.
+			# Headlights on the leading cab, tail lights on the trailing one.
+			var lead := i == 0
+			for n in ["HeadL", "HeadR", "TailL", "TailR"]:
+				var lamp: MeshInstance3D = modelled.get_node_or_null(n)
+				if lamp and (cab_front or cab_rear):
+					var head: bool = n.begins_with("Head")
+					if head and lead:
+						lamp.material_override = TrafficModels.material(Color(1.0, 0.95, 0.8), 3.0)
+					elif not head and i == cars - 1:
+						lamp.material_override = TrafficModels.material(Color(0.9, 0.08, 0.05), 2.0)
+			body.add_child(modelled)
+		mesh.mesh = TrafficModels.carriage_mesh(cab_front, cab_rear)
 		mesh.visibility_range_end = 1200.0
 		mesh.set_surface_override_material(TrafficModels.Surf.PAINT, white)
 		mesh.set_surface_override_material(TrafficModels.Surf.GLASS, TrafficModels.material(Color(0.06, 0.07, 0.09)))

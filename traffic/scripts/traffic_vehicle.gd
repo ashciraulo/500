@@ -26,6 +26,8 @@ var pass_bike := 0.0
 var emergency := false
 var siren: AudioStreamPlayer3D
 var light_bar: Node3D
+## A modelled body (art/models/...) shown instead of `mesh`, or null.
+var model: Node3D
 var length := 4.5
 var width := 1.8
 var paint := Color.WHITE
@@ -69,6 +71,16 @@ var dwell := 0.0
 var max_speed := 0.0
 var keep_lane := false
 var service_stops: Array = []
+## Riding in a bunch (its number, 0 for none): the rider just ahead (whose turns we take and whose
+## wheel we sit on), which side of the bunch we ride (metres out from the
+## kerb line), and the roads the bunch keeps to (road names, set on all).
+var follow: TrafficVehicle
+var follow_serial := -1
+## Counts up with every spawn (pooled vehicles keep their id).
+var serial := 0
+var bunch := 0
+var bunch_side := 0.0
+var ride_roads := {}
 var lifetime := 0.0
 
 ## Sideways offset from the lane centre (to dodge the player), metres; + = left.

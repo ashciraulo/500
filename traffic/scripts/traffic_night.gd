@@ -149,6 +149,9 @@ func update(delta: float, focus: Vector3) -> void:
 		for bin in bins.duplicate():
 			if not bin.lane.road.lanes.has(bin.lane):
 				_remove_bin(bin)
+	for v in sweepers:
+		if not v.active or v.type != &"sweeper":
+			_hum(v, false)
 	sweepers = sweepers.filter(func(v): return v.active and v.type == &"sweeper")
 	trucks = trucks.filter(func(t): return t.v.active and t.v.type == &"bin_truck")
 	if not enabled:
@@ -160,6 +163,8 @@ func update(delta: float, focus: Vector3) -> void:
 
 
 func clear() -> void:
+	for v in sweepers:
+		_hum(v, false)
 	sweepers.clear()
 	trucks.clear()
 	for bin in bins.duplicate():
@@ -221,33 +226,75 @@ func add_sweeper(lane: TrafficGraph.Lane, s: float) -> TrafficVehicle:
 	v.max_speed = SWEEPER_SPEED
 	v.keep_lane = true
 	_dress(v, TrafficModels.SWEEPER_PAINT)
-	if not v.body.has_node("Brooms"):
+	if v.model == null and not v.body.has_node("Brooms"):
 		v.body.add_child(TrafficModels.sweeper_brushes())
+	_hum(v, true)
 	sweepers.append(v)
 	stats.sweepers += 1
 	return v
+
+
+## The sweeper's engine and brushes, if the audio side has the loop.
+func _hum(v: TrafficVehicle, on: bool) -> void:
+	var hum: AudioStreamPlayer3D = v.body.get_node_or_null("Hum")
+	if not on:
+		if hum:
+			hum.stop()
+		return
+	if hum == null:
+		hum = TrafficNight.loop_player(self, "traffic/traffic_sweeper_loop", &"Vehicles", 10.0, 120.0)
+		if hum == null:
+			return
+		hum.name = "Hum"
+		hum.position = Vector3(0, 0.8, 0)
+		v.body.add_child(hum)
+	hum.play()
+
+
+## A looping 3D sound player for `sound_name`, or null if the audio side
+## hasn't got it (yet). Not added to the tree.
+static func loop_player(from: Node, sound_name: String, bus: StringName, unit: float, reach: float, db := 0.0) -> AudioStreamPlayer3D:
+	var audio := from.get_node_or_null("/root/Audio")
+	if audio == null or not audio.has_method("has") or not audio.has(sound_name):
+		return null
+	var p := AudioStreamPlayer3D.new()
+	p.stream = audio.stream(sound_name, true)
+	p.bus = bus if AudioServer.get_bus_index(bus) >= 0 else &"Master"
+	p.unit_size = unit
+	p.max_distance = reach
+	p.volume_db = db
+	p.autoplay = true
+	return p
 
 
 func _dress(v: TrafficVehicle, paint: Array) -> void:
 	v.paint = paint[0]
 	v.mesh.set_surface_override_material(TrafficModels.Surf.PAINT, TrafficModels.material(paint[0]))
 	v.mesh.set_surface_override_material(TrafficModels.Surf.LIVERY, TrafficModels.material(paint[1]))
-	if not v.body.has_node("Beacon"):
+	# (A modelled one comes in its council colours, beacons and all.)
+	if v.model == null and not v.body.has_node("Beacon"):
 		v.body.add_child(TrafficModels.beacon(v.type))
 
 
 func _flash(v: TrafficVehicle, phase: bool) -> void:
-	var beacon: Node3D = v.body.get_node_or_null("Beacon")
+	var beacon: Node3D = _part(v, "Beacon")
 	if beacon:
-		(beacon.get_node("A") as MeshInstance3D).material_override = _lit if phase else _unlit
-		(beacon.get_node("B") as MeshInstance3D).material_override = _unlit if phase else _lit
+		TrafficModels.set_lamp(beacon.get_node("A"), _lit if phase else _unlit)
+		TrafficModels.set_lamp(beacon.get_node("B"), _unlit if phase else _lit)
+
+
+## A named part of a working vehicle, on its model or its code-built body.
+func _part(v: TrafficVehicle, part: String) -> Node:
+	if v.model:
+		return v.model.get_node_or_null(part)
+	return v.body.get_node_or_null(part)
 
 
 func _animate_sweeper(v: TrafficVehicle, delta: float, phase: bool) -> void:
 	if not v.active:
 		return
 	_flash(v, phase)
-	var brooms: Node3D = v.body.get_node_or_null("Brooms")
+	var brooms: Node3D = v.model if v.model else v.body.get_node_or_null("Brooms")
 	if brooms:
 		# The brooms turn into the gutter, whether moving or not.
 		brooms.get_node("BroomL").rotate_y(-9.0 * delta)
@@ -355,7 +402,7 @@ func add_bin_truck(lane: TrafficGraph.Lane, s: float) -> Dictionary:
 	v.max_speed = TRUCK_SPEED
 	v.keep_lane = true
 	_dress(v, TrafficModels.BIN_TRUCK_PAINT)
-	if not v.body.has_node("BinArm"):
+	if v.model == null and not v.body.has_node("BinArm"):
 		v.body.add_child(TrafficModels.bin_arm())
 	var t := { "v": v, "stops": [] }
 	trucks.append(t)
@@ -390,10 +437,13 @@ func _animate_truck(t: Dictionary, phase: bool) -> void:
 	if not v.active:
 		return
 	_flash(v, phase)
-	var rig: Node3D = v.body.get_node_or_null("BinArm")
+	var rig: Node3D = _part(v, "BinArm")
 	if rig == null:
 		return
 	var grip: Node3D = rig.get_node("Grip")
+	if not grip.has_meta("rest"):
+		grip.set_meta("rest", grip.position.y)
+	var rest: float = grip.get_meta("rest")
 	# The bin being lifted: at the truck's side, stopped there.
 	var lifting = null
 	var front: float = v.s + v.length * 0.5
@@ -407,7 +457,7 @@ func _animate_truck(t: Dictionary, phase: bool) -> void:
 		if st.lane == v.route[0] and absf(st.s - front) < 2.5 and v.speed < 0.5:
 			lifting = bin
 	if lifting == null:
-		grip.position.y = move_toward(grip.position.y, 0.75, 0.05)
+		grip.position.y = move_toward(grip.position.y, rest, 0.05)
 		return
 	var bin: Dictionary = lifting
 	bin.lifting = true
@@ -426,7 +476,7 @@ func _animate_truck(t: Dictionary, phase: bool) -> void:
 		tip = sin((k - 0.4) / 0.3 * PI)
 	elif k < 0.85:
 		y = (1.0 - smoothstep(0.7, 0.85, k)) * 2.55
-	grip.position.y = 0.75 + y
+	grip.position.y = rest + y
 	lid.rotation.x = -1.9 * clampf(tip * 1.5, 0.0, 1.0)
 	var held := _held(rig, y, tip)
 	if k < 0.15:
@@ -515,6 +565,12 @@ func add_food_van(spot: Dictionary) -> Dictionary:
 		parking._hide(spot)
 	spot.reserved = true
 	var van := { "spot": spot, "node": node, "food": pick[0], "queue": [] }
+	# The generator and fridges, and the customers.
+	for sound in [["traffic/traffic_food_van_hum_loop", Vector3(0, 1.0, 1.5), 0.0], ["traffic/traffic_food_van_chatter_loop", Vector3(-2.0, 1.5, 0.0), -3.0]]:
+		var player := TrafficNight.loop_player(self, sound[0], &"SFX", 6.0, 60.0, sound[2])
+		if player:
+			player.position = sound[1]
+			node.add_child(player)
 	var hatch_dir := TrafficGraph.left_of(-fwd)
 	for i in _rng.randi_range(2, 4):
 		var person := TrafficModels.person(_rng)
