@@ -1307,6 +1307,10 @@ func _advance(v: TrafficVehicle) -> void:
 		_finish_lane_change(v)
 		_leave_lane(v, old)
 		v.prev_lane = v.route.pop_front()
+		if v.bunch > 0:
+			v.trail.append(v.prev_lane)
+			if v.trail.size() > BUNCH_TRAIL:
+				v.trail.pop_front()
 		_enter_lane(v, v.route[0])
 		v.stop_sign_wait = 0.0
 		v.yield_wait = 0.0
@@ -1338,7 +1342,7 @@ func _choose_next(v: TrafficVehicle, lane: TrafficGraph.Lane) -> TrafficGraph.La
 	if _in_bunch(v):
 		# Go where the rider ahead went.
 		var ahead: TrafficVehicle = v.follow
-		var path: Array = [ahead.prev_lane] + ahead.route
+		var path: Array = ahead.trail + ahead.route
 		var i := path.find(lane)
 		if i >= 0 and i + 1 < path.size() and lane.next.has(path[i + 1]):
 			return path[i + 1]
@@ -1384,6 +1388,8 @@ func _choose_next(v: TrafficVehicle, lane: TrafficGraph.Lane) -> TrafficGraph.La
 
 ## The gap bunch riders leave to the wheel in front, metres.
 const BUNCH_GAP := 1.3
+## How many lanes back a bunch rider remembers for the one behind.
+const BUNCH_TRAIL := 16
 
 
 ## Whether `v` is riding in a bunch behind someone still there.
@@ -1990,6 +1996,7 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	v.serial = _serial
 	v.bunch = 0
 	v.bunch_side = 0.0
+	v.trail.clear()
 	v.ride_roads = {}
 	v.lateral = 0.0
 	v.lateral_base = 0.0
