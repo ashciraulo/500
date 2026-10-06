@@ -311,7 +311,7 @@ func _apply_inside() -> void:
 	# The radio applies its own outside trim (radio.gd listens for the signal).
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), (CABIN_DB if _inside else CABIN_OUT_DB) + _effects_db)
 	# Inside, the street and the weather drop well under the radio and engine.
-	var levels := {"Ambience": -9.0 if _inside else 0.0, "Weather": -12.0 if _inside else -4.0,
+	var levels := {"Ambience": -9.0 if _inside else 0.0, "Weather": -18.0 if _inside else -4.0,
 			"Vehicles": _base_db.get("Vehicles", 0.0), "Tyres": _base_db.get("Tyres", 0.0),
 			"Engine": _base_db.get("Engine", 0.0)}
 	# Indoors at home the street is through the walls: dull and well down.
