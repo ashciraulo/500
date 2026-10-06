@@ -20,6 +20,7 @@ import numpy as np
 import shapely
 from shapely.geometry import LineString, Point, Polygon, box as sbox
 from shapely.geometry.polygon import orient
+from scipy.ndimage import distance_transform_edt, gaussian_filter
 
 from . import fetch, landmarks, places, pois, streets, styles, textures
 from .traffic import TrafficNetwork
@@ -28,7 +29,7 @@ from .common import (CACHE_DIR, MAP_DIR, TILES_DIR, Projector, TileKey, load_con
 from .extract import extract
 from .overview import build_overview
 from .sea import sea_polygon
-from .heights import compute_node_heights, way_group
+from .heights import compute_node_heights, densify_ways, way_group
 from .meshbuild import (CellGrid, MeshBuilder, Surface, densify, drape, flat_cap,
                         offset_polyline, polygons_of, ribbon, triangulate, walls)
 from .terrain import HeightField, build_heightfield
@@ -52,6 +53,21 @@ TUNNEL_ROOF = 0.6       # thickness of a tunnel's roof
 TUNNEL_SLOT = 0.3       # ground less than this above a tunnel's roof comes away over it
 TUNNEL_HEADROOM = {"road": 4.0, "service": 2.5, "foot": 2.5}  # least a ceiling comes down to
 TUNNEL_STEP = 4.0
+# Ground fit to roads (World._fit_ground_to_roads).
+CORE_MARGIN = 2.5     # metres past a road's kerb or sidewalk held level with it (half a grid cell)
+EDGE_BLEND = 12.0     # at least this wide an ease from a road's edge back to the ground
+SHORE_GRADE = 0.15    # lake banks rise from the water no steeper than this (1 in 7)
+SHORE_REACH = 60.0    # ...out to this far from the water
+SEED_TOLERANCE = 1.5  # roads further than this from the DEM (ramps, cuttings) don't shape the ground
+DEM_NEAR = 10.0       # open ground starts to take the DEM this far from a road...
+DEM_FAR = 45.0        # ...and has all of it from here
+BUILT_REACH = 20.0    # ground this close to a building is interpolated from the roads
+BUILT_SOFT = 15.0     # softening of the built-up edge (metres)
+BARE_WINDOW = 75.0    # building mounds narrower than this come out of the DEM among buildings
+BARE_SOFT = 10.0
+FILL_SCALES = (12.0, 40.0, 120.0, 400.0)  # metres, finest first
+CHUNK = 12            # segments per vectorised corridor step
+OVERLAP_BLEND = 6.0   # metres over which overlapping roads at different heights ease into each other
 DECK_THICKNESS = 1.1
 PARAPET_H = 0.9
 KERB_RADIUS = 1.5       # road gaps narrower than twice this close up; junction corners round off
@@ -123,8 +139,14 @@ class World:
             a.geom for a in feats.areas
             if "building" in a.tags and a.tags.get("building") not in ("no", "roof", "construction")])
         self.lifted_tiles = set()  # tiles whose ground _raise_moles / _sculpt_sea lifted
+        # Ground the road fit must leave as the DEM shaped it: water, banks, moles.
+        self.keep_dem = np.zeros(hf.H.shape, dtype=bool)
         self._raise_moles(feats)
-        node_h = compute_node_heights(src_ways, hf)
+        self.built = self._built_up_mask([a.geom for a in feats.areas if _is_building(a.tags)])
+        self.built_soft = gaussian_filter(self.built.astype(np.float64), BUILT_SOFT / hf.step)
+        src_ways = densify_ways(src_ways)
+        self.bare = self._bare_earth()
+        node_h = compute_node_heights(src_ways, self.bare, _carriageway_pairs(src_ways))
         self.carriageway_moves = _level_carriageways(src_ways, node_h)
         if self.home:
             self._level_to_home(src_ways, node_h)
@@ -180,8 +202,7 @@ class World:
             if "building:part" in t:
                 self.parts.append(a)
                 continue
-            if "building" in t and t.get("building") not in ("no", "roof", "construction") \
-                    and t.get("location") not in ("underground",) and t.get("layer", "0") not in ("-1", "-2"):
+            if _is_building(t):
                 self.buildings.append(a)
                 continue
             if t.get("man_made") == "pier" or t.get("railway") == "platform":
@@ -352,6 +373,7 @@ class World:
                 lift = np.where(core, crest, np.where(ins, crest * 0.6, -np.inf))
                 self._note_lift(E[lift > sub], N[lift > sub])
                 hf.H[j0:j1, i0:i1] = np.maximum(sub, lift)
+                self.keep_dem[j0:j1, i0:i1] |= ins
 
     def _note_lift(self, e, n):
         size = self.tile_size
@@ -371,12 +393,14 @@ class World:
         dist = distance_transform_edt(wet) * hf.step
         bed = np.maximum(-0.3 - SEA_SHELF * dist, SEA_FLOOR)
         hf.H[wet] = np.minimum(hf.H[wet], bed[wet])
+        self.keep_dem |= wet
         # Low ground just inland that OSM leaves unmapped (Trigg, Leighton) would
         # sit below the water line as lawn: lift it clear and make it beach.
         near = ~wet & (distance_transform_edt(~wet) * hf.step <= COAST_BAND) & (hf.H < 0.6)
         if near.any():
             self._note_lift(E[near], N[near])
             hf.H[near] = np.maximum(hf.H[near], 0.25)
+            self.keep_dem |= near
             h = hf.step / 2
             cells = shapely.box(E[near] - h, N[near] - h, E[near] + h, N[near] + h)
             self.cover.append(("sand", 62, shapely.union_all(cells)))
@@ -393,10 +417,12 @@ class World:
             if wb.name == SEA_NAME:
                 self._sculpt_sea(wb)
                 continue
+            lake = wb.level != RIVER_LEVEL
+            pad = SHORE_REACH if lake else 10.0
             for p in polygons_of(wb.geom):
                 b = p.bounds
-                i0, i1 = np.searchsorted(es, [b[0] - 10, b[2] + 10])
-                j0, j1 = np.searchsorted(ns, [b[1] - 10, b[3] + 10])
+                i0, i1 = np.searchsorted(es, [b[0] - pad, b[2] + pad])
+                j0, j1 = np.searchsorted(ns, [b[1] - pad, b[3] + pad])
                 if i1 <= i0 or j1 <= j0:
                     continue
                 E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
@@ -407,47 +433,178 @@ class World:
                 sub[ins] = np.minimum(sub[ins], wb.level - 2.5)
                 near = shapely.contains(p.buffer(6.0), pts).reshape(E.shape) & ~ins
                 sub[near] = np.maximum(sub[near], wb.level + 0.35)
+                kept = ins | near
+                if lake:
+                    # The DEM is a surface model: the reeds and paperbarks round a
+                    # wetland read as a bank metres above the water. Grade the shore
+                    # down to the water instead of leaving a wall.
+                    wet = shapely.contains(p, pts).reshape(E.shape)
+                    d_out = (distance_transform_edt(~wet) - 0.5) * hf.step  # to the shoreline
+                    cap = wb.level + 0.35 + SHORE_GRADE * np.maximum(d_out - 3.0, 0.0)
+                    ramp = ~ins & (d_out <= SHORE_REACH) & (sub > cap)
+                    sub[ramp] = cap[ramp]
+                    kept |= ramp
                 H[j0:j1, i0:i1] = sub
-        # Roads and rail: flatten the cross-section and follow ramps/cuttings.
+                self.keep_dem[j0:j1, i0:i1] |= kept
+        self._fit_ground_to_roads()
+        if self.home:
+            self._sculpt_home(es, ns)
+
+    def _fit_ground_to_roads(self):
+        """Fit the ground to the road and rail profiles.
+
+        Under each road (out to its kerbs or sidewalks, plus a margin) the
+        ground takes the road's height at the nearest point of its centre line,
+        so cross-sections are level and the asphalt draped on it is as smooth
+        as the profile. Away from roads the DEM can't be trusted in built-up
+        areas: it is a surface model and keeps a mound wherever buildings stood,
+        so streets end up in trenches between swollen blocks. There the ground
+        is interpolated from the heights of the roads around it instead, and
+        only open ground well clear of roads (parks, bush, beaches) and water
+        keep the DEM. Raised or sunk roads (bridge ramps, cuttings) get side
+        slopes back to that ground.
+        """
+        hf = self.hf
+        s = hf.step
+        # Among buildings, the ground to compare roads with is the bare earth
+        # (taken before riverbeds were dug, so keep the water as sculpted).
+        H0 = hf.H.copy()
+        ref = np.where(self.keep_dem, H0, H0 + self.built_soft * (self.bare.H - H0))
+        best, target, fall = self._road_corridors(HeightField(hf.e0, hf.n0, s, ref))
+        core = best <= CORE_MARGIN
+        # Roads at ground level seed the interpolated ground; ramps and
+        # cuttings don't, or they would lift or sink whole neighbourhoods.
+        seed = core & (np.abs(target - ref) < SEED_TOLERANCE)
+        ground = _fill_from(target, seed, s)
+        # How much of the DEM shows: none near roads or among buildings, all
+        # of it on open ground well away from them and on water and moles.
+        d_road = distance_transform_edt(~core) * s
+        w_dem = _smoothstep((d_road - DEM_NEAR) / (DEM_FAR - DEM_NEAR))
+        w_dem *= 1.0 - self.built_soft
+        w_dem = np.maximum(w_dem, gaussian_filter(self.keep_dem.astype(np.float64), 2.0))
+        w_dem = np.clip(w_dem, 0.0, 1.0)
+        ground = ground + w_dem * (H0 - ground)
+        ground = np.where(np.isfinite(ground), ground, H0)
+        # Under the roads: their own heights. Beside them: ease back to the
+        # ground, over at least EDGE_BLEND metres (more for embankments).
+        fall = np.maximum(fall, 2.0 * np.abs(target - ground) + 3.0)
+        ramp = ~core & (best < CORE_MARGIN + fall)
+        t = np.where(ramp, _smoothstep((best - CORE_MARGIN) / fall), 1.0)
+        out = ground.copy()
+        out[ramp] = target[ramp] + t[ramp] * (ground[ramp] - target[ramp])
+        out[core] = target[core]
+        hf.H[:] = out
+
+    def _road_corridors(self, ref: HeightField):
+        """For every grid node near a road or railway: how far it is outside
+        the paved width of the nearest one (`best`, metres, <= 0 inside), the
+        height of that road's centre line at the nearest point (`target`) and
+        how wide its side slopes are (`fall`)."""
+        hf = ref
+        H = ref.H
+        es, ns = hf.node_coords()
+        s = hf.step
         best = np.full(H.shape, np.inf)
         target = np.zeros(H.shape)
-        fall = np.ones(H.shape)
-        s = hf.step
+        best2 = np.full(H.shape, np.inf)
+        target2 = np.zeros(H.shape)
+        fall = np.full(H.shape, EDGE_BLEND)
         for w in self.ways:
-            if w.group == "foot" or w.grade_separated:
+            if w.group == "foot" or w.grade_separated or len(w.xy) < 2:
                 continue
             hw = w.width / 2 + (styles.SIDEWALK_WIDTH if w.sidewalk else 0.6)
-            for k in range(len(w.xy) - 1):
-                a, b = w.xy[k], w.xy[k + 1]
-                ha, hb = w.h[k], w.h[k + 1]
-                dh = max(abs(ha - hf.sample(a[0], a[1])), abs(hb - hf.sample(b[0], b[1])))
-                fl = max(3.0, 2.0 * float(dh)) + 1.0
-                r = hw + fl
-                i0 = max(int((min(a[0], b[0]) - r - hf.e0) / s), 0)
-                i1 = min(int((max(a[0], b[0]) + r - hf.e0) / s) + 2, H.shape[1])
-                j0 = max(int((min(a[1], b[1]) - r - hf.n0) / s), 0)
-                j1 = min(int((max(a[1], b[1]) + r - hf.n0) / s) + 2, H.shape[0])
+            dh_all = np.abs(w.h - hf.sample(w.xy[:, 0], w.xy[:, 1]))
+            for k0 in range(0, len(w.xy) - 1, CHUNK):
+                k1 = min(k0 + CHUNK, len(w.xy) - 1)
+                A = w.xy[k0:k1]
+                B = w.xy[k0 + 1:k1 + 1]
+                ha, hb = w.h[k0:k1], w.h[k0 + 1:k1 + 1]
+                fl = max(EDGE_BLEND, 2.0 * float(dh_all[k0:k1 + 1].max()) + 3.0)
+                r = hw + CORE_MARGIN + fl
+                lo_e = min(A[:, 0].min(), B[:, 0].min()) - r
+                hi_e = max(A[:, 0].max(), B[:, 0].max()) + r
+                lo_n = min(A[:, 1].min(), B[:, 1].min()) - r
+                hi_n = max(A[:, 1].max(), B[:, 1].max()) + r
+                i0 = max(int((lo_e - hf.e0) / s), 0)
+                i1 = min(int((hi_e - hf.e0) / s) + 2, H.shape[1])
+                j0 = max(int((lo_n - hf.n0) / s), 0)
+                j1 = min(int((hi_n - hf.n0) / s) + 2, H.shape[0])
                 if i1 <= i0 or j1 <= j0:
                     continue
                 E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
-                d = b - a
-                L2 = max(float(d @ d), 1e-9)
-                t = np.clip(((E - a[0]) * d[0] + (N - a[1]) * d[1]) / L2, 0, 1)
-                dist = np.hypot(E - (a[0] + t * d[0]), N - (a[1] + t * d[1]))
+                E, N = E[..., None], N[..., None]
+                d = B - A
+                L2 = np.maximum((d * d).sum(axis=1), 1e-9)
+                t = np.clip(((E - A[:, 0]) * d[:, 0] + (N - A[:, 1]) * d[:, 1]) / L2, 0, 1)
+                dist = np.hypot(E - (A[:, 0] + t * d[:, 0]), N - (A[:, 1] + t * d[:, 1]))
+                kmin = np.argmin(dist, axis=2)[..., None]
+                dist = np.take_along_axis(dist, kmin, axis=2)[..., 0]
+                tt = np.take_along_axis(t, kmin, axis=2)[..., 0]
+                hh = ha[kmin[..., 0]] + tt * (hb[kmin[..., 0]] - ha[kmin[..., 0]])
                 score = dist - hw
                 sb = best[j0:j1, i0:i1]
+                st = target[j0:j1, i0:i1]
+                sb2 = best2[j0:j1, i0:i1]
+                st2 = target2[j0:j1, i0:i1]
                 upd = score < sb
+                second = ~upd & (score < sb2)
                 if upd.any():
+                    sb2[upd] = sb[upd]
+                    st2[upd] = st[upd]
                     sb[upd] = score[upd]
-                    target[j0:j1, i0:i1][upd] = (ha + t * (hb - ha))[upd] - 0.02
+                    st[upd] = hh[upd] - 0.02
                     fall[j0:j1, i0:i1][upd] = fl
-        core = best <= 0
-        ramp = (best > 0) & (best < fall)
-        wgt = np.where(ramp, best / fall, 0.0)
-        H[core] = target[core]
-        H[ramp] = target[ramp] * (1 - wgt[ramp]) + H[ramp] * wgt[ramp]
-        if self.home:
-            self._sculpt_home(es, ns)
+                if second.any():
+                    sb2[second] = score[second]
+                    st2[second] = hh[second] - 0.02
+        # Where two roads overlap (slip roads merging, a street passing an
+        # embankment) and their heights differ, ease between them instead of
+        # leaving a step where the nearer one takes over.
+        both = best2 <= CORE_MARGIN
+        gap = np.where(both, best2 - np.minimum(best, CORE_MARGIN), OVERLAP_BLEND)
+        w2 = np.where(both, 0.5 * (1.0 - _smoothstep(gap / OVERLAP_BLEND)), 0.0)
+        target = target + w2 * (np.where(both, target2, target) - target)
+        return best, target, fall
+
+    def _bare_earth(self) -> HeightField:
+        """The DEM with building mounds taken out where there are buildings.
+
+        A grey opening (the highest surface a 75 m square can't poke above)
+        removes bumps narrower than the square but keeps slopes. It would
+        also shave hilltops, so it is only used among buildings; open ground
+        keeps the DEM. Road profiles are sampled from this."""
+        from scipy.ndimage import maximum_filter, minimum_filter
+        hf = self.hf
+        size = int(round(BARE_WINDOW / hf.step)) | 1
+        opened = maximum_filter(minimum_filter(hf.H, size=size), size=size)
+        opened = gaussian_filter(opened, BARE_SOFT / hf.step)
+        bare = hf.H + self.built_soft * (np.minimum(opened, hf.H) - hf.H)
+        bare = np.where(self.keep_dem, hf.H, bare)
+        return HeightField(hf.e0, hf.n0, hf.step, bare)
+
+    def _built_up_mask(self, geoms):
+        """Grid nodes within BUILT_REACH of a building."""
+        from PIL import Image, ImageDraw
+        hf = self.hf
+        nj, ni = hf.H.shape
+        img = Image.new("L", (ni, nj), 0)
+        draw = ImageDraw.Draw(img)
+        s = hf.step
+
+        def paint(geom):
+            for p in polygons_of(geom):
+                xy = np.asarray(p.exterior.coords)
+                px = (xy[:, 0] - hf.e0) / s
+                py = (xy[:, 1] - hf.n0) / s
+                if px.max() < 0 or py.max() < 0 or px.min() > ni or py.min() > nj:
+                    continue
+                draw.polygon(list(zip(px.tolist(), py.tolist())), fill=1)
+
+        for g in geoms:
+            paint(g)
+        mask = np.asarray(img, dtype=bool)
+        near = distance_transform_edt(~mask) * s <= BUILT_REACH
+        return near
 
     def _sculpt_home(self, es, ns, falloff=8.0, sink=0.35):
         """Level the townhouse block. The scene brings its own ground, so the
@@ -603,6 +760,112 @@ def _resample(xy, step):
     n = max(2, int(np.ceil(s[-1] / step)) + 1)
     ss = np.linspace(0, s[-1], n)
     return np.column_stack([np.interp(ss, s, xy[:, 0]), np.interp(ss, s, xy[:, 1])]), ss
+
+
+def _is_building(t) -> bool:
+    return "building" in t and t.get("building") not in ("no", "roof", "construction") \
+        and t.get("location") not in ("underground",) and t.get("layer", "0") not in ("-1", "-2")
+
+
+def _smoothstep(x):
+    x = np.clip(x, 0.0, 1.0)
+    return x * x * (3 - 2 * x)
+
+
+def _fill_from(values: np.ndarray, seed: np.ndarray, step: float) -> np.ndarray:
+    """A smooth surface through `values` at the `seed` nodes, filling the
+    rest of the grid (normalised Gaussian convolution, finest scale first:
+    each scale fills in where the finer ones had too little data)."""
+    out = np.full(values.shape, np.nan)
+    have = np.zeros(values.shape)
+    v = np.where(seed, values, 0.0)
+    w = seed.astype(np.float64)
+    for sigma in FILL_SCALES:
+        sg = sigma / step
+        if sg > 8:
+            # Big kernels on a coarser grid, then back up (bilinear).
+            f = int(sg // 4)
+            sv = _block_mean(v, f)
+            sw = _block_mean(w, f)
+            gv = _upsample(gaussian_filter(sv, sg / f), f, values.shape)
+            gw = _upsample(gaussian_filter(sw, sg / f), f, values.shape)
+        else:
+            gv = gaussian_filter(v, sg)
+            gw = gaussian_filter(w, sg)
+        est = gv / np.maximum(gw, 1e-12)
+        # Confidence: enough seed weight in reach (a road's worth across the kernel).
+        conf = np.clip(gw * sg * 2.0, 0.0, 1.0)
+        take = (1.0 - have) * conf
+        out = np.where(np.isnan(out), 0.0, out) + take * np.where(gw > 1e-9, est, 0.0)
+        have = have + take
+    done = have > 1e-6
+    out = np.where(done, out / np.maximum(have, 1e-12), np.nan)
+    return out
+
+
+def _block_mean(a, f):
+    nj, ni = a.shape
+    pj, pi = (-nj) % f, (-ni) % f
+    a = np.pad(a, ((0, pj), (0, pi)), mode="edge")
+    return a.reshape(a.shape[0] // f, f, a.shape[1] // f, f).mean(axis=(1, 3))
+
+
+def _upsample(a, f, shape):
+    from scipy.ndimage import map_coordinates
+    jj = (np.arange(shape[0]) + 0.5) / f - 0.5
+    ii = (np.arange(shape[1]) + 0.5) / f - 0.5
+    J, I = np.meshgrid(jj, ii, indexing="ij")
+    return map_coordinates(a, [J, I], order=1, mode="nearest")
+
+
+def _carriageway_pairs(ways) -> list[tuple[int, int]]:
+    """(node, node) pairs of roads that should come out level with each other.
+    Heights are solved with these as short links:
+
+    - each node of a named one-way carriageway and the nearest node of its
+      other half beside it (each half's DEM samples differ on a cross slope,
+      St Georges Tce);
+    - nodes of any two at-grade roads whose asphalt touches (a slip road
+      alongside the freeway, a lane beside a street), which otherwise end up
+      a few tenths apart and draped into one lumpy surface.
+    """
+    from scipy.spatial import cKDTree
+    pairs = []
+    by_name: dict[str, list] = {}
+    flat = [w for w in ways if way_group(w.tags) == "road" and not styles.is_bridge(w.tags)
+            and not styles.is_tunnel(w.tags) and len(w.coords) > 1]
+    for w in flat:
+        t = w.tags
+        if t.get("oneway") in ("yes", "-1") and t.get("name"):
+            by_name.setdefault(t["name"], []).append(w)
+    for group in by_name.values():
+        if len(group) < 2:
+            continue
+        for wa in group:
+            others = [w for w in group if w is not wa]
+            xy = np.concatenate([w.coords for w in others])
+            ids = np.concatenate([w.nodes for w in others])
+            ends = np.concatenate([np.r_[True, np.zeros(len(w.nodes) - 2, bool), True] for w in others])
+            tree = cKDTree(xy)
+            reach = styles.road_width(wa.tags) + TOUCH + 2.0
+            d, k = tree.query(wa.coords, distance_upper_bound=reach)
+            for nid, dd, kk in zip(wa.nodes, d, k):
+                if np.isfinite(dd) and not ends[kk]:
+                    pairs.append((int(nid), int(ids[kk])))
+    # Touching asphalt.
+    if flat:
+        xy = np.concatenate([w.coords for w in flat])
+        ids = np.concatenate([w.nodes for w in flat]).astype(np.int64)
+        way = np.concatenate([np.full(len(w.nodes), k) for k, w in enumerate(flat)])
+        half = np.concatenate([np.full(len(w.nodes), styles.road_width(w.tags) / 2) for w in flat])
+        tree = cKDTree(xy)
+        found = tree.query_pairs(r=2 * float(half.max()) + TOUCH, output_type="ndarray")
+        if len(found):
+            i, j = found[:, 0], found[:, 1]
+            dist = np.linalg.norm(xy[i] - xy[j], axis=1)
+            ok = (way[i] != way[j]) & (ids[i] != ids[j]) & (dist < half[i] + half[j] + TOUCH)
+            pairs.extend(zip(ids[i[ok]].tolist(), ids[j[ok]].tolist()))
+    return pairs
 
 
 class TileBuilder:
@@ -1204,7 +1467,7 @@ def region_tiles(cfg, proj, name, feats=None) -> list[TileKey]:
 
 def build(cfg: dict, keys: list[TileKey], region_of: dict, out_dir: Path = TILES_DIR,
           refresh: bool = False, only: list[TileKey] | None = None, traffic_only: bool = False,
-          index_only: bool = False):
+          index_only: bool = False, jobs: int = 1):
     """Build `keys` (or, with `only`, prepare the world for `keys` but rewrite
     just those tiles and the index, leaving the rest and the backdrop alone).
     `traffic_only` rewrites just the traffic road data of those tiles."""
@@ -1236,24 +1499,25 @@ def build(cfg: dict, keys: list[TileKey], region_of: dict, out_dir: Path = TILES
         return
     todo = [k for k in keys if k in set(only)] if only is not None else keys
     net = TrafficNetwork(world)
-    for n, key in enumerate(todo):
-        t0 = time.time()
-        tname = f"{key.name}.p5r"
-        tbytes = write_traffic(out_dir / tname, net.tile_data(key.bounds(size)))
+    global _JOB
+    _JOB = (world, net, out_dir, size, traffic_only)
+    if jobs > 1 and len(todo) > 1:
+        import multiprocessing as mp
+        # Forked workers share the prepared world; each writes its own tiles.
+        with mp.get_context("fork").Pool(jobs) as pool:
+            results = pool.imap(_build_one, todo)
+            results = list(_report(results, len(todo)))
+    else:
+        results = list(_report(map(_build_one, todo), len(todo)))
+    for key, tname, tbytes, entry in results:
         if traffic_only:
             if key.name in index["tiles"]:
                 index["tiles"][key.name]["traffic"] = tname
             total += tbytes
             continue
-        data = TileBuilder(world, key).build()
-        nbytes = write_tile(out_dir / f"{key.name}.p5t", data)
-        total += nbytes
-        index["tiles"][key.name] = {
-            "i": key.i, "j": key.j, "file": f"{key.name}.p5t", "region": region_of.get(key, "custom"),
-            "hmin": round(data["hrange"][0], 2), "hmax": round(data["hrange"][1], 2), "bytes": nbytes,
-            "traffic": tname,
-        }
-        print(f"  [{n + 1}/{len(todo)}] tile {key.name}: {nbytes / 1024:.0f} KB in {time.time() - t0:.1f}s")
+        entry["region"] = region_of.get(key, "custom")
+        index["tiles"][key.name] = entry
+        total += entry["bytes"]
     _write_index(cfg, proj, world, index, index_path, region_of)
     if traffic_only:
         print(f"Traffic data: {total / 1e6:.2f} MB")
@@ -1262,6 +1526,31 @@ def build(cfg: dict, keys: list[TileKey], region_of: dict, out_dir: Path = TILES
         nbytes = build_overview(cfg, proj, index["tiles"], out_dir / "overview.p5o")
         print(f"  overview: {nbytes / 1024:.0f} KB")
     print(f"Done: {total / 1e6:.1f} MB")
+
+
+_JOB = None
+
+
+def _build_one(key: TileKey):
+    world, net, out_dir, size, traffic_only = _JOB
+    t0 = time.time()
+    tname = f"{key.name}.p5r"
+    tbytes = write_traffic(out_dir / tname, net.tile_data(key.bounds(size)))
+    if traffic_only:
+        return key, tname, tbytes, None, time.time() - t0
+    data = TileBuilder(world, key).build()
+    nbytes = write_tile(out_dir / f"{key.name}.p5t", data)
+    entry = {"i": key.i, "j": key.j, "file": f"{key.name}.p5t", "region": "custom",
+             "hmin": round(data["hrange"][0], 2), "hmax": round(data["hrange"][1], 2), "bytes": nbytes,
+             "traffic": tname}
+    return key, tname, tbytes, entry, time.time() - t0
+
+
+def _report(results, total):
+    for n, (key, tname, tbytes, entry, dt) in enumerate(results):
+        if entry is not None:
+            print(f"  [{n + 1}/{total}] tile {key.name}: {entry['bytes'] / 1024:.0f} KB in {dt:.1f}s", flush=True)
+        yield key, tname, tbytes, entry
 
 
 def write_traffic(path: Path, data: dict) -> int:
@@ -1490,6 +1779,7 @@ def main(argv=None):
                     help="rewrite only index.json (places, badges, points of interest)")
     ap.add_argument("--out", type=Path, default=TILES_DIR)
     ap.add_argument("--refresh", action="store_true", help="re-download the OSM extract")
+    ap.add_argument("--jobs", type=int, default=1, help="build this many tiles at once")
     ap.add_argument("--list", action="store_true", help="list regions and their tile counts")
     a = ap.parse_args(argv)
     cfg = load_config()
@@ -1518,7 +1808,7 @@ def main(argv=None):
         region_of.setdefault(TileKey(int(i), int(j)), "custom")
     keys = sorted(region_of, key=lambda k: (k.j, k.i))
     only = [TileKey(*map(int, t.split("_"))) for t in a.only] if a.only else None
-    build(cfg, keys, region_of, a.out, a.refresh, only, a.traffic_only, a.index_only)
+    build(cfg, keys, region_of, a.out, a.refresh, only, a.traffic_only, a.index_only, a.jobs)
 
 
 if __name__ == "__main__":
