@@ -160,7 +160,7 @@ func set_wipers(speed: int) -> void:
 		_wipers.stop()
 		return
 	_wipers.stream = Audio.stream("car/car_wipers_fast" if speed == 2 else "car/car_wipers_slow", true)
-	_wipers.volume_db = -15.0
+	_wipers.volume_db = -19.0
 	_wipers.play()
 
 

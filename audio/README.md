@@ -164,7 +164,10 @@ start swapping in your own recordings, regenerate only what you need.
   meep, Abarth blare, modern).
 - **Volume settings**: `Settings.volume_master`, `volume_effects`,
   `volume_music` and `volume_radio` (0..1, sliders in the pause menu's
-  Sound section, next to an "Open My Music folder" button).
+  Sound section, next to an "Open My Music folder" button). Effects covers
+  everything in the world and the car's cabin sounds (rain on the roof,
+  wipers, indicator); only menu sounds ignore it. `tools/sound_check.gd`
+  fails if anything else bypasses the sliders straight to Master.
 - **`Audio.radio`** (`radio.gd`): Radio Cinquecento, Notte FM, My Music and
   (after midnight only) an unlisted station. The two built-in stations run
   like real broadcasts: each keeps its place while you listen elsewhere,
