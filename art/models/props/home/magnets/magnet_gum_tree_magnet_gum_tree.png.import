@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwpdgcghlce05"
-path="res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"
+uid="uid://d2mrctxrs56rt"
+path="res://.godot/imported/magnet_gum_tree_magnet_gum_tree.png-86507fb7f1a879a9897cedc6d1f28f0a.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "7718d3491a28c53a61df3bea8cf3988b"
+"md5": "41e64c3d6a4fe77646dd77b7baa2064d"
 }
 
 [deps]
 
-source_file="res://art/models/props/landmarks/trigg_surf_club_club_sign.png"
-dest_files=["res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"]
+source_file="res://art/models/props/home/magnets/magnet_gum_tree_magnet_gum_tree.png"
+dest_files=["res://.godot/imported/magnet_gum_tree_magnet_gum_tree.png-86507fb7f1a879a9897cedc6d1f28f0a.ctex"]
 
 [params]
 

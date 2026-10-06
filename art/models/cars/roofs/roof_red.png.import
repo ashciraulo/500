@@ -2,19 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwpdgcghlce05"
-path="res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"
+uid="uid://iwlsxjajo8iw"
+path="res://.godot/imported/roof_red.png-d4987c1b15239d183c3d0acc22d2c893.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "7718d3491a28c53a61df3bea8cf3988b"
 }
 
 [deps]
 
-source_file="res://art/models/props/landmarks/trigg_surf_club_club_sign.png"
-dest_files=["res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"]
+source_file="res://art/models/cars/roofs/roof_red.png"
+dest_files=["res://.godot/imported/roof_red.png-d4987c1b15239d183c3d0acc22d2c893.ctex"]
 
 [params]
 
@@ -24,7 +21,7 @@ compress/lossy_quality=0.7
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwpdgcghlce05"
-path="res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"
+uid="uid://uhoq1446ooqq"
+path="res://.godot/imported/magnet_sunset_magnet_sunset.png-2b6d9a54ebcba4a930655a96aefce4da.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "7718d3491a28c53a61df3bea8cf3988b"
+"md5": "3c4434df84f1334a735aceccf8315fce"
 }
 
 [deps]
 
-source_file="res://art/models/props/landmarks/trigg_surf_club_club_sign.png"
-dest_files=["res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"]
+source_file="res://art/models/props/home/magnets/magnet_sunset_magnet_sunset.png"
+dest_files=["res://.godot/imported/magnet_sunset_magnet_sunset.png-2b6d9a54ebcba4a930655a96aefce4da.ctex"]
 
 [params]
 
