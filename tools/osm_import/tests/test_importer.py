@@ -368,3 +368,55 @@ def test_service_roads_listed_for_the_maps():
     lanes = net._service_roads()
     assert [(f["kind"], f["name"]) for f in lanes] == [("alley", "Little Shenton Lane"), ("service", "")]
     assert np.allclose(lanes[0]["pts"][:, 2], 0) and np.isclose(lanes[0]["pts"][-1, 0], 40)
+
+
+def test_no_holes_beside_tunnel_roofs():
+    import shapely
+    from types import SimpleNamespace as NS
+    from osm_import.build import TUNNEL_ROOF, LinearWay, TileBuilder
+    from osm_import.common import TileKey
+    from shapely.geometry import Point
+
+    hf = flat_field(10.0, size=1200.0)
+    xs = np.linspace(150, 350, 9)
+    # A road tunnel under flat ground: deep at its west end, then with 6.4 m of
+    # cover, where the ground over it has to come away.
+    tunnel = LinearWay(1, {"highway": "primary", "tunnel": "yes"}, "road", np.column_stack([xs, np.full(9, 250.0)]),
+                       np.interp(xs, [150, 250, 350], [10.0 - 12.0, 10.0 - 6.4, 10.0 - 6.4]), np.arange(1, 10),
+                       8.0, False, True, False)
+    above = LinearWay(2, {"highway": "residential"}, "road", np.array([[300.0, 200.0], [300.0, 300.0]]),
+                      np.full(2, 10.0), np.array([20, 21]), 6.6, False, False, True)
+    ways = [tunnel, above]
+    world = NS(hf=hf, tile_size=500, ways=ways, ways_near=lambda b: ways, doubled_paths=set(), home=None,
+               water=[], water_union=Polygon(), cover=[])
+    tb = TileBuilder(world, TileKey(0, 0))
+    tb._road_geoms(); tb._tunnel_cut(); tb._ground(); tb._roads(); tb._sidewalks_paths(); tb._tunnels()
+
+    tris = []
+    for mesh, mats in tb.mb.meshes.items():
+        if tb.mb.collision.get(mesh):
+            for surf in mats.values():
+                if surf.arrays() is not None:
+                    v, _, _, idx = surf.arrays()
+                    tris.append(v[idx])
+    tris = np.concatenate(tris)
+    solid = shapely.union_all(shapely.polygons(np.concatenate([tris[:, :, :2], tris[:, :1, :2]], axis=1)))
+    around = box(140, 225, 360, 275)
+    assert around.difference(solid).area < 0.05  # nothing to fall through, beside the roof or over it
+
+    def top(x, y):
+        """Height of the highest collision surface over (x, y)."""
+        best = -1e9
+        for a, b, c in tris:
+            if not shapely.Polygon([a[:2], b[:2], c[:2]]).buffer(1e-6).contains(Point(x, y)):
+                continue
+            n = np.cross(b - a, c - a)
+            if abs(n[2]) > 1e-9:
+                best = max(best, a[2] - (n[0] * (x - a[0]) + n[1] * (y - a[1])) / n[2])
+        return best
+
+    assert np.isclose(top(170, 250), 10.0, atol=0.05)  # deep: the ground stays over the tunnel
+    roof = 10.0 - 6.4 + 0.02 + TUNNEL_ROOF
+    assert roof < 10.0 and np.isclose(top(340, 250), roof, atol=0.05)  # shallow: its roof shows, below the ground
+    assert np.isclose(top(300, 247), roof, atol=0.05)  # under the street over it too
+    assert np.isclose(top(300, 262), 10.0 + 0.02, atol=0.05)  # and the street is whole past the roof

@@ -48,6 +48,9 @@ PATH_OFFSET = 0.04
 SIDEWALK_TOP = 0.16
 MARK_OFFSET = 0.07
 TUNNEL_HEIGHT = 5.6
+TUNNEL_ROOF = TUNNEL_HEIGHT + 0.6   # top of a tunnel box above its floor
+TUNNEL_SLOT = 0.3       # ground less than this above a tunnel's roof comes away over it
+TUNNEL_STEP = 4.0
 DECK_THICKNESS = 1.1
 PARAPET_H = 0.9
 KERB_RADIUS = 1.5       # road gaps narrower than twice this close up; junction corners round off
@@ -589,6 +592,12 @@ def _clip_runs(xy, h, bounds):
     return runs
 
 
+def _runs(mask):
+    """(start, stop) of each run of True in `mask`."""
+    d = np.diff(np.concatenate([[0], mask.astype(np.int8), [0]]))
+    return list(zip(np.nonzero(d == 1)[0], np.nonzero(d == -1)[0]))
+
+
 def _resample(xy, step):
     seg = np.linalg.norm(np.diff(xy, axis=0), axis=1)
     s = np.concatenate([[0.0], np.cumsum(seg)])
@@ -614,7 +623,7 @@ class TileBuilder:
     # ---------------- main ----------------
     def build(self) -> dict:
         self._road_geoms()
-        self._tunnel_cells()
+        self._tunnel_cut()
         self._ground()
         self._roads()
         self._sidewalks_paths()
@@ -661,26 +670,39 @@ class TileBuilder:
             self.sidewalk_area = self.sidewalk_area.difference(fp)
             self.path_area = self.path_area.difference(fp)
 
-    def _tunnel_cells(self):
-        """Ground cells that would cut into a shallow tunnel are left out."""
-        g = self.grid
-        skip = np.zeros(len(g.cells), dtype=bool)
-        for w in self.ways:
-            if not w.tunnel or w.group == "rail" or self._shallow_path(w):
-                continue
-            xy, h = densify(w.xy, w.h, 2.5)
-            line = LineString(xy)
-            corridor = line.buffer(w.width / 2 + 1.0, cap_style=2)
-            idx = g.tree.query(corridor, predicate="intersects")
-            if not len(idx):
-                continue
-            cx, cy = g.node_xy(g.ci[idx] + 0.5, g.cj[idx] + 0.5)
-            # Tunnel floor height under each cell centre (nearest densified point).
-            d2 = (cx[:, None] - xy[None, :, 0]) ** 2 + (cy[:, None] - xy[None, :, 1]) ** 2
-            th = h[np.argmin(d2, axis=1)]
-            ground = self.w.hf.sample(cx, cy)
-            skip[idx] |= ground < th + TUNNEL_HEIGHT + 1.2
-        self.skip_cells = skip
+    def _box_tunnels(self):
+        return [w for w in self.ways if w.tunnel and w.group != "rail" and not self._shallow_path(w)]
+
+    def _tunnel_outline(self, xy, h, width):
+        """The outside of a tunnel box along `xy`: its two edges, its roof
+        height, and which segments have ground or streets above that come
+        down to within TUNNEL_SLOT of the roof (there the roof shows)."""
+        half = width / 2 + 1.0
+        left, right = offset_polyline(xy, half), offset_polyline(xy, -half)
+        roof = h + 0.02 + TUNNEL_ROOF
+        hf = self.w.hf
+        ground = np.minimum.reduce([hf.sample(p[:, 0], p[:, 1]) for p in (xy, left, right)])
+        near = ground < roof + TUNNEL_SLOT
+        mid = (xy[:-1] + xy[1:]) / 2
+        mid_ground = hf.sample(mid[:, 0], mid[:, 1])
+        low = near[:-1] | near[1:] | (mid_ground < (roof[:-1] + roof[1:]) / 2 + TUNNEL_SLOT)
+        return left, right, roof, low
+
+    def _tunnel_cut(self):
+        """Ground and streets come away over a tunnel's roof where they would
+        cut into it, along the roof's own outline. (Leaving out the whole 5 m
+        ground cells there left open holes either side of the roof that the
+        car could fall into.)"""
+        pieces = []
+        for w in self._box_tunnels():
+            xy, h = densify(w.xy, w.h, TUNNEL_STEP)
+            left, right, _, low = self._tunnel_outline(xy, h, w.width)
+            k = np.nonzero(low)[0]
+            if len(k):
+                quads = np.stack([right[k], right[k + 1], left[k + 1], left[k], right[k]], axis=1)
+                pieces.extend(shapely.make_valid(shapely.polygons(quads)))
+        cut = shapely.union_all(pieces) if pieces else Polygon()
+        self.tunnel_cut = cut.intersection(self.box.buffer(20))
 
     # ---------------- ground ----------------
     def _ground(self):
@@ -715,7 +737,7 @@ class TileBuilder:
         for mat, gs in merged.items():
             g = shapely.union_all(gs)
             surf = self.mb.surface("ground", mat, "world")
-            drape(surf, g, self.grid, 0.0, textures.UV_SCALE.get(mat, 8.0), self.skip_cells)
+            drape(surf, g.difference(self.tunnel_cut), self.grid, 0.0, textures.UV_SCALE.get(mat, 8.0))
         # Water surfaces (no collision).
         for wb, part in water_parts:
             surf = self.mb.surface("water", "water", None)
@@ -731,26 +753,35 @@ class TileBuilder:
 
     # ---------------- roads ----------------
     def _roads(self):
-        area = self.road_area.intersection(self.box)
+        area = self.road_area.intersection(self.box).difference(self.tunnel_cut)
         drape(self.mb.surface("roads", "asphalt", "world"), area, self.grid, ROAD_OFFSET,
-              textures.UV_SCALE["asphalt"], self.skip_cells)
+              textures.UV_SCALE["asphalt"])
 
     def _sidewalks_paths(self):
         hf = self.w.hf
         sw = self.sidewalk_area.intersection(self.box).simplify(0.2)
-        drape(self.mb.surface("roads", "sidewalk", "world"), sw, self.grid, SIDEWALK_TOP,
-              textures.UV_SCALE["sidewalk"], self.skip_cells)
+        drape(self.mb.surface("roads", "sidewalk", "world"), sw.difference(self.tunnel_cut), self.grid,
+              SIDEWALK_TOP, textures.UV_SCALE["sidewalk"])
         kerb = self.mb.surface("roads", "kerb", "world")
+        cut = self.tunnel_cut
+        shapely.prepare(cut)
         for p in polygons_of(sw):
             p = orient(p, 1.0)
             for ring in [p.exterior, *p.interiors]:
                 xy = np.asarray(ring.coords)
                 xy, _ = densify(xy, np.zeros(len(xy)), 6.0)
                 g = hf.sample(xy[:, 0], xy[:, 1])
-                walls(kerb, xy, g, g + SIDEWALK_TOP, 2.0, 0.5)
+                over = shapely.contains_xy(cut, xy[:, 0], xy[:, 1]) if not cut.is_empty else None
+                if over is None or not over.any():
+                    walls(kerb, xy, g, g + SIDEWALK_TOP, 2.0, 0.5)
+                    continue
+                # No kerb across a tunnel roof.
+                for a, b in _runs(~over):
+                    if b - a >= 2:
+                        walls(kerb, xy[a:b], g[a:b], g[a:b] + SIDEWALK_TOP, 2.0, 0.5, closed=False)
         pa = self.path_area.intersection(self.box)
-        drape(self.mb.surface("roads", "path", "world"), pa, self.grid, PATH_OFFSET,
-              textures.UV_SCALE["path"], self.skip_cells)
+        drape(self.mb.surface("roads", "path", "world"), pa.difference(self.tunnel_cut), self.grid,
+              PATH_OFFSET, textures.UV_SCALE["path"])
 
     def _markings(self):
         surf = self.mb.surface("markings", "line_white", None)
@@ -856,10 +887,9 @@ class TileBuilder:
         return float(np.mean(ground < h + TUNNEL_HEIGHT + 0.6)) > 0.5
 
     def _tunnels(self):
-        for w in self.ways:
-            if not w.tunnel or w.group == "rail" or self._shallow_path(w):
-                continue
-            xy, h = densify(w.xy, w.h, 4.0)
+        hf = self.w.hf
+        for w in self._box_tunnels():
+            xy, h = densify(w.xy, w.h, TUNNEL_STEP)
             for rxy, rh in _clip_runs(xy, h, self.bounds):
                 if len(rxy) < 2:
                     continue
@@ -874,13 +904,21 @@ class TileBuilder:
                 walls(surf, left, floor, floor + TUNNEL_HEIGHT, 3.0, TUNNEL_HEIGHT, closed=False)
                 walls(surf, right[::-1], floor[::-1], floor[::-1] + TUNNEL_HEIGHT, 3.0, TUNNEL_HEIGHT, closed=False)
                 ribbon(surf, rxy, floor + TUNNEL_HEIGHT, w.width + 1.0, 4.0, up=False)
-                # Outside of the box (visible where ground cells were removed near portals).
+                # Outside of the box: its roof shows where the ground over it is cut away
+                # (_tunnel_cut), and its sides rise to meet the ground at the cut's edges.
                 outer = self.mb.surface("tunnels", "concrete", "world")
-                ribbon(outer, rxy, floor + TUNNEL_HEIGHT + 0.6, w.width + 2.0, 4.0)
-                lo = offset_polyline(rxy, half + 0.5)
-                ro = offset_polyline(rxy, -half - 0.5)
-                walls(outer, lo[::-1], floor[::-1] - 0.5, floor[::-1] + TUNNEL_HEIGHT + 0.6, 3.0, 3.0, closed=False)
-                walls(outer, ro, floor - 0.5, floor + TUNNEL_HEIGHT + 0.6, 3.0, 3.0, closed=False)
+                lo, ro, roof, low = self._tunnel_outline(rxy, rh, w.width)
+                ribbon(outer, rxy, roof, w.width + 2.0, 4.0)
+                lt = np.maximum(roof, np.minimum(hf.sample(lo[:, 0], lo[:, 1]), roof + 1.0))
+                rt = np.maximum(roof, np.minimum(hf.sample(ro[:, 0], ro[:, 1]), roof + 1.0))
+                walls(outer, lo[::-1], floor[::-1] - 0.5, lt[::-1], 3.0, 3.0, closed=False)
+                walls(outer, ro, floor - 0.5, rt, 3.0, 3.0, closed=False)
+                # Where the cut ends along the tunnel, a face from the roof up to the ground.
+                for k in np.nonzero(low[1:] != low[:-1])[0] + 1:
+                    edge = np.array([lo[k], rxy[k], ro[k]])
+                    top = np.maximum(roof[k], np.minimum(hf.sample(edge[:, 0], edge[:, 1]), roof[k] + 1.0))
+                    walls(outer, edge, roof[k], top, 3.0, 3.0, closed=False)
+                    walls(outer, edge[::-1], roof[k], top[::-1], 3.0, 3.0, closed=False)
 
     def _rail(self):
         for w in self.ways:
