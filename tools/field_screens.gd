@@ -24,8 +24,8 @@ const SCENES := [
 	["black_winged_stilt", "quiet_alfred_cove", Vector3(-3776.2, 0.6, 8908.3), 9.0],
 	# The wrong birds: no habitat; the car stops by their place (ZERO: home).
 	["wrong_frogmouth", "", Vector3.ZERO, 1.0],
-	["wrong_cockatoos", "", Vector3(-911.35, 68.4, 923.83), 3.0],
-	["wrong_swan", "", Vector3(2173.3, 1.76, 1967.86), 2.0],
+	["wrong_cockatoos", "", Vector3(-911.35, 59.35, 923.83), 3.0],
+	["wrong_swan", "", Vector3(2173.3, 1.83, 1967.86), 2.0],
 ]
 
 ## The last plate: these in flight.
