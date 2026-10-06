@@ -55,6 +55,15 @@ func _ready() -> void:
 	quit(1 if failures else 0)
 
 
+var _ear := Vector3.ZERO
+
+
+## The level of a place layer heard at pos (its 3D falloff).
+func _place(amb: Node, type: String, pos: Vector3) -> float:
+	amb.update_places(pos)
+	return amb.place_level(type, pos)
+
+
 func _test_buses() -> void:
 	print("buses")
 	for b in ["Music", "UI", "Radio", "Cabin", "World", "Engine", "Tyres", "SFX", "Ambience", "Weather"]:
@@ -245,13 +254,10 @@ func _test_ambience(audio: Node) -> void:
 		check(both or one_only, "place %s has its loops" % type)
 	amb.set_time_of_day(12.0)
 	amb.add_place("beach", Vector3(1000, 0, 0), 100.0)
-	amb.update_places(Vector3(1010, 0, 0))
-	check(is_equal_approx(amb._place_amount.get("beach", 0.0), 1.0), "full beach layer at the beach")
-	amb.update_places(Vector3(1080, 0, 0))
-	var mid: float = amb._place_amount.get("beach", 0.0)
-	check(mid > 0.0 and mid < 1.0, "beach layer fades with distance (%.2f)" % mid)
-	amb.update_places(Vector3(0, 0, 0))
-	check(amb._place_amount.get("beach", 0.0) == 0.0, "no beach layer far away")
+	check(_place(amb, "beach", Vector3(1010, 0, 0)) > 0.85, "full beach layer at the beach")
+	var mid: float = _place(amb, "beach", Vector3(1080, 0, 0))
+	check(mid > 0.0 and mid < 0.5, "beach layer fades with distance (%.2f)" % mid)
+	check(_place(amb, "beach", Vector3(0, 0, 0)) == 0.0, "no beach layer far away")
 	var poi := Node3D.new()
 	poi.add_to_group("poi")
 	poi.set_meta("poi_type", "carpark")
@@ -261,8 +267,10 @@ func _test_ambience(audio: Node) -> void:
 	amb.update_places(Vector3(-505, 0, 300))
 	for i in 10:
 		await process_frame
-	var cp: AudioStreamPlayer = amb._place_players.get("carpark")
+	var cp: AudioStreamPlayer3D = amb._place_players.get("carpark")
 	check(cp != null and cp.playing, "car park POI node plays its layer")
+	check(cp != null and cp.global_position.distance_to(poi.global_position) < 2.0,
+			"the car park is heard from the car park, not from everywhere")
 	check(amb.place_sound("carpark") == "amb/place/place_carpark_night_loop", "night loop after dark")
 	poi.queue_free()
 	amb.clear_places()
@@ -275,25 +283,32 @@ func _test_ambience(audio: Node) -> void:
 		{"id": "beach_trigg_beach", "kind": "beach", "suburb": "Trigg", "p": Vector3.ZERO, "at": Vector3(9000, 0, 0)},
 		{"id": "fishing_north_mole", "kind": "fishing", "suburb": "North Fremantle", "p": Vector3.ZERO, "at": Vector3(0, 0, 9000)},
 	])
-	amb.update_places(Vector3(9000, 0, 0))
-	check(amb._place_amount.get("surf", 0.0) == 1.0 and amb._place_amount.get("beach", 0.0) == 0.0,
+	_ear = Vector3(9000, 0, 0)
+	amb.update_places(_ear)
+	check(amb.place_level("surf", _ear) > 0.9 and amb.place_level("beach", _ear) == 0.0,
 			"Trigg beach -> surf layer")
-	amb.update_places(Vector3(0, 0, 9000))
-	check(amb._place_amount.get("groyne", 0.0) == 1.0 and amb._place_amount.get("jetty", 0.0) == 0.0,
+	_ear = Vector3(0, 0, 9000)
+	amb.update_places(_ear)
+	check(amb.place_level("groyne", _ear) > 0.9 and amb.place_level("jetty", _ear) == 0.0,
 			"North Mole -> groyne, not a jetty")
-	amb.update_places(Vector3(5000, 0, 10))
-	check(amb._place_amount.get("beach", 0.0) == 1.0, "map beach POI -> beach layer")
-	amb.update_places(Vector3(0, 0, 5000))
-	check(amb._place_amount.get("lookout", 0.0) == 1.0 and amb._place_amount.get("bush", 0.0) == 1.0,
+	_ear = Vector3(5000, 0, 10)
+	amb.update_places(_ear)
+	check(amb.place_level("beach", _ear) > 0.9, "map beach POI -> beach layer")
+	_ear = Vector3(0, 0, 5000)
+	amb.update_places(_ear)
+	check(amb.place_level("lookout", _ear) > 0.9 and amb.place_level("bush", _ear) > 0.9,
 			"Kings Park lookout -> lookout wind over the bush")
-	amb.update_places(Vector3(-5000, 0, 0))
-	check(amb._place_amount.get("quay", 0.0) == 1.0, "bell tower -> quay layer")
+	_ear = Vector3(-5000, 0, 0)
+	amb.update_places(_ear)
+	check(amb.place_level("quay", _ear) > 0.9, "bell tower -> quay layer")
 	amb.set_time_of_day(12.0)
-	amb.update_places(Vector3(0, 0, -5000))
-	check(amb._place_amount.get("carpark", 0.0) == 0.0, "servo is quiet by day")
+	_ear = Vector3(0, 0, -5000)
+	amb.update_places(_ear)
+	check(amb.place_level("carpark", _ear) == 0.0, "servo is quiet by day")
 	amb.set_time_of_day(23.0)
-	amb.update_places(Vector3(0, 0, -5000))
-	check(amb._place_amount.get("carpark", 0.0) == 1.0, "servo -> empty car park at night")
+	_ear = Vector3(0, 0, -5000)
+	amb.update_places(_ear)
+	check(amb.place_level("carpark", _ear) > 0.9, "servo -> empty car park at night")
 	amb.clear_places()
 	amb.update_places(Vector3.ZERO)
 	amb.set_time_of_day(12.0)
@@ -544,12 +559,47 @@ func _test_traffic(audio: Node) -> void:
 			var doors: Array = audio.hooks._home.door_names()
 			if not doors.is_empty():
 				audio.hooks._home.toggle_door(doors[0])  # plays the door sound
-		check(amb.zone == amb.zone_at(audio.listener().global_position), "ambience zone follows the camera (%s)" % amb.zone)
+		check(amb.zone == amb.zone_here(audio.listener().global_position), "ambience zone follows the camera (%s)" % amb.zone)
+		_test_home(audio, amb)
 		var map_node := main.find_child("PerthMap", true, false)
 		if map_node.has_method("get_pois") and not map_node.get_pois().is_empty():
 			check(amb._places.size() >= 50, "the map's points of interest became place layers (%d)" % amb._places.size())
 	main.queue_free()
 	await process_frame
+
+
+## Home is quiet: its own zone and beds round the townhouse, and indoors the
+## street comes through the walls while the fridge and the clock are heard.
+func _test_home(audio: Node, amb: Node) -> void:
+	var ha: Node = audio.hooks.home_audio
+	check(ha != null, "the townhouse has its own sound")
+	if ha == null:
+		return
+	var home: Node3D = audio.hooks._home
+	for period in ["day", "night", "dawn"]:
+		check(audio.has("amb/amb_home_" + period), "home bed " + period)
+	check(amb.zone_here(home.global_position + Vector3(20, 0, 10)) == "home", "the lane round the townhouse is home")
+	var away := home.global_position + Vector3(300, 0, 0)
+	check(amb.zone_here(away) == amb.zone_at(away), "a few streets off is the city again (%s)" % amb.zone_here(away))
+	var lounge: Vector3 = home.global_transform * Vector3(2.6, 1.6, -2.6)
+	check(ha.contains(lounge), "the lounge is inside the house")
+	check(not ha.contains(home.global_transform * Vector3(3.0, 1.6, -16.0)), "the courtyard is outside it")
+	var ambience_bus := AudioServer.get_bus_index("Ambience")
+	var before := AudioServer.get_bus_volume_db(ambience_bus)
+	audio.set_indoors(true)
+	check(AudioServer.get_bus_volume_db(ambience_bus) <= before - 8.0, "indoors the street is well down")
+	check(AudioServer.is_bus_effect_enabled(ambience_bus, 0), "and dulled through the walls")
+	audio.set_indoors(false)
+	check(absf(AudioServer.get_bus_volume_db(ambience_bus) - before) < 0.01 \
+			and not AudioServer.is_bus_effect_enabled(ambience_bus, 0), "back outside it's as it was")
+	var hums := 0
+	for p in home.find_children("home_*", "AudioStreamPlayer3D", false, false):
+		hums += 1
+		check(p.max_distance <= 15.0, "%s is only heard close to it" % p.name)
+	check(hums == 2, "the fridge and the clock (%d)" % hums)
+	amb.set_zone("home")
+	await process_frame
+	check(amb._bed_name.begins_with("amb/amb_home_"), "a home bed plays at home (%s)" % amb._bed_name)
 
 
 func _test_footsteps(audio: Node) -> void:

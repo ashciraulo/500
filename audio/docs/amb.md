@@ -32,7 +32,13 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
   where the car stops) and servos and drive-throughs as car parks at night
   only. Nodes in the `poi` group (meta `poi_type`, optional `radius`) and
   `Audio.ambience.add_place(type, position, radius)` work too. Each type is
-  at full volume within 35% of its radius and fades out to the edge.
+  heard from its nearest place, as a 3D sound there: full volume within 35%
+  of its radius, then falling away with distance and silent at 1.3 times the
+  radius, and panned (gently, as places are wide) towards where it is.
+- **Beds carry no close-up events from things the game makes itself**: no
+  cars or buses going by, no crossing right beside you, no sirens. The
+  traffic plays those from where they are; a bed holds only what's far off
+  or everywhere (the city's hum, distant traffic, chatter, birds).
 - **One-shots**: mono, 3D-positioned in game, peak -1 dBTP. The `_loop`
   one-shots (crossing bells, pedestrian signals) are mono seamless loops at
   -1 dBTP for placing on an actual crossing.
@@ -41,21 +47,21 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 |---|---|---|---|---|
 | amb_kingspark_day | yes (96 s) | Kings Park bush by day: western magpies carolling near and far, a kookaburra family laughing back in the trees, rainbow lorikeet flocks screeching overhead (pan sweeps), Carnaby's black cockatoos far off, a raven, wind in the gums (dry leathery leaf patter), faint CBD hum below | P1 | mag_kp2, mag_dl, kook_kp, lorikeets, cockatoo_perth, raven_db, walyunga (+ synth wind/hum) |
 | amb_kingspark_night | yes (120 s) | Kings Park at night: crickets, banjo-frog 'bonk' runs from the lake edge, a southern boobook ('mopoke') calling twice per loop, long quiet stretches, light breeze, city hum | P1 | crickets_sub, pobble1, pobble2, boobook1 (+ synth bonks, wind, hum) |
-| amb_cbd_day | yes (90 s) | CBD by day: main-road traffic, buses pulling away, cars and a motorbike, people, two Australian audio-tactile pedestrian crossings (slow 'tock' locator, button beep, rapid 'tik-tik-tik' walk phase), one distant siren | P1 | traffic_peak, hydepark (+ synth buses, cars, crossings, siren) |
-| amb_cbd_night | yes (100 s) | CBD at night: distant traffic, rooftop/wall air-con units (fan thrum, 100 Hz hum), empty-street hum, a crossing locator tocking for nobody, occasional far car, far yelp siren | P1 | traffic_night (+ synth AC, hum, crossing, cars, siren) |
-| amb_northbridge_day | yes (90 s) | Northbridge cafes: chatter, cups and cutlery, espresso steam, a delivery truck reversing (beeper), passing cars/trucks, far siren | P2 | bar_wa, traffic_peak (+ synth clinks, steam, beeper, traffic) |
-| amb_northbridge_night | yes (96 s) | Northbridge at night: club kick/bass through walls (mids leak when doors open), crowds, far sirens, cars and a motorbike | P2 | bar_wa, pub_crowd, traffic_night (+ synth club, sirens, traffic) |
+| amb_cbd_day | yes (90 s) | CBD by day: main-road traffic in the distance, people, a pedestrian crossing across the road (slow 'tock' locator, button beep, rapid 'tik-tik-tik' walk phase). No buses or cars passing close by and no siren: the game's own traffic, crossings and emergency calls make those where they are | P1 | traffic_peak, hydepark (+ synth crossing) |
+| amb_cbd_night | yes (100 s) | CBD at night: distant traffic, rooftop/wall air-con units (fan thrum, 100 Hz hum), empty-street hum, a crossing locator tocking for nobody, occasional far car | P1 | traffic_night (+ synth AC, hum, crossing, cars) |
+| amb_northbridge_day | yes (90 s) | Northbridge cafes: chatter, cups and cutlery, espresso steam, a delivery truck reversing (beeper). No passing cars or siren (the game's traffic) | P2 | bar_wa, traffic_peak (+ synth clinks, steam, beeper) |
+| amb_northbridge_night | yes (96 s) | Northbridge at night: club kick/bass through walls (mids leak when doors open), crowds. No sirens or passing cars (the game's traffic) | P2 | bar_wa, pub_crowd, traffic_night (+ synth club) |
 | amb_river_day | yes (100 s) | Swan River foreshore by day: water lapping, a ferry crossing (fades up and away), silver gulls, joggers passing, distant magpies, breeze, traffic across the water | P2 | lapping, ferry, mag_kp2, mag_dl (+ synth gulls, footsteps, wind, hum) |
 | amb_river_night | yes (110 s) | River at night: lapping, hum/buzz of the bridge lights, distant traffic over the bridge, faint crickets | P2 | lapping, crickets_sub (+ synth bridge hum, traffic) |
 | amb_suburbs_day | yes (110 s) | Suburbs by day: park with kids and local birds, a neighbour mowing, an impact sprinkler ticking, magpies, wagtails, ravens, far dogs, the odd car | P2 | hydepark, lawnmower, sprinkler, mag_kp2, mag_dl, wagtail1, raven_db, raven_yell, dogs_far, dog_far2 (+ synth wind, cars) |
-| amb_suburbs_night | yes (120 s) | Suburbs at night: crickets, far dogs, reticulation ticking, ravens settling far off, distant traffic, a very far siren | P2 | crickets_sub, traffic_night, sprinkler, dogs_far, dog_far2, raven_db, raven_yell (+ synth) |
+| amb_suburbs_night | yes (120 s) | Suburbs at night: crickets, far dogs, reticulation ticking, ravens settling far off, distant traffic | P2 | crickets_sub, traffic_night, sprinkler, dogs_far, dog_far2, raven_db, raven_yell (+ synth) |
 | amb_freeway_day | yes (80 s) | Beside the Kwinana/Mitchell freeway: constant whoosh, frequent car and truck pass-bys | P2 | freeway, traffic_peak (+ synth pass-bys) |
 | amb_freeway_night | yes (100 s) | Freeway at night: sparse cars and trucks over a near-empty WA highway bed | P2 | highway_wa (+ synth pass-bys) |
 | amb_beach_day | yes (100 s) | Beach by day: surf, silver gulls, the sea breeze | P3 | beach_day (+ synth gulls, breeze) |
 | amb_beach_night | yes (110 s) | Beach at night: waves, light wind | P3 | beach_night (+ synth wind) |
 | amb_fremantle_day | yes (110 s) | Fremantle port by day: water slapping the wharf, gulls, ship horns, container clanks, crane hydraulics, a freight train grinding out of the port with its crossing bell | P3 | laps_horn, freo_train (+ synth gulls, horns, clanks, hydraulics) |
 | amb_fremantle_night | yes (110 s) | Port at night: lapping, low machinery hum, generator thrum, a far ship horn, distant clanks, a far crossing bell | P3 | lapping (+ synth) |
-| amb_northbridge_rain | yes (90 s) | Northbridge when it's wet: tyre spray hiss from passing cars and a truck, a gutter running, drips off the awnings, chatter and the club muffled under cover, wet-city hiss, one far siren | P2 | bar_wa, traffic_night (+ synth spray, gutter, drips, club) |
+| amb_northbridge_rain | yes (90 s) | Northbridge when it's wet: a gutter running, drips off the awnings, chatter and the club muffled under cover, wet-city hiss (cars swishing past and sirens come from the game's traffic) | P2 | bar_wa, traffic_night (+ synth gutter, drips, club) |
 | amb_cbd_rain | yes (90 s) | CBD wet: muffled main-road traffic under a wet 'shhh', buses and cars spraying past, the crossing still tocking (one walk phase, fewer people), a downpipe, drips | P2 | traffic_peak (+ synth) |
 | amb_kingspark_rain | yes (96 s) | Kings Park wet: the gums dripping near and far, a trickle down the path, still wet leaves, two far magpies and a raven, the roads below hissing, two far wet cars | P2 | mag_kp2, mag_dl, raven_db, raven_yell (+ synth drips, trickle, hiss) |
 | amb_river_rain | yes (100 s) | River wet: lapping, wet traffic hissing across the water, drips on the jetty rails, far cars on the bridge, a couple of far gulls | P2 | lapping (+ synth) |
@@ -63,11 +69,14 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | amb_freeway_rain | yes (80 s) | Freeway wet: muffled freeway roar under a strong spray hiss, cars and trucks throwing spray as they pass | P2 | freeway (+ synth spray) |
 | amb_fremantle_rain | yes (110 s) | Port wet: lapping, machinery hum, drips ticking on containers and shed roofs, a gutter, a far ship horn and clanks | P3 | lapping (+ synth) |
 | amb_beach_rain | yes (100 s) | Beach wet: rougher grey surf, wind, a far car spraying past on the coast road, drips off the shelter, one gull | P3 | beach_day (+ synth) |
-| amb_northbridge_late | yes (96 s) | Northbridge 01:00-05:00, everyone gone: fridge-like city hum, air-con units, a neon sign buzzing, a street sweeper creeping past, a bin lid far off, one taxi, a very far siren | P2 | traffic_night (+ synth) |
+| amb_northbridge_late | yes (96 s) | Northbridge 01:00-05:00, everyone gone: fridge-like city hum, air-con units, a neon sign buzzing, a street sweeper creeping past, a bin lid far off, one taxi | P2 | traffic_night (+ synth) |
+| amb_home_day | yes (100 s) | Home (the lanes round 15 Little Shenton Lane) by day: the city a faint wash over the rooftops, the courtyard tree in a light breeze, a magpie or wagtail now and then, one far raven. No people, no music. Mixed to -30 LUFS, under every other bed | P2 | traffic_night, mag_kp2, mag_dl, wagtail1, raven_db, raven_yell (+ synth hum, wind) |
+| amb_home_night | yes (110 s) | Home at night (and 01:00-05:00): soft crickets, the city's hum far off, barely any wind, one dog streets away. -30 LUFS | P2 | crickets_sub, traffic_night, dogs_far, dog_far2 (+ synth hum, wind) |
+| amb_home_dawn | yes (100 s) | Home 05:00-07:00: magpies carolling over the rooftops, wagtails and small birds, the last crickets. -30 LUFS | P2 | traffic_night, mag_kp2, mag_dl, wagtail1, crickets_sub (+ synth twitter, wind) |
 | amb_cbd_late | yes (100 s) | CBD 01:00-05:00: city hum, air-con units, a crossing tocking for nobody, a sweeper far off, one far car, one far clank | P2 | synth only |
 | amb_kingspark_late | yes (120 s) | Kings Park 01:00-05:00: thinner crickets, the air dead still, the city hum below, a boobook once, a far dog, one lone car | P2 | crickets_sub, boobook1, dogs_far, dog_far2 (+ synth) |
 | amb_river_late | yes (110 s) | River 01:00-05:00: quiet lapping, bridge light buzz, city hum, faint crickets, one far car on the bridge, a mooring tinking once | P2 | lapping, crickets_sub (+ synth) |
-| amb_suburbs_late | yes (120 s) | Suburbs 01:00-05:00: crickets, a fridge-like hum, a neighbour's pool pump behind the fence, one far dog, one car, a very far siren | P2 | crickets_sub, dogs_far, dog_far2 (+ synth) |
+| amb_suburbs_late | yes (120 s) | Suburbs 01:00-05:00: crickets, a fridge-like hum, a neighbour's pool pump behind the fence, one far dog, one car | P2 | crickets_sub, dogs_far, dog_far2 (+ synth) |
 | amb_freeway_late | yes (100 s) | Freeway 01:00-05:00: near-empty highway, hum, three passes (one truck) | P2 | highway_wa (+ synth) |
 | amb_fremantle_late | yes (110 s) | Port 01:00-05:00: lapping, low hum, generators, halyards tinking on masts in the boat harbour, one far clank | P3 | lapping (+ synth) |
 | amb_beach_late | yes (110 s) | Beach 01:00-05:00: waves, barely any wind, a far hum from town, one far car | P3 | beach_night (+ synth) |
@@ -83,7 +92,7 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | place/place_beach_loop | yes (50 s) | At the beach: the shore break close by, the sea breeze in your ears, gulls | P2 | beach_day (+ synth wind, gulls) |
 | place/place_beach_night_loop | yes (55 s) | The beach at night: waves close by, a light onshore wind | P2 | beach_night (+ synth wind) |
 | place/place_lookout_loop | yes (50 s) | Up on a lookout: open, buffeting wind in your ears and a whistle through the railings, gums rustling, the city spread out below, birds and a plane far off | P2 | mag_kp2, mag_dl (+ synth wind, hum, jet) |
-| place/place_lookout_night_loop | yes (55 s) | A lookout at night: the wind, the city's hum below, crickets, one very far siren | P2 | crickets_sub (+ synth wind, hum, siren) |
+| place/place_lookout_night_loop | yes (55 s) | A lookout at night: the wind, the city's hum below, crickets | P2 | crickets_sub (+ synth wind, hum) |
 | place/place_bush_loop | yes (55 s) | In among the trees (Kings Park bushland, Bold Park): magpies, wagtails and small birds close by, gum leaves rustling and knocking overhead. Cicadas come from the weather layer | P2 | walyunga, mag_kp2, mag_dl, wagtail1 (+ synth wind, twitter) |
 | place/place_bush_night_loop | yes (60 s) | The bush at night: crickets close, a breeze, something scuffling in the leaf litter, a boobook calling | P2 | crickets_sub, boobook1 (+ synth wind, scuffles) |
 | place/place_quay_loop | yes (60 s) | Elizabeth Quay: water slapping the pontoons and the quay wall, halyards tinking, a ferry idling at the jetty, people strolling, gulls, and the Swan Bells ringing changes across the inlet | P2 | lapping, ferry, bar_wa (+ synth slaps, halyards, bells, gulls, footsteps) |
@@ -106,7 +115,7 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | amb_bird_kookaburra_01..02 | no | Laughing kookaburra family laugh (Kings Park) | P1 | kook_kp |
 | amb_bird_wagtail_01..02 | no | Willie wagtail chatter | P1 | wagtail1 |
 | amb_dog_bark_far_01..03 | no | Dog barking far off (with distance reverb) | P1 | dogs_far, dog_far2 |
-| amb_siren_distant_01..02 | no | Distant emergency siren (01 wail, 02 yelp into wail) | P1 | synth |
+| amb_siren_distant_01..02 | no | Distant emergency siren (01 wail, 02 yelp into wail), played from far off when the traffic sends an emergency call across the city (a few a day) | P1 | synth |
 | amb_train_pass_01..02 | no | Transperth electric train passing (01: 4-car at speed, 25 m; 02: 6-car slowing, 45 m, brake squeal): traction whine, rolling noise, wheel clatter, doppler | P1 | synth |
 | amb_crossing_bells_loop | yes (4 s) | Railway level-crossing bell, ~2.75 strikes/s | P1 | synth |
 | amb_ped_locator_loop | yes (4 s) | Pedestrian push-button locator 'tock', 1 per second | P1 | synth |

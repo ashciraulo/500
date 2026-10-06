@@ -218,6 +218,17 @@ jobs:
             exit 1
           fi
 
+      - name: Sound check
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/sound_check.gd -- --no-save 2>&1 \
+            | tee sound.log | grep -E "ok |FAIL|SOUND CHECK|  - |sirens:|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" sound.log; then
+            echo "::error::GDScript errors in the sound check"
+            exit 1
+          fi
+
       # Waits for the traffic test started above and reports it. If an earlier
       # step failed the job stops there, as it always has, and the background
       # run is dropped rather than waited for.

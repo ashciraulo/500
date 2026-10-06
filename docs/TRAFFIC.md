@@ -59,9 +59,14 @@ the old test grid get a network matching the grid's streets instead.
   across it, and nobody parks in one. The end of Little Shenton Lane on
   James St, where the player drives out, has one (`keep_clear_spots` on the
   manager); the map can add more with `keep_clear` in the road data.
-- **Emergency vehicles.** Every few minutes (`emergency_interval`) a police
-  car, ambulance or DFES fire truck heads along a main road towards the
-  player from out of sight, lights flashing and siren on. Cars ahead of it
+- **Emergency vehicles.** A few times an in-game day (`emergency_interval`,
+  in game hours) there's an emergency call. Most are only a siren far off
+  across the city (the `distant_siren` signal, 350-700 m away, which the
+  sound plays from there); about a third (`emergency_drive_by`) send a
+  police car, ambulance or DFES fire truck along a main road towards the
+  player from out of sight, lights flashing and siren on. Its call ends
+  (siren and lights off) once it has gone past and is heading away, or
+  after 75 s; out of sight it just goes. Cars ahead of it
   on its way pull over to the left and stop (never inside a junction), and
   it passes them on the right; it slows right down at red lights and edges
   through when the junction is clear. `spawn_emergency(near, type)` sends
@@ -311,7 +316,7 @@ AudioStreamPlayer3D on the Vehicles bus playing a placeholder two-tone horn.
 Sound code can swap `Horn.stream`, or add engine players under `Audio` on
 `vehicle_spawned`. Police cars, ambulances and fire trucks also have a
 `Siren` player under `Audio` (a placeholder looping wail, playing while
-they're on the road) and a `LightBar` with `Red` and `Blue` lamps the
+their call lasts) and a `LightBar` with `Red` and `Blue` lamps the
 manager flashes. A vehicle's speed: `manager.vehicles` holds
 `TrafficVehicle` objects with `body`, `speed` (m/s), `accel` and `type`.
 

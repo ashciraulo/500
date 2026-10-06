@@ -11,7 +11,8 @@ extends Node
 ## - Owns the radio (Audio.radio), the ambience/weather beds (Audio.ambience)
 ##   and menu/mission music (Audio.play_music, Audio.set_mission_intensity).
 ## - Audio.set_player_inside(true/false) switches the world to the muffled
-##   "heard from inside the car" mix.
+##   "heard from inside the car" mix, and Audio.set_indoors(true/false) the
+##   "heard from inside the townhouse" one (the street dull and far off).
 
 signal player_inside_changed(inside: bool)
 
@@ -52,6 +53,8 @@ var _variants := {}         # "impact/imp_crash_medium" -> [paths...]
 var _cache := {}
 var _last_variant := {}
 var _inside := false
+var _indoors := false
+var _base_db := {}          # mixed levels of the buses set_indoors() turns down
 var _world_lp: AudioEffectLowPassFilter
 var _world_shelf: AudioEffectEQ6
 var _radio_lp: AudioEffectLowPassFilter
@@ -185,6 +188,16 @@ func _build_buses() -> void:
 		AudioServer.add_bus_effect(world, _world_shelf)
 	else:
 		_world_lp = AudioServer.get_bus_effect(world, 0) as AudioEffectLowPassFilter
+	for bus in ["Vehicles", "Tyres", "Engine"]:
+		_base_db[bus] = AudioServer.get_bus_volume_db(AudioServer.get_bus_index(bus))
+	# Ambience and Weather: dulled through the walls when you're indoors at home.
+	for bus in INDOOR_DULLED:
+		var i := AudioServer.get_bus_index(bus)
+		if AudioServer.get_bus_effect_count(i) == 0:
+			var lp := AudioEffectLowPassFilter.new()
+			lp.cutoff_hz = 800.0
+			lp.resonance = 0.5
+			AudioServer.add_bus_effect(i, lp)
 	# Radio: a small car stereo. Band-limited, a touch of drive, compressed.
 	var r := AudioServer.get_bus_index("Radio")
 	if AudioServer.get_bus_effect_count(r) == 0:
@@ -245,6 +258,12 @@ func get_bus_volume(bus: String) -> float:
 	return db_to_linear(AudioServer.get_bus_volume_db(idx)) if idx >= 0 else 0.0
 
 
+## Buses heard through the townhouse walls (low-passed indoors), and how far
+## down each one goes. SFX stays as it is: the house's own sounds are on it.
+const INDOOR_DULLED := ["Ambience", "Weather"]
+const INDOOR_DB := {"Ambience": -10.0, "Weather": -6.0, "Vehicles": -12.0, "Tyres": -12.0, "Engine": -8.0}
+
+
 func set_player_inside(inside: bool) -> void:
 	if inside == _inside:
 		return
@@ -255,6 +274,18 @@ func set_player_inside(inside: bool) -> void:
 
 func is_player_inside() -> bool:
 	return _inside
+
+
+## On foot inside the townhouse (Audio.hooks sets it as you come and go).
+func set_indoors(indoors: bool) -> void:
+	if indoors == _indoors:
+		return
+	_indoors = indoors
+	_apply_inside()
+
+
+func is_indoors() -> bool:
+	return _indoors
 
 
 func _apply_inside() -> void:
@@ -268,8 +299,17 @@ func _apply_inside() -> void:
 	# The radio applies its own outside trim (radio.gd listens for the signal).
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), -3.0 if _inside else -17.0)
 	# Inside, the street and the weather drop well under the radio and engine.
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Ambience"), -9.0 if _inside else 0.0)
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Weather"), -12.0 if _inside else -4.0)
+	var levels := {"Ambience": -9.0 if _inside else 0.0, "Weather": -12.0 if _inside else -4.0,
+			"Vehicles": _base_db.get("Vehicles", 0.0), "Tyres": _base_db.get("Tyres", 0.0),
+			"Engine": _base_db.get("Engine", 0.0)}
+	# Indoors at home the street is through the walls: dull and well down.
+	var home := _indoors and not _inside
+	for bus in INDOOR_DB:
+		levels[bus] += INDOOR_DB[bus] if home else 0.0
+	for bus in levels:
+		AudioServer.set_bus_volume_db(AudioServer.get_bus_index(bus), levels[bus])
+	for bus in INDOOR_DULLED:
+		AudioServer.set_bus_effect_enabled(AudioServer.get_bus_index(bus), 0, home)
 
 
 # ---------------------------------------------------------------------------
@@ -408,9 +448,12 @@ func play_2d(sound_name: String, bus := "SFX", volume_db := 0.0, pitch := 1.0) -
 	return p
 
 
-## Positional one-shot in the world, with a little random pitch so repeats differ.
+## Positional one-shot in the world, with a little random pitch so repeats
+## differ. unit_size is how far it stays at full volume and reach where it
+## falls silent: the defaults suit something car-sized; pass bigger ones for
+## things that carry (a train horn), smaller for little ones (a click).
 func play_at(sound_name: String, pos: Vector3, volume_db := 0.0, bus := "SFX",
-		pitch_jitter := 0.04) -> AudioStreamPlayer3D:
+		pitch_jitter := 0.04, unit_size := 6.0, reach := 200.0) -> AudioStreamPlayer3D:
 	sound_name = _resolve(sound_name)
 	var s := variant(sound_name) if _variants.has(sound_name) else stream(sound_name)
 	if s == null:
@@ -421,10 +464,20 @@ func play_at(sound_name: String, pos: Vector3, volume_db := 0.0, bus := "SFX",
 			p = c
 			break
 	if p == null:
-		p = _pool_3d[randi() % _pool_3d.size()]
+		# All busy: cut short the one furthest from the listener (the one
+		# least missed), not a random one.
+		var ear := listener()
+		var far := -1.0
+		for c in _pool_3d:
+			var d := c.global_position.distance_to(ear.global_position) if ear else 0.0
+			if d > far:
+				far = d
+				p = c
 	p.stream = s
 	p.bus = bus
 	p.volume_db = volume_db
+	p.unit_size = unit_size
+	p.max_distance = reach
 	p.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
 	p.global_position = pos
 	p.play()

@@ -31,6 +31,10 @@ signal signals_changed(position: Vector3)
 ## Someone with somewhere to be got there and went (see spawn_walker).
 signal walker_arrived(ped: TrafficPedestrian)
 signal network_changed
+## An emergency call heard across the city: a siren somewhere far off
+## (`position`, 350-700 m from the player), no vehicle. type is police,
+## ambulance or fire.
+signal distant_siren(position: Vector3, type: StringName)
 
 ## Physics layer 3: traffic. The player's car gets this bit added to its mask.
 const TRAFFIC_LAYER := 1 << 2
@@ -49,9 +53,13 @@ const HEADLIGHT_BEAMS := 6
 ## Share of new traffic on quieter roads that's someone on a bike (more on
 ## roads with bike lanes and at weekends, few at night, none in the rain).
 @export var bike_share := 0.06
-## Seconds between police cars, ambulances and fire trucks on a call
-## (random within the range). 0 turns them off.
-@export var emergency_interval := Vector2(240.0, 600.0)
+## In-game hours between emergency calls (random within the range; 0 turns
+## them off). A call is usually just a siren somewhere across the city
+## (distant_siren); now and then (emergency_drive_by) a police car,
+## ambulance or fire truck comes past the player instead.
+@export var emergency_interval := Vector2(5.0, 9.0)
+## Share of emergency calls that drive past the player.
+@export var emergency_drive_by := 0.35
 ## Milliseconds per frame spent adding map tiles' roads (at least one piece
 ## goes in each frame).
 @export var network_budget_ms := 3.0
@@ -114,7 +122,13 @@ var network_frame_pieces := 0
 var network_frames := PackedFloat32Array()
 ## Emergency vehicles on the road now (lights and siren on).
 var emergencies: Array = []
-var _emergency_timer := 120.0
+## Seconds to the next emergency call (-1: not scheduled yet).
+var _emergency_timer := -1.0
+## Its own dice, so when the calls come doesn't shift the rest of the traffic.
+var _emergency_rng := RandomNumberGenerator.new()
+## A drive-by's call (siren and lights) ends this long after it set off, or
+## once it has gone past the player and is heading away.
+const EMERGENCY_CALL_S := 75.0
 var _siren: AudioStreamWAV
 var _focus: Node3D
 var _player: RigidBody3D
@@ -176,6 +190,7 @@ func _ready() -> void:
 	add_to_group(&"traffic")
 	if random_seed != 0:
 		_rng.seed = random_seed
+		_emergency_rng.seed = random_seed + 1
 	else:
 		_rng.randomize()
 	_props_root = Node3D.new()
@@ -1552,7 +1567,7 @@ func _place(v: TrafficVehicle, dt: float, lights_on: bool) -> void:
 	v.forward = flat
 	var basis := Basis.looking_at(dir, Vector3.UP)
 	v.body.global_transform = Transform3D(basis, p)
-	if v.light_bar:
+	if v.light_bar and v.emergency:
 		# Red and blue taking turns, with a double flash each.
 		var phase := int(_time * 8.0 + v.id) % 8
 		var red_on := phase == 0 or phase == 2
@@ -1720,12 +1735,7 @@ func _manage_population() -> void:
 	for i in tries:
 		_try_spawn_ped(focus)
 
-	if emergency_interval.y > 0.0:
-		_emergency_timer -= SPAWN_INTERVAL
-		if _emergency_timer <= 0.0:
-			_emergency_timer = _rng.randf_range(emergency_interval.x, emergency_interval.y)
-			if emergencies.is_empty():
-				spawn_emergency(focus)
+	step_emergencies(focus, SPAWN_INTERVAL)
 
 	if trains_enabled and not graph.rail_edges.is_empty():
 		_train_timer -= SPAWN_INTERVAL
@@ -1843,18 +1853,77 @@ func _bike_chance(lane: TrafficGraph.Lane) -> float:
 const EMERGENCY := [[&"ambulance", 0.45], [&"police", 0.4], [&"fire", 0.15]]
 
 
+## Real seconds to the next emergency call: emergency_interval is in-game
+## hours, so the rate follows the clock (a few calls a day).
+func _emergency_gap() -> float:
+	var hours := _emergency_rng.randf_range(emergency_interval.x, emergency_interval.y)
+	return hours * float(GameClock.seconds_per_day) / 24.0
+
+
+## Counts down to the next emergency call and ends drive-bys' calls. Runs
+## every SPAWN_INTERVAL; tests call it directly to fast-forward days.
+func step_emergencies(focus: Vector3, dt: float) -> void:
+	if emergency_interval.y > 0.0:
+		if _emergency_timer < 0.0:
+			# The first call comes part-way into the first gap.
+			_emergency_timer = _emergency_gap() * _emergency_rng.randf_range(0.4, 0.8)
+		_emergency_timer -= dt
+		if _emergency_timer <= 0.0:
+			_emergency_timer = _emergency_gap()
+			if emergencies.is_empty():
+				emergency_call(focus)
+	for v in emergencies.duplicate():
+		_follow_call(v, focus, dt)
+
+
+## One emergency call: usually a siren far off across the city, sometimes
+## (emergency_drive_by) a vehicle coming past `focus`.
+func emergency_call(focus: Vector3) -> void:
+	var type := _emergency_type()
+	if _emergency_rng.randf() < emergency_drive_by and spawn_emergency(focus, type) != null:
+		return
+	var ang := _emergency_rng.randf() * TAU
+	var far := _emergency_rng.randf_range(350.0, 700.0)
+	distant_siren.emit(focus + Vector3(cos(ang) * far, 0.0, sin(ang) * far), type)
+
+
+func _emergency_type() -> StringName:
+	var r := _emergency_rng.randf()
+	for e in EMERGENCY:
+		r -= e[1]
+		if r <= 0.0:
+			return e[0]
+	return &"police"
+
+
+## A drive-by's call ends (siren off) once it has passed `focus` and is
+## heading away, or after EMERGENCY_CALL_S. Out of sight it just goes;
+## in sight it drives on quietly with its lights off.
+func _follow_call(v: TrafficVehicle, focus: Vector3, dt: float) -> void:
+	v.call_time += dt
+	var d: float = v.position.distance_to(focus)
+	v.call_closest = minf(v.call_closest, d)
+	var leaving := d > v.call_closest + 30.0 and d > 120.0
+	if v.call_time < EMERGENCY_CALL_S and not leaving:
+		return
+	if not _visible(v.position):
+		_despawn_vehicle(v)
+		return
+	v.emergency = false
+	emergencies.erase(v)
+	if v.siren:
+		v.siren.stop()
+	if v.light_bar:
+		v.light_bar.set_meta("key", 0)
+		v.light_bar.get_node("Red").material_override = TrafficModels.bar_material(0, false)
+		v.light_bar.get_node("Blue").material_override = TrafficModels.bar_material(1, false)
+
+
 ## Send a police car, ambulance or fire truck along a main road towards
 ## `focus`, starting out of sight. Returns it, or null if no road would do.
 func spawn_emergency(focus: Vector3, type: StringName = &"") -> TrafficVehicle:
 	if type == &"":
-		var r := _rng.randf()
-		for e in EMERGENCY:
-			r -= e[1]
-			if r <= 0.0:
-				type = e[0]
-				break
-		if type == &"":
-			type = &"police"
+		type = _emergency_type()
 	for attempt in 24:
 		var entry := _pick_sample(graph.lane_cells(), focus, 140.0, spawn_radius)
 		if entry.is_empty():
@@ -1948,6 +2017,10 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	v.route = [lane]
 	v.prev_lane = null
 	v.s = s
+	# On a call from the start (a call that ended turned it off).
+	v.emergency = TrafficModels.EMERGENCY_PAINT.has(type)
+	v.call_time = 0.0
+	v.call_closest = INF
 	v.eagerness = _rng.randf_range(0.88, 1.1) if type != &"bus" else 0.9
 	if v.emergency:
 		v.eagerness = 1.35
@@ -2158,9 +2231,10 @@ func _create_vehicle(type: StringName) -> TrafficVehicle:
 		siren.name = "Siren"
 		siren.stream = _siren
 		siren.bus = &"Vehicles"
-		siren.unit_size = 22.0
-		siren.max_distance = 400.0
-		siren.volume_db = -6.0
+		# Loud close up, clearly fading as it goes (silent past 350 m).
+		siren.unit_size = 12.0
+		siren.max_distance = 350.0
+		siren.volume_db = -4.0
 		audio.add_child(siren)
 		v.siren = siren
 		var bar: Node3D = v.model.get_node_or_null("LightBar") if v.model else null

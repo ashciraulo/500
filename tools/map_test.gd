@@ -63,7 +63,9 @@ func _process(_delta: float) -> bool:
 			_check(is_nan(_map.water_level_at(_spawn.origin)), "no lake at home")
 			_next()
 		1:
-			if _seconds() >= 3.0:
+			# Tiles load on worker threads in real time while frames run as fast
+			# as they can, so on a busy runner give them a while to come in.
+			if _seconds() >= 3.0 and (_map.loaded_tile_count() >= 6 or _seconds() >= 30.0):
 				_check(_car.grounded_wheels == 4, "car lands on all four wheels (%d)" % _car.grounded_wheels)
 				_check(absf(_car.global_position.y - _spawn.origin.y) < 1.5, "car rests near spawn height (y=%.2f, spawn %.2f)" % [_car.global_position.y, _spawn.origin.y])
 				_check(_car.global_basis.y.dot(Vector3.UP) > 0.95, "car sits level in the carport")

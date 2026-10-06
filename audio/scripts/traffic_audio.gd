@@ -39,10 +39,19 @@ const STEP_VOICES := 4
 const STEP_RADIUS := 25.0
 const STEP_KINDS := ["traffic/traffic_steps_shoes_loop", "traffic/traffic_steps_heels_loop",
 	"traffic/traffic_steps_thongs_loop"]
-const CROWD_RADIUS := 45.0
+## People within this of the listener count towards a crowd, and people
+## within CROWD_SPREAD of each other make one.
+const CROWD_RADIUS := 90.0
+const CROWD_SPREAD := 15.0
+## Sirens across the city (the manager's distant_siren calls): heard far off.
+const FAR_SIREN := "amb/amb_siren_distant"
 var _steps: Array = []       # {"player": AudioStreamPlayer3D, "ped": TrafficPedestrian or null}
 var _crowd: AudioStreamPlayer3D
+## Round home (the quiet lane) a crowd is a street or two over, behind the
+## houses: this much further down.
+const HOME_CROWD_DB := -12.0
 var _crowd_small: AudioStreamPlayer3D
+var _far_siren: AudioStreamPlayer3D
 var _ped_timer := 0.0
 
 
@@ -76,6 +85,8 @@ func setup(traffic_manager: Node) -> void:
 		manager.train_arrived.connect(_on_train_arrived)
 	if manager.has_signal("train_departed"):
 		manager.train_departed.connect(_on_train_departed)
+	if manager.has_signal("distant_siren"):
+		manager.distant_siren.connect(_on_distant_siren)
 	var boats = manager.get("boats")
 	if boats is Object and boats.has_signal("ferry_departed"):
 		boats.ferry_departed.connect(_on_ferry_departed)
@@ -91,6 +102,22 @@ func setup(traffic_manager: Node) -> void:
 	_crowd.stream = Audio.stream("traffic/traffic_crowd_busy_loop", true)
 	_crowd_small = _new_3d("CrowdSmall", 4.0, 60.0, -6.0)
 	_crowd_small.stream = Audio.stream("traffic/traffic_crowd_small_loop", true)
+	for p in [_crowd, _crowd_small]:
+		p.set_meta(&"mix_db", p.volume_db)
+	# A siren 350-700 m off: big enough to carry, still falling away with distance.
+	_far_siren = _new_3d("FarSiren", 40.0, 900.0, 0.0)
+	_far_siren.bus = &"Ambience"
+	_far_siren.max_db = 0.0
+
+
+## An emergency call across the city: a far siren from that direction.
+func _on_distant_siren(pos: Vector3, _type: StringName = &"") -> void:
+	if not Audio.has(FAR_SIREN):
+		return
+	_far_siren.stream = Audio.variant(FAR_SIREN)
+	_far_siren.global_position = pos + Vector3(0, 10, 0)
+	_far_siren.pitch_scale = randf_range(0.96, 1.04)
+	_far_siren.play()
 
 
 func _new_3d(node_name: String, unit: float, max_d: float, db: float) -> AudioStreamPlayer3D:
@@ -107,14 +134,14 @@ func _new_3d(node_name: String, unit: float, max_d: float, db: float) -> AudioSt
 func _on_train_arrived(pos: Vector3) -> void:
 	# The tail of the arrival (brakes, the stop and the air) as it stops,
 	# then the doors.
-	var a := Audio.play_at("traffic/traffic_train_arrive", pos, -2.0, "SFX", 0.0)
+	var a := Audio.play_at("traffic/traffic_train_arrive", pos, -2.0, "SFX", 0.0, 12.0, 300.0)
 	if a:
 		a.seek(6.0)
 	Audio.play_at("traffic/traffic_train_doors", pos, -4.0, "SFX", 0.0)
 
 
 func _on_train_departed(pos: Vector3) -> void:
-	Audio.play_at("traffic/traffic_train_depart", pos, -2.0, "SFX", 0.0)
+	Audio.play_at("traffic/traffic_train_depart", pos, -2.0, "SFX", 0.0, 12.0, 300.0)
 
 
 func _on_ferry_departed(pos: Vector3) -> void:
@@ -194,16 +221,17 @@ func _process(delta: float) -> void:
 	_drive_steps()
 
 
-## Footsteps on the few nearest walking pedestrians; crowd walla at the
-## middle of wherever people are gathered (busy for 8+, small for 3+).
+## Footsteps on the few nearest walking pedestrians; crowd walla from the
+## middle of the biggest group of people nearby (busy for 8+, small for 3+).
+## The group is found among the people themselves, so the walla stays where
+## they are and falls away as you leave, rather than following you.
 func _assign_people(peds) -> void:
 	var ear: Node3D = Audio.listener()
 	if not peds is Array or ear == null:
 		return
 	var here := ear.global_position
 	var near: Array = []
-	var crowd_sum := Vector3.ZERO
-	var crowd_n := 0
+	var around: Array[Vector3] = []
 	for ped in peds:
 		if not ped is Object:
 			continue
@@ -214,8 +242,10 @@ func _assign_people(peds) -> void:
 		if d < STEP_RADIUS and float(ped.get("speed") if ped.get("speed") != null else 0.0) > 0.3:
 			near.append([d, ped])
 		if d < CROWD_RADIUS:
-			crowd_sum += pos
-			crowd_n += 1
+			around.append(pos)
+	var group := crowd_at(around)
+	var crowd_n: int = group[1]
+	var crowd_sum: Vector3 = group[0] * crowd_n
 	near.sort_custom(func(a, b) -> bool: return a[0] < b[0])
 	var wanted: Array = near.slice(0, STEP_VOICES).map(func(e): return e[1])
 	for voice in _steps:
@@ -241,10 +271,34 @@ func _assign_people(peds) -> void:
 	_set_crowd(_crowd_small, crowd_n >= 3 and crowd_n < 8, crowd_sum / maxf(crowd_n, 1))
 
 
+## The biggest group among these positions: [its middle, how many], people
+## within CROWD_SPREAD of the busiest one.
+static func crowd_at(positions: Array[Vector3]) -> Array:
+	var best := -1
+	var best_n := 0
+	for i in positions.size():
+		var n := 0
+		for q in positions:
+			if positions[i].distance_squared_to(q) < CROWD_SPREAD * CROWD_SPREAD:
+				n += 1
+		if n > best_n:
+			best_n = n
+			best = i
+	if best < 0:
+		return [Vector3.ZERO, 0]
+	var sum := Vector3.ZERO
+	for q in positions:
+		if positions[best].distance_squared_to(q) < CROWD_SPREAD * CROWD_SPREAD:
+			sum += q
+	return [sum / best_n, best_n]
+
+
 func _set_crowd(p: AudioStreamPlayer3D, on: bool, at: Vector3) -> void:
 	if p.stream == null:
 		return
 	if on:
+		var home: bool = Audio.ambience.zone == "home"
+		p.volume_db = float(p.get_meta(&"mix_db", p.volume_db)) + (HOME_CROWD_DB if home else 0.0)
 		p.global_position = at + Vector3(0, 1.5, 0)
 		if not p.playing:
 			p.play(randf() * p.stream.get_length())
@@ -403,7 +457,7 @@ func _on_crossing_changed(pos: Vector3, closed: bool) -> void:
 		# The driver sounds the horn approaching the crossing.
 		var train = _nearest_train(pos)
 		if train:
-			Audio.play_at("traffic/traffic_train_horn", train.root.global_position, 0.0, "Vehicles")
+			Audio.play_at("traffic/traffic_train_horn", train.root.global_position, 0.0, "Vehicles", 0.04, 30.0, 800.0)
 	elif _bells.has(key):
 		var p: AudioStreamPlayer3D = _bells[key]
 		_bells.erase(key)

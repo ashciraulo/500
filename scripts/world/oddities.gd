@@ -121,6 +121,7 @@ func _loop_player(sound: String, unit_size := 8.0, volume_db := -4.0) -> AudioSt
 	var player := AudioStreamPlayer3D.new()
 	player.bus = &"SFX"
 	player.unit_size = unit_size
+	player.max_distance = unit_size * 15.0  # falls silent a sensible way off
 	player.volume_db = volume_db
 	var audio := _audio()
 	if audio and audio.has(sound):

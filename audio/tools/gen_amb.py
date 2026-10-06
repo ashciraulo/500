@@ -812,21 +812,18 @@ def cbd_day():
     B.add(city_hum(n, 31, 40, 400), -38)
     # people walking past: park voices / footsteps from Hyde Park, Perth
     B.add(texture(src("hydepark", True), dur, 4, chunk=20, avoid_peaks_db=8), -35)
-    # buses pulling away / passing
+    # No buses or cars going by close up, no crossing right beside you and
+    # no siren: the game's own traffic, crossings and emergency calls make
+    # those where they really are. (The random draws stay, so the rest of
+    # the bed comes out as before.)
     for k, at in enumerate(B.times(3, 0.6)):
-        y = car_pass(9.0, 3000 + k, speed=9, dist=10, kind="bus")
-        B.put(pass_stereo(y, k % 2 == 1), at, -9)
+        pass
     for k, at in enumerate(B.times(7, 0.9)):
-        y = car_pass(6.0, 3100 + k, speed=13, dist=8 + 6 * B.r.uniform(), kind="car" if k % 3 else "moto")
-        B.put(pass_stereo(y, k % 2 == 0), at, -14)
-    # two pedestrian crossings: near one (left) and across the road (right)
-    near = ped_sequence(n, 1.0, walk_at=[20.0, 65.0], beep_at=[11.3, 58.2], seed=1)
+        B.r.uniform()
+    # a crossing across the road
     far = ped_sequence(n, 1.0, walk_at=[42.0, 87.0], beep_at=[33.0], seed=2)
-    B.put(S.pan(near, -0.45), 0, -7)
     farst = fold(distant(far, 0.55, 0.6, 5, room=0.8), n)
     B.put(farst, 0, -15)
-    # a distant siren once
-    B.put(S.pan(siren(10.0, 31, "wail", 0.85), 0.3), secs(50), -24)
     save_loop("amb/amb_cbd_day", B.x)
 
 
@@ -845,8 +842,7 @@ def cbd_night():
     for k, at in enumerate(B.times(4, 0.8)):
         y = car_pass(8.0, 4000 + k, speed=15, dist=20 + 15 * B.r.uniform(), kind="car")
         B.put(pass_stereo(S.lp(y, 3000), k % 2 == 1), at, -19)
-    B.put(S.pan(siren(11.0, 41, "yelp", 0.95), -0.5), secs(30), -27)
-    save_loop("amb/amb_cbd_night", B.x)
+    save_loop("amb/amb_cbd_night", B.x)  # no siren: the traffic's emergency calls are rare and placed
 
 
 # ---- P2 / P3 beds --------------------------------------------------------------
@@ -905,10 +901,8 @@ def northbridge_day():
         B.put(distant(st, 0.35, B.r.uniform(-0.6, 0.6), k), at, -22)
     # a delivery truck backing into the lane, idling
     B.put(distant(reverse_beeper(9.0, 57), 0.55, 0.65, 7), secs(28), -17)
-    for k, at in enumerate(B.times(5, 0.9)):
-        y = car_pass(7.0, 5000 + k, speed=8, dist=10, kind="car" if k % 2 else "truck")
-        B.put(pass_stereo(y, k % 2 == 0), at, -16)
-    B.put(S.pan(siren(10.0, 58, "wail", 0.9), -0.4), secs(70), -27)
+    # no cars going by close up and no siren: the game's traffic does those
+    B.times(5, 0.9)
     save_loop("amb/amb_northbridge_day", B.x)
 
 
@@ -925,11 +919,10 @@ def northbridge_night():
     B.add(S.circ_lp(texture(src("pub_crowd", True), dur, 63, chunk=15), 3000), -36)
     B.add(S.circ_lp(texture(src("traffic_night", True), dur, 64, chunk=20), 2500), -37)
     B.add(city_hum(n, 65, 40, 250), -41)
+    # no sirens and no cars going by close up: the game's traffic does those
     for k, at in enumerate(B.times(2, 0.5)):
-        B.put(S.pan(siren(11.0, 660 + k, "yelp" if k else "wail", 0.92), B.r.uniform(-0.7, 0.7)), at, -26)
-    for k, at in enumerate(B.times(4, 0.9)):
-        y = car_pass(7.0, 6000 + k, speed=10, dist=9, kind="moto" if k == 2 else "car")
-        B.put(pass_stereo(y, k % 2 == 0), at, -17)
+        B.r.uniform(-0.7, 0.7)
+    B.times(4, 0.9)
     save_loop("amb/amb_northbridge_night", B.x)
 
 
@@ -1010,7 +1003,6 @@ def suburbs_night():
     B.scatter(dog_pool(), 4, gain_db=(-24, -17), dist=(0.7, 0.95), room=2.0)
     # ravens settling at dusk, far off
     B.scatter(raven_pool(), 2, gain_db=(-26, -20), dist=(0.75, 0.9), room=2.0)
-    B.put(S.pan(siren(11.0, 105, "wail", 0.97), 0.6), secs(80), -30)
     save_loop("amb/amb_suburbs_night", B.x)
 
 
@@ -1352,10 +1344,8 @@ def northbridge_rain():
     g = gutter(n, 21016)
     B.add(np.stack([g, 0.35 * np.roll(g, secs(0.02))], axis=1), -38)
     B.add(np.stack([drip_points(n, 21017, 10), drip_points(n, 21018, 10)], axis=1), -39)
-    for k, at in enumerate(B.times(6, 0.9)):
-        y = wet_pass(8.0, 21100 + k, speed=10, dist=9, kind="truck" if k == 3 else "car")
-        B.put(pass_stereo(y, k % 2 == 0), at, -15)
-    B.put(S.pan(S.lp(siren(11.0, 21019, "wail", 0.95), 2500), 0.5), secs(60), -30)
+    # no cars swishing by close up and no siren: the game's traffic does those
+    B.times(6, 0.9)
     save_loop("amb/amb_northbridge_rain", B.x, **LEAN_WET)
 
 
@@ -1506,7 +1496,6 @@ def northbridge_late():
     B.put(distant(metal_clank(22017, 0.5), 0.75, 0.6, 2, room=1.8), secs(62), -30)  # a bin lid
     y = car_pass(7.0, 22018, speed=11, dist=12)
     B.put(pass_stereo(S.lp(y, 3000)), secs(80), -21)
-    B.put(S.pan(siren(11.0, 22019, "wail", 0.98), -0.6), secs(48), -35)
     save_loop("amb/amb_northbridge_late", B.x, norm="lufs:-27", **LEAN)
 
 
@@ -1576,7 +1565,6 @@ def suburbs_late():
     B.scatter(dog_pool(), 1, gain_db=(-27, -25), dist=(0.85, 0.95), room=2.2)
     y = car_pass(8.0, 22054, speed=11, dist=20)
     B.put(pass_stereo(S.lp(y, 2200)), secs(90), -24)
-    B.put(S.pan(siren(11.0, 22055, "wail", 0.99), 0.7), secs(35), -36)
     save_loop("amb/amb_suburbs_late", B.x, norm="lufs:-27", **LEAN)
 
 
@@ -2680,8 +2668,6 @@ def place_lookout_night():
     B.add(ear_wind(n, 32021, gust_rate=0.07), -27)
     B.add(city_hum(n, 32022, 30, 300), -34)
     B.add(S.circ_bp(texture(src("crickets_sub", True), dur, 32023, chunk=17, region=(22.5, 82)), 2500, 9000), -40)
-    y = siren(14.0, 32024, dist=0.95)
-    B.put(np.stack([y, np.roll(y, secs(0.01))], axis=1), secs(20), -30)
     place_save("place_lookout_night_loop", B.x)
 
 
@@ -3338,6 +3324,54 @@ def surf_breaks(n, seed, every=7.5):
         idx = (np.arange(L) + int(at * SR)) % n
         np.add.at(y, idx, st)
     return y
+
+
+# home (Little Shenton Lane) ---------------------------------------------------
+# The few streets round the townhouse: a quiet back lane, a place to wind down.
+# No people, no music, no cars close by; the city is a faint wash over the
+# rooftops. Kept well under the other beds (-30 LUFS).
+
+@builder("amb_home_day")
+def home_day():
+    dur = 100
+    B = Bed(dur, 2401)
+    n = B.n
+    B.add(S.circ_lp(texture(src("traffic_night", True), dur, 24011, chunk=20), 900), -44)  # over the rooftops
+    B.add(city_hum(n, 24012, 30, 180), -47)
+    B.add(gum_wind(n, 24013, gust_rate=0.03, crisp=0.5), -44)  # the courtyard tree
+    B.scatter(bird_pools(), 4, gain_db=(-24, -15), dist=(0.45, 0.85))
+    wg = snips("wagtail1", 2000, 8000, thresh_db=14, min_len=0.6, max_len=3.0, gap=0.35)
+    B.scatter(wg, 2, gain_db=(-24, -18), dist=(0.4, 0.7))
+    B.scatter(raven_pool(), 1, gain_db=(-26, -24), dist=(0.75, 0.9))
+    save_loop("amb/amb_home_day", B.x, norm="lufs:-30", **LEAN)
+
+
+@builder("amb_home_night")
+def home_night():
+    dur = 110
+    B = Bed(dur, 2402)
+    n = B.n
+    B.add(S.circ_lp(texture(src("crickets_sub", True), dur, 24021, chunk=17, region=(22.5, 82)), 6000), -36)
+    B.add(S.circ_lp(texture(src("traffic_night", True), dur, 24022, chunk=20), 700), -47)
+    B.add(city_hum(n, 24023, 30, 160), -49)
+    B.add(gum_wind(n, 24024, gust_rate=0.02, crisp=0.3), -50)
+    B.scatter(dog_pool(), 1, gain_db=(-30, -28), dist=(0.85, 0.9), room=2.0)  # streets away
+    save_loop("amb/amb_home_night", B.x, norm="lufs:-30", **LEAN)
+
+
+@builder("amb_home_dawn")
+def home_dawn():
+    dur = 100
+    B = Bed(dur, 2404)
+    n = B.n
+    B.add(dawn_crickets(dur, 24031), -44)
+    B.add(S.circ_lp(texture(src("traffic_night", True), dur, 24032, chunk=20), 800), -47)
+    B.add(gum_wind(n, 24033, gust_rate=0.03, crisp=0.5), -47)
+    B.scatter(bird_pools(), 8, gain_db=(-20, -10), dist=(0.35, 0.8))  # magpies carolling
+    wg = snips("wagtail1", 2000, 8000, thresh_db=14, min_len=0.6, max_len=3.0, gap=0.35)
+    B.scatter(wg, 3, gain_db=(-22, -15), dist=(0.3, 0.6))
+    B.scatter([twitter(24100 + i) for i in range(8)], 5, gain_db=(-26, -17), dist=(0.3, 0.6))
+    save_loop("amb/amb_home_dawn", B.x, norm="lufs:-30", **LEAN)
 
 
 def main(argv):

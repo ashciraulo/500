@@ -25,6 +25,9 @@ var pass_bike := 0.0
 ## Police, ambulance or fire truck on a call (lights and siren).
 var emergency := false
 var siren: AudioStreamPlayer3D
+## Seconds since this call began, and the closest it has come to the player.
+var call_time := 0.0
+var call_closest := INF
 var light_bar: Node3D
 ## A modelled body (art/models/...) shown instead of `mesh`, or null.
 var model: Node3D
