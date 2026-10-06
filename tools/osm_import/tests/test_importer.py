@@ -370,22 +370,22 @@ def test_service_roads_listed_for_the_maps():
     assert np.allclose(lanes[0]["pts"][:, 2], 0) and np.isclose(lanes[0]["pts"][-1, 0], 40)
 
 
-def test_no_holes_beside_tunnel_roofs():
+def test_tunnel_roofs_stay_under_the_ground_with_no_holes_beside_them():
     import shapely
     from types import SimpleNamespace as NS
-    from osm_import.build import TUNNEL_ROOF, LinearWay, TileBuilder
+    from osm_import.build import TUNNEL_HEADROOM, TUNNEL_HEIGHT, TUNNEL_ROOF, LinearWay, TileBuilder
     from osm_import.common import TileKey
     from shapely.geometry import Point
 
     hf = flat_field(10.0, size=1200.0)
-    xs = np.linspace(150, 350, 9)
-    # A road tunnel under flat ground: deep at its west end, then with 6.4 m of
-    # cover, where the ground over it has to come away.
-    tunnel = LinearWay(1, {"highway": "primary", "tunnel": "yes"}, "road", np.column_stack([xs, np.full(9, 250.0)]),
-                       np.interp(xs, [150, 250, 350], [10.0 - 12.0, 10.0 - 6.4, 10.0 - 6.4]), np.arange(1, 10),
-                       8.0, False, True, False)
-    above = LinearWay(2, {"highway": "residential"}, "road", np.array([[300.0, 200.0], [300.0, 300.0]]),
-                      np.full(2, 10.0), np.array([20, 21]), 6.6, False, False, True)
+    xs = np.linspace(150, 350, 41)
+    # A road tunnel under flat ground: 12 m down, then 5 m (less than a full
+    # height box), then 3 m near its east portal.
+    floor = np.interp(xs, [150, 210, 230, 290, 310, 350], [-2.0, -2.0, 5.0, 5.0, 7.0, 7.0])
+    tunnel = LinearWay(1, {"highway": "primary", "tunnel": "yes"}, "road", np.column_stack([xs, np.full(41, 250.0)]),
+                       floor, np.arange(1, 42), 8.0, False, True, False)
+    above = LinearWay(2, {"highway": "residential"}, "road", np.array([[260.0, 200.0], [260.0, 300.0]]),
+                      np.full(2, 10.0), np.array([50, 51]), 6.6, False, False, True)
     ways = [tunnel, above]
     world = NS(hf=hf, tile_size=500, ways=ways, ways_near=lambda b: ways, doubled_paths=set(), home=None,
                water=[], water_union=Polygon(), cover=[])
@@ -401,8 +401,7 @@ def test_no_holes_beside_tunnel_roofs():
                     tris.append(v[idx])
     tris = np.concatenate(tris)
     solid = shapely.union_all(shapely.polygons(np.concatenate([tris[:, :, :2], tris[:, :1, :2]], axis=1)))
-    around = box(140, 225, 360, 275)
-    assert around.difference(solid).area < 0.05  # nothing to fall through, beside the roof or over it
+    assert box(140, 225, 360, 275).difference(solid).area < 0.05  # nothing to fall through
 
     def top(x, y):
         """Height of the highest collision surface over (x, y)."""
@@ -415,8 +414,12 @@ def test_no_holes_beside_tunnel_roofs():
                 best = max(best, a[2] - (n[0] * (x - a[0]) + n[1] * (y - a[1])) / n[2])
         return best
 
-    assert np.isclose(top(170, 250), 10.0, atol=0.05)  # deep: the ground stays over the tunnel
-    roof = 10.0 - 6.4 + 0.02 + TUNNEL_ROOF
-    assert roof < 10.0 and np.isclose(top(340, 250), roof, atol=0.05)  # shallow: its roof shows, below the ground
-    assert np.isclose(top(300, 247), roof, atol=0.05)  # under the street over it too
-    assert np.isclose(top(300, 262), 10.0 + 0.02, atol=0.05)  # and the street is whole past the roof
+    assert np.isclose(top(170, 250), 10.0, atol=0.05)  # deep: the ground over it is whole
+    assert np.isclose(top(270, 250), 10.0, atol=0.05)  # 5 m down: so is the ground
+    assert np.isclose(top(260, 250), 10.02, atol=0.05)  # and the street over it
+    # ... because the ceiling comes down, keeping the headroom.
+    v, _, _, _ = tb.mb.meshes["tunnels"]["tunnel_wall"].arrays()
+    ceiling = v[np.abs(v[:, 0] - 260) < 2.5, 2].max() - 5.02
+    assert TUNNEL_HEADROOM["road"] <= ceiling < 10.0 - 5.02 - TUNNEL_ROOF
+    # 3 m down there is no room for it: the box shows, near the portal, with the ground cut to it.
+    assert np.isclose(top(340, 250), 7.02 + TUNNEL_HEIGHT + TUNNEL_ROOF, atol=0.05)

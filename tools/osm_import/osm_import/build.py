@@ -48,8 +48,9 @@ PATH_OFFSET = 0.04
 SIDEWALK_TOP = 0.16
 MARK_OFFSET = 0.07
 TUNNEL_HEIGHT = 5.6
-TUNNEL_ROOF = TUNNEL_HEIGHT + 0.6   # top of a tunnel box above its floor
+TUNNEL_ROOF = 0.6       # thickness of a tunnel's roof
 TUNNEL_SLOT = 0.3       # ground less than this above a tunnel's roof comes away over it
+TUNNEL_HEADROOM = {"road": 3.5, "service": 2.5, "foot": 2.5}  # least a ceiling comes down to
 TUNNEL_STEP = 4.0
 DECK_THICKNESS = 1.1
 PARAPET_H = 0.9
@@ -673,20 +674,31 @@ class TileBuilder:
     def _box_tunnels(self):
         return [w for w in self.ways if w.tunnel and w.group != "rail" and not self._shallow_path(w)]
 
-    def _tunnel_outline(self, xy, h, width):
-        """The outside of a tunnel box along `xy`: its two edges, its roof
-        height, and which segments have ground or streets above that come
-        down to within TUNNEL_SLOT of the roof (there the roof shows)."""
-        half = width / 2 + 1.0
+    def _tunnel_outline(self, w, xy, h):
+        """The box of tunnel `w` along `xy`: its outside edges, ceiling and roof
+        heights, and which segments have ground or streets above that come
+        down to within TUNNEL_SLOT of the roof (there the roof shows).
+
+        Where the ground over it is lower than a full-height box, the ceiling
+        comes down (to no less than TUNNEL_HEADROOM) to keep the roof under
+        the ground: a box built full height stuck up out of streets and
+        squares over shallow tunnels and underground car parks."""
+        half = w.width / 2 + 1.0
         left, right = offset_polyline(xy, half), offset_polyline(xy, -half)
-        roof = h + 0.02 + TUNNEL_ROOF
         hf = self.w.hf
-        ground = np.minimum.reduce([hf.sample(p[:, 0], p[:, 1]) for p in (xy, left, right)])
+        floor = h + 0.02
+        # Lowest ground across the box, sampled finer than the ground grid.
+        lines = [offset_polyline(xy, d) for d in np.linspace(-half, half, int(np.ceil(half / 1.25)) + 1)]
+        ground = np.minimum.reduce([hf.sample(p[:, 0], p[:, 1]) for p in lines])
+        fits = ground - floor - TUNNEL_ROOF - TUNNEL_SLOT - 0.05
+        least = TUNNEL_HEADROOM["service" if w.tags.get("highway") == "service" else w.group]
+        ceiling = floor + np.where(fits >= least, np.minimum(fits, TUNNEL_HEIGHT), TUNNEL_HEIGHT)
+        roof = ceiling + TUNNEL_ROOF
         near = ground < roof + TUNNEL_SLOT
-        mid = (xy[:-1] + xy[1:]) / 2
-        mid_ground = hf.sample(mid[:, 0], mid[:, 1])
+        mid_ground = np.minimum.reduce([hf.sample((p[:-1, 0] + p[1:, 0]) / 2, (p[:-1, 1] + p[1:, 1]) / 2)
+                                        for p in lines])
         low = near[:-1] | near[1:] | (mid_ground < (roof[:-1] + roof[1:]) / 2 + TUNNEL_SLOT)
-        return left, right, roof, low
+        return left, right, ceiling, roof, low
 
     def _tunnel_cut(self):
         """Ground and streets come away over a tunnel's roof where they would
@@ -696,7 +708,7 @@ class TileBuilder:
         pieces = []
         for w in self._box_tunnels():
             xy, h = densify(w.xy, w.h, TUNNEL_STEP)
-            left, right, _, low = self._tunnel_outline(xy, h, w.width)
+            left, right, _, _, low = self._tunnel_outline(w, xy, h)
             k = np.nonzero(low)[0]
             if len(k):
                 quads = np.stack([right[k], right[k + 1], left[k + 1], left[k], right[k]], axis=1)
@@ -901,13 +913,13 @@ class TileBuilder:
                 half = w.width / 2 + 0.5
                 left = offset_polyline(rxy, half)
                 right = offset_polyline(rxy, -half)
-                walls(surf, left, floor, floor + TUNNEL_HEIGHT, 3.0, TUNNEL_HEIGHT, closed=False)
-                walls(surf, right[::-1], floor[::-1], floor[::-1] + TUNNEL_HEIGHT, 3.0, TUNNEL_HEIGHT, closed=False)
-                ribbon(surf, rxy, floor + TUNNEL_HEIGHT, w.width + 1.0, 4.0, up=False)
+                lo, ro, ceiling, roof, low = self._tunnel_outline(w, rxy, rh)
+                walls(surf, left, floor, ceiling, 3.0, TUNNEL_HEIGHT, closed=False)
+                walls(surf, right[::-1], floor[::-1], ceiling[::-1], 3.0, TUNNEL_HEIGHT, closed=False)
+                ribbon(surf, rxy, ceiling, w.width + 1.0, 4.0, up=False)
                 # Outside of the box: its roof shows where the ground over it is cut away
                 # (_tunnel_cut), and its sides rise to meet the ground at the cut's edges.
                 outer = self.mb.surface("tunnels", "concrete", "world")
-                lo, ro, roof, low = self._tunnel_outline(rxy, rh, w.width)
                 ribbon(outer, rxy, roof, w.width + 2.0, 4.0)
                 lt = np.maximum(roof, np.minimum(hf.sample(lo[:, 0], lo[:, 1]), roof + 1.0))
                 rt = np.maximum(roof, np.minimum(hf.sample(ro[:, 0], ro[:, 1]), roof + 1.0))
