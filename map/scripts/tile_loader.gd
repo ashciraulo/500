@@ -2,9 +2,10 @@ class_name MapTileLoader
 extends RefCounted
 ## Decodes the .p5t tiles written by tools/osm_import (tile format 1) into
 ## nodes. `build()` is safe to run on a worker thread: it makes meshes and
-## multimeshes. `make_collision()` (static bodies and their baked concave
-## shapes, outside the scene tree) runs on a worker too; only adding the
-## result to the tree happens on the main thread.
+## multimeshes. Colliders are planned on a worker (`plan_collision()`, plain
+## data) and baked on the main thread a piece at a time (`CollisionBuild`):
+## the physics server bakes concave shapes on the main thread whichever
+## thread asks, and a whole tile's took ~50 ms in one frame.
 
 const FORMAT := 1
 const MAGIC := "P5TB"  # brotli
@@ -39,6 +40,10 @@ const PROP_COLLIDERS := {
 	&"tree_round": [0.18, 3.0], &"tree_gum": [0.22, 4.5], &"tree_palm": [0.25, 7.0],
 	&"street_light": [0.09, 6.5],
 }
+## Big collision meshes are split into pieces of about this many triangles,
+## by area, so no one piece takes long to bake.
+const PIECE_FACES := 2000
+const PIECE_CELL := 125.0
 ## Meshes that cast shadows (the rest only receive them).
 const SHADOW_MESHES := [&"buildings", &"bridges", &"props", &"landmarks"]
 
@@ -172,27 +177,97 @@ static func build(path: String, materials: Dictionary, props: Dictionary) -> Til
 	return result
 
 
-## Static bodies for the tile's collision meshes, not yet in the tree. Safe on
-## a worker thread (MapStreamer builds them there).
-static func make_collision(result: TileResult) -> Node3D:
+## A tile's static bodies, baked a piece at a time: `step()` bakes pieces
+## until its time budget runs out and says when it's done. The holder joins
+## the tree only when finished, so a tile has all its colliders or none.
+class CollisionBuild:
+	extends RefCounted
 	var holder := Node3D.new()
-	holder.name = "Collision"
+	## Each: {name, layer, surface, pieces: Array[PackedVector3Array]}
+	var _entries: Array[Dictionary] = []
+	var _props: Array = []
+	var _entry := 0
+	var _piece := 0
+	var _body: StaticBody3D
+
+	func _init(entries: Array[Dictionary], props: Array) -> void:
+		holder.name = "Collision"
+		_entries = entries
+		_props = props
+
+	## Bakes pieces for up to `budget_usec`; true once every collider is built.
+	func step(budget_usec: int) -> bool:
+		var start := Time.get_ticks_usec()
+		while _entry < _entries.size():
+			var entry := _entries[_entry]
+			if _body == null:
+				_body = StaticBody3D.new()
+				_body.name = entry.name
+				_body.collision_layer = entry.layer
+				_body.collision_mask = 0
+				_body.set_meta("surface", entry.surface)
+				holder.add_child(_body)
+			var shape := ConcavePolygonShape3D.new()
+			shape.set_faces(entry.pieces[_piece])
+			var collision_shape := CollisionShape3D.new()
+			collision_shape.shape = shape
+			_body.add_child(collision_shape)
+			_piece += 1
+			if _piece >= entry.pieces.size():
+				_entry += 1
+				_piece = 0
+				_body = null
+			if Time.get_ticks_usec() - start >= budget_usec:
+				return _entry >= _entries.size() and _props.is_empty()
+		if not _props.is_empty():
+			holder.add_child(MapTileLoader._prop_body(_props))
+			_props = []
+		return true
+
+
+## Everything the tile's colliders need, as plain data split into pieces.
+## Safe on a worker thread: it makes no bodies or shapes.
+static func plan_collision(result: TileResult) -> CollisionBuild:
+	var entries: Array[Dictionary] = []
 	for entry: Dictionary in result.collision:
-		var body := StaticBody3D.new()
-		body.name = entry.name
-		body.collision_layer = entry.layer
-		body.collision_mask = 0
-		body.set_meta("surface", entry.surface)
-		var shape := ConcavePolygonShape3D.new()
-		shape.set_faces(entry.faces)
-		var collision_shape := CollisionShape3D.new()
-		collision_shape.shape = shape
-		body.add_child(collision_shape)
-		holder.add_child(body)
-	var props := _off_road(result.props, result.collision)
-	if not props.is_empty():
-		holder.add_child(_prop_body(props))
-	return holder
+		entries.append({name = entry.name, layer = entry.layer, surface = entry.surface,
+			pieces = _pieces(entry.faces)})
+	return CollisionBuild.new(entries, _off_road(result.props, result.collision))
+
+
+## Static bodies for the tile's collision meshes, not yet in the tree, all
+## at once (for a tile needed this very frame, and for tools).
+static func make_collision(result: TileResult) -> Node3D:
+	var build := plan_collision(result)
+	while not build.step(1 << 40):
+		pass
+	return build.holder
+
+
+## A collision mesh's triangles grouped by the PIECE_CELL square they sit in,
+## when there are too many for one piece.
+static func _pieces(faces: PackedVector3Array) -> Array[PackedVector3Array]:
+	if faces.size() / 3 <= PIECE_FACES:
+		return [faces]
+	var cells := {}  # Vector2i -> [first vertex index of each triangle]
+	for t in range(0, faces.size(), 3):
+		var mid := (faces[t] + faces[t + 1] + faces[t + 2]) / 3.0
+		var cell := Vector2i(floori(mid.x / PIECE_CELL), floori(mid.z / PIECE_CELL))
+		if not cells.has(cell):
+			cells[cell] = []
+		cells[cell].append(t)
+	var pieces: Array[PackedVector3Array] = []
+	for cell: Vector2i in cells:
+		var tris: Array = cells[cell]
+		var piece := PackedVector3Array()
+		piece.resize(tris.size() * 3)
+		for k in tris.size():
+			var t: int = tris[k]
+			piece[k * 3] = faces[t]
+			piece[k * 3 + 1] = faces[t + 1]
+			piece[k * 3 + 2] = faces[t + 2]
+		pieces.append(piece)
+	return pieces
 
 
 ## The trunks that don't stand on a road. Tiles built before the importer kept

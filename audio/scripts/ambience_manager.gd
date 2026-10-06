@@ -30,8 +30,8 @@ const FADE_S := 4.0
 const BED_DB := -4.0
 ## Rain on the roof (and on the windscreen, SCREEN_TRIM) sits well under the
 ## radio and engine in the cabin mix.
-const ROOF_TRIM := 0.22
-const SCREEN_TRIM := 0.2
+const ROOF_TRIM := 0.12
+const SCREEN_TRIM := 0.1
 ## The wet bed comes in above RAIN_WET_ON and goes again below RAIN_WET_OFF
 ## (hysteresis, so rain hovering around 0.25 doesn't flap between beds).
 const RAIN_WET_ON := 0.3
@@ -533,7 +533,7 @@ func _process(delta: float) -> void:
 	_set_layer("rain_light_fabric", light * (1.0 - roof) * ROOF_TRIM * (1.0 if inside else 0.0), delta)
 	_set_layer("rain_heavy_fabric", heavy * (1.0 - roof) * ROOF_TRIM * (1.0 if inside else 0.0), delta)
 	_set_layer("rain_screen", maxf(light, heavy) * SCREEN_TRIM * (1.0 if inside else 0.0), delta)
-	_set_layer("wind", 0.15 + 0.85 * maxf(wind, storm), delta)
+	_set_layer("wind", (0.15 + 0.85 * maxf(wind, storm)) * out, delta)
 	var clear_day := (1.0 if not is_night and hot_day else 0.0) * (1.0 - clampf(rain * 3.0, 0.0, 1.0))
 	_set_layer("cicadas", clear_day * (1.0 if zone in ["kingspark", "suburbs"] else 0.35), delta)
 	var radio: Node = get_parent().get("radio") if get_parent() else null
