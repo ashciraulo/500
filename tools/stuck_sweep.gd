@@ -6,6 +6,9 @@ extends SceneTree
 ##   godot --headless --path . --script res://tools/stuck_sweep.gd -- out=/tmp/stuck.json [tiles=0_0,-1_0] [step=0.5]
 ##   godot --headless --path . --script res://tools/stuck_sweep.gd -- around=-8,-1,150   (x, z, radius in metres)
 ##
+## The whole map takes hours at 0.5 m: split it with part=0/4 .. part=3/4 in
+## four processes (each with its own out=), or use step=1.
+##
 ## How: a grid of rays straight down finds every floor you could stand on
 ## (several per column under bridges and in the house, each with headroom for
 ## the player). Neighbouring floors are joined when the player could walk
@@ -41,6 +44,7 @@ var _traps: Array[Dictionary] = []
 var _area := Rect2()  # around=: only this square (x, z)
 var _ray := PhysicsRayQueryParameters3D.new()
 var _home_at := Vector3.ZERO
+var _part := [0, 1]  # part=k/n: every n-th tile from the k-th, to split a run across processes
 
 
 func _initialize() -> void:
@@ -53,6 +57,9 @@ func _initialize() -> void:
 		elif arg.begins_with("tiles="):
 			for t in arg.trim_prefix("tiles=").split(","):
 				_tiles.append(t)
+		elif arg.begins_with("part="):
+			var v := arg.trim_prefix("part=").split("/")
+			_part = [int(v[0]), int(v[1])]
 		elif arg.begins_with("around="):
 			var v := arg.trim_prefix("around=").split(",")
 			var r := float(v[2])
@@ -65,6 +72,13 @@ func _initialize() -> void:
 		var pa := a.split("_")
 		var pb := b.split("_")
 		return [int(pa[1]), int(pa[0])] < [int(pb[1]), int(pb[0])])
+	if _part[1] > 1:
+		# Runs of neighbouring tiles, so each process reuses its loaded neighbours.
+		var mine: Array[String] = []
+		for i in _tiles.size():
+			if (i / 8) % _part[1] == _part[0]:
+				mine.append(_tiles[i])
+		_tiles = mine
 	_world = Node3D.new()
 	root.add_child(_world)
 	var home: Dictionary = _index.get("home", {})
@@ -162,6 +176,8 @@ func _sweep_tile(key: String) -> void:
 	h.fill(NAN)
 	var road := PackedByteArray()
 	road.resize(n * MAX_LAYERS)
+	var kind := PackedByteArray()
+	kind.resize(n * MAX_LAYERS)
 	for c in n:
 		var x := rect.position.x + (c % nx + 0.5) * _step
 		var z := rect.position.y + (c / nx + 0.5) * _step
@@ -178,6 +194,7 @@ func _sweep_tile(key: String) -> void:
 				var body := hit.collider as Node
 				if body and body.get_meta(&"surface", &"") == &"asphalt" and String(body.name).begins_with("road"):
 					road[c * MAX_LAYERS + layer] = 1
+				kind[c * MAX_LAYERS + layer] = _kind_of(body)
 				layer += 1
 			ceiling = y
 			from = y - 0.05
@@ -263,12 +280,14 @@ func _sweep_tile(key: String) -> void:
 		if area < MIN_AREA:
 			continue
 		var sum := Vector3.ZERO
+		var kinds := {}
 		var entry := Vector3.INF
 		var climb := INF
 		for g: int in group:
 			var c := g / MAX_LAYERS
 			var p := Vector3(rect.position.x + (c % nx + 0.5) * _step, h[g], rect.position.y + (c / nx + 0.5) * _step)
 			sum += p
+			kinds[KINDS[kind[g]]] = int(kinds.get(KINDS[kind[g]], 0)) + 1
 			for src: int in in_edges[g]:
 				if back[src] == 1 and reach[src] == 1 and entry == Vector3.INF:
 					var sc := src / MAX_LAYERS
@@ -293,9 +312,43 @@ func _sweep_tile(key: String) -> void:
 			continue
 		if _area.size != Vector2.ZERO and not _area.has_point(Vector2(centre.x, centre.z)):
 			continue
-		_traps.append({tile = key, at = _v(centre), area = snappedf(area, 0.25), entry = _v(entry),
+		var main_kind := ""
+		for k: String in kinds:
+			if main_kind == "" or kinds[k] > kinds[main_kind]:
+				main_kind = k
+		_traps.append({tile = key, at = _v(centre), area = snappedf(area, 0.25), entry = _v(entry), floor = main_kind,
 			climb = snappedf(climb, 0.01) if climb != INF else -1.0,
 			home_m = snappedf(Vector2(centre.x - _home_at.x, centre.z - _home_at.z).length(), 1.0)})
+
+
+## Floors by what they are: the collider's mesh name (ground_grass,
+## buildings_roof_flat, Site_..., props).
+const KINDS := ["other", "ground", "road", "path", "building", "bridge", "water", "home", "landmark"]
+
+
+func _kind_of(body: Node) -> int:
+	if body == null:
+		return 0
+	var n := String(body.name)
+	var surface := String(body.get_meta(&"surface", ""))
+	if surface == "sand" and (n.contains("riverbed") or n.contains("water")):
+		return 6
+	if _home and _home.is_ancestor_of(body):
+		return 7
+	for i in KINDS.size():
+		if n.begins_with(KINDS[i]):
+			return i
+	if n.begins_with("roads") or n.begins_with("road"):
+		return 2
+	if n.begins_with("buildings") or n.begins_with("roof"):
+		return 4
+	if n.begins_with("bridges"):
+		return 5
+	if n.begins_with("landmarks"):
+		return 8
+	if n.begins_with("paths") or n.begins_with("sidewalk"):
+		return 3
+	return 0
 
 
 func _flood(seeds: PackedInt32Array, edges: Array[PackedInt32Array], nodes: int) -> PackedByteArray:
@@ -347,5 +400,5 @@ func _finish() -> void:
 	print("STUCK SWEEP %d traps (%d of 4 m² or more) in %d tiles, %.0f s, written to %s" % [_traps.size(), big.size(),
 		_tiles.size(), (Time.get_ticks_msec() - _started) / 1000.0, _out])
 	for t: Dictionary in _traps.slice(0, 15):
-		print("  %s  %5.1f m²  climb %.2f m  %4d m from home  in from %s" % [t.at, t.area, t.climb, t.home_m, t.entry])
+		print("  %s  %5.1f m²  %-9s climb %.2f m  %4d m from home  in from %s" % [t.at, t.area, t.floor, t.climb, t.home_m, t.entry])
 	quit(0)
