@@ -31,7 +31,6 @@ var _failures: Array[String] = []
 var _stage := 0
 var _t := 0.0
 var _shots := ""
-var _was_enabled := false
 var _platform: StaticBody3D
 var _mark := Vector3.ZERO
 
@@ -62,7 +61,9 @@ func _process(delta: float) -> bool:
 				_check(_home != null, "the townhouse is loaded")
 				if _dev == null or _home == null:
 					return _finish()
-				_was_enabled = _dev.enabled
+				# Scratch files, not the player's own setting and marked spots.
+				_dev.settings_path = "user://dev_mode_test.cfg"
+				_dev.marks_path = "user://dev_marks_test.txt"
 				_dev.set_enabled(false)
 				_key(KEY_V)
 				_check(not _player.noclip, "dev keys do nothing while dev mode is off")
@@ -141,15 +142,27 @@ func _process(delta: float) -> bool:
 				var front: Vector3 = _home.spawn_transform(&"Spawn_Front").origin
 				_check(_player.global_position.distance_to(front) < 0.6 and _player.is_on_floor(), "1: home, at the front gate")
 				_shot("05_home")
-				_key(KEY_2)
+				_mark = _car.global_position
+				_key(KEY_3)  # facing the front door, the car parked out the back
 				_next()
 		7:
+			if _t > 2.0:
+				var d := _car.global_position.distance_to(_player.global_position)
+				_check(d < 8.0 and _car.global_position.distance_to(_mark) > 5.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95,
+					"3 at the front gate: the car comes round to you (%.1f m, at %s)" % [d, _local(_car.global_position)])
+				var to := (_car.global_position - _player.global_position) * Vector3(1, 0, 1)
+				var look := -_player.global_basis.z * Vector3(1, 0, 1)
+				_check(look.normalized().dot(to.normalized()) > 0.8, "and you're turned to face it")
+				_shot("05b_car_at_the_front")
+				_key(KEY_2)
+				_next()
+		8:
 			if _t > 1.0:
 				_check(_player.global_position.distance_to(_car.global_position) < 3.0 and _player.is_on_floor(), "2: beside the car")
 				_shot("06_at_the_car")
 				_put(Vector3(-6.0, -6.0, 0.0), Vector3(6.0, -6.0, 1.0))  # on the lane, looking along it
 				_next()
-		8:
+		9:
 			if _t > 0.5 and _t - delta <= 0.5:
 				_key(KEY_3)
 			if _t > 3.0:
@@ -158,7 +171,7 @@ func _process(delta: float) -> bool:
 				_shot("07_car_brought_over")
 				_player.get_in()
 				_next()
-		9:  # drive along the lane, then unstuck the car back along it
+		10:  # drive along the lane, then unstuck the car back along it
 			if _t > 2.5 and _t - delta <= 2.5:
 				_check(_player.in_car and _car.player_controlled, "back in the car")
 				Input.action_press("accelerate")
@@ -170,20 +183,20 @@ func _process(delta: float) -> bool:
 				_mark = _car.global_position
 				_key(KEY_U)
 				_next()
-		10:
+		11:
 			if _t > 1.5:
 				var back := _car.global_position.distance_to(_mark)
 				_check(back > 6.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95, "U in the car: back along the road, upright (%.1f m)" % back)
 				_shot("08_car_unstuck")
 				_key(KEY_1)
 				_next()
-		11:
+		12:
 			if _t > 1.5:
 				var spawn: Vector3 = _home.spawn_transform(&"Spawn_Car").origin
 				_check(_car.global_position.distance_to(spawn) < 1.5, "1 in the car: back in the carport")
 				var line: String = _dev.mark_spot()
 				_check(line.contains("tile 0_") or line.contains("tile -1_"), "X: marks the spot (%s)" % line)
-				_check(FileAccess.file_exists("user://dev_marks.txt"), "marked spots go in user://dev_marks.txt")
+				_check(FileAccess.file_exists(_dev.marks_path), "marked spots go in a file")
 				_shot("09_panel_in_car")
 				return _finish()
 	return false
@@ -258,8 +271,8 @@ func _check(ok: bool, what: String) -> void:
 func _finish() -> bool:
 	Input.action_release("accelerate")
 	Input.action_release("brake")
-	if _dev:
-		_dev.set_enabled(_was_enabled)
+	DirAccess.remove_absolute("user://dev_mode_test.cfg")
+	DirAccess.remove_absolute("user://dev_marks_test.txt")
 	for f in _failures:
 		printerr("FAIL: ", f)
 	print("DEV MODE TEST ", "PASSED" if _failures.is_empty() else "FAILED")

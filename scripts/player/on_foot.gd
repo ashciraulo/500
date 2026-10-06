@@ -311,18 +311,21 @@ func unstuck() -> bool:
 		var drop: Dictionary = _drops.pop_back()
 		if _walked - float(drop.walked) > DROP_MEMORY or global_position.y > float(drop.from.y) - step_height:
 			continue
-		for back: float in [0.6, 0.35, 1.0, 0.0]:
-			var feet := _ground_at(drop.from - drop.dir * back)
-			if feet != Vector3.INF and absf(feet.y - drop.from.y) < step_height and _fits(feet):
-				_put(feet)
-				return true
+		# A step or so back from the edge, with room around you if there is any,
+		# facing away from the drop (not into the fence along it).
+		for room: float in [0.5, RADIUS]:
+			for back: float in [1.0, 0.7, 0.4, 0.0]:
+				var feet := _ground_at(drop.from - drop.dir * back)
+				if feet != Vector3.INF and absf(feet.y - drop.from.y) < step_height and _fits(feet, room):
+					_put(feet, -drop.dir)
+					return true
 	while not _trail.is_empty():
 		var crumb: Vector3 = _trail.pop_back()
 		if crumb.distance_to(global_position) < 2.0:
 			continue
 		var feet := _ground_at(crumb)
 		if feet != Vector3.INF and _fits(feet):
-			_put(feet)
+			_put(feet, crumb - global_position)
 			return true
 	for ring in range(1, 9):
 		for k in 12:
@@ -349,9 +352,16 @@ func _forget_path() -> void:
 	_air_from = Vector3.INF
 
 
-func _put(feet: Vector3) -> void:
+## Stand at `feet`, turned to face `facing` (flat) if it's given.
+func _put(feet: Vector3, facing := Vector3.ZERO) -> void:
 	global_position = feet + Vector3.UP * 0.02
 	velocity = Vector3.ZERO
+	facing.y = 0.0
+	if facing.length() > 0.01:
+		_yaw = atan2(-facing.x, -facing.z)
+		_pitch = 0.0
+		rotation.y = _yaw
+		_camera.rotation.x = _pitch
 	_air_from = Vector3.INF
 	_air_time = 0.0
 	_last_floor = feet
@@ -386,7 +396,12 @@ func teleport(feet: Vector3, target: Vector3) -> void:
 	global_position = feet
 	velocity = Vector3.ZERO
 	_forget_path()
-	var d := target - (feet + Vector3.UP * eye_height)
+	face(target)
+
+
+## Turn to look at `target`.
+func face(target: Vector3) -> void:
+	var d := target - (global_position + Vector3.UP * eye_height)
 	_yaw = atan2(-d.x, -d.z)
 	_pitch = atan2(d.y, Vector2(d.x, d.z).length())
 	rotation.y = _yaw
@@ -554,9 +569,17 @@ func _ground_at(p: Vector3) -> Vector3:
 	return hit.position if not hit.is_empty() else Vector3.INF
 
 
-func _fits(feet: Vector3) -> bool:
+## Room for the player standing at `feet` (with a wider berth if `radius` is
+## more than the body's).
+func _fits(feet: Vector3, radius := RADIUS) -> bool:
 	var q := PhysicsShapeQueryParameters3D.new()
-	q.shape = _shape.shape
+	if radius > RADIUS:
+		var wide := CapsuleShape3D.new()
+		wide.radius = radius
+		wide.height = maxf(HEIGHT, radius * 2.0)
+		q.shape = wide
+	else:
+		q.shape = _shape.shape
 	q.transform = Transform3D(Basis(), feet + Vector3.UP * (HEIGHT / 2.0 + 0.05))
 	q.collision_mask = MASK
 	q.exclude = [_car.get_rid()] if _car else []
