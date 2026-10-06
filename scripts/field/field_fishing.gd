@@ -660,8 +660,7 @@ func _land() -> void:
 	state = State.LANDED
 	_sound("field/landed_flop")
 	if FieldJournal.fish_species(String(caught.species)).get("wrong", false) and caught.get("first", false):
-		Activities.say("There's already a page about this in the journal. It isn't in your handwriting.")
-		_sound("field/m_page_found")
+		Notices.post("There's already a page about this in the journal. It isn't in your handwriting.", "mystery", "field/m_page_found", "", "UI")
 	state_changed.emit(state)
 	landed.emit(caught)
 	if screen:
