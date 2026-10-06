@@ -176,3 +176,16 @@ def test_lake_shore_is_graded_not_a_wall():
     assert H[np.hypot(E, N) < 119].max() <= level + 0.4
     # Away from the water the ground is untouched.
     assert abs(hf.sample(250.0, 250.0) - 9.0) < 0.05
+
+
+def test_traffic_lines_drop_points_the_surface_does_not_need():
+    from osm_import.traffic import _simplify
+    # A 200 m street densified to 5 m on a 3 % grade with a 20 m crest curve.
+    x = np.arange(0.0, 200.1, 5.0)
+    y = 10.0 + 0.03 * x - np.maximum(0.0, 1.0 - ((x - 100.0) / 20.0) ** 2) * 0.6
+    pts = np.column_stack([x, y, np.zeros_like(x)]).astype(np.float32)
+    out = _simplify(pts)
+    assert len(out) < len(pts) / 2
+    assert (out[0] == pts[0]).all() and (out[-1] == pts[-1]).all()
+    # Every dropped point is still within 4 cm of the simplified line.
+    assert np.abs(np.interp(x, out[:, 0], out[:, 1]) - y).max() <= 0.04 + 1e-4
