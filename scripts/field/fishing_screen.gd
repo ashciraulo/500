@@ -65,9 +65,20 @@ func open_card(c: Dictionary) -> void:
 	FieldUI.clear(_card_box)
 	var f := FieldJournal.fish_species(String(c.species))
 	var junk: bool = c.get("junk", false)
-	FieldUI.label(_card_box, String(f.get("name", c.species)), 24, ACCENT)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	_card_box.add_child(head)
+	var names := VBoxContainer.new()
+	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	names.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_child(names)
+	FieldUI.label(names, String(f.get("name", c.species)), 24, ACCENT)
 	if String(f.get("latin", "")) != "":
-		FieldUI.label(_card_box, String(f.latin), 13, UiStyle.INK_2)
+		FieldUI.label(names, String(f.latin), 13, UiStyle.INK_2)
+	var plate := TextureRect.new()
+	plate.texture = SpeciesIcon.fish(f, 104)
+	plate.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	head.add_child(plate)
 	if junk:
 		FieldUI.label(_card_box, String(f.get("note", "")), 15)
 	else:

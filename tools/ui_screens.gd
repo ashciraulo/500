@@ -39,7 +39,15 @@ func _initialize() -> void:
 		["workshop", _open_workshop, 20, Callable()],
 		["workshop_tab2", func() -> void: _workshop_tab(1), 10, Callable()],
 		["workshop_tab3", func() -> void: _workshop_tab(2), 10, func() -> void: _node("Workshop").close()],
-		["journal_birds", func() -> void: _field("FieldJournalScreen").open(), 20, Callable()],
+		["journal_birds", func() -> void:
+			# A few pages filled in, so the plates show in colour.
+			var fj: Node = root.get_node("FieldJournal")
+			for id in ["australian_magpie", "rainbow_lorikeet", "galah", "laughing_kookaburra", "black_swan", "australian_pelican", "southern_boobook"]:
+				fj.see(id, "Hyde Park")
+			for id in ["black_bream", "tailor", "flathead", "blue_swimmer_crab"]:
+				fj.land({"species": id, "cm": 32.0, "kg": 0.6, "legal": true}, "Mends St jetty")
+			_field("FieldJournalScreen").set("_selected", "laughing_kookaburra")
+			_field("FieldJournalScreen").open(), 20, Callable()],
 		["journal_place", func() -> void:
 			var j: Node = _field("FieldJournalScreen")
 			var fj: Node = root.get_node("FieldJournal")

@@ -256,3 +256,61 @@ def test_bike_lane_tags():
     assert _bike_lane({"cycleway": "shared_lane"})
     assert not _bike_lane({"cycleway": "track"})
     assert not _bike_lane({})
+
+
+def _street(wid, tags, xs, z=0.0, first_node=None):
+    xs = np.asarray(xs, dtype=float)
+    coords = np.column_stack([xs, np.full(len(xs), z)])
+    start = first_node if first_node is not None else wid * 100
+    return Way(wid, {"highway": "primary", **tags}, np.arange(start, start + len(xs), dtype=np.int64), coords)
+
+
+def test_one_width_per_street():
+    from osm_import import streets
+    ways = [
+        _street(1, {"name": "Roe Street", "lanes": "2"}, [0, 100, 200]),
+        _street(2, {"name": "Roe Street", "lanes": "4", "lanes:forward": "3", "lanes:backward": "1"},
+                [200, 230], first_node=102),  # turn lanes at the lights
+        _street(3, {"name": "Roe Street", "width": "14"}, [230, 380], first_node=201),
+        _street(4, {"name": "Roe Street", "lanes": "1", "oneway": "yes"}, [380, 500], first_node=301),
+        _street(5, {"name": "Lake Street", "highway": "residential", "lanes": "6"}, [0, 100], z=50.0),
+    ]
+    out = {w.id: w for w in streets.normalise(ways)}
+    widths = [styles.road_width(out[i].tags) for i in (1, 2, 3)]
+    assert np.allclose(widths, 2 * styles.LANE_WIDTH)  # the flare and the width tag don't change it
+    assert styles.road_lanes(out[2].tags) == 2 and "lanes:forward" not in out[2].tags
+    # The one-way block stays as wide as a street, not a single 3.3 m lane.
+    assert styles.road_width(out[4].tags) >= styles.ONEWAY_MIN_WIDTH
+    assert styles.road_lanes(out[5].tags) == 2  # residential streets get at most two lanes
+    # Raw tags: width tags are ignored and one-ways keep a street's width.
+    assert np.isclose(styles.road_width({"highway": "residential", "width": "12"}), 2 * styles.LANE_WIDTH)
+    assert styles.road_width({"highway": "residential", "oneway": "yes"}) == styles.ONEWAY_MIN_WIDTH
+
+
+def test_divided_road_halves_are_narrower_than_lone_oneways():
+    from osm_import import streets
+    ways = [
+        _street(1, {"name": "Wellington Street", "highway": "tertiary", "oneway": "yes"}, [0, 100, 200]),
+        _street(2, {"name": "Wellington Street", "highway": "tertiary", "oneway": "yes"}, [200, 100, 0], z=9.0),
+        _street(3, {"name": "James Street", "highway": "tertiary", "oneway": "yes"}, [0, 100, 200], z=300.0),
+    ]
+    assert streets.paired_oneways(ways) == {1, 2}
+    out = {w.id: w for w in streets.normalise(ways)}
+    assert np.isclose(styles.road_width(out[1].tags), streets.styles.PAIRED_MIN_WIDTH)
+    assert np.isclose(styles.road_width(out[3].tags), styles.ONEWAY_MIN_WIDTH)
+
+
+def test_car_park_decks_and_roads_in_buildings_are_dropped():
+    from osm_import import streets
+    ways = [
+        _street(1, {"highway": "service", "service": "parking_aisle", "layer": "1"}, [0, 50]),
+        _street(2, {"highway": "service", "service": "parking_aisle", "level": "-1"}, [0, 50], z=10.0),
+        _street(3, {"highway": "service", "level": "0;1"}, [0, 50], z=20.0),       # a ramp up from the street
+        _street(4, {"highway": "service"}, [100, 160], z=0.0),                   # inside a building
+        _street(5, {"highway": "service"}, [100, 160], z=30.0),                  # beside it
+        _street(6, {"highway": "primary", "name": "Wellington Street"}, [100, 160], z=1.0),
+        Way(7, {"highway": "footway"}, np.array([700, 701]), np.array([[100.0, 0.0], [160.0, 0.0]])),
+    ]
+    building = box(95, -10, 170, 10)
+    kept = {w.id for w in streets.normalise(ways, [building])}
+    assert kept == {3, 5, 6, 7}

@@ -1,0 +1,226 @@
+{
+	"_comment": "Furniture you can order for the townhouse (HomeFurniture). spots: townhouse empties (art/models/README.md), each with a stand-in place `at` (x across, y back from the street, z up; yaw radians, 0 faces the street) used until the empty exists (a spot with neither isn't offered yet), and the model it replaces (hidden while something's there). items: kind matches a spot's kind; model is art/models/props/home/decor/<model>.glb, with a stand-in box until it exists; colour tints the stand-in.",
+	"spots": {
+		"Decor_Rug_Lounge": {
+			"kind": "rug",
+			"name": "Lounge floor",
+			"at": [
+				3.4,
+				2.95,
+				0.155
+			],
+			"yaw": 0.0,
+			"replaces": "Rug_Lounge"
+		},
+		"Decor_Rug_Bedroom": {
+			"kind": "rug",
+			"name": "Bedroom floor",
+			"at": [
+				3.2,
+				2.05,
+				3.165
+			],
+			"yaw": 0.0,
+			"replaces": "Rug_Bed1"
+		},
+		"Decor_Lamp_Lounge": {
+			"kind": "lamp",
+			"name": "Lounge corner",
+			"at": [
+				0.26,
+				2.95,
+				0.15
+			],
+			"yaw": 1.571,
+			"replaces": "FloorLamp"
+		},
+		"Decor_Lamp_Bedroom": {
+			"kind": "lamp",
+			"name": "Bedroom corner",
+			"at": [
+				0.42,
+				0.42,
+				3.16
+			],
+			"yaw": 2.36
+		},
+		"Decor_Chair": {
+			"kind": "chair",
+			"name": "Lounge, by the window",
+			"at": [
+				0.75,
+				1.25,
+				3.16
+			],
+			"yaw": 1.9
+		},
+		"Decor_Poster_1": {
+			"kind": "poster",
+			"name": "Over the couch",
+			"at": [
+				0.68,
+				2.4,
+				1.75
+			],
+			"yaw": 1.571
+		},
+		"Decor_Poster_2": {
+			"kind": "poster",
+			"name": "Bedroom wall",
+			"at": [
+				0.03,
+				1.25,
+				4.6
+			],
+			"yaw": 1.571
+		},
+		"Decor_Poster_3": {
+			"kind": "poster",
+			"name": "Landing",
+			"at": [
+				5.37,
+				2.05,
+				4.75
+			],
+			"yaw": -1.571
+		},
+		"Decor_Poster_4": {
+			"kind": "poster",
+			"name": "Rear living room"
+		},
+		"Decor_Plant_1": {
+			"kind": "plant",
+			"name": "Lounge window",
+			"replaces": "Plant_Snake"
+		},
+		"Decor_Plant_2": {
+			"kind": "plant",
+			"name": "Rear living room",
+			"at": [
+				0.4,
+				2.9,
+				3.16
+			],
+			"yaw": 0.0
+		},
+		"Decor_Plant_3": {
+			"kind": "plant",
+			"name": "Bedroom window",
+			"replaces": "Plant_Fiddle2"
+		}
+	},
+	"items": [
+		{
+			"id": "rug_jute",
+			"kind": "rug",
+			"name": "Jute rug",
+			"price": 180,
+			"colour": "#b89b6a"
+		},
+		{
+			"id": "rug_persian",
+			"kind": "rug",
+			"name": "Op-shop Persian rug",
+			"price": 260,
+			"colour": "#8a2f2a"
+		},
+		{
+			"id": "rug_retro",
+			"kind": "rug",
+			"name": "Seventies shag rug",
+			"price": 220,
+			"colour": "#d08a2e"
+		},
+		{
+			"id": "lamp_arc",
+			"kind": "lamp",
+			"name": "Arc floor lamp",
+			"price": 240,
+			"colour": "#c9c4b8"
+		},
+		{
+			"id": "lamp_paper",
+			"kind": "lamp",
+			"name": "Paper lantern lamp",
+			"price": 90,
+			"colour": "#efe6d2"
+		},
+		{
+			"id": "lamp_tripod",
+			"kind": "lamp",
+			"name": "Tripod lamp",
+			"price": 160,
+			"colour": "#6b4a2e"
+		},
+		{
+			"id": "chair_rattan",
+			"kind": "chair",
+			"name": "Rattan peacock chair",
+			"price": 320,
+			"colour": "#c49a5a"
+		},
+		{
+			"id": "chair_velvet",
+			"kind": "chair",
+			"name": "Green velvet armchair",
+			"price": 450,
+			"colour": "#3c5a3a"
+		},
+		{
+			"id": "chair_eames_style",
+			"kind": "chair",
+			"name": "Moulded lounge chair",
+			"price": 780,
+			"colour": "#3a2a22"
+		},
+		{
+			"id": "poster_band",
+			"kind": "poster",
+			"name": "Gig poster",
+			"price": 35,
+			"colour": "#c43a3a"
+		},
+		{
+			"id": "poster_surf",
+			"kind": "poster",
+			"name": "Surf comp poster",
+			"price": 40,
+			"colour": "#3a8ac4"
+		},
+		{
+			"id": "poster_map",
+			"kind": "poster",
+			"name": "Old Perth map print",
+			"price": 60,
+			"colour": "#d8c99a"
+		},
+		{
+			"id": "poster_film",
+			"kind": "poster",
+			"name": "Drive-in film poster",
+			"price": 45,
+			"colour": "#2a2a3a"
+		},
+		{
+			"id": "plant_monstera",
+			"kind": "plant",
+			"name": "Monstera",
+			"price": 70,
+			"colour": "#2f6b3a"
+		},
+		{
+			"id": "plant_fiddle",
+			"kind": "plant",
+			"name": "Fiddle-leaf fig",
+			"price": 95,
+			"colour": "#3d7a3a"
+		},
+		{
+			"id": "plant_cactus",
+			"kind": "plant",
+			"name": "Big cactus",
+			"price": 55,
+			"colour": "#5a8a4a"
+		}
+	]
+}

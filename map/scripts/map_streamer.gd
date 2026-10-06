@@ -60,6 +60,8 @@ var _traffic_sent := {}   # Vector2i -> true: tiles whose roads traffic already 
 var _traffic_queue: Array[Dictionary] = []
 var _lakes: Array[Dictionary] = []  # from lakes.json, read on first use
 var _lakes_read := false
+var _placed: Dictionary = {}  # Vector2i -> [props.json entries], read on first use
+var _placed_read := false
 
 
 func _ready() -> void:
@@ -245,6 +247,33 @@ func _get_lakes() -> Array[Dictionary]:
 				box = box.expand(p)
 			_lakes.append({ name = entry.name, level = float(entry.level), outline = outline, box = box })
 	return _lakes
+
+
+## Hand-made models placed on the map (lighthouses, a bird hide, the surf
+## club), from props.json next to index.json: each goes under its tile's node,
+## so it comes and goes with the tile.
+func _add_placed_props(key: Vector2i, root: Node3D) -> void:
+	if not _placed_read:
+		_placed_read = true
+		var path := tiles_dir.path_join("props.json")
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else []
+		for entry: Dictionary in data if data is Array else []:
+			var p: Array = entry.p
+			var k := tile_at(Vector3(p[0], p[1], p[2]))
+			if not _placed.has(k):
+				_placed[k] = []
+			_placed[k].append(entry)
+	for entry: Dictionary in _placed.get(key, []):
+		var scene: PackedScene = load(entry.scene) if ResourceLoader.exists(entry.scene) else null
+		if scene == null:
+			push_warning("MapStreamer: missing prop scene " + str(entry.scene))
+			continue
+		var node: Node3D = scene.instantiate()
+		node.name = "prop_" + str(entry.id)
+		var p: Array = entry.p
+		node.position = Vector3(p[0], p[1], p[2]) - root.position
+		node.rotation.y = float(entry.yaw)
+		root.add_child(node)
 
 
 ## Tile key containing a world position.
@@ -512,6 +541,7 @@ func _finish_tile(result: MapTileLoader.TileResult, with_collision: bool) -> voi
 		result.root.free()
 		return
 	add_child(result.root)
+	_add_placed_props(result.key, result.root)
 	var glow := result.root.get_node_or_null(^"light_pools")
 	if glow:
 		glow.visible = _pools_on

@@ -333,14 +333,34 @@ func _build_shelf() -> void:
 	var boxes := _home.find_child("Storage_Boxes", true, false) as MeshInstance3D
 	if boxes == null:
 		return
-	var box := boxes.global_transform * boxes.get_aabb()
-	var top := Vector3(box.get_center().x, box.end.y, box.get_center().z)
+	# Lay things out in the boxes' own frame: `front` faces the cupboard door,
+	# `side` runs across. Two rows of three at the front, M.'s journal at the back.
+	var aabb := boxes.get_aabb()
+	var top := boxes.global_transform * Vector3(aabb.get_center().x, aabb.end.y, aabb.get_center().z)
+	var basis := boxes.global_basis.orthonormalized()
+	var front := Vector3.FORWARD
+	var door := _home.find_child("Door_Storage", true, false) as Node3D
+	if door:
+		var to := door.global_position - top
+		to.y = 0.0
+		var best := -INF
+		for axis in [basis.x, -basis.x, basis.z, -basis.z]:
+			if axis.dot(to) > best:
+				best = axis.dot(to)
+				front = axis
+	var side := Vector3.UP.cross(front)
 	for i in in_cupboard.size():
 		var thing := MysteryProps.for_clue(in_cupboard[i], String(clue(in_cupboard[i]).get("cupboard", "")))
 		_shelf.add_child(thing)
-		var row := Vector3((i % 3 - 1) * 0.13, 0.0, (i / 3 - 0.5) * 0.16)
-		thing.global_position = top + row
-		thing.rotation.y = 0.4 * i
+		thing.global_position = top + side * ((i % 3 - 1) * 0.12) + front * (0.17 - (i / 3) * 0.11)
+		thing.global_rotation.y = atan2(front.x, front.z) + 0.4 * i
+	# M.'s journal turns up with the first of them, at the back, its cover
+	# opening along the wall.
+	if in_cupboard.size() > 0:
+		var journal := MJournal.new()
+		_shelf.add_child(journal)
+		journal.global_position = top - front * 0.14 + side * 0.08
+		journal.global_rotation.y = atan2(side.x, side.z) - PI * 0.5
 
 
 func _on_shed_tried() -> void:

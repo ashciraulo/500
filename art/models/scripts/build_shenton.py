@@ -449,6 +449,9 @@ def interior(M):
     out.append(it("Bar_Top", [F.bx((0, -0.1, 1.05), (2.2, 0.35, 1.09), M["granite"]),
                               F.bx((0, 0.25, 0.9), (2.2, 0.31, 1.05), F.M("white"))], (2.6, 8.5, z0)))
     out.append(it("Fridge-col", F.fridge(), (2.5, 7.0, z0), 180))
+    # fridge magnets the player collects; the fridge is turned to face +Y
+    for i, (mx, mz) in enumerate(F.FRIDGE_MAGNETS):
+        marker("Magnet_%d" % (i + 1), (2.5 - mx, 7.0 + 0.35, z0 + mz), 180)
     out.append(it("CoffeeMachine", F.coffee_machine(), (3.4, 6.85, z0 + 0.91), 180))
     out.append(it("Kettle", F.kettle(), (4.9, 6.85, z0 + 0.91)))
     out.append(it("Herbs", F.plant("herb", 5), (5.15, 7.6, z0 + 0.91)))

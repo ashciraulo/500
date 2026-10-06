@@ -69,6 +69,15 @@ Set `theme_type_variation` to one of these:
   above with `\n`). It shows the gamepad button once the player uses a pad,
   and hides itself while the game is paused. Place it with `place_bottom(px)`.
 - `TitleArt`: the title screen's look (wordmark, tagline, menu buttons).
+- `SpeciesIcon.bird(species, px, silhouette)` / `SpeciesIcon.fish(...)`: a
+  field-guide plate drawn from the species' `model` and `colours` in
+  `data/field`, so new species get one automatically. Pass `silhouette` for a
+  pale pencil outline (not yet seen). Odd ones can be tuned in `BIRD_TWEAKS`.
+  `tools/species_sheet.gd` renders them all on one sheet for checking.
+- `UiStyle.animate(panel)`: the quick pop-in and the soft open/close sounds.
+  `centred_card()` already does it. Buttons tick when moved between with the
+  keys or a pad and click when pressed (the `UiTheme` autoload), using the
+  audio thread's `audio/ui` sounds.
 
 ## Scaling
 
