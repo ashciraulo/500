@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"engine_big_bore"
+display_name = "650 cc big-bore kit"
+description = "Bored out to 650 cc with the carb kit and finned sump. The old twin finally pulls."
+slot = &"engine"
+price = 2400
+modifiers = {"torque_mult": 1.35, "limiter_add": 300, "mass_add": 3.0}
+ladders = PackedStringArray("classic")
+visual = "sump_finned"

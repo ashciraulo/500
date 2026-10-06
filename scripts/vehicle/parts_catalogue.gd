@@ -4,10 +4,10 @@ extends RefCounted
 
 const DIR := "res://data/parts/"
 const SLOTS: Array[StringName] = [
-	&"engine", &"intake", &"exhaust", &"gearbox", &"suspension",
+	&"engine", &"intake", &"exhaust", &"gearbox", &"flywheel", &"diff", &"suspension", &"anti_roll",
 	&"tyres", &"wheels", &"brakes", &"weight", &"roof", &"lights",
 	&"rear_rack", &"bumpers", &"towbar", &"mudflaps",
-	&"steering_wheel", &"gear_knob", &"seat_covers",
+	&"steering_wheel", &"gear_knob", &"seat_covers", &"plate",
 ]
 
 static var _parts := {}
@@ -37,7 +37,7 @@ static func for_slot(slot: StringName) -> Array[CarPart]:
 
 
 ## Slots an electric car can't take parts in.
-const COMBUSTION_SLOTS: Array[StringName] = [&"engine", &"intake", &"exhaust", &"gearbox"]
+const COMBUSTION_SLOTS: Array[StringName] = [&"engine", &"intake", &"exhaust", &"gearbox", &"flywheel"]
 
 
 ## True when a part can go on a car.

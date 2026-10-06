@@ -223,6 +223,19 @@ func _clear_glass() -> void:
 	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 
+## Custom plates: art/models/cars/plates/<id>.png in the Plate material
+## ("" puts the car's own plate back).
+func set_plate(id: String) -> void:
+	var plate := _materials.get("Plate") as ShaderMaterial
+	if plate == null:
+		return
+	if not has_meta("stock_plate"):
+		set_meta("stock_plate", plate.get_shader_parameter("albedo_texture"))
+	var path := "res://art/models/cars/plates/%s.png" % id
+	var texture: Texture2D = load(path) if id != "" and ResourceLoader.exists(path) else get_meta("stock_plate")
+	plate.set_shader_parameter("albedo_texture", texture)
+
+
 func _glow(material_name: String, color: Color, energy: float) -> void:
 	var material := _materials.get(material_name) as ShaderMaterial
 	if material:

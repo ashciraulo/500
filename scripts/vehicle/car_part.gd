@@ -11,14 +11,17 @@ extends Resource
 ##   damper_mult, anti_roll_mult, brake_mult, drag_mult, wet_penalty_mult,
 ##   dirt_mult
 ##                               multiply the car's stock value
+##   free_rev_mult             multiplies how fast the engine revs (flywheel)
 ##   limiter_add (rpm), ride_height_add (m, negative = lower), mass_add (kg),
-##   lateral_stiffness_add       add to the stock value
+##   lateral_stiffness_add, diff_lock_add
+##                               add to the stock value
 ##   gear_ratios (Array of floats) replaces the gearbox ratios
 
 @export var id: StringName
 @export var display_name := ""
 @export_multiline var description := ""
-## engine, intake, exhaust, gearbox, suspension, tyres, wheels, brakes,
+## engine, intake, exhaust, gearbox, flywheel, diff, suspension, anti_roll,
+## tyres, wheels, brakes,
 ## weight, roof, lights
 @export var slot: StringName
 ## Price in Australian dollars. Stock parts are 0.

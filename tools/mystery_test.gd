@@ -94,7 +94,15 @@ func _process(_delta: float) -> bool:
 				if id != "shed_key":
 					_check(_m.in_cupboard.has(id), "%s turned up in the cupboard under the stairs" % id)
 					_check(_home.is_door_open(&"Door_Storage"), "the cupboard is open in the morning")
-					_check(_m._shelf.get_child_count() == _m.in_cupboard.size(), "%d things on the boxes" % _m.in_cupboard.size())
+					_check(_m._shelf.get_child_count() == _m.in_cupboard.size() + 1, "%d things on the boxes, and M.'s journal" % _m.in_cupboard.size())
+					if _m.in_cupboard.size() == 1:
+						var journal: Variant = _m._shelf.find_child("MJournal", false, false)
+						_check(journal != null and journal.interact_hint() == "Open M.'s journal", "M.'s journal is with it, shut")
+						if journal:
+							journal.set_open(true, false)
+							var cover: Node3D = journal.find_child("Cover", true, false)
+							_check(cover != null and cover.rotation.z > 3.0, "its cover opens on the spine")
+							journal.set_open(false, false)
 					_home.toggle_door(&"Door_Storage")
 				# The next one waits for the career and a couple of days.
 				clock.set_time(0.5)

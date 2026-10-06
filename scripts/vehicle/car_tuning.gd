@@ -17,7 +17,9 @@ const OPTIONS := [
 	{"key": "damper_mult", "label": "Damping", "min": 0.8, "max": 1.25, "step": 0.05,
 		"default": 1.0, "low": "floaty", "high": "tight", "needs": ["suspension_coilovers"]},
 	{"key": "anti_roll_mult", "label": "Anti-roll bars", "min": 0.6, "max": 1.4, "step": 0.1,
-		"default": 1.0, "low": "rolls", "high": "flat", "needs": ["suspension_coilovers"]},
+		"default": 1.0, "low": "rolls", "high": "flat", "needs": ["suspension_coilovers", "anti_roll_adjustable"]},
+	{"key": "diff_lock_add", "label": "Diff lock", "min": -0.2, "max": 0.2, "step": 0.05,
+		"default": 0.0, "low": "free", "high": "tight", "needs": ["diff_lsd"]},
 	{"key": "final_drive_mult", "label": "Final drive", "min": 0.9, "max": 1.12, "step": 0.02,
 		"default": 1.0, "low": "long legs", "high": "punchy", "needs": ["gearbox_close_ratio", "gearbox_short_final"]},
 ]
