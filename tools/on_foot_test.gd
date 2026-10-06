@@ -122,6 +122,7 @@ func _process(delta: float) -> bool:
 		5:
 			if _t > 0.6:
 				_check(_player.surface() == "brick", "courtyard footsteps are brick (%s)" % _player.surface())
+				_check(not _sheltered(_player.global_position + Vector3.UP), "rain falls in the courtyard")
 				var fs = _player.get_node_or_null("FootstepAudio")
 				_check(fs != null and fs.surface_under() == "brick", "FootstepAudio hears brick in the courtyard")
 				_shot("03_courtyard")
@@ -131,6 +132,9 @@ func _process(delta: float) -> bool:
 			if _t > 0.6:
 				_check(_player.is_on_floor(), "standing in the lounge")
 				_check(_player.surface() == "timber", "lounge footsteps are timber (%s)" % _player.surface())
+				_check(_sheltered(_player.global_position + Vector3.UP), "no rain in the lounge")
+				_check(_sheltered(_world(Vector3(2.0, 21.3, 1.0))) and _sheltered(_world(Vector3(2.0, -1.0, 1.0))),
+					"no rain under the carport roof or the balcony")
 				_shot("04_lounge")
 				_put(Vector3(0.5, 9.3, FZ0), Vector3(0.5, 5.0, FZ1 + 0.9))
 				_next()
@@ -273,6 +277,15 @@ func _process(delta: float) -> bool:
 				_check(_car.player_controlled, "the car drives again")
 				_check(_rig_cam.current, "the driving camera is back")
 				return _finish()
+	return false
+
+
+## Under one of the townhouse's rain shelters (the rain shader hides drops there).
+func _sheltered(p: Vector3) -> bool:
+	for box: Transform3D in _home.rain_shelters():
+		var q := box.affine_inverse() * p
+		if absf(q.x) <= 1.0 and absf(q.y) <= 1.0 and absf(q.z) <= 1.0:
+			return true
 	return false
 
 

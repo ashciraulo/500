@@ -90,7 +90,8 @@ func _update_chase(delta: float) -> void:
 	if _look_idle > 1.5:
 		_look_yaw = lerp_angle(_look_yaw, 0.0, 1.0 - exp(-3.0 * delta))
 		_look_pitch = lerpf(_look_pitch, 0.0, 1.0 - exp(-3.0 * delta))
-	_look_pitch = clampf(_look_pitch, -0.5, 0.6)
+	# Positive pitch looks up, as on foot: the camera swings down behind the car.
+	_look_pitch = clampf(_look_pitch, -0.6, 0.3)
 
 	var car_pos := _car.global_position
 	var car_yaw := _car.global_rotation.y
@@ -101,7 +102,7 @@ func _update_chase(delta: float) -> void:
 	# Smaller cars (the classics) get the camera lower and closer.
 	var fit := clampf(_car.body_size.y / CarController.POP_SIZE.y, 0.75, 1.2)
 	var distance := chase_distance * sqrt(fit) + speed_t * 1.0
-	var orbit := Basis(Vector3.UP, _yaw + _look_yaw) * Basis(Vector3.RIGHT, -_look_pitch)
+	var orbit := Basis(Vector3.UP, _yaw + _look_yaw) * Basis(Vector3.RIGHT, _look_pitch)
 	# Under a low roof (carport, car park), drop the camera and pull it in so
 	# it stays below the ceiling instead of filming the roof.
 	var height := chase_height * fit

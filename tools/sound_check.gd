@@ -9,6 +9,8 @@ extends SceneTree
 ##   just past it.
 ## - Nothing out in the world plays as a flat (2D) sound except the zone
 ##   beds and the weather, which are everywhere by nature.
+## - With the Effects, Music and Radio sliders down, nothing but the menus'
+##   sounds can still be heard (nothing bypasses them straight to Master).
 ## - Sirens: none sprinkled into the ambience, a few emergency calls per
 ##   in-game day (most of them far off), and a drive-by's siren stops once
 ##   it has gone past.
@@ -77,6 +79,7 @@ func _run() -> void:
 				"a crowd is heard from where the people are (%.0f m away)" % (group[0] as Vector3).distance_to(ear.global_position))
 	await _wait(1.0)
 	_check_flat_sounds()
+	_check_sliders()
 	await _check_falloff()
 	_check_sirens(traffic, ear)
 	_finish()
@@ -153,6 +156,56 @@ static func _tone() -> AudioStreamWAV:
 	w.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	w.loop_end = rate
 	return w
+
+
+# ---------------------------------------------------------------------------
+# Volume sliders
+# ---------------------------------------------------------------------------
+
+## With the Effects, Music and Radio sliders all the way down, only menu (UI)
+## sounds may still be heard: everything else must go through a bus one of
+## those sliders turns down, not straight to Master (or a missing bus).
+func _check_sliders() -> void:
+	var settings: Node = root.get_node("Settings")
+	var keep := {}
+	for key in ["volume_effects", "volume_music", "volume_radio"]:
+		keep[key] = settings.get(key)
+		settings.set(key, 0.0)
+	settings.apply()
+	var loud := {}
+	var players: Array = []
+	players.append_array(_players_3d(root))
+	players.append_array(_players_2d(root))
+	for p in players:
+		var chain := _bus_chain(p.bus)
+		if chain.has("UI"):
+			continue
+		var gain := 0.0
+		for b in chain:
+			if b != "Master":
+				gain += AudioServer.get_bus_volume_db(AudioServer.get_bus_index(b))
+		if gain > -60.0:
+			loud["%s (%s)" % [_label(p), " > ".join(chain)]] = true
+	_check(loud.is_empty(), "every sound but the menus turns down with the Effects, Music or Radio slider"
+			+ (" (%s)" % ", ".join(loud.keys()) if loud else ""))
+	for key in keep:
+		settings.set(key, keep[key])
+	settings.apply()
+
+
+## The buses a player's sound goes through to Master; a missing bus plays
+## straight into Master.
+static func _bus_chain(bus: StringName) -> Array[String]:
+	var out: Array[String] = []
+	var idx := AudioServer.get_bus_index(bus)
+	if idx < 0:
+		out.append("missing bus " + String(bus))
+		idx = 0
+	while idx > 0 and out.size() < 16:
+		out.append(AudioServer.get_bus_name(idx))
+		idx = AudioServer.get_bus_index(AudioServer.get_bus_send(idx))
+	out.append("Master")
+	return out
 
 
 # ---------------------------------------------------------------------------

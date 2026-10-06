@@ -16,7 +16,7 @@ extends SceneTree
 const LAWNS := Vector3(-935.6, 66.0, 1455.6)     # Kings Park lookout car park
 const BUSH := Vector3(-2189.0, 48.0, 1822.0)     # Lovekin Drive, Kings Park
 const RIVER := Vector3(742.0, 3.0, 1533.0)       # Riverside Drive by the quay
-const FRASER := Vector3(-911.35, 68.4, 923.83)   # Fraser Avenue's lemon gums
+const FRASER := Vector3(-911.35, 59.35, 923.83)   # Fraser Avenue's lemon gums
 # FieldFishing.State, spelled out: naming the class here would compile it
 # before the autoloads it uses exist.
 const F_IDLE := 0
@@ -743,6 +743,10 @@ func _check_walk_in(shop: Node3D, result: Dictionary) -> void:
 	var counter: Node3D = room.find_child("Counter", true, false)
 	_check(shop.at_counter(room.to_global(room.to_local(counter.global_position) + Vector3(-0.9, 0.1, 0.6))), "on foot at the counter is in reach")
 	_check(not shop.at_counter(shop.global_position), "the bay isn't the counter on foot")
+	var inside := room.to_global(Vector3(0.0, 1.5, -3.5))
+	_check(shop.rain_shelters().any(func(box: Transform3D) -> bool:
+		var b := box.affine_inverse() * inside
+		return absf(b.x) <= 1.0 and absf(b.y) <= 1.0 and absf(b.z) <= 1.0), "no rain inside the shop")
 	var heaviest := 0.0
 	for f: Dictionary in result.fish:
 		heaviest = maxf(heaviest, float(f.kg))

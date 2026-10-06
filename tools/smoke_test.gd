@@ -50,6 +50,7 @@ func _run_step() -> bool:
 				_check(_car.global_basis.y.dot(Vector3.UP) > 0.98, "car sits level")
 				_check(_car.grounded_wheels == 4, "all four wheels touch the ground")
 				_check(_car.linear_velocity.length() < 0.2, "car is at rest (%.2f m/s)" % _car.linear_velocity.length())
+				_chase_look()
 				_next()
 		1:  # Manual gearbox, first gear, full throttle.
 			_car.transmission = 0  # MANUAL
@@ -583,6 +584,31 @@ func _run_step() -> bool:
 				quit(1)
 			return true
 	return false
+
+
+## In the chase view, looking up (mouse or stick up raises the look pitch, as
+## on foot) swings the camera down behind the car, so it looks up.
+func _chase_look() -> void:
+	var rig: Node = _main.get_node("LoFi/SubViewport/World/CameraRig")
+	var camera: Camera3D = rig.get_node("Camera3D")
+	var heights := []
+	for pitch: float in [0.4, -0.4]:
+		rig._look_idle = 0.0
+		rig._look_pitch = pitch
+		for i in 3:
+			rig._update_chase(5.0)
+		heights.append(camera.global_position.y)
+	_check(heights[0] < heights[1] - 0.5, "chase view: looking up drops the camera (%.2f m vs %.2f m)" % heights)
+	var up := InputEventMouseMotion.new()
+	up.relative = Vector2(0.0, -40.0)
+	var was := Input.mouse_mode
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	rig._look_pitch = 0.0
+	rig._input(up)
+	_check(Input.mouse_mode != Input.MOUSE_MODE_CAPTURED or rig._look_pitch > 0.0, "moving the mouse up looks up")
+	Input.mouse_mode = was
+	rig._look_pitch = 0.0
+	rig._look_yaw = 0.0
 
 
 func _teleport(pos: Vector3) -> void:

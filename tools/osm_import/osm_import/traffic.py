@@ -90,6 +90,45 @@ def _densify(pts, step: float):
     return np.concatenate(out)
 
 
+def _simplify(pts, across: float = 0.15, up: float = 0.04):
+    """Drops points of a Godot-space polyline that lie within `across` metres
+    of the line in plan and `up` metres in height (Douglas-Peucker on both).
+    Road heights come from a profile densified to 5 m, which made the traffic
+    data twice the size and slow to join; this keeps only the points the
+    curves and vertical curves need. Ends are always kept."""
+    pts = np.asarray(pts)
+    if len(pts) <= 2:
+        return pts
+    keep = np.zeros(len(pts), bool)
+    keep[[0, -1]] = True
+    stack = [(0, len(pts) - 1)]
+    p = pts.astype(np.float64)
+    while stack:
+        i, j = stack.pop()
+        if j <= i + 1:
+            continue
+        a, b = p[i], p[j]
+        seg = b - a
+        L2 = seg[0] ** 2 + seg[2] ** 2
+        mid = p[i + 1:j]
+        t = np.clip(((mid[:, 0] - a[0]) * seg[0] + (mid[:, 2] - a[2]) * seg[2]) / L2, 0, 1) if L2 > 1e-12 \
+            else np.zeros(len(mid))
+        off = np.hypot(mid[:, 0] - (a[0] + t * seg[0]), mid[:, 2] - (a[2] + t * seg[2])) / across
+        dh = np.abs(mid[:, 1] - (a[1] + t * seg[1])) / up
+        err = np.maximum(off, dh)
+        k = int(np.argmax(err))
+        if err[k] > 1.0:
+            keep[i + 1 + k] = True
+            stack += [(i, i + 1 + k), (i + 1 + k, j)]
+    return pts[keep]
+
+
+def _path_out(f: dict) -> dict:
+    """A path or service road as written to the tile: no build-only keys or empty name."""
+    return {k: (_simplify(v) if k == "pts" else v) for k, v in f.items()
+            if k not in ("_mid", "_way") and (k != "name" or v)}
+
+
 def _tangents(xyz):
     d = np.gradient(xyz[:, [0, 2]], axis=0)
     return d / np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-6)
@@ -433,8 +472,9 @@ class TrafficNetwork:
                 rail.append({"pts": np.column_stack([xy[:, 0], h, -xy[:, 1]]).astype(np.float32)})
         data = {
             "nodes": nodes,
-            "roads": [{k: v for k, v in r.items() if k != "_mid"} for r in roads],
-            "rail": rail,
+            "roads": [{k: (_simplify(v) if k == "pts" else v) for k, v in r.items() if k != "_mid"}
+                      for r in roads],
+            "rail": [{"pts": _simplify(r["pts"])} for r in rail],
             "stations": [{"p": np.array([e, y, -n], dtype=np.float32), "name": name}
                          for e, n, y, name in self.stations if inside(e, n)],
             "bus_stops": [{"p": np.array([e, y, -n], dtype=np.float32)}
@@ -446,16 +486,13 @@ class TrafficNetwork:
                            for p in self.keep_clear if inside(p[0], -p[2])],
             "bus_routes": self._bus_routes_in(inside),
         }
-        footways = [{k: v for k, v in f.items() if k not in ("_mid", "_way") and (k != "name" or v)}
-                    for f in self.footways if inside(*f["_mid"])]
+        footways = [_path_out(f) for f in self.footways if inside(*f["_mid"])]
         if footways:  # only near the stadium and in the city, so most tiles go without the key
             data["footways"] = footways
-        cycleways = [{k: v for k, v in f.items() if k not in ("_mid", "_way") and (k != "name" or v)}
-                     for f in self.cycleways if inside(*f["_mid"])]
+        cycleways = [_path_out(f) for f in self.cycleways if inside(*f["_mid"])]
         if cycleways:
             data["cycleways"] = cycleways
-        service = [{k: v for k, v in f.items() if k not in ("_mid", "_way") and (k != "name" or v)}
-                   for f in self.service_roads if inside(*f["_mid"])]
+        service = [_path_out(f) for f in self.service_roads if inside(*f["_mid"])]
         if service:
             data["service_roads"] = service
         return data
