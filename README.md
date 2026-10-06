@@ -49,6 +49,8 @@ Keyboard or any standard gamepad. Press **F1** in game to show/hide this list.
 | Look around | Click to capture the mouse | Right stick |
 | Headlights (auto by default) | L | D-pad up |
 | Reset car upright | R | D-pad down |
+| On foot: walk, hurry | W A S D, Shift | Left stick, B |
+| On foot: hop up a ledge | Space | Y |
 | Pause and settings | Esc | Start |
 | Next weather (and lock it) | F5 | D-pad right |
 | Lock / unlock weather | F6 | |
@@ -74,7 +76,7 @@ and these keys work:
 | Key | Does |
 | --- | --- |
 | U | Unstuck: on foot, back on top of the drop you just fell down (or back along where you walked); in the car, back along the road and upright |
-| V | Fly on foot, through walls: W/S go where you look, E/Q up and down, Space fast. V again to land |
+| V | Fly on foot, through walls: W/S go where you look, E/Q (or Space) up and down, Shift fast. V again to land |
 | 1 | Home: on foot to the front gate, in the car to the carport |
 | 2 | To the car (on foot) |
 | 3 | Bring the car to you (on foot) |

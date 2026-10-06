@@ -13,7 +13,8 @@ extends CharacterBody3D
 ##   interact() -> void                do it
 ##
 ## Moves with the driving actions (accelerate/brake = forward/back,
-## steer = strafe, handbrake = hurry), looks with the mouse or the right
+## steer = strafe), hurry (Shift / B) to go faster, jump (Space / Y) for a
+## small hop up a ledge too high to step. Looks with the mouse or the right
 ## stick. Climbs stairs by stepping up small ledges.
 ##
 ## Remembers where it has walked, so `unstuck()` can put the player back on
@@ -61,7 +62,12 @@ const TRAIL_STEP := 1.0
 const TRAIL_SIZE := 64
 ## A drop is forgotten once you've walked this far since (you got out of it).
 const DROP_MEMORY := 25.0
-## Flying in dev mode, metres a second (Space for fast).
+## A hop: up this fast (metres a second), clearing about 0.65 m.
+const JUMP_SPEED := 3.6
+## Falling this long (seconds) means you've gone through the world: back to
+## the last solid ground you walked on.
+const FALL_RESCUE := 4.0
+## Flying in dev mode, metres a second (Shift for fast).
 const FLY_SPEED := 8.0
 const FLY_FAST := 40.0
 
@@ -101,6 +107,7 @@ var _walked := 0.0
 var _last_floor := Vector3.INF
 var _air_from := Vector3.INF
 var _air_dir := Vector3.ZERO
+var _air_time := 0.0
 
 
 func _ready() -> void:
@@ -204,12 +211,12 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var move := Input.get_vector("steer_left", "steer_right", "accelerate", "brake")
-	var speed := hurry_speed if Input.is_action_pressed("handbrake") else walk_speed
+	var speed := hurry_speed if Input.is_action_pressed("hurry") else walk_speed
 	var wish := global_basis * Vector3(move.x, 0.0, move.y) * speed
 	velocity.x = move_toward(velocity.x, wish.x, delta * 14.0)
 	velocity.z = move_toward(velocity.z, wish.z, delta * 14.0)
 	if is_on_floor():
-		velocity.y = 0.0
+		velocity.y = JUMP_SPEED if Input.is_action_just_pressed("jump") else 0.0
 	else:
 		velocity.y -= GRAVITY * delta
 
@@ -218,12 +225,12 @@ func _physics_process(delta: float) -> void:
 	# Look a few centimetres ahead, not just this tick's move: resting against a
 	# sill or a slab edge, a tick's move is smaller than the collision margin
 	# and the step would never be tried.
-	if is_on_floor() and horizontal.length() > 0.0005 \
+	if is_on_floor() and velocity.y <= 0.0 and horizontal.length() > 0.0005 \
 			and test_move(global_transform, horizontal.normalized() * maxf(horizontal.length(), 0.06)):
 		_step_up(horizontal)
 	move_and_slide()
 	var moved := Vector2(global_position.x - before.x, global_position.z - before.z).length()
-	_track(moved)
+	_track(moved, delta)
 
 	# A gentle head bob, one dip per stride (FootstepAudio plays the steps).
 	if is_on_floor() and moved > 0.0005:
@@ -252,25 +259,34 @@ func _step_up(horizontal: Vector3) -> void:
 		global_position.y += rise + 0.01
 
 
-## Dev mode's fly: W/S along where you look, A/D sideways, E/Q (RB/LB) up
-## and down, hurry (Space) for fast.
+## Dev mode's fly: W/S along where you look, A/D sideways, E/Q (RB/LB) or
+## Space up and down, hurry (Shift) for fast.
 func _fly(delta: float) -> void:
 	var move := Input.get_vector("steer_left", "steer_right", "accelerate", "brake")
-	var rise := Input.get_action_strength("shift_up") - Input.get_action_strength("shift_down")
-	var speed := FLY_FAST if Input.is_action_pressed("handbrake") else FLY_SPEED
+	var rise := maxf(Input.get_action_strength("shift_up"), Input.get_action_strength("jump")) \
+		- Input.get_action_strength("shift_down")
+	var speed := FLY_FAST if Input.is_action_pressed("hurry") else FLY_SPEED
 	var dir := _camera.global_basis * Vector3(move.x, 0.0, move.y) + Vector3.UP * rise
 	global_position += dir.limit_length(1.0) * speed * delta
 	velocity = Vector3.ZERO
 
 
 ## Leaves breadcrumbs, and notes the top of any drop too high to step back up.
-func _track(moved: float) -> void:
+## Falling for ever (through a gap in the world) puts you back on the trail.
+func _track(moved: float, delta: float) -> void:
 	_walked += moved
 	if not is_on_floor():
 		if _air_from == Vector3.INF and _last_floor != Vector3.INF:
 			_air_from = _last_floor
 			_air_dir = Vector3(velocity.x, 0.0, velocity.z).normalized()
+		_air_time += delta
+		if _air_time > FALL_RESCUE and velocity.y < 0.0:
+			_air_time = 0.0
+			_drops.clear()  # not a drop to climb back up: the ground you fell from
+			if not unstuck():
+				_rescue_home()
 		return
+	_air_time = 0.0
 	if _air_from != Vector3.INF:
 		if _air_from.y - global_position.y > step_height + 0.02:
 			_drops.append({from = _air_from, dir = _air_dir, walked = _walked})
@@ -318,6 +334,13 @@ func unstuck() -> bool:
 	return false
 
 
+## Last resort after falling out of the world with no trail: the front gate.
+func _rescue_home() -> void:
+	var home := _home()
+	if home and home.has_marker(&"Spawn_Front"):
+		_put(home.spawn_transform(&"Spawn_Front").origin)
+
+
 ## A new start (out of the car, or moved by a tool): the old trail is elsewhere.
 func _forget_path() -> void:
 	_trail.clear()
@@ -330,6 +353,7 @@ func _put(feet: Vector3) -> void:
 	global_position = feet + Vector3.UP * 0.02
 	velocity = Vector3.ZERO
 	_air_from = Vector3.INF
+	_air_time = 0.0
 	_last_floor = feet
 
 

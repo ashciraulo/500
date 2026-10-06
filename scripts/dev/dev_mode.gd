@@ -10,8 +10,8 @@ extends CanvasLayer
 ##
 ##   U  Unstuck: on foot, back up the last drop you couldn't climb (or back
 ##      along the way you walked); in the car, back along the road, upright
-##   V  Fly (on foot): W/S where you look, A/D sideways, E/Q up and down,
-##      Space fast. Walls don't stop you.
+##   V  Fly (on foot): W/S where you look, A/D sideways, E/Q (or Space) up
+##      and down, Shift fast. Walls don't stop you.
 ##   1  Home: on foot, out the front gate; in the car, back to the carport
 ##   2  To the car (on foot)
 ##   3  Car to me (on foot): the car is parked beside you
@@ -142,7 +142,7 @@ func toggle_fly() -> void:
 		_say("Get out of the car to fly.")
 		return
 	_player.noclip = not _player.noclip
-	_say("Flying. E up, Q down, Space fast." if _player.noclip else "Landed.")
+	_say("Flying. E up, Q down, Shift fast." if _player.noclip else "Landed.")
 
 
 func go_home() -> void:
