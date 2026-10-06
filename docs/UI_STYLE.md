@@ -79,6 +79,26 @@ Set `theme_type_variation` to one of these:
   keys or a pad and click when pressed (the `UiTheme` autoload), using the
   audio thread's `audio/ui` sounds.
 
+## Notices and the challenge card
+
+- **Something happened** (a new bird, a place found, a challenge or job
+  done, a clue): `Notices.post(text, kind)`. One card at a time drops in at
+  the top centre, with a coloured tab, an icon and a small heading for the
+  kind (`KINDS` in `scripts/ui/notices.gd`), and stays up long enough to read.
+  The kind's sound plays as the card appears, so never play a jingle for an
+  event yourself: pass it as the sound instead (`Notices.post(text, "odd",
+  "oddity/odd_midnight_station_found", "", "Music")`). `Activities.say()` and
+  the HUD's `toast()` still work; they post a quiet card whose look is guessed
+  from the opening words.
+- **Something is going on** (a job, a parking bay, a scenic drive, a train
+  race): the challenge card at the top right (`ChallengeCard`). Join the
+  `challenges` group and return `{tag, icon, title, line, detail}` from
+  `challenge_card()` while it runs, `{}` otherwise; `detail` is the live line
+  (time, bumps, markers left). Results go out as a notice.
+- Autosaves are silent and show a small "Saved" mark above the status strip.
+- `tools/notice_sheet.gd` shoots every kind of notice into one sheet, plus the
+  challenge card in play.
+
 ## Scaling
 
 The UI is laid out for 1280x720 and scaled to the window (`canvas_items`

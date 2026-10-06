@@ -111,6 +111,7 @@ func _process(delta: float) -> void:
 	_line.visible = _line.text != ""
 	_detail.text = String(card.get("detail", ""))
 	_detail.visible = _detail.text != ""
+	reset_size()  # shrink to the lines shown now
 	# Slide in from the right and flash once, so the eye goes to it.
 	_shown_for += delta
 	var t := clampf(_shown_for / 0.3, 0.0, 1.0)

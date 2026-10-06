@@ -69,7 +69,9 @@ func _initialize() -> void:
 			var b := _field("Binoculars")
 			if b:
 				b.open()
-			_notices().post("Rainbow bee-eater", "species"), 70],
+			_notices().clear()
+			_notices().post("Rainbow bee-eater", "species", "", "", "",
+				SpeciesIcon.bird(root.get_node("FieldJournal").bird("rainbow_bee_eater"), 40)), 70],
 		["scene_saved", func() -> void:
 			var b := _field("Binoculars")
 			if b:
@@ -117,7 +119,9 @@ func _process(_delta: float) -> bool:
 			_notices().clear()
 			if _i < SAMPLES.size():
 				var s: Array = SAMPLES[_i]
-				_notices().post(s[0], s[1], "", s[2])
+				# The new-bird card carries the bird's field-guide plate.
+				var plate: Texture2D = SpeciesIcon.bird(root.get_node("FieldJournal").bird("rainbow_bee_eater"), 40) if s[1] == "species" else null
+				_notices().post(s[0], s[1], "", s[2], "", plate)
 			else:
 				_save_sheet()
 		return false

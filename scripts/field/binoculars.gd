@@ -361,7 +361,7 @@ func _update_target(delta: float) -> void:
 				Notices.post("There's already a page about this in the journal. It %s in your handwriting." % ("isn't" if theirs else "is"),
 					"mystery", "field/m_page_found" if theirs else "field/m_page_found_yours", "", "UI")
 			else:
-				Notices.post(String(b.get("name", target.species)), "species")
+				Notices.post(String(b.get("name", target.species)), "species", "", "", "", SpeciesIcon.bird(b, 40))
 			_sound_2d("field/focus_hit")
 	elif _dwell < need and identified != "" and identified != target.species:
 		identified = ""

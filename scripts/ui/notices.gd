@@ -26,7 +26,7 @@ const KINDS := {
 	"fish": ["New for the journal", "fish", UiStyle.TEAL, "", "", 0.0],
 	"quiet": ["A quiet place", "eye", UiStyle.TEAL, "field/quiet_place|music/mus_field_new_species", "UI", -4.0],
 	"photo": ["Photo spot", "camera", UiStyle.TEAL, "ui/ui_badge_pickup", "UI", -3.0],
-	"badge": ["500 badge", "badge", UiStyle.RED, "ui/ui_badge_pickup", "UI", -3.0],
+	"badge": ["500 badge", "star", UiStyle.RED, "ui/ui_badge_pickup", "UI", -3.0],
 	"medal": ["", "star", UiStyle.SUN, "music/mus_sting_complete", "Music", 0.0],
 	"result": ["", "flag", UiStyle.TEAL, "ui/ui_checkpoint", "UI", -4.0],
 	"career": ["Career challenge done", "star", UiStyle.SUN, "ui/ui_badge_pickup", "UI", 0.0],
@@ -95,7 +95,6 @@ var _fade := 0.0
 var _quiet_until := 0.0
 var _saved_for := 0.0
 var _phone: Node
-var _look := 0.0
 
 var _card: PanelContainer
 var _stripe: ColorRect
@@ -113,13 +112,15 @@ func _ready() -> void:
 	SaveGame.loaded.connect(func(_p) -> void: _quiet_until = _now() + QUIET_AFTER_LOAD_S)
 	SaveGame.saved.connect(_on_saved)
 	_listen.call_deferred()
+	get_tree().node_added.connect(_on_node_added)
 
 
 ## Put a notice up. `kind` picks its heading, icon, colour and sound (KINDS);
 ## `sound` replaces the kind's ("-" for none, "a|b" for b when a isn't there)
-## and `bus` its bus; `heading` replaces its heading. The same text twice in a
-## row shows once.
-func post(text: String, kind := "", sound := "", heading := "", bus := "") -> void:
+## and `bus` its bus; `heading` replaces its heading; `picture` replaces the
+## icon (a bird's field-guide plate, say). The same text twice in a row shows
+## once.
+func post(text: String, kind := "", sound := "", heading := "", bus := "", picture: Texture2D = null) -> void:
 	text = text.strip_edges()
 	if text == "":
 		return
@@ -138,7 +139,7 @@ func post(text: String, kind := "", sound := "", heading := "", bus := "") -> vo
 	var n := {
 		"text": text, "kind": kind,
 		"heading": heading if heading != "" else String(k[0]),
-		"icon": icon if icon != "" else String(k[1]),
+		"icon": icon if icon != "" else String(k[1]), "picture": picture,
 		"accent": k[2],
 		"sound": "" if sound == "-" else sound,
 		"bus": bus if bus != "" else (k[4] if k[4] != "" else "UI"), "db": k[5],
@@ -184,7 +185,8 @@ func _held() -> bool:
 
 
 func _process(delta: float) -> void:
-	_look_for_phone(delta)
+	if is_instance_valid(_phone) and _phone.is_open():
+		_jobs_told = false
 	var held := _held()
 	visible = not held
 	if held:
@@ -216,7 +218,7 @@ func _show(n: Dictionary) -> void:
 	_heading.visible = n.heading != ""
 	_heading.add_theme_color_override("font_color", (n.accent as Color).darkened(0.15))
 	_stripe.color = n.accent
-	_icon.texture = UiStyle.icon(n.icon, 34, UiStyle.INK, Vector2.ZERO, n.accent)
+	_icon.texture = n.picture if n.picture else UiStyle.icon(n.icon, 34, UiStyle.INK, Vector2.ZERO, n.accent)
 	_text.text = n.text
 	var width := UiStyle.BODY_FONT.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
 	_text.autowrap_mode = TextServer.AUTOWRAP_OFF if width < WIDTH - 70 else TextServer.AUTOWRAP_WORD_SMART
@@ -377,17 +379,11 @@ func _on_offers() -> void:
 	post("Have a look on your phone (Tab / X).", "jobs")
 
 
-## Once the phone's been opened, the next fresh board gets a notice again.
-func _look_for_phone(delta: float) -> void:
-	_look -= delta
-	if _look > 0.0:
-		return
-	_look = 0.5
-	if not is_instance_valid(_phone):
-		_phone = get_tree().root.find_child("Phone", true, false)
-		_look = 0.5 if _phone else 3.0
-	elif _phone.has_method("is_open") and _phone.is_open():
-		_jobs_told = false
+## Once the phone's been opened, the next fresh board gets a notice again
+## (_process watches it; the phone is caught as it joins the tree).
+func _on_node_added(node: Node) -> void:
+	if node.name == &"Phone" and node.has_method("is_open"):
+		_phone = node
 
 
 ## Counters a career challenge in the current tier is waiting on: a small

@@ -545,6 +545,31 @@ func _run_step() -> bool:
 					_car.linear_velocity = Vector3.ZERO
 					root.get_node("GameClock").set_time(12.0)
 				_next()
+		17:  # Notices: every event gets a card at the top, its jingle with it.
+			var notices := root.get_node("Notices")
+			var jobs := root.get_node("Jobs")
+			notices.clear()
+			root.get_node("Activities").say("Fuel's low. Find a servo.")
+			_check(notices.pending().size() == 1 and notices.pending()[0].kind == "car", "a line said in the world becomes a notice")
+			notices.post("Fuel's low. Find a servo.")
+			_check(notices.pending().size() == 1, "the same line twice shows once")
+			notices.clear()
+			root.get_node("SaveGame").saved.emit("user://smoke.save")
+			_check(notices.pending().is_empty(), "an autosave puts up no notice")
+			if jobs.active.is_empty():
+				notices.set("_jobs_told", false)
+				jobs.refresh_offers()
+				jobs.refresh_offers()
+				var told: int = notices.pending().filter(func(n: Dictionary) -> bool: return n.kind == "jobs").size()
+				_check(told == 1, "a fresh job board is told once, until the phone's opened")
+			notices.clear()
+			var bay: Node = get_nodes_in_group(&"parking_bays")[0]
+			bay._active = true
+			_check(bay.challenge_card().get("tag", "") == "Parking", "a parking bay in progress shows on the challenge card")
+			bay._active = false
+			_check(bay.challenge_card().is_empty(), "and leaves it when it's over")
+			_check(bay.result_text("gold", 912, 8.2, 0, true).begins_with("Gold. 912 points in 8.2 s."), "the parking result reads well")
+			_next()
 		_:
 			Input.action_release("accelerate")
 			Input.action_release("brake")
