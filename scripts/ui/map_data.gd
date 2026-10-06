@@ -6,7 +6,8 @@ extends RefCounted
 ## - the ground (sea, river, lakes, parks, sand) from the overview's painted
 ##   texture (overview.p5o),
 ## - every drivable road from the tiles' traffic data (.p5r), as four road
-##   meshes (service lanes, streets, main roads, freeways),
+##   meshes (service lanes, streets, main roads, freeways), with the lanes and
+##   car park aisles traffic doesn't drive (the optional "service_roads"),
 ## - street names for "where am I", and suburb names from index.json.
 ##
 ## `MapData.shared()` starts loading on a worker thread the first time it's
@@ -27,6 +28,10 @@ const ROAD_CLASS := {
 }
 ## Widths (m) for roads the data gives none.
 const DEFAULT_WIDTH := [4.0, 7.0, 11.0, 14.0]
+## Lanes, car park aisles and tracks (service_roads, by kind): their widths,
+## and the kinds a street directory leaves off (private driveways and the like).
+const SERVICE_WIDTH := {"alley": 3.5, "parking_aisle": 5.0, "track": 3.0, "service": 4.5}
+const SERVICE_SKIP := ["driveway", "emergency_access", "drive-through"]
 
 ## Grid cell (m) for the street-name lookup.
 const CELL := 64.0
@@ -57,6 +62,8 @@ var suburbs: Array = []
 ## angle (radians, kept upright), length (m), Road class], one per OSM way.
 var labels: Array = []
 var road_count := 0
+## How many of those are lanes, aisles and tracks from service_roads.
+var lane_count := 0
 
 var _task := -1
 var _arrays: Array = []  # per class: [verts, uvs, indices], filled on the worker
@@ -172,8 +179,8 @@ func street_at(p: Vector3, reach := STREET_REACH) -> String:
 					best = s
 	if best >= 0:
 		return _names[_seg_name[best]]
-	# Lanes and car parks aren't in the road data; the map's named job sites
-	# (Little Shenton Lane, by the house) cover the ones that matter.
+	# Tiles from before service_roads have no lanes; the map's named job
+	# sites (Little Shenton Lane, by the house) cover the ones that matter.
 	for site: Dictionary in index.get("job_sites", []):
 		var sp: Array = site.get("position", [])
 		if sp.size() >= 3 and at.distance_to(Vector2(sp[0], sp[2])) < reach * 1.5:
@@ -239,8 +246,36 @@ func _read_roads() -> void:
 					var way: Array = ways.get(parts[0], [name, cls, {}])
 					way[2][int(parts[1])] = pts
 					ways[parts[0]] = way
+		add_service_roads(data.get("service_roads", []), name_ids)
 	for way: Array in ways.values():
 		_add_label(way[0], way[1], way[2])
+
+
+## Lanes, car park aisles and tracks (a tile's optional "service_roads": each
+## {pts, kind, name?}, on one tile only). Drawn with the service lanes; named
+## ones also answer street_at and get a label.
+func add_service_roads(list: Array, name_ids := {}) -> void:
+	for lane: Dictionary in list:
+		var kind := String(lane.get("kind", "service"))
+		if kind in SERVICE_SKIP:
+			continue
+		var pts := _xz(lane.get("pts", []))
+		if pts.size() < 2:
+			continue
+		if _arrays.size() > Road.SERVICE:
+			_add_strip(_arrays[Road.SERVICE], pts, SERVICE_WIDTH.get(kind, SERVICE_WIDTH.service))
+		lane_count += 1
+		var name := String(lane.get("name", ""))
+		if name == "":
+			continue
+		if not name_ids.has(name):
+			var known := _names.find(name)
+			if known < 0:
+				known = _names.size()
+				_names.append(name)
+			name_ids[name] = known
+		_add_segments(pts, name_ids[name])
+		_add_label(name, Road.SERVICE, {0: pts})
 
 
 ## A label at the middle of a whole OSM way (its pieces, in order).

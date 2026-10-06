@@ -15,6 +15,9 @@ extends CharacterBody3D
 ## Moves with the driving actions (accelerate/brake = forward/back,
 ## steer = strafe, handbrake = hurry), looks with the mouse or the right
 ## stick. Climbs stairs by stepping up small ledges.
+##
+## Remembers where it has walked, so `unstuck()` can put the player back on
+## top of a drop they can't climb back up (dev mode's unstuck key, DevMode).
 
 signal got_out
 signal got_in
@@ -53,6 +56,14 @@ const OUT_KEY := 0.3
 const OUT_DOOR := 0.55
 const OUT_STEP := 1.0
 const OUT_DOOR_SHUT := 1.5
+## Breadcrumbs: a spot every TRAIL_STEP metres walked, the last TRAIL_SIZE kept.
+const TRAIL_STEP := 1.0
+const TRAIL_SIZE := 64
+## A drop is forgotten once you've walked this far since (you got out of it).
+const DROP_MEMORY := 25.0
+## Flying in dev mode, metres a second (Space for fast).
+const FLY_SPEED := 8.0
+const FLY_FAST := 40.0
 
 var in_car := true
 ## Tells the audio hooks this plays the car's doors, belt and key itself.
@@ -73,6 +84,23 @@ var _hold := 0.0
 var _hold_armed := true  # F was let go since getting in
 var _busy := false
 var _footsteps: FootstepAudio
+## Dev mode: fly through anything, looking where you want to go (DevMode).
+var noclip := false:
+	set(on):
+		noclip = on
+		velocity = Vector3.ZERO
+		_last_floor = Vector3.INF
+		_air_from = Vector3.INF
+		if _shape:
+			_shape.disabled = noclip or in_car
+var _trail: Array[Vector3] = []
+## Drops you couldn't step back up: {from: feet before the drop, dir: way you
+## were going, walked: _walked then}.
+var _drops: Array[Dictionary] = []
+var _walked := 0.0
+var _last_floor := Vector3.INF
+var _air_from := Vector3.INF
+var _air_dir := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -171,6 +199,9 @@ func _physics_process(delta: float) -> void:
 		_pitch = clampf(_pitch - stick.y * stick_look_speed * delta, -1.35, 1.35)
 	rotation.y = _yaw
 	_camera.rotation.x = _pitch
+	if noclip:
+		_fly(delta)
+		return
 
 	var move := Input.get_vector("steer_left", "steer_right", "accelerate", "brake")
 	var speed := hurry_speed if Input.is_action_pressed("handbrake") else walk_speed
@@ -192,6 +223,7 @@ func _physics_process(delta: float) -> void:
 		_step_up(horizontal)
 	move_and_slide()
 	var moved := Vector2(global_position.x - before.x, global_position.z - before.z).length()
+	_track(moved)
 
 	# A gentle head bob, one dip per stride (FootstepAudio plays the steps).
 	if is_on_floor() and moved > 0.0005:
@@ -220,6 +252,93 @@ func _step_up(horizontal: Vector3) -> void:
 		global_position.y += rise + 0.01
 
 
+## Dev mode's fly: W/S along where you look, A/D sideways, E/Q (RB/LB) up
+## and down, hurry (Space) for fast.
+func _fly(delta: float) -> void:
+	var move := Input.get_vector("steer_left", "steer_right", "accelerate", "brake")
+	var rise := Input.get_action_strength("shift_up") - Input.get_action_strength("shift_down")
+	var speed := FLY_FAST if Input.is_action_pressed("handbrake") else FLY_SPEED
+	var dir := _camera.global_basis * Vector3(move.x, 0.0, move.y) + Vector3.UP * rise
+	global_position += dir.limit_length(1.0) * speed * delta
+	velocity = Vector3.ZERO
+
+
+## Leaves breadcrumbs, and notes the top of any drop too high to step back up.
+func _track(moved: float) -> void:
+	_walked += moved
+	if not is_on_floor():
+		if _air_from == Vector3.INF and _last_floor != Vector3.INF:
+			_air_from = _last_floor
+			_air_dir = Vector3(velocity.x, 0.0, velocity.z).normalized()
+		return
+	if _air_from != Vector3.INF:
+		if _air_from.y - global_position.y > step_height + 0.02:
+			_drops.append({from = _air_from, dir = _air_dir, walked = _walked})
+			if _drops.size() > 8:
+				_drops.pop_front()
+		_air_from = Vector3.INF
+	_last_floor = global_position
+	if _trail.is_empty() or _trail.back().distance_to(global_position) >= TRAIL_STEP:
+		_trail.append(global_position)
+		if _trail.size() > TRAIL_SIZE:
+			_trail.pop_front()
+
+
+## Gets the player out of a hole or a wedge: back on top of the last drop they
+## couldn't climb (if it was recent), else a few metres back along the way they
+## walked, else the nearest open floor. Press again to go further back.
+## Returns false if nowhere fits.
+func unstuck() -> bool:
+	if in_car or _busy:
+		return false
+	while not _drops.is_empty():
+		var drop: Dictionary = _drops.pop_back()
+		if _walked - float(drop.walked) > DROP_MEMORY or global_position.y > float(drop.from.y) - step_height:
+			continue
+		for back: float in [0.6, 0.35, 1.0, 0.0]:
+			var feet := _ground_at(drop.from - drop.dir * back)
+			if feet != Vector3.INF and absf(feet.y - drop.from.y) < step_height and _fits(feet):
+				_put(feet)
+				return true
+	while not _trail.is_empty():
+		var crumb: Vector3 = _trail.pop_back()
+		if crumb.distance_to(global_position) < 2.0:
+			continue
+		var feet := _ground_at(crumb)
+		if feet != Vector3.INF and _fits(feet):
+			_put(feet)
+			return true
+	for ring in range(1, 9):
+		for k in 12:
+			var a := TAU * k / 12.0
+			var feet := _ground_at(global_position + Vector3(cos(a), 0.0, sin(a)) * ring + Vector3.UP * ring * 0.5)
+			if feet != Vector3.INF and _fits(feet):
+				_put(feet)
+				return true
+	return false
+
+
+## A new start (out of the car, or moved by a tool): the old trail is elsewhere.
+func _forget_path() -> void:
+	_trail.clear()
+	_drops.clear()
+	_last_floor = Vector3.INF
+	_air_from = Vector3.INF
+
+
+func _put(feet: Vector3) -> void:
+	global_position = feet + Vector3.UP * 0.02
+	velocity = Vector3.ZERO
+	_air_from = Vector3.INF
+	_last_floor = feet
+
+
+## Feet beside the car's driver door (or another side with room), or
+## Vector3.INF if there's nowhere to stand (dev mode's "to the car").
+func car_side_spot() -> Vector3:
+	return _exit_spot() if _car else Vector3.INF
+
+
 ## Rough floor type under the player from the house plan: timber downstairs, carpet up,
 ## the stairs, or brick outside.
 func surface() -> String:
@@ -242,6 +361,7 @@ func surface() -> String:
 func teleport(feet: Vector3, target: Vector3) -> void:
 	global_position = feet
 	velocity = Vector3.ZERO
+	_forget_path()
 	var d := target - (feet + Vector3.UP * eye_height)
 	_yaw = atan2(-d.x, -d.z)
 	_pitch = atan2(d.y, Vector2(d.x, d.z).length())
@@ -297,11 +417,13 @@ func _step_out(spot: Vector3) -> void:
 		_rig.set_process(false)
 	global_position = spot
 	velocity = Vector3.ZERO
+	_forget_path()
 	_yaw = _car.global_rotation.y
 	_pitch = 0.0
 	rotation.y = _yaw
 	_set_body_active(true)
 	_camera.current = true
+	_set_map_follow(true)
 	got_out.emit()
 
 
@@ -334,6 +456,7 @@ func _sit() -> void:
 	in_car = true
 	_hold_armed = false
 	_set_body_active(false)
+	_set_map_follow(false)
 	# In the seat with the door shut: the belt and key are heard from inside,
 	# not faintly from the street (the car's own sounds take over at _drive).
 	_set_audio_inside(true)
@@ -402,7 +525,7 @@ func _exit_spot() -> Vector3:
 
 func _ground_at(p: Vector3) -> Vector3:
 	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 1.2, p + Vector3.DOWN * 2.0, MASK)
-	q.exclude = [_car.get_rid()]
+	q.exclude = [_car.get_rid()] if _car else []
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	return hit.position if not hit.is_empty() else Vector3.INF
 
@@ -412,14 +535,21 @@ func _fits(feet: Vector3) -> bool:
 	q.shape = _shape.shape
 	q.transform = Transform3D(Basis(), feet + Vector3.UP * (HEIGHT / 2.0 + 0.05))
 	q.collision_mask = MASK
-	q.exclude = [_car.get_rid()]
+	q.exclude = [_car.get_rid()] if _car else []
 	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
 
 
 func _set_body_active(on: bool) -> void:
 	visible = on
-	_shape.disabled = not on
+	_shape.disabled = not on or noclip
 	set_physics_process(on)
+
+
+## On foot the map streams around you, not the parked car.
+func _set_map_follow(on: bool) -> void:
+	var map := get_tree().get_first_node_in_group(&"perth_map")
+	if map and "follow" in map:
+		map.follow = self if on else null
 
 
 func _set_car_sounds_controlled(on: bool) -> void:

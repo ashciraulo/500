@@ -31,6 +31,9 @@ signal tile_unloaded(key: Vector2i)
 
 var index: Dictionary = {}
 var tile_size := 500.0
+## Streams around this instead of the target while it's set: the player on
+## foot (OnFoot sets it). The target's own ground stays loaded under it.
+var follow: Node3D
 
 var _target: Node3D
 var _materials: Dictionary = {}
@@ -66,6 +69,7 @@ var _placed_read := false
 
 func _ready() -> void:
 	add_to_group(&"night_lights")
+	add_to_group(&"perth_map")
 	index = _load_index()
 	if index.is_empty():
 		push_warning("MapStreamer: no map tiles found in %s (run tools/osm_import)" % tiles_dir)
@@ -78,6 +82,7 @@ func _ready() -> void:
 	overview.name = "Overview"
 	overview.near_cut = view_radius - 250.0
 	overview.sea_material = _materials.get(&"water")
+	overview.lakes = _get_lakes()
 	if overview.load_from(tiles_dir.path_join("overview.p5o")):
 		add_child(overview)
 		_overview = overview
@@ -124,7 +129,11 @@ func _exit_tree() -> void:
 ## drives off the end of the built map goes back to where it last drove.
 ## Runs before each physics step.
 func _physics_process(_delta: float) -> void:
-	if index.is_empty() or not (_target is RigidBody3D) or not is_instance_valid(_target):
+	if index.is_empty():
+		return
+	if _following() and not has_collision_at(follow.global_position):
+		_load_now(follow.global_position)
+	if not (_target is RigidBody3D) or not is_instance_valid(_target):
 		return
 	var pos := _target.global_position
 	var name := "%d_%d" % [tile_at(pos).x, tile_at(pos).y]
@@ -466,10 +475,26 @@ func _tile_path(key: Vector2i) -> String:
 
 
 func _focus_position() -> Vector3:
+	if _following():
+		return follow.global_position
 	if _target and is_instance_valid(_target):
 		return _target.global_position
 	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
 	return camera.global_position if camera else Vector3.ZERO
+
+
+func _following() -> bool:
+	return follow != null and is_instance_valid(follow) and follow.is_inside_tree()
+
+
+## How far tile `key` is from the focus, or from the target if that's nearer
+## (on foot, the parked car keeps its ground).
+func _tile_distance(focus: Vector3, key: Vector2i) -> float:
+	var d := _distance_to_tile(focus.x, -focus.z, key.x, key.y)
+	if _following() and _target and is_instance_valid(_target):
+		var at := _target.global_position
+		d = minf(d, _distance_to_tile(at.x, -at.z, key.x, key.y))
+	return d
 
 
 ## Tiles whose square is within `radius` of `pos`, nearest first.
@@ -567,11 +592,9 @@ func _add_collision(entry: Dictionary) -> void:
 ## adds the finished bodies, one tile a frame.
 func _update_collision(focus: Vector3) -> void:
 	_collect_collision(false)
-	var east := focus.x
-	var north := -focus.z
 	for key: Vector2i in _tiles:
 		var entry: Dictionary = _tiles[key]
-		var d := _distance_to_tile(east, north, key.x, key.y)
+		var d := _tile_distance(focus, key)
 		if entry.collision == null and d <= physics_radius:
 			if not _collision_pending.has(key) and not _collision_results.has(key) \
 					and _collision_pending.size() < max_parallel_loads:
@@ -617,10 +640,8 @@ func _collect_collision(all: bool) -> void:
 
 
 func _unload_far(focus: Vector3) -> void:
-	var east := focus.x
-	var north := -focus.z
 	for key: Vector2i in _tiles.keys():
-		if _distance_to_tile(east, north, key.x, key.y) > view_radius + unload_margin:
+		if _tile_distance(focus, key) > view_radius + unload_margin:
 			var entry: Dictionary = _tiles[key]
 			entry.result.root.queue_free()
 			_tiles.erase(key)

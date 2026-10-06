@@ -44,6 +44,17 @@ func _process(_delta: float) -> bool:
 				var home := Vector3(-1.37, 22.09, -0.73)
 				_check(data.call("street_at", home) == "Little Shenton Lane", "street at home: %s" % data.call("street_at", home))
 				_check(data.call("suburb_at", home) == "Northbridge", "suburb at home: %s" % data.call("suburb_at", home))
+				print("  lanes and car park aisles drawn: %d" % data.get("lane_count"))
+				# Named lanes answer "where am I"; driveways stay off the map.
+				var far := Vector3(40000, 0, 40000)
+				var lanes := [
+					{pts = PackedVector3Array([far, far + Vector3(60, 0, 0)]), kind = "alley", name = "Test Lane"},
+					{pts = PackedVector3Array([far + Vector3(0, 0, 200), far + Vector3(60, 0, 200)]), kind = "driveway", name = "Test Drive"},
+				]
+				var before := int(data.get("lane_count"))
+				data.call("add_service_roads", lanes)
+				_check(int(data.get("lane_count")) == before + 1, "service roads read, driveways left off")
+				_check(data.call("street_at", far + Vector3(30, 0, 3)) == "Test Lane", "named lane: %s" % data.call("street_at", far + Vector3(30, 0, 3)))
 				var pins: Array = _pins.call("gather", self, true)
 				_check(pins.any(func(p: Dictionary) -> bool: return p.icon == "home"), "home is on the map")
 				_next()

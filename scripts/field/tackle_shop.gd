@@ -28,6 +28,7 @@ var _cards: Node3D
 
 func _ready() -> void:
 	super()
+	add_to_group(&"rain_shelters")
 	FieldJournal.weighed_in.connect(_on_weighed_in)
 	FieldJournal.fish_landed.connect(_on_fish_landed)
 
@@ -151,6 +152,14 @@ func at_counter(p: Vector3) -> bool:
 	var local := _shop.to_local(p)
 	var c := _shop.to_local(_counter.global_position)
 	return Vector2(local.x - c.x, local.z - c.z).length() < COUNTER_REACH
+
+
+## Where rain doesn't fall (EnvironmentController): the room, up to its roof.
+func rain_shelters() -> Array:
+	if _shop == null:
+		return []
+	return [_shop.global_transform * Transform3D(Basis.from_scale(Vector3(ROOM.x * 0.5, 2.5, ROOM.y * 0.5)),
+		Vector3(0.0, 2.0, -ROOM.y * 0.5))]
 
 
 ## True when p is inside the room (tests, ambience).
