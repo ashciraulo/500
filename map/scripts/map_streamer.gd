@@ -23,6 +23,8 @@ signal tile_unloaded(key: Vector2i)
 ## Extra distance before a loaded tile is dropped again (stops flicker at edges).
 @export var unload_margin := 200.0
 @export var max_parallel_loads := 2
+## Main-thread time a frame for baking colliders of tiles coming into range.
+@export var collision_budget_ms := 3.0
 @export_group("Night lights")
 ## Real lights placed at the street lights nearest the target after dark.
 @export var light_pool_size := 16
@@ -42,7 +44,7 @@ var _tiles: Dictionary = {}  # Vector2i -> {result: TileResult, collision: Node3
 var _pending: Dictionary = {}  # Vector2i -> task id
 var _results: Dictionary = {}  # Vector2i -> TileResult (finished on a worker)
 var _collision_pending: Dictionary = {}  # Vector2i -> task id building that tile's colliders
-var _collision_results: Dictionary = {}  # Vector2i -> [TileResult, collision holder] from a worker
+var _collision_results: Dictionary = {}  # Vector2i -> [TileResult, CollisionBuild] planned on a worker
 var _mutex := Mutex.new()
 var _night := 0.0
 var _emissive: Array[ShaderMaterial] = []
@@ -113,7 +115,7 @@ func _exit_tree() -> void:
 		WorkerThreadPool.wait_for_task_completion(_collision_pending[key])
 	_collision_pending.clear()
 	for done: Array in _collision_results.values():
-		(done[1] as Node).free()
+		(done[1] as MapTileLoader.CollisionBuild).holder.free()
 	_collision_results.clear()
 	# Tiles finished on a worker since the last frame never joined the tree.
 	for result: MapTileLoader.TileResult in _results.values():
@@ -349,6 +351,7 @@ func _load_now(pos: Vector3) -> void:
 		if _collision_pending.has(key):
 			WorkerThreadPool.wait_for_task_completion(_collision_pending[key])
 			_collision_pending.erase(key)
+		if _collision_results.has(key):
 			_collect_collision(true)
 		if _tiles.has(key):
 			if _tiles[key].collision == null:
@@ -587,9 +590,9 @@ func _add_collision(entry: Dictionary) -> void:
 	entry.collision = holder
 
 
-## Colliders for tiles coming into range are built on a worker (baking the
-## concave shapes takes tens of milliseconds a tile); the main thread only
-## adds the finished bodies, one tile a frame.
+## Colliders for tiles coming into range are planned on a worker; the main
+## thread bakes them a few pieces a frame (see MapTileLoader.CollisionBuild)
+## and adds each tile's bodies once they're all done.
 func _update_collision(focus: Vector3) -> void:
 	_collect_collision(false)
 	for key: Vector2i in _tiles:
@@ -607,13 +610,14 @@ func _update_collision(focus: Vector3) -> void:
 
 
 func _collision_worker(key: Vector2i, result: MapTileLoader.TileResult) -> void:
-	var holder := MapTileLoader.make_collision(result)
+	var build := MapTileLoader.plan_collision(result)
 	_mutex.lock()
-	_collision_results[key] = [result, holder]
+	_collision_results[key] = [result, build]
 	_mutex.unlock()
 
 
-## Adds colliders finished on a worker: one tile a frame, or all of them.
+## Bakes planned colliders for up to `collision_budget_ms` this frame (all of
+## them with `all`), nearest tile first, and adds each tile's when it's done.
 func _collect_collision(all: bool) -> void:
 	for key: Vector2i in _collision_pending.keys():
 		if WorkerThreadPool.is_task_completed(_collision_pending[key]):
@@ -622,21 +626,38 @@ func _collect_collision(all: bool) -> void:
 	_mutex.lock()
 	var keys := _collision_results.keys()
 	_mutex.unlock()
+	var focus := _focus_position()
+	keys.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return _tile_distance(focus, a) < _tile_distance(focus, b))
+	var deadline := Time.get_ticks_usec() + int(collision_budget_ms * 1000.0)
 	for key: Vector2i in keys:
 		_mutex.lock()
 		var done: Array = _collision_results[key]
-		_collision_results.erase(key)
 		_mutex.unlock()
-		var holder: Node3D = done[1]
+		var build: MapTileLoader.CollisionBuild = done[1]
 		var entry: Dictionary = _tiles.get(key, {})
 		# The tile may have been unloaded, reloaded or given colliders meanwhile.
 		if entry.is_empty() or entry.result != done[0] or entry.collision != null:
-			holder.free()
+			_drop_collision_build(key)
 			continue
-		entry.result.root.add_child(holder)
-		entry.collision = holder
-		if not all:
+		var left := 1 << 40 if all else deadline - Time.get_ticks_usec()
+		if left <= 0:
 			return
+		if not build.step(left):
+			continue
+		_mutex.lock()
+		_collision_results.erase(key)
+		_mutex.unlock()
+		entry.result.root.add_child(build.holder)
+		entry.collision = build.holder
+
+
+func _drop_collision_build(key: Vector2i) -> void:
+	_mutex.lock()
+	var done: Array = _collision_results[key]
+	_collision_results.erase(key)
+	_mutex.unlock()
+	(done[1] as MapTileLoader.CollisionBuild).holder.free()
 
 
 func _unload_far(focus: Vector3) -> void:
