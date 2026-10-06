@@ -2,19 +2,56 @@ name: CI
 
 on:
   # PR branches run once through pull_request; push only covers main.
+  # No path filters here: smoke-test is a required check on main, so it has
+  # to report on every PR.
   push:
     branches: [main]
   pull_request:
 
+# A newer push to the same PR (or to main) replaces the run still going.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+
 jobs:
   smoke-test:
     runs-on: ubuntu-latest
+    # A hung Godot would otherwise bill up to 6 hours.
+    timeout-minutes: 25
     env:
       GODOT_VERSION: "4.3"
     steps:
+      # A squash merge whose code is exactly what its PR already tested green
+      # doesn't need the whole suite again on main. Anything else (a direct
+      # push, or main moved since the PR's run) still runs everything.
+      - name: Skip if this exact code already passed on its PR
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TREE: ${{ github.event.head_commit.tree_id }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0].head.sha // empty' || true)
+          [ -n "$head" ] || { echo "No PR for this commit, running everything."; exit 0; }
+          head_tree=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$head" --jq '.tree.sha' || true)
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/commits/$head/check-runs?check_name=smoke-test&filter=latest" \
+            --jq '[.check_runs[] | select(.conclusion == "success")] | length' || echo 0)
+          if [ -n "$TREE" ] && [ "$head_tree" = "$TREE" ] && [ "$passed" -gt 0 ]; then
+            echo "Same code as PR head $head, which passed smoke-test. Skipping the rerun."
+            echo "ALREADY_TESTED=true" >> "$GITHUB_ENV"
+          else
+            echo "Main differs from what the PR tested (or it didn't pass), running everything."
+          fi
+
       - uses: actions/checkout@v4
+        if: env.ALREADY_TESTED != 'true'
 
       - name: Cache Godot
+        if: env.ALREADY_TESTED != 'true'
         id: cache-godot
         uses: actions/cache@v4
         with:
@@ -22,7 +59,7 @@ jobs:
           key: godot-${{ env.GODOT_VERSION }}-linux
 
       - name: Download Godot
-        if: steps.cache-godot.outputs.cache-hit != 'true'
+        if: env.ALREADY_TESTED != 'true' && steps.cache-godot.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/godot
           curl -fsSL -o /tmp/godot.zip \
@@ -31,9 +68,27 @@ jobs:
           mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
 
       - name: Import project
+        if: env.ALREADY_TESTED != 'true'
         run: ~/godot/godot --headless --path . --import
 
+      # The traffic test is the longest suite by far, so it runs in the
+      # background on the runner's second core while the steps below go one
+      # by one. It gets its own user:// folder so the two never share saves.
+      # Its result is checked in the "Traffic test" step further down.
+      - name: Start traffic test (alongside the steps below)
+        id: traffic-start
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/traffic-userdata"
+          (
+            rc=0
+            XDG_DATA_HOME="$RUNNER_TEMP/traffic-userdata" \
+              ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/traffic_test.gd > traffic.log 2>&1 || rc=$?
+            echo "$rc" > traffic.rc
+          ) > /dev/null 2>&1 &
+
       - name: Smoke test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/smoke_test.gd -- --no-save 2>&1 \
@@ -44,6 +99,7 @@ jobs:
           fi
 
       - name: Spawn test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/spawn_test.gd -- --no-save 2>&1 \
@@ -54,6 +110,7 @@ jobs:
           fi
 
       - name: On-foot test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/on_foot_test.gd -- --no-save 2>&1 \
@@ -64,6 +121,7 @@ jobs:
           fi
 
       - name: Mystery test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/mystery_test.gd -- --no-save 2>&1 \
@@ -74,6 +132,7 @@ jobs:
           fi
 
       - name: Kerb test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/kerb_test.gd -- --no-save 2>&1 \
@@ -84,6 +143,7 @@ jobs:
           fi
 
       - name: Parts and home decor test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/parts_test.gd -- --no-save 2>&1 \
@@ -94,6 +154,7 @@ jobs:
           fi
 
       - name: Field journal test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/field_test.gd -- --no-save 2>&1 \
@@ -104,6 +165,7 @@ jobs:
           fi
 
       - name: Playthrough (fresh save, real time)
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --script res://tools/playthrough.gd -- tour=off 2>&1 \
@@ -114,6 +176,7 @@ jobs:
           fi
 
       - name: Audio tests
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . res://audio/tests/test_audio.tscn 2>&1 | tee audio.log
@@ -123,6 +186,7 @@ jobs:
           fi
 
       - name: Home check
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --script res://tools/home_check.gd 2>&1 \
@@ -132,17 +196,8 @@ jobs:
             exit 1
           fi
 
-      - name: Traffic test
-        run: |
-          set -o pipefail
-          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/traffic_test.gd 2>&1 \
-            | tee traffic.log | grep -E "ok |FAIL|\[t\]|TRAFFIC|  - |SCRIPT ERROR"
-          if grep -q "SCRIPT ERROR" traffic.log; then
-            echo "::error::GDScript errors while running traffic"
-            exit 1
-          fi
-
       - name: Map test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/map_test.gd 2>&1 \
@@ -153,6 +208,7 @@ jobs:
           fi
 
       - name: Minimap test
+        if: env.ALREADY_TESTED != 'true'
         run: |
           set -o pipefail
           ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/minimap_test.gd -- --no-save 2>&1 \
@@ -162,14 +218,17 @@ jobs:
             exit 1
           fi
 
-  map-tools:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install importer dependencies
-        run: pip install -r tools/osm_import/requirements.txt
-      - name: Importer unit tests
-        run: python -m pytest -q tools/osm_import/tests
+      # Waits for the traffic test started above and reports it. If an earlier
+      # step failed the job stops there, as it always has, and the background
+      # run is dropped rather than waited for.
+      - name: Traffic test
+        if: env.ALREADY_TESTED != 'true' && steps.traffic-start.outcome == 'success'
+        run: |
+          for _ in $(seq 900); do [ -f traffic.rc ] && break; sleep 1; done
+          [ -f traffic.rc ] || { cat traffic.log; echo "::error::Traffic test still running after 15 minutes"; exit 1; }
+          grep -E "ok |FAIL|\[t\]|TRAFFIC|  - |SCRIPT ERROR" traffic.log
+          if grep -q "SCRIPT ERROR" traffic.log; then
+            echo "::error::GDScript errors while running traffic"
+            exit 1
+          fi
+          exit "$(cat traffic.rc)"

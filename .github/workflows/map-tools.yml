@@ -1,0 +1,36 @@
+name: Map tools
+
+# The OSM importer is plain Python and only needs testing when it changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/osm_import/**"
+      - ".github/workflows/map-tools.yml"
+  pull_request:
+    paths:
+      - "tools/osm_import/**"
+      - ".github/workflows/map-tools.yml"
+
+concurrency:
+  group: map-tools-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  map-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/osm_import
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install importer dependencies
+        run: pip install -r tools/osm_import/requirements.txt
+      - name: Importer unit tests
+        run: python -m pytest -q tools/osm_import/tests
