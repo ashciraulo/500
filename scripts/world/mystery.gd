@@ -277,13 +277,13 @@ func _pick_up(id: String) -> void:
 	last_found_day = GameClock.day
 	Discoveries.discover("mystery/" + id)
 	var c := clue(id)
-	Activities.say(String(c.get("found", "")))
+	# Cards for what you found, each with its sound as it shows (Notices).
 	if id == "shed_key":
 		has_key = true
-		_play_2d("oddity/odd_key_found", "Music")
-		Activities.say("The shed. It's the key to the shed.")
+		Notices.post(String(c.get("found", "")), "mystery", "-")
+		Notices.post("The shed. It's the key to the shed.", "key")
 	else:
-		_variant("oddity/odd_clue")
+		Notices.post(String(c.get("found", "")), "mystery")
 	_bed_swell(25.0)
 	clue_found.emit(id)
 
@@ -426,12 +426,6 @@ func _current_station(radio: Object) -> String:
 	if index == list.size():
 		return "midnight"  # the unlisted one, after the others on the dial
 	return String(list[index].get("id", "")) if index >= 0 and index < list.size() else ""
-
-
-func _play_2d(sound: String, bus: String, volume_db := 0.0) -> void:
-	var audio := _audio()
-	if audio and audio.has(sound):
-		audio.play_2d(sound, bus, volume_db)
 
 
 ## The station's cue for a clue: odd_clue_01 to _07 get closer to the

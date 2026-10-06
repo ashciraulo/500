@@ -33,6 +33,7 @@ Classics="*res://scripts/autoload/classics.gd"
 Activities="*res://scripts/autoload/activities.gd"
 FieldJournal="*res://scripts/field/field_journal.gd"
 Audio="*res://audio/scripts/audio_manager.gd"
+Notices="*res://scripts/ui/notices.gd"
 
 [display]
 

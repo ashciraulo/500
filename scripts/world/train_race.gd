@@ -22,8 +22,21 @@ var _car: CarController
 var _check := 0.0
 
 
+var _lead := 0.0  # metres your nose is past the front carriage (negative: behind)
+
+
 func _ready() -> void:
+	add_to_group(&"challenges")
 	_connect.call_deferred()
+
+
+## For the challenge card (top right) while you're racing a train.
+func challenge_card() -> Dictionary:
+	if _racing == null or not is_instance_valid(_racing):
+		return {}
+	var gap := "%d m behind the front" % roundi(-_lead) if _lead < 0.0 else "%d m ahead. Keep going!" % roundi(_lead)
+	return {"tag": "Train race", "icon": "flag", "title": "Transperth",
+		"line": "Get your nose %d m past the front carriage." % roundi(WIN_LEAD), "detail": gap}
 
 
 func _connect() -> void:
@@ -88,29 +101,27 @@ func _judge(train: Node3D, front: Vector3, velocity: Vector3) -> void:
 		# Start when you're beside or just behind the train, matching it.
 		if speed > MIN_TRAIN_SPEED and parallel and side.length() < ALONGSIDE and along < 0.0 and along > -60.0:
 			_racing = train
+			_lead = along
 			_start_sound(train)
 			if _alongside:
 				_alongside.global_position = front
-			Activities.say("Racing the train. Get past the front carriage.")
 			Progression.add_stat("trains_raced")
 		return
 	if train != _racing:
 		return
+	_lead = along
 	if _alongside and is_instance_valid(_alongside):
 		_alongside.global_position = front
 		_alongside.pitch_scale = clampf(speed * 3.6 / 100.0, 0.3, 2.0)
 	if along > WIN_LEAD and side.length() < ALONGSIDE * 1.5:
 		_racing = null
 		Progression.add_stat("trains_beaten")
-		Activities.say("You beat the train.")
 		_stop_sound()
-		var audio := get_node_or_null("/root/Audio")
-		if audio and audio.has("music/mus_sting_race_win"):
-			audio.sting("race_win")
+		Notices.post("Your nose got past the front carriage.", "medal", "music/mus_sting_race_win", "You beat the train")
 	elif along < -LOSE_GAP or side.length() > ALONGSIDE * 2.0 or speed < 2.0:
 		_racing = null
 		_stop_sound()
-		Activities.say("The train got away." if speed >= 2.0 else "The train's stopping. Call it a draw.")
+		Notices.post("It got away." if speed >= 2.0 else "It's stopping. Call it a draw.", "result", "-", "Train race")
 
 
 ## The train's roar while you race it (plays nothing until the audio thread

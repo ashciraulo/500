@@ -98,10 +98,7 @@ func take() -> void:
 		return
 	var part := PartsCatalogue.get_part(StringName(part_id))
 	var title := part.display_name if part else part_id
-	Activities.say("Found: %s. It's yours to fit in the workshop." % title)
-	var audio := get_node_or_null(^"/root/Audio")
-	if audio and audio.has("oddity/odd_discovery_sting"):
-		audio.play_2d("oddity/odd_discovery_sting", "SFX", -8.0)
+	Notices.post("%s. It's yours to fit in the workshop." % title, "find")
 	Progression.add_stat("parts_found")
 	_refresh()
 

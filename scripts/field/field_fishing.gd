@@ -231,9 +231,9 @@ func _update_spots() -> void:
 			if sp.get("hidden", false):
 				# A quiet spot: no bucket marks it until you've stood there.
 				Discoveries.discover(FieldJournal.place_key(sp))
-				Activities.say("A quiet spot: %s. Nobody fishes here. It's in the journal." % sp.name)
+				Notices.post("%s. Nobody fishes here. It's in the journal." % sp.name, "quiet", "", "A quiet spot")
 			else:
-				Activities.say("Fishing spot: %s. It's in the journal." % sp.name)
+				Notices.post("%s. It's in the journal." % sp.name, "place", "", "Fishing spot")
 		if sp.get("hidden", false) and not Discoveries.has("fishing/" + id):
 			continue
 		if d < SHOW_RANGE and not _props.has(id):

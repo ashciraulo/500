@@ -5,9 +5,15 @@ extends Node3D
 ## how straight and close to the kerb you are, and bumps (each one costs).
 ## Gold, silver or bronze, with the best kept per bay (Activities).
 ##
+## It starts when you come near slowly (driving straight past at speed leaves
+## it be). While it runs, the challenge card at the top right says what to do
+## and counts time and bumps; the result is a notice at the top.
+##
 ## Local -Z runs along the road; +X is towards the middle of the road.
 
 const START_RADIUS := 22.0
+## Faster than this (km/h) going past the bay doesn't start it.
+const START_SPEED := 35.0
 const GIVE_UP_RADIUS := 45.0
 const SETTLE_SECONDS := 1.0
 const MEDAL_SCORES := {"gold": 800, "silver": 600, "bronze": 400}
@@ -32,6 +38,7 @@ var _sign: Label3D
 
 func _ready() -> void:
 	add_to_group(&"parking_bays")
+	add_to_group(&"challenges")
 	var paint := StandardMaterial3D.new()
 	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	paint.albedo_color = Color(0.95, 0.9, 0.55)
@@ -93,12 +100,12 @@ func _process(delta: float) -> void:
 		return
 	var distance := _car.global_position.distance_to(global_position)
 	if not _active:
-		if distance < START_RADIUS and _cooldown <= 0.0 and Jobs.active.is_empty():
+		if distance < START_RADIUS and _cooldown <= 0.0 and Jobs.active.is_empty() \
+				and _car.player_controlled and _car.speed_kmh() < START_SPEED:
 			_active = true
 			_time = 0.0
 			_bumps = 0
 			_settled = 0.0
-			Activities.say("Parking challenge: %s. Squeeze into the gap and stop." % title)
 		return
 	_time += delta
 	if distance > GIVE_UP_RADIUS:
@@ -145,14 +152,41 @@ func _finish() -> void:
 			medal = m
 			break
 	var result := Activities.record_parking(bay_id, points, medal)
-	var text := "Parked in %.1fs: %d points" % [_time, points]
-	text += (", %s." % medal) if medal != "" else ". No medal; try again."
-	if _bumps > 0:
-		text += " (%d bump%s)" % [_bumps, "" if _bumps == 1 else "s"]
-	Activities.say(text)
 	_update_sign()
-	if result.new_medal and medal == "gold":
-		Activities.say("Gold at %s. Nobody parks a 500 like you." % title)
+	Notices.post(result_text(medal, points, _time, _bumps, result.new_medal),
+		"medal" if medal != "" else "result", "", "Parking: %s" % title)
+
+
+## The result line: "Gold. 912 points in 8.2 s, 1 bump. New best."
+static func result_text(medal: String, points: int, seconds: float, bumps: int, new_medal: bool) -> String:
+	var text := "%s. " % medal.capitalize() if medal != "" else "No medal. "
+	text += "%d points in %.1f s" % [points, seconds]
+	if bumps > 0:
+		text += ", %d bump%s" % [bumps, "" if bumps == 1 else "s"]
+	text += "."
+	if new_medal and medal == "gold":
+		text += " Nobody parks a 500 like you."
+	elif new_medal:
+		text += " New best."
+	elif medal == "":
+		text += " Try again."
+	return text
+
+
+## For the challenge card (top right) while this bay's challenge runs.
+func challenge_card() -> Dictionary:
+	if not _active:
+		return {}
+	var record: Dictionary = Activities.parking.get(bay_id, {})
+	var detail := "%d:%02d" % [int(_time) / 60, int(_time) % 60]
+	if _bumps > 0:
+		detail += "  ·  %d bump%s" % [_bumps, "" if _bumps == 1 else "s"]
+	if record.get("medal", "") != "":
+		detail += "  ·  best %s" % record.medal
+	var line := "Park between the cars, inside the yellow lines, and stop."
+	if _inside():
+		line = "That's it. Hold still..." if _car.speed_kmh() < 1.0 else "In the gap. Now stop."
+	return {"tag": "Parking", "icon": "car", "title": title, "line": line, "detail": detail}
 
 
 func _on_impact(strength: float) -> void:

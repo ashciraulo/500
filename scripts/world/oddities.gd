@@ -98,23 +98,17 @@ func _notice(id: String, text: String) -> void:
 	if Discoveries.has("oddity/" + id):
 		return
 	Discoveries.discover("oddity/" + id)
-	Activities.say(text)
 	# The midnight station has its own cue; the rest share the discovery sting.
+	# Notices plays it as the card shows.
 	if id == "midnight_station":
-		_play_2d("oddity/odd_midnight_station_found", "Music")
+		Notices.post(text, "odd", "oddity/odd_midnight_station_found", "", "Music")
 	else:
-		_play_2d("oddity/odd_discovery_sting", "SFX", -6.0)
+		Notices.post(text, "odd")
 
 
 ## Sound hooks: each plays nothing if the audio thread hasn't added it yet.
 func _audio() -> Node:
 	return get_node_or_null("/root/Audio")
-
-
-func _play_2d(sound: String, bus: String, volume_db := 0.0) -> void:
-	var audio := _audio()
-	if audio and audio.has(sound):
-		audio.play_2d(sound, bus, volume_db)
 
 
 func _play_at(sound: String, at: Vector3, volume_db := 0.0) -> void:

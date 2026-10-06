@@ -222,7 +222,7 @@ func sweep_headlights() -> void:
 
 func _discover(id: String) -> void:
 	if Discoveries.discover("oddity/home_" + id):
-		Activities.say(LINES.get(id, ""))
+		Notices.post(LINES.get(id, ""), "odd")
 
 
 ## "", "house", or "bedroom" (bedroom 1, upstairs) for where the player is on foot.
