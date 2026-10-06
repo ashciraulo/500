@@ -16,7 +16,7 @@ extends SceneTree
 const LAWNS := Vector3(-935.6, 66.0, 1455.6)     # Kings Park lookout car park
 const BUSH := Vector3(-2189.0, 48.0, 1822.0)     # Lovekin Drive, Kings Park
 const RIVER := Vector3(742.0, 3.0, 1533.0)       # Riverside Drive by the quay
-const FRASER := Vector3(-911.35, 68.4, 923.83)   # Fraser Avenue's lemon gums
+const FRASER := Vector3(-911.35, 59.35, 923.83)   # Fraser Avenue's lemon gums
 # FieldFishing.State, spelled out: naming the class here would compile it
 # before the autoloads it uses exist.
 const F_IDLE := 0
