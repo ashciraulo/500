@@ -24,6 +24,7 @@ var tackle: TackleShop
 var tackle_screen: TackleScreen
 var fishing_screen: FishingScreen
 var home: HomeField
+var trophies: HomeTrophies
 var quiet: QuietPlaces
 
 var _ui: Array[Node] = []
@@ -49,6 +50,9 @@ func _ready() -> void:
 	home = HomeField.new()
 	home.name = "HomeField"
 	add_child(home)
+	trophies = HomeTrophies.new()
+	trophies.name = "HomeTrophies"
+	add_child(trophies)
 	quiet = QuietPlaces.new()
 	quiet.name = "QuietPlaces"
 	quiet.setup(birds)

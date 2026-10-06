@@ -394,17 +394,20 @@ func _start_shot() -> void:
 		_say("Out of film. The lab on Lake Street will develop it.")
 		_sound_2d("field/film_full")
 		return
-	if target.frame < MIN_FRAME:
+	if photo_frame() < MIN_FRAME:
 		_say("Too small to make out in a photo. Get closer or zoom in.")
 		return
 	var b := FieldJournal.bird(target.species)
 	var ease := float(FieldJournal.gear_camera().ease)
-	var shy := clampf(float(b.get("shy", 0.3)) - ease * 0.4, 0.0, 1.0)
+	var lens := FieldJournal.gear_lens()
+	var shy := clampf(float(b.get("shy", 0.3)) - ease * 0.4 - float(lens.calm), 0.0, 1.0)
+	# After dark the focus is a fumble on slow film.
+	var murk := FieldJournal.murk()
 	dial = {
-		"node": target.node, "species": target.species, "shy": shy,
+		"node": target.node, "species": target.species, "shy": shy, "murk": murk,
 		"needle": _rng.randf() * TAU, "dir": 1.0 if _rng.randf() < 0.5 else -1.0,
 		"speed": TAU * (0.42 + shy * 0.55),
-		"half": deg_to_rad(30.0 - shy * 15.0) * (1.0 + ease * 0.4),
+		"half": deg_to_rad(30.0 - shy * 15.0) * (1.0 + ease * 0.4) * (1.0 - murk * 0.45),
 		"need": 2 + roundi(shy * 2.0), "hits": 0, "sharp": 0,
 		"patience": 3 - roundi(shy * 1.5), "time": 9.0 + (1.0 - shy) * 6.0,
 		"out_of_frame": 0.0, "arcs": [], "flash": 0.0, "flash_good": true,
@@ -485,6 +488,13 @@ func _flush_target() -> void:
 		birds.flush(dial.node, _camera.global_position if _camera else dial.node.global_position)
 
 
+## How much of the photo the target fills: what the binoculars see, times the lens.
+func photo_frame() -> float:
+	if target.is_empty():
+		return 0.0
+	return float(target.frame) * float(FieldJournal.gear_lens().reach)
+
+
 ## Stars from how sharp the presses were and how well the bird fills the frame.
 func stars_for(hits: int, sharp: int, frame: float) -> int:
 	var stars := 1
@@ -502,7 +512,11 @@ func stars_for(hits: int, sharp: int, frame: float) -> int:
 func _take() -> void:
 	var species: String = dial.species
 	var node: Node3D = dial.node
-	var stars := stars_for(dial.hits, dial.sharp, target.frame if not target.is_empty() else 0.0)
+	var stars := stars_for(dial.hits, dial.sharp, photo_frame())
+	# Too dark for the film: it'll come out grainy whatever you do.
+	var grainy: bool = float(dial.get("murk", 0.0)) > 0.5
+	if grainy:
+		stars = 1
 	var where := FieldJournal.place_name(node.global_position)
 	state = State.LOOKING
 	dial = {}
@@ -522,7 +536,7 @@ func _take() -> void:
 	if birds and is_instance_valid(node) and birds.has_method("photographed"):
 		birds.photographed(node)
 	var b := FieldJournal.bird(species)
-	_say("%s  %s   (%d frames left)" % [b.get("name", species), "*".repeat(stars), FieldJournal.film_left()])
+	_say("%s  %s%s   (%d frames left)" % [b.get("name", species), "*".repeat(stars), "  (too dark, grainy)" if grainy else "", FieldJournal.film_left()])
 	shot.emit(species, stars)
 
 

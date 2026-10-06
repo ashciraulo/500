@@ -686,8 +686,10 @@ func choose(action: String) -> void:
 				_open_esky()
 		"release":
 			FieldJournal.release(caught)
-			if sp.get("wrong", false):
-				_say("You let it go under the lights. It swims for the pylons.")
+			if sp.has("glow"):
+				_glow_away(Color(String(sp.glow)))
+			if sp.has("release"):
+				_say(String(sp.release))
 			else:
 				_say("Back it goes." if not caught.get("junk", false) else "Back in the river with it.")
 			_sound("field/splash_small")
@@ -976,8 +978,64 @@ func _show_held(c: Dictionary) -> void:
 	_held_light = OmniLight3D.new()
 	_held_light.light_energy = 0.4 + (1.0 - GameClock.daylight()) * 1.2
 	_held_light.omni_range = reach * 2.5
+	if f.has("glow"):
+		# It's the light: no need of yours.
+		_held_light.light_color = Color(String(f.glow))
+		_held_light.light_energy *= 0.5
 	_held_light.position = Vector3(0, 0.3, -reach * 0.4)
 	host.add_child(_held_light)
+
+
+## A fish that glows, let go: a patch of its light under the surface off the
+## bank, drifting out and fading as it swims down.
+func _glow_away(colour: Color) -> void:
+	var at := Vector3(_hook.x, _water_y + 0.06, _hook.z)
+	if is_instance_valid(_walker):
+		var out := at - _walker.global_position
+		out.y = 0.0
+		if out.length() > 2.5:
+			at = _walker.global_position + out.normalized() * 2.5
+			at.y = _water_y + 0.06
+	var patch := MeshInstance3D.new()
+	patch.name = "GlowAway"
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.9, 0.5)
+	quad.orientation = PlaneMesh.FACE_Y
+	patch.mesh = quad
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.albedo_color = Color(colour, 0.6)
+	var g := Gradient.new()
+	g.set_color(0, Color.WHITE)
+	g.set_color(1, Color(1, 1, 1, 0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 32
+	tex.height = 32
+	m.albedo_texture = tex
+	patch.material_override = m
+	var lamp := OmniLight3D.new()
+	lamp.light_color = colour
+	lamp.light_energy = 0.6
+	lamp.omni_range = 1.5
+	lamp.position = Vector3.UP * 0.2
+	patch.add_child(lamp)
+	add_child(patch)
+	patch.global_position = at
+	var away := at - (_walker.global_position if is_instance_valid(_walker) else at)
+	away.y = 0.0
+	away = away.normalized() * 3.0 if away.length() > 0.01 else Vector3.ZERO
+	patch.rotation.y = atan2(away.x, away.z)
+	var tw := patch.create_tween().set_parallel()
+	tw.tween_property(patch, "global_position", at + away, 7.0)
+	tw.tween_property(m, "albedo_color:a", 0.0, 7.0).set_ease(Tween.EASE_IN)
+	tw.tween_property(lamp, "light_energy", 0.0, 7.0).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(patch.queue_free)
 
 
 func _drop_held() -> void:

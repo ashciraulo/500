@@ -77,6 +77,60 @@ static var _meshes := {}
 static var _materials := {}
 
 
+## Modelled versions of the night shift (art/models/props/city/<name>.glb,
+## see docs/TRAFFIC.md); the code-built ones below stand in without them.
+const MODEL_DIR := "res://art/models/props/city/"
+static var _models := {}
+
+
+## Everyday traffic: art/models/vehicles/traffic/<type>.glb (and the
+## railcars carriage_cab and carriage_mid).
+const VEHICLE_DIR := "res://art/models/vehicles/traffic/"
+
+
+## A new instance of the model `model_name` (sweeper, bin_truck, wheelie_bin,
+## food_van; or from `dir`), or null when there isn't one.
+static func model(model_name: String, dir := MODEL_DIR) -> Node3D:
+	var path := dir + model_name + ".glb"
+	if not _models.has(path):
+		_models[path] = load(path) if ResourceLoader.exists(path) else null
+	var scene: PackedScene = _models[path]
+	if scene == null:
+		return null
+	var root: Node3D = scene.instantiate()
+	for mi in root.find_children("*", "MeshInstance3D", true, false):
+		mi.visibility_range_end = 420.0
+	return root
+
+
+## Index of the surface of `mi` whose material is called `mat_name` (-1 if none).
+static func surface_named(mi: MeshInstance3D, mat_name: String) -> int:
+	for i in mi.mesh.get_surface_count():
+		var m := mi.mesh.surface_get_material(i)
+		if m and m.resource_name == mat_name:
+			return i
+	return -1
+
+
+## Recolour a model's named materials: { "Paint": Color, ... }.
+static func recolour(root: Node, colours: Dictionary) -> void:
+	for mi in root.find_children("*", "MeshInstance3D", true, false):
+		for mat_name in colours:
+			var i := surface_named(mi, mat_name)
+			if i >= 0:
+				mi.set_surface_override_material(i, material(colours[mat_name]))
+
+
+## Light a lamp mesh: only its amber part on a modelled beacon, all of it on
+## the code-built ones.
+static func set_lamp(lamp: MeshInstance3D, mat: Material, part := "CV_Amber") -> void:
+	var i := surface_named(lamp, part)
+	if i >= 0:
+		lamp.set_surface_override_material(i, mat)
+	else:
+		lamp.material_override = mat
+
+
 static func material(color: Color, glow := 0.0) -> ShaderMaterial:
 	var key := "%s/%.2f" % [color.to_html(), glow]
 	if not _materials.has(key):
@@ -297,6 +351,12 @@ static func beacon_material(lit: bool) -> Material:
 ## A wheelie bin (240 L), its lid on a hinge named "Lid". Perth councils:
 ## dark green bins, red lids for rubbish and yellow for recycling.
 static func wheelie_bin(recycling: bool) -> Node3D:
+	var modelled := model("wheelie_bin")
+	if modelled:
+		recolour(modelled, { "Lid": Color(0.92, 0.75, 0.05) if recycling else Color(0.75, 0.08, 0.06) })
+		for mi in modelled.find_children("*", "MeshInstance3D", true, false):
+			mi.visibility_range_end = 160.0
+		return modelled
 	var root := Node3D.new()
 	var body := material(Color(0.1, 0.3, 0.16))
 	_add_part(root, "bin_body", Vector3(0.58, 1.0, 0.72), Vector3(0, 0.55, 0), Vector3.ZERO, body)
@@ -317,6 +377,35 @@ static func wheelie_bin(recycling: bool) -> Node3D:
 ## on the kerb (left) side, a lit kitchen, an awning with string lights, and
 ## a sign on the roof. `sign_text` names the food.
 static func food_van(sign_text: String, paint: Color, trim: Color) -> Node3D:
+	var modelled := model("food_van")
+	if modelled:
+		recolour(modelled, { "Paint": paint, "Livery": trim })
+		for spot in [["SignSide", 2.0], ["SignFront", 1.6]]:
+			var at: Node3D = modelled.get_node_or_null(spot[0])
+			if at == null:
+				continue
+			var label := Label3D.new()
+			label.text = sign_text
+			label.font_size = 64
+			label.pixel_size = minf(0.006, spot[1] / (sign_text.length() * 64.0 * 0.62))
+			label.modulate = Color(1.0, 0.92, 0.7)
+			label.outline_size = 0
+			label.double_sided = false
+			label.visibility_range_end = 160.0
+			# The socket faces out already; the side one goes up clear of the
+			# awning, between it and the roof.
+			label.position = Vector3(0, 0.36 if spot[0] == "SignSide" else 0.0, 0.02)
+			at.add_child(label)
+		var hatch_light := _hatch_light()
+		var at_light: Node3D = modelled.get_node_or_null("HatchLight")
+		hatch_light.name = "Lamp"
+		if at_light:
+			at_light.add_child(hatch_light)
+		else:
+			modelled.add_child(hatch_light)
+		for mi in modelled.find_children("*", "MeshInstance3D", true, false):
+			mi.visibility_range_end = 260.0
+		return modelled
 	var root := Node3D.new()
 	var L := 5.6
 	var W := 2.2
@@ -355,19 +444,24 @@ static func food_van(sign_text: String, paint: Color, trim: Color) -> Node3D:
 		for side in [-1.0, 1.0]:
 			_add_part(root, "fv_wheel", Vector3(0.24, 0.66, 0.66), Vector3(side * (W * 0.5 - 0.12), 0.33, z), Vector3.ZERO, dark)
 	# The hatch lights up the footpath and the queue.
-	var lamp := OmniLight3D.new()
+	var lamp := _hatch_light()
 	lamp.name = "HatchLight"
-	lamp.light_color = Color(1.0, 0.78, 0.5)
-	lamp.light_energy = 2.2
-	lamp.omni_range = 7.0
 	lamp.position = Vector3(-W * 0.5 - 1.2, 2.3, 0.7)
-	lamp.distance_fade_enabled = true
-	lamp.distance_fade_begin = 90.0
-	lamp.distance_fade_length = 30.0
 	root.add_child(lamp)
 	for child in root.find_children("*", "MeshInstance3D", true, false):
 		child.visibility_range_end = 260.0
 	return root
+
+
+static func _hatch_light() -> OmniLight3D:
+	var lamp := OmniLight3D.new()
+	lamp.light_color = Color(1.0, 0.78, 0.5)
+	lamp.light_energy = 2.2
+	lamp.omni_range = 7.0
+	lamp.distance_fade_enabled = true
+	lamp.distance_fade_begin = 90.0
+	lamp.distance_fade_length = 30.0
+	return lamp
 
 
 ## The dark base under a light bar (the lamps themselves are separate

@@ -102,6 +102,10 @@ func refresh() -> void:
 		func(g: Dictionary) -> String: return "See birds to %d m, %.0fx zoom" % [int(g.range), 72.0 / float(g.fov)])
 	_gear_row("camera", FieldJournal.CAMERAS, FieldJournal.camera,
 		func(g: Dictionary) -> String: return "%d frames a roll, easier to focus" % int(g.frames))
+	_gear_row("lens", FieldJournal.LENSES, FieldJournal.lens,
+		func(g: Dictionary) -> String: return "Birds %.1fx bigger in photos" % float(g.reach))
+	_gear_row("film", FieldJournal.FILMS, FieldJournal.film,
+		func(g: Dictionary) -> String: return "Sharp after dark" if float(g.night) >= 1.0 else "Copes with dusk")
 
 
 func _gear_row(kind: String, list: Array, level: int, describe: Callable) -> void:

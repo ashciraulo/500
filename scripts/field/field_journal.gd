@@ -49,6 +49,20 @@ const CAMERAS := [
 	{"name": "Second-hand 35 mm SLR", "frames": 36, "ease": 0.25, "price": 650},
 	{"name": "Pro body, motor drive", "frames": 36, "ease": 0.5, "price": 2200},
 ]
+## Lenses for the camera: how much bigger a bird comes out in the photo than
+## in the binoculars (so a far one still makes a print), and how much calmer a
+## shy bird stays when you're shooting from further off.
+const LENSES := [
+	{"name": "The standard lens", "reach": 1.0, "calm": 0.0, "price": 0},
+	{"name": "200 mm zoom", "reach": 1.6, "calm": 0.1, "price": 380},
+	{"name": "500 mm mirror lens", "reach": 2.5, "calm": 0.2, "price": 1250},
+]
+## Film: how much of the dark it copes with (0: none, 1: shoots at midnight).
+const FILMS := [
+	{"name": "ISO 100 film", "night": 0.0, "price": 0},
+	{"name": "ISO 800 film", "night": 0.6, "price": 160},
+	{"name": "ISO 3200 film", "night": 1.0, "price": 520},
+]
 const RARITY_NAMES := ["", "Common", "Uncommon", "Rare", "Very rare"]
 
 const FISH_PATH := "res://data/field/fish.json"
@@ -85,6 +99,8 @@ var entries := {}
 var roll: Array = []
 var binoculars := 0
 var camera := 0
+var lens := 0
+var film := 0
 var prints_sold := 0
 var money_from_prints := 0
 
@@ -323,6 +339,20 @@ func gear_camera() -> Dictionary:
 	return CAMERAS[clampi(camera, 0, CAMERAS.size() - 1)]
 
 
+func gear_lens() -> Dictionary:
+	return LENSES[clampi(lens, 0, LENSES.size() - 1)]
+
+
+func gear_film() -> Dictionary:
+	return FILMS[clampi(film, 0, FILMS.size() - 1)]
+
+
+## How much a photo now suffers from the dark (0: none, 1: pitch black on slow film).
+func murk() -> float:
+	var dark := clampf(1.0 - GameClock.daylight(), 0.0, 1.0)
+	return clampf(dark * (1.0 - float(gear_film().night)), 0.0, 1.0)
+
+
 func roll_size() -> int:
 	return int(gear_camera().frames)
 
@@ -392,20 +422,22 @@ func develop() -> Dictionary:
 	return {"prints": prints, "pay": net, "fee": fee, "gross": total}
 
 
-## Buy the next binoculars or camera at the lab. Returns false if you can't.
+## Buy the next binoculars, camera, lens or film at the lab. Returns false if you can't.
 func upgrade(kind: String) -> bool:
-	var list := BINOCULARS if kind == "binoculars" else CAMERAS
-	var level := binoculars if kind == "binoculars" else camera
+	var lists := {"binoculars": BINOCULARS, "camera": CAMERAS, "lens": LENSES, "film": FILMS}
+	if not lists.has(kind):
+		return false
+	var list: Array = lists[kind]
+	var level := int(get(kind))
 	if level + 1 >= list.size():
 		return false
 	var price := int(list[level + 1].price)
 	if not Wallet.spend(price):
 		return false
-	if kind == "binoculars":
-		binoculars += 1
-	else:
-		camera += 1
+	set(kind, level + 1)
+	if kind == "camera":
 		film_changed.emit(film_left(), roll_size())
+	gear_changed.emit()
 	return true
 
 
@@ -694,7 +726,7 @@ func stat(stat_name: String) -> float:
 
 
 func save_state() -> Dictionary:
-	return {"entries": entries, "roll": roll, "binoculars": binoculars, "camera": camera,
+	return {"entries": entries, "roll": roll, "binoculars": binoculars, "camera": camera, "lens": lens, "film": film,
 		"prints_sold": prints_sold, "money_from_prints": money_from_prints,
 		"catches": catches, "esky": esky, "rod": rod, "esky_level": esky_level, "crab_net": has_crab_net,
 		"ice_until": ice_until, "fish_weighed": fish_weighed, "money_from_fish": money_from_fish, "crab_nets": crab_nets}
@@ -705,6 +737,8 @@ func load_state(data: Dictionary) -> void:
 	roll = data.get("roll", [])
 	binoculars = int(data.get("binoculars", 0))
 	camera = int(data.get("camera", 0))
+	lens = int(data.get("lens", 0))
+	film = int(data.get("film", 0))
 	prints_sold = int(data.get("prints_sold", 0))
 	money_from_prints = int(data.get("money_from_prints", 0))
 	catches = data.get("catches", {})
