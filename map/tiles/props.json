@@ -1,0 +1,142 @@
+[
+ {
+  "id": "garratt_jetty_lamp",
+  "scene": "res://art/models/props/landmarks/jetty_lamp.glb",
+  "p": [
+   6044.42,
+   5.83,
+   -1614.0
+  ],
+  "yaw": -3.0194
+ },
+ {
+  "id": "garratt_jetty_rail_1",
+  "scene": "res://art/models/props/landmarks/jetty_rail.glb",
+  "p": [
+   6043.2,
+   5.83,
+   -1635.18
+  ],
+  "yaw": 0.1292
+ },
+ {
+  "id": "garratt_jetty_rail_2",
+  "scene": "res://art/models/props/landmarks/jetty_rail.glb",
+  "p": [
+   6044.49,
+   5.83,
+   -1625.26
+  ],
+  "yaw": 0.1292
+ },
+ {
+  "id": "herdsman_bird_hide",
+  "scene": "res://art/models/props/landmarks/herdsman_hide.glb",
+  "p": [
+   -4115.6,
+   6.03,
+   -3559.89
+  ],
+  "yaw": -0.7854
+ },
+ {
+  "id": "kent_st_weir",
+  "scene": "res://art/models/props/landmarks/kent_st_weir.glb",
+  "p": [
+   6316.94,
+   0.0,
+   8354.86
+  ],
+  "yaw": -1.6703
+ },
+ {
+  "id": "north_mole_lighthouse",
+  "scene": "res://art/models/props/landmarks/mole_light_north.glb",
+  "p": [
+   -12217.41,
+   3.0,
+   11972.94
+  ],
+  "yaw": 1.5708
+ },
+ {
+  "id": "pelican_fence_1",
+  "scene": "res://art/models/props/landmarks/pelican_fence.glb",
+  "p": [
+   -2488.98,
+   0.94,
+   4622.2
+  ],
+  "yaw": -3.1414
+ },
+ {
+  "id": "pelican_fence_2",
+  "scene": "res://art/models/props/landmarks/pelican_fence.glb",
+  "p": [
+   -2508.98,
+   0.93,
+   4622.2
+  ],
+  "yaw": -3.1414
+ },
+ {
+  "id": "pelican_fence_3",
+  "scene": "res://art/models/props/landmarks/pelican_fence.glb",
+  "p": [
+   -2528.98,
+   0.93,
+   4622.21
+  ],
+  "yaw": -3.1414
+ },
+ {
+  "id": "pelican_fence_4",
+  "scene": "res://art/models/props/landmarks/pelican_fence.glb",
+  "p": [
+   -2548.98,
+   0.95,
+   4622.21
+  ],
+  "yaw": -3.1414
+ },
+ {
+  "id": "pelican_lookout",
+  "scene": "res://art/models/props/landmarks/pelican_lookout.glb",
+  "p": [
+   -2488.99,
+   0.97,
+   4598.13
+  ],
+  "yaw": 1.0472
+ },
+ {
+  "id": "pelican_sailing_club",
+  "scene": "res://art/models/props/landmarks/pelican_sailing_club.glb",
+  "p": [
+   -2676.35,
+   3.25,
+   4413.33
+  ],
+  "yaw": 2.7925
+ },
+ {
+  "id": "south_mole_lighthouse",
+  "scene": "res://art/models/props/landmarks/mole_light_south.glb",
+  "p": [
+   -11463.36,
+   3.0,
+   12192.06
+  ],
+  "yaw": 0.7854
+ },
+ {
+  "id": "trigg_surf_club",
+  "scene": "res://art/models/props/landmarks/trigg_surf_club.glb",
+  "p": [
+   -9545.24,
+   12.66,
+   -7535.94
+  ],
+  "yaw": -1.5708
+ }
+]
