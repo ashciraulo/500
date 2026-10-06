@@ -3,22 +3,31 @@ extends Node
 ##
 ## - Zone beds: set_zone("kingspark") crossfades to that zone's bed for the
 ##   weather and time, and sprinkles that zone's one-shots (birds, dogs,
-##   trains...) around the listener in 3D. In order of preference:
+##   far trains) around the listener in 3D. Sirens aren't sprinkled: the
+##   city's TrafficManager sends a few emergency calls a day (traffic_audio). In order of preference:
 ##   amb_<zone>_rain (raining), amb_<zone>_dawn (05:00-07:00),
 ##   amb_<zone>_late (01:00-05:00), then amb_<zone>_day / _night, skipping
 ##   any that don't exist. A change of rain or time crossfades it again.
 ## - Weather: rain beds outside and on the roof (inside the car), wind,
 ##   thunder after lightning, cicadas on clear days.
 ##
+## - Home: within HOME_RADIUS of the townhouse the zone is "home", a quiet
+##   back lane (zone_here()). Indoors (Audio.set_indoors) the street and the
+##   weather come through the walls and rain is heard on the windows.
+##
 ## - Places: close-up detail for a point of interest (a beach, a lookout,
 ##   bush, Elizabeth Quay, the river bank, a car park) over the zone bed,
-##   fading in as the listener comes within its radius. See update_places().
+##   heard from the place itself (a 3D source at the nearest one of each
+##   kind) as the listener comes within its radius. See update_places().
 ##
 ## Weather and time come from the Weather and GameClock autoloads (rain,
 ## wind, lightning signal, time_of_day). Without them (tests, other scenes)
 ## they can be pushed in with set_weather() / set_time_of_day().
 
 const FADE_S := 4.0
+## The zone bed sits under the sounds that come from somewhere (traffic,
+## people, places), so moving about is what you hear change.
+const BED_DB := -4.0
 ## Rain on the roof sits under the radio and engine in the cabin mix (-8 dB).
 const ROOF_TRIM := 0.4
 ## The wet bed comes in above RAIN_WET_ON and goes again below RAIN_WET_OFF
@@ -36,12 +45,15 @@ const SPRINKLES := {
 		["amb/amb_bird_raven", "any", 30.0, 90.0],
 	],
 	"cbd": [
-		["amb/amb_siren_distant", "any", 60.0, 180.0],
 		["amb/amb_train_pass", "any", 90.0, 240.0],
 	],
 	"northbridge": [
-		["amb/amb_siren_distant", "night", 40.0, 120.0],
 		["amb/amb_dog_bark_far", "night", 60.0, 160.0],
+	],
+	# Home is for winding down: a magpie or a wagtail now and then, no more.
+	"home": [
+		["amb/amb_bird_magpie", "day", 50.0, 150.0],
+		["amb/amb_bird_wagtail", "day", 70.0, 180.0],
 	],
 	"suburbs": [
 		["amb/amb_dog_bark_far", "any", 25.0, 80.0],
@@ -59,6 +71,10 @@ const SPRINKLES := {
 }
 
 var zone := "cbd"
+## The townhouse (set by Audio.hooks once the map has it). Within HOME_RADIUS
+## of it the zone is "home" rather than Northbridge's cafes and clubs.
+var home_at := Vector3.INF
+const HOME_RADIUS := 90.0
 
 ## Place layers (res://audio/amb/place/place_<type>_loop, _night_loop after
 ## dark). Places come from the map's points of interest (add_map_pois(), fed
@@ -67,8 +83,12 @@ var zone := "cbd"
 const PLACE_TYPES := ["beach", "surf", "lookout", "bush", "quay", "riverside", "carpark", "jetty", "groyne",
 		"tackle_shop", "photo_lab", "wrong_cockatoos"]
 const PLACE_RADIUS := 120.0
-## Full volume inside this fraction of the radius, fading out to the edge.
+## Full volume inside this fraction of the radius, falling away with
+## distance past it and silent a little past the radius (PLACE_REACH).
 const PLACE_FULL := 0.35
+const PLACE_REACH := 1.3
+## Places are wide (a beach, a car park), so their sound pans only gently.
+const PLACE_PANNING := 0.6
 var _places: Array = []        # [type, Vector3, radius, night_only]
 ## Map POIs whose sound isn't given by their kind alone (map thread's ids).
 const POI_PLACES := {
@@ -80,8 +100,8 @@ const POI_PLACES := {
 }
 ## Beaches open to the swell (the rest are the calmer Cottesloe end).
 const SURF_SUBURBS := ["Trigg", "Scarborough", "City Beach", "Floreat"]
-var _place_amount := {}        # type -> 0..1 wanted now
-var _place_players := {}       # type -> AudioStreamPlayer
+var _place_near := {}          # type -> [Vector3, radius] of the nearest one in reach
+var _place_players := {}       # type -> AudioStreamPlayer3D at that place
 var _place_night := {}         # type -> whether the night loop is loaded
 
 ## Rough areas of the Perth map slice (map/, world metres, x east and z
@@ -166,6 +186,8 @@ func _ready() -> void:
 	_layer("rain_screen", "weather/weather_rain_windscreen", "Cabin")
 	_layer("wind", "weather/weather_wind_bed", "Weather")
 	_layer("cicadas", "weather/weather_cicadas", "Ambience")
+	# Indoors at home: rain on the windows (on SFX, so the walls don't dull it).
+	_layer("rain_windows", "home/home_rain_windows", "SFX")
 	call_deferred("_update_bed", true)
 
 
@@ -214,10 +236,11 @@ func clear_places() -> void:
 	_places.clear()
 
 
-## How much of each place type is heard at pos (0..1), from the "poi" nodes
-## and the added places. Audio.hooks calls this once a second.
+## The nearest place of each type within reach of pos, from the "poi"
+## nodes and the added places. Audio.hooks calls this once a second.
 func update_places(pos: Vector3) -> void:
-	var want := {}
+	var near := {}
+	var best := {}
 	var all: Array = []
 	for p in _places:
 		if not (p[3] and not is_night):
@@ -233,9 +256,24 @@ func update_places(pos: Vector3) -> void:
 			continue
 		var r: float = maxf(p[2], 1.0)
 		var d := Vector2(pos.x - p[1].x, pos.z - p[1].z).length()
-		var a := 1.0 - smoothstep(r * PLACE_FULL, r, d)
-		want[type] = maxf(want.get(type, 0.0), a)
-	_place_amount = want
+		# Nearest relative to its size, so a big beach beats a small car park.
+		var rel := d / (r * PLACE_REACH)
+		if rel < 1.0 and rel < best.get(type, INF):
+			best[type] = rel
+			near[type] = [p[1], r]
+	_place_near = near
+
+
+## How loud each place type is at pos (0..1): what the 3D falloff of its
+## nearest place gives (tests and debugging).
+func place_level(type: String, pos: Vector3) -> float:
+	if not _place_near.has(type):
+		return 0.0
+	var at: Vector3 = _place_near[type][0]
+	var r: float = _place_near[type][1]
+	var d := at.distance_to(pos)
+	var unit := r * PLACE_FULL
+	return minf(1.0, unit / maxf(d, 0.001)) * maxf(0.0, 1.0 - d / (r * PLACE_REACH))
 
 
 func place_sound(type: String) -> String:
@@ -248,13 +286,19 @@ func place_sound(type: String) -> String:
 
 func _update_place_layers(delta: float) -> void:
 	for type in PLACE_TYPES:
-		var amount: float = _place_amount.get(type, 0.0)
-		var p: AudioStreamPlayer = _place_players.get(type)
+		var here = _place_near.get(type)
+		var p: AudioStreamPlayer3D = _place_players.get(type)
 		if p == null:
-			if amount <= 0.0:
+			if here == null:
 				continue
-			p = _new_player("Ambience")
+			p = _new_place_player()
 			_place_players[type] = p
+		var amount := 1.0 if here != null else 0.0
+		if here != null:
+			var r: float = here[1]
+			p.global_position = here[0] + Vector3.UP * 1.5
+			p.unit_size = r * PLACE_FULL
+			p.max_distance = r * PLACE_REACH
 		var sound := place_sound(type)
 		if sound == "":
 			continue
@@ -266,6 +310,8 @@ func _update_place_layers(delta: float) -> void:
 				p.stop()
 				p.stream = Audio.stream(sound, true)
 				_place_night[type] = sound.ends_with("_night_loop")
+		# The distance falloff is the 3D player's; this only fades a place
+		# in and out when it comes into reach or swaps day for night.
 		var cur := db_to_linear(p.volume_db) if p.playing else 0.0
 		var v := lerpf(cur, amount, 1.0 - exp(-delta / 1.5))
 		if v < 0.002 and amount < 0.002:
@@ -277,6 +323,17 @@ func _update_place_layers(delta: float) -> void:
 			p.play(randf() * p.stream.get_length())
 			v = 0.001
 		p.volume_db = linear_to_db(maxf(v, 0.001))
+
+
+func _new_place_player() -> AudioStreamPlayer3D:
+	var p := AudioStreamPlayer3D.new()
+	p.bus = "Ambience"
+	p.volume_db = -80.0
+	p.max_db = 0.0
+	p.panning_strength = PLACE_PANNING
+	p.attenuation_filter_cutoff_hz = 20500.0  # no extra muffling: the beds are already distant
+	add_child(p)
+	return p
 
 
 func _new_player(bus: String) -> AudioStreamPlayer:
@@ -312,6 +369,13 @@ static func zone_at(pos: Vector3) -> String:
 			best_r = r
 			best = area[0]
 	return best
+
+
+## zone_at(), except close to home (see home_at).
+func zone_here(pos: Vector3) -> String:
+	if home_at != Vector3.INF and Vector2(pos.x - home_at.x, pos.z - home_at.z).length() < HOME_RADIUS:
+		return "home"
+	return zone_at(pos)
 
 
 func set_zone(new_zone: String) -> void:
@@ -442,7 +506,7 @@ func _update_bed(instant := false) -> void:
 	incoming.play(randf() * incoming.stream.get_length())
 	var dur := 0.01 if instant else FADE_S
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(incoming, "volume_db", 0.0, dur).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(incoming, "volume_db", BED_DB, dur).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(outgoing, "volume_db", -80.0, dur)
 	tw.chain().tween_callback(outgoing.stop)
 	var radio: Node = get_parent().get("radio") if get_parent() else null
@@ -454,10 +518,13 @@ func _process(delta: float) -> void:
 	if not _pushed:
 		_poll_source()
 	var inside: bool = Audio.is_player_inside()
+	var indoors: bool = Audio.is_indoors() and not inside
 	var light := clampf(rain * 2.0, 0.0, 1.0) * (1.0 - storm)
 	var heavy := maxf(storm, clampf(rain * 2.0 - 1.0, 0.0, 1.0))
-	_set_layer("rain_light_out", light * (0.5 if inside else 1.0), delta)
-	_set_layer("rain_heavy_out", heavy * (0.5 if inside else 1.0), delta)
+	var out := 0.5 if inside else (0.4 if indoors else 1.0)
+	_set_layer("rain_light_out", light * out, delta)
+	_set_layer("rain_heavy_out", heavy * out, delta)
+	_set_layer("rain_windows", maxf(light, heavy * 1.4) * 0.5 * (1.0 if indoors else 0.0), delta)
 	var roof := 0.0 if fabric_roof else 1.0
 	_set_layer("rain_light_roof", light * roof * ROOF_TRIM * (1.0 if inside else 0.0), delta)
 	_set_layer("rain_heavy_roof", heavy * roof * ROOF_TRIM * (1.0 if inside else 0.0), delta)
@@ -512,7 +579,19 @@ func _sprinkle(delta: float) -> void:
 			_sprinkle_timers[key] = randf_range(entry[2], entry[3])
 			if rain > 0.6 and key.contains("bird"):
 				continue  # birds keep quiet in heavy rain
+			if key.contains("train") and _real_trains():
+				continue  # the city's own trains are running: no phantom ones
+			# Somewhere off in the trees or the next street, falling away
+			# with distance like anything else.
 			var ang := randf() * TAU
-			var dist := randf_range(25.0, 90.0)
+			var dist := randf_range(30.0, 110.0)
 			var pos := cam.global_position + Vector3(cos(ang) * dist, randf_range(3.0, 15.0), sin(ang) * dist)
-			Audio.play_at(key, pos, randf_range(-6.0, 0.0), "Ambience", 0.06)
+			Audio.play_at(key, pos, randf_range(-6.0, 0.0), "Ambience", 0.06, 10.0, 260.0)
+
+
+## True when the city's traffic (with its trains) has sound of its own.
+func _real_trains() -> bool:
+	var hooks: Node = get_parent().get("hooks") if get_parent() else null
+	var ta = hooks.get("traffic") if hooks else null
+	return ta is Node and is_instance_valid(ta) and ta.manager != null and "trains_enabled" in ta.manager \
+			and bool(ta.manager.trains_enabled)

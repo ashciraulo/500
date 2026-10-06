@@ -134,6 +134,7 @@ func _start_sound(_train: Node3D) -> void:
 	_alongside = AudioStreamPlayer3D.new()
 	_alongside.bus = &"SFX"
 	_alongside.unit_size = 25.0
+	_alongside.max_distance = 300.0
 	_alongside.stream = audio.stream("traffic/traffic_train_alongside_loop", true)
 	_alongside.autoplay = true
 	# Ours, not the train's: traffic treats the train's children as carriages.

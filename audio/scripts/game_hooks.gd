@@ -40,6 +40,7 @@ var traffic: Node            # traffic_audio.gd, once the city's TrafficManager 
 var _map: Node               # the Perth map streamer, when the real map is loaded
 var _pois_loaded := false    # its points of interest handed to the place ambience
 var _home: Node
+var home_audio: Node         # home_audio.gd: the quiet lane, indoors, the fridge and clock
 var _zone_timer := 0.0
 var _look_timer := 0.0
 
@@ -242,6 +243,13 @@ func _find_nodes() -> void:
 			_home = h
 			h.door_toggled.connect(_on_home_door)
 			h.slept.connect(_on_slept)
+			if h is Node3D:
+				if is_instance_valid(home_audio):
+					home_audio.queue_free()
+				home_audio = preload("res://audio/scripts/home_audio.gd").new()
+				home_audio.name = "HomeAudio"
+				add_child(home_audio)
+				home_audio.setup(h)
 			# The shed opening is the mystery's big moment: lock, door and a held drone.
 			h.shed_unlocked.connect(func() -> void:
 				if Audio.has("oddity/odd_shed_unlock"):
@@ -374,7 +382,7 @@ func _update_zone(delta: float) -> void:
 			_pois_loaded = true
 	var ear: Node3D = Audio.listener()
 	if ear:
-		Audio.ambience.set_zone(Audio.ambience.zone_at(ear.global_position))
+		Audio.ambience.set_zone(Audio.ambience.zone_here(ear.global_position))
 		Audio.ambience.update_places(ear.global_position)
 
 

@@ -129,8 +129,16 @@ start swapping in your own recordings, regenerate only what you need.
   suburbs (rough areas in `ZONE_AREAS` in `ambience_manager.gd`, until the map
   carries real zones). Near one of the map's points of interest (a beach,
   a lookout, the quay, the river bank, a quiet car park, a servo at night)
-  its place layer fades in over the bed. The townhouse's doors, going to bed (with the "day
+  its place layer comes in over the bed, heard from the place itself. The townhouse's doors, going to bed (with the "day
   ends" sting) and the shed being unlocked have their sounds.
+- **Home is quiet** (`home_audio.gd`, made by `Audio.hooks` with the
+  townhouse): within 90 m of it the zone is `home`, a back lane's soft beds
+  (`amb_home_*`) instead of Northbridge's cafes and clubs, and crowds on
+  nearby streets are 12 dB further down. Indoors on foot,
+  `Audio.set_indoors(true)` puts the street, traffic and weather behind the
+  walls (down and low-passed), rain is heard on the windows, and the house
+  has the fridge humming in the kitchen and the alarm clock ticking by the
+  bed, each heard only close to it.
 - **Footsteps** (`footsteps.gd`, `FootstepAudio`): add one as a child of
   whatever walks (the player on foot) and it plays a step every stride for
   the floor underfoot: timber, carpet, stairs, tile, brick, concrete, mulch
@@ -142,7 +150,15 @@ start swapping in your own recordings, regenerate only what you need.
   utes and vans (2) and buses (2), our horns on every vehicle, the bus air
   brake when a bus pulls up, trains rumbling past with their horn at level
   crossings, crossing bells while the booms are down, and pedestrian beeps
-  at signals. Everything plays on the Vehicles bus.
+  at signals. Everything plays on the Vehicles bus. Crowd walla comes from
+  the middle of the biggest group of people nearby, and an emergency call
+  across the city (the manager's `distant_siren`, a few a day) is a far
+  siren from that direction.
+- **Every world sound is a 3D source with a reach**: it falls away with
+  distance and goes silent at `max_distance`. Only the zone beds and the
+  weather are flat, being everywhere. `tools/sound_check.gd` measures each
+  falloff on the real mixer and fails if a world sound plays flat or
+  doesn't fade, or if sirens come more than a few times a day (CI runs it).
 - **Changing car**: `EngineAudio.CAR_SETS` maps each car in
   `data/cars/cars.json` to its engine set, and the horn style follows (classic
   meep, Abarth blare, modern).

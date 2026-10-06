@@ -409,7 +409,7 @@ func _update_roar() -> void:
 		_roar.name = "Crowd"
 		_roar.stream = audio.stream("traffic/traffic_crowd_roar_loop", true)
 		_roar.bus = &"SFX" if AudioServer.get_bus_index(&"SFX") >= 0 else &"Master"
-		_roar.unit_size = 120.0
+		_roar.unit_size = 60.0
 		_roar.max_distance = 1500.0
 		_roar.volume_db = 4.0
 		add_child(_roar)

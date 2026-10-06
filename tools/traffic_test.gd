@@ -201,6 +201,18 @@ func _run_step() -> bool:
 				while wx > -100.0 and _traffic.vehicles.any(func(v): return absf(v.position.z - 4.8) < 2.5 and v.position.x > wx - 6.0 and v.position.x < wx + 25.0):
 					wx -= 8.0
 				_mark.walker.global_position = Vector3(wx, 0, 4.8)
+				# And a car on its way down that lane towards them (whether one
+				# happens along in time otherwise is down to the dice).
+				for lane in _graph.lanes:
+					if lane.connector or lane.tangent(0.0).x > -0.9 or absf(lane.point(0.0).z - 4.8) > 1.0:
+						continue
+					var at: float = lane.point(0.0).x - wx
+					if at < 30.0 or at > lane.length:
+						continue
+					var from := maxf(2.0, at - 50.0)
+					if lane.vehicles.all(func(o) -> bool: return o.s < from - 10.0 or o.s > at):
+						_traffic.spawn_vehicle_at(&"sedan", lane, from)
+					break
 				_mark.walker_hits = 0
 				_mark.waited = 0
 				_next()
