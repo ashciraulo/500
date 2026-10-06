@@ -129,6 +129,8 @@ var _emergency_rng := RandomNumberGenerator.new()
 ## A drive-by's call (siren and lights) ends this long after it set off, or
 ## once it has gone past the player and is heading away.
 const EMERGENCY_CALL_S := 75.0
+## Most lane samples an emergency call looks at before giving up.
+const EMERGENCY_TRIES := 600
 var _siren: AudioStreamWAV
 var _focus: Node3D
 var _player: RigidBody3D
@@ -1921,13 +1923,19 @@ func _follow_call(v: TrafficVehicle, focus: Vector3, dt: float) -> void:
 
 ## Send a police car, ambulance or fire truck along a main road towards
 ## `focus`, starting out of sight. Returns it, or null if no road would do.
+## Every lane sample in the ring is a candidate, tried in a random order (up
+## to EMERGENCY_TRIES), so a call finds a road whenever there is one.
 func spawn_emergency(focus: Vector3, type: StringName = &"") -> TrafficVehicle:
 	if type == &"":
 		type = _emergency_type()
-	for attempt in 24:
-		var entry := _pick_sample(graph.lane_cells(), focus, 140.0, spawn_radius)
-		if entry.is_empty():
-			continue
+	var spots: Array = []
+	for list in graph.samples_in_ring(graph.lane_cells(), focus, 140.0, spawn_radius):
+		spots.append_array(list)
+	for i in mini(spots.size(), EMERGENCY_TRIES):
+		# Partial shuffle: pick one of the spots not tried yet.
+		var j := i + _rng.randi() % (spots.size() - i)
+		var entry: Array = spots[j]
+		spots[j] = spots[i]
 		var lane: TrafficGraph.Lane = entry[0]
 		var s: float = entry[1]
 		if lane.connector or lane.road == null or lane.road.rank < 2 or s > lane.length - 20.0:
