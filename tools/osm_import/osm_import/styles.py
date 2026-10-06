@@ -93,6 +93,8 @@ def landcover(tags) -> tuple[str, int] | None:
         return ("sand", 60)
     if nat == "wetland":
         return ("wetland", 55)
+    if tags.get("man_made") in ("breakwater", "groyne"):
+        return ("ballast", 65)  # rock walls (build.World._raise_moles)
     if nat in ("wood", "scrub", "heath") or lu in ("forest",):
         return ("bush", 50)
     if lei in ("pitch", "golf_course", "stadium", "track") and tags.get("surface") not in ("asphalt", "concrete"):

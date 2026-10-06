@@ -111,8 +111,62 @@
       "stage": 5,
       "description": "Alfred Cove's reedy river flats in Attadale, off Canning Highway",
       "bbox": [115.806, -32.038, 115.826, -32.024]
+    },
+    "pelican_point": {
+      "stage": 6,
+      "description": "Pelican Point's sandbar and sailing club in Crawley, down Hackett Drive",
+      "bbox": [115.818, -31.992, 115.832, -31.982],
+      "corridor": {"roads": ["Hackett Drive", "Australia II Drive"], "buffer": 110, "bbox": [115.81, -31.995, 115.835, -31.975]}
+    },
+    "bayswater_riverside": {
+      "stage": 6,
+      "description": "Bayswater's riverside: Baigup Wetlands and the Garratt Road Bridge jetty",
+      "bbox": [115.905, -31.937, 115.925, -31.926],
+      "corridor": {"roads": ["Garratt Road"], "buffer": 110, "bbox": [115.905, -31.94, 115.925, -31.91]}
+    },
+    "ashfield_flats": {
+      "stage": 6,
+      "description": "Ashfield Flats, tidal river flats below Bassendean",
+      "bbox": [115.938, -31.923, 115.952, -31.913],
+      "corridor": {"roads": ["Hardy Road"], "buffer": 110, "bbox": [115.935, -31.925, 115.955, -31.905]}
+    },
+    "bull_creek_mouth": {
+      "stage": 6,
+      "description": "Where Bull Creek meets the Canning River, along Mount Pleasant's Esplanade",
+      "bbox": [115.853, -32.038, 115.866, -32.03],
+      "corridor": {"roads": ["The Esplanade", "Riverton Drive West"], "buffer": 110, "bbox": [115.845, -32.04, 115.87, -32.0]}
+    },
+    "kent_st_weir": {
+      "stage": 6,
+      "description": "Kent Street Weir on the Canning River, out along Kent Street from Albany Highway",
+      "bbox": [115.913, -32.026, 115.928, -32.016],
+      "corridor": {"roads": ["Kent Street"], "buffer": 110, "bbox": [115.89, -32.03, 115.93, -31.98]}
     }
   },
+  "placed_props": [
+    {"id": "north_mole_lighthouse", "scene": "res://art/models/props/landmarks/mole_light_north.glb",
+     "lat": -32.053883, "lon": 115.724549, "bearing": 90},
+    {"id": "south_mole_lighthouse", "scene": "res://art/models/props/landmarks/mole_light_south.glb",
+     "lat": -32.055867, "lon": 115.732531, "bearing": 135, "clear": 3.0},
+    {"id": "herdsman_bird_hide", "scene": "res://art/models/props/landmarks/herdsman_hide.glb",
+     "lat": -31.913863, "lon": 115.810405, "bearing": 225},
+    {"id": "trigg_surf_club", "scene": "res://art/models/props/landmarks/trigg_surf_club.glb",
+     "lat": -31.877973, "lon": 115.753037, "bearing": 270, "clear": 16.0},
+    {"id": "kent_st_weir", "scene": "res://art/models/props/landmarks/kent_st_weir.glb",
+     "lat": -32.021303, "lon": 115.920785, "bearing": 275.7, "y": 0.0},
+    {"id": "garratt_jetty_rail", "scene": "res://art/models/props/landmarks/jetty_rail.glb",
+     "lat": -31.931212, "lon": 115.917825, "deck": 300110699,
+     "run": {"to": [-31.931395, 115.917853], "step": 10}},
+    {"id": "garratt_jetty_lamp", "scene": "res://art/models/props/landmarks/jetty_lamp.glb",
+     "lat": -31.931403, "lon": 115.917838, "bearing": 353, "deck": 300110699},
+    {"id": "pelican_sailing_club", "scene": "res://art/models/props/landmarks/pelican_sailing_club.glb",
+     "lat": -31.985772, "lon": 115.8256, "bearing": 20, "clear": 13.0},
+    {"id": "pelican_lookout", "scene": "res://art/models/props/landmarks/pelican_lookout.glb",
+     "lat": -31.987439, "lon": 115.827582, "bearing": 120},
+    {"id": "pelican_fence", "scene": "res://art/models/props/landmarks/pelican_fence.glb",
+     "lat": -31.987656, "lon": 115.827582,
+     "run": {"to": [-31.987656, 115.826524], "step": 20, "axis": "x"}}
+  ],
   "hand_decks": [
     {"name": "Cottesloe groyne", "kind": "groyne", "width": 8.0,
      "line": [[-31.99612, 115.75112], [-31.99668, 115.75045], [-31.99672, 115.74985]]}
