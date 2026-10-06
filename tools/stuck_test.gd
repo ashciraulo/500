@@ -9,6 +9,7 @@ extends SceneTree
 ## - Falling out of the world puts you back where you last walked.
 ## - You wade into a lake to about the knees and no further, can climb back
 ##   out up its bank, and are put back on the bank if you fall in deeper.
+## - The pause menu's "Get unstuck" works on foot.
 ##
 ## With a display and shots=<dir> it saves a screenshot at each stage.
 ## Exits with code 1 if any check fails.
@@ -156,6 +157,14 @@ func _process(delta: float) -> bool:
 				var depth: float = _player.water_depth(_player.global_position)
 				_check(depth < 0.35 and _player.is_on_floor(), "in over your head, you're put back on the bank (%.2f m deep)" % depth)
 				_shot("05_back_on_the_bank")
+				# The pause menu's "Get unstuck", for anyone (not just dev mode).
+				_mark = _player.global_position
+				_player.get_unstuck()
+				_next()
+		8:
+			if _t > 1.0:
+				_check(_player.is_on_floor() and _player.global_position.distance_to(_mark) > 1.0,
+					"Get unstuck (pause menu) moves you somewhere you can stand")
 				return _finish()
 	return false
 

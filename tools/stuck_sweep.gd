@@ -189,6 +189,8 @@ func _sweep_tile(key: String) -> void:
 	kind.resize(n * MAX_LAYERS)
 	var wet := PackedByteArray()  # floors under shallow water
 	wet.resize(n * MAX_LAYERS)
+	var ny := PackedFloat32Array()  # how flat each floor is (its normal's y)
+	ny.resize(n * MAX_LAYERS)
 	for c in n:
 		var x := rect.position.x + (c % nx + 0.5) * _step
 		var z := rect.position.y + (c / nx + 0.5) * _step
@@ -205,6 +207,7 @@ func _sweep_tile(key: String) -> void:
 			if (hit.normal as Vector3).y >= MIN_NORMAL_Y and ceiling - y >= HEADROOM and depth <= WADE_DEPTH:
 				h[c * MAX_LAYERS + layer] = y
 				wet[c * MAX_LAYERS + layer] = 1 if depth > 0.05 else 0
+				ny[c * MAX_LAYERS + layer] = (hit.normal as Vector3).y
 				if body and body.get_meta(&"surface", &"") == &"asphalt" and String(body.name).begins_with("road"):
 					road[c * MAX_LAYERS + layer] = 1
 				kind[c * MAX_LAYERS + layer] = _kind_of(body)
@@ -239,13 +242,16 @@ func _sweep_tile(key: String) -> void:
 				if ox < 0 or oz < 0 or ox >= nx or oz >= nz:
 					continue
 				var o := oz * nx + ox
-				# You land on (or step onto) the highest floor there you can reach.
+				# You land on (or step onto) the highest floor there you can reach:
+				# a step up, or up a slope you can walk (the grid makes a 30 degree
+				# bank look like a 0.6 m step, so allow for how steep both are).
 				var lb := -1
 				for k in MAX_LAYERS:
 					var b := h[o * MAX_LAYERS + k]
 					if is_nan(b):
 						break
-					if b <= a + step_up:
+					var tilt := clampf((ny[c * MAX_LAYERS + la] + ny[o * MAX_LAYERS + k]) * 0.5, MIN_NORMAL_Y, 1.0)
+					if b <= a + step_up + _step * tan(acos(tilt)):
 						lb = k
 						break
 				if lb < 0:

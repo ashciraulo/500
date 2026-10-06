@@ -212,10 +212,16 @@ func _build() -> void:
 		if audio:
 			audio.radio.open_music_folder())
 
-	var car_reset := func() -> void:
-		var car := get_tree().get_first_node_in_group(&"player_car") as CarController
-		if car:
-			car.reset_upright()
+	# In the car: back on its wheels. On foot: back up the drop you fell down,
+	# or back along the way you walked (else home to the front gate).
+	var unstick := func() -> void:
+		var walker := get_tree().get_first_node_in_group(&"player_on_foot") as OnFoot
+		if walker and not walker.in_car:
+			walker.get_unstuck()
+		else:
+			var car := get_tree().get_first_node_in_group(&"player_car") as CarController
+			if car:
+				car.reset_upright()
 		close()
 	var rule := HSeparator.new()
 	box.add_child(rule)
@@ -229,7 +235,7 @@ func _build() -> void:
 	_game_only.append(save_button)
 	_actions = actions
 	actions.visibility_changed.connect(func() -> void: rule.visible = actions.visible)
-	_game_only.append(_button(actions, "Unstick the car", car_reset))
+	_game_only.append(_button(actions, "Get unstuck", unstick))
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actions.add_child(spacer)

@@ -51,7 +51,7 @@ Keyboard or any standard gamepad. Press **F1** in game to show/hide this list.
 | Reset car upright | R | D-pad down |
 | On foot: walk, hurry | W A S D, Shift | Left stick, B |
 | On foot: hop up a ledge | Space | Y |
-| Pause and settings | Esc | Start |
+| Pause and settings (and "Get unstuck" if you can't climb out of somewhere) | Esc | Start |
 | Next weather (and lock it) | F5 | D-pad right |
 | Lock / unlock weather | F6 | |
 | Skip forward 1 hour | F7 | D-pad left |

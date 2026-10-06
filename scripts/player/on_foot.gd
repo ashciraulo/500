@@ -125,6 +125,7 @@ func _ready() -> void:
 	_rig = get_node_or_null(camera_rig_path) as Node3D
 	collision_layer = 8
 	collision_mask = MASK
+	add_to_group(&"player_on_foot")
 	floor_snap_length = step_height + 0.05
 	floor_max_angle = deg_to_rad(50.0)
 	safe_margin = 0.02
@@ -385,6 +386,16 @@ func unstuck() -> bool:
 				_put(feet)
 				return true
 	return false
+
+
+## The pause menu's "Get unstuck": unstuck(), or home if there's nowhere to go.
+func get_unstuck() -> void:
+	if _busy:
+		return
+	if noclip:
+		noclip = false
+	if not unstuck():
+		_rescue_home()
 
 
 ## Last resort after falling out of the world with no trail: the front gate.
