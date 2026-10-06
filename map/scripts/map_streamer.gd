@@ -78,6 +78,7 @@ func _ready() -> void:
 	overview.name = "Overview"
 	overview.near_cut = view_radius - 250.0
 	overview.sea_material = _materials.get(&"water")
+	overview.lakes = _get_lakes()
 	if overview.load_from(tiles_dir.path_join("overview.p5o")):
 		add_child(overview)
 		_overview = overview
