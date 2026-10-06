@@ -300,6 +300,19 @@ middle of the poster, with the back on the wall.
 The spots they go on are the `Decor_*` empties in `shenton_interior.glb` (see
 below).
 
+### Fridge magnets
+
+`scripts/build_decor.py` also writes `props/home/magnets/magnet_<name>.glb`.
+These are souvenir magnets to collect from places around Perth: `lighthouse`
+(Fremantle), `swan` (the river), `pelican` (Pelican Point), `surfboard`
+(Trigg), `gum_tree` (Kings Park), `bell_tower` (the city), `fish_chips`
+(Fishing Boat Harbour), `cockatoo` (Herdsman Lake), `little_car` (the car
+meet), `bream` (Mends St jetty), `ferry`, `sunset` (Scarborough) and
+`kangaroo_paw`. Each is a 12 x 12 pixel picture cut out round its outline,
+6 cm across and 6 mm thick, made in `lib/magnets.py`. The origin is at the
+middle of the back, and the magnet faces +Z. They go on the `Magnet_1`..`12`
+empties on the fridge door. The fridge no longer has magnets baked in.
+
 ## Found parts
 
 `scripts/build_accessories.py` writes bolt-on extras to `cars/parts/`, origin
@@ -334,6 +347,13 @@ the plate texture in every car) for `standard` (1CIN-500), `ciao`, `pop_500`,
 `nite_drv`, `birdo`, `slow` and `bream`. Swap the albedo of the car's `Plate`
 material to fit one. Every number is made up.
 
+Roof colours: `cars/roofs/roof_<colour>.png` (32 x 32, the same weave as each
+car's own `roof_canvas`) for `black`, `red`, `ivory`, `navy`, `grey`, `tan` and
+`bottle_green`. Swap the albedo of the `RoofFabric` material on the 500C or a
+canvas-roof classic. The rib and seam materials stay dark. Eco and wet-weather
+tyres have no outside part (like the turbo); the tyre band is the plain
+`Tyre` material.
+
 ## Home: 15 Little Shenton Lane
 
 `scripts/build_shenton.py` writes `home/shenton/shenton_house.glb` (shell,
@@ -358,6 +378,7 @@ x 0..5.4, z 0..-12.
 | `Oddity_Plant`, `Oddity_LooseBrick`, `Oddity_Footprints`, `Oddity_Drawing` | Small wrong things: a plant on the breakfast bar leaning toward the sliding door (turn it 180 degrees to face the front door), a loose brick in the bricked-up fireplace, small muddy footprints in from the courtyard, a child's drawing on the fridge. Origins on the props. |
 | `Spawn_Player`, `Spawn_Front`, `Spawn_Courtyard`, `Spawn_Car` | Spawn points (`HomeBase.spawn_transform()`). The car parks with room to stand at the shed door behind it, and the carport posts stand back under the roof so it can swing left or right into the narrow rear lane straight away. |
 | `Bed` | Walk here to sleep (`HomeBase.sleep()` skips to 7:00 next day). |
+| `Magnet_1`..`Magnet_12` (in `shenton_interior.glb`) | Spots on the fridge's upper door for the collected magnets (`props/home/magnets/`), in rows of four from the top left, facing out of the fridge. |
 | `Decor_Rug_Lounge`, `Decor_Rug_Bedroom`, `Decor_Lamp_Lounge`, `Decor_Lamp_Bedroom`, `Decor_Poster_1`..`4`, `Decor_Plant_1`..`3`, `Decor_Chair` (in `shenton_interior.glb`) | Spots for the decor (`props/home/decor/`), facing into the room. When a spot is filled, hide the stock piece it replaces: `Rug_Lounge`, `Rug_Bed1`, `FloorLamp`, `Plant_Snake` (Plant_1) and `Plant_Fiddle2` (Plant_3). Posters 1 to 4 are over the couch, on the bedroom back wall, on the landing and in the rear living. |
 | `Light_*` | Warm lamp positions; `HomeBase` adds lights that come on at dusk. `Light_WC_Up` flickers. |
 

@@ -65,6 +65,43 @@ def _wheels(track, ys, r, w, M):
     return p
 
 
+def _arches(parts, inner_x, ys, r, M, clear=0.06):
+    """Cut a wheel arch round each wheel through every body part it meets,
+    from inner_x outward on both sides, so the tyres sit in wells instead of
+    poking through the panels. The cut faces take the black liner."""
+    out = []
+    for o in parts:
+        C.apply_transform(o)
+        vs = [v.co for v in o.data.vertices]
+        lo = [min(v[i] for v in vs) for i in range(3)]
+        hi = [max(v[i] for v in vs) for i in range(3)]
+        for y in ys:
+            for sx in (-1, 1):
+                x0, x1 = sorted((sx * inner_x, sx * (inner_x + 1.0)))
+                rr = r + clear
+                if hi[0] <= x0 or lo[0] >= x1 or hi[1] <= y - rr or lo[1] >= y + rr or lo[2] >= r + rr:
+                    continue
+                cut = cyl(rr, x1 - x0, ((x0 + x1) / 2, y, r), M["black"], segs=16, axis="X")
+                C.apply_transform(cut)
+                C.boolean(o, cut)
+        out.append(o)
+    return out
+
+
+def _indicators(x, front_y, rear_y, z, M, side_ys=(), rear_z=None):
+    """Amber corner indicators front and back, and side repeaters."""
+    p = []
+    rz = z if rear_z is None else rear_z
+    for sx in (-1, 1):
+        p.append(bx((sx * x - 0.05, front_y, z - 0.04), (sx * x + 0.05, front_y + 0.025, z + 0.04), M["amber"]))
+        p.append(bx((sx * x - 0.05, rear_y - 0.025, rz - 0.04), (sx * x + 0.05, rear_y, rz + 0.04), M["amber"]))
+    for y, zz, wx in side_ys:
+        for sx in (-1, 1):
+            p.append(bx((sx * wx - (0.012 if sx > 0 else 0), y - 0.05, zz - 0.025),
+                        (sx * wx + (0.012 if sx < 0 else 0), y + 0.05, zz + 0.025), M["amber"]))
+    return p
+
+
 def _lamps(front_y, rear_y, x, z_head, z_tail, M, size=(0.18, 0.12)):
     """HeadL/HeadR on the front face, TailL/TailR on the back."""
     w, h = size
@@ -147,13 +184,18 @@ def sweeper():
     p.append(cyl(0.17, 0.22, (0.55, yr - 0.1, 1.5), M["black"], segs=10, axis="Y"))
     p.append(bx((-0.55, -0.4, 0.05), (0.55, 0.2, 0.35), M["grey"]))
     p.append(cyl(0.12, 0.6, (0.0, -0.1, 0.55), M["grey"], segs=8))
-    # wheels: small front, rear under the hopper
+    # wheels: small front, rear under the hopper, in cut arches
+    p = _arches(p, 1.72 / 2 - 0.18, (1.9, -1.55), 0.4, M)
     p += _wheels(1.72, (1.9, -1.55), 0.4, 0.28, M)
+    p += _indicators(W / 2 - 0.12, yf, yr + 0.05, 1.05, M, side_ys=((1.4, 1.0, W / 2),))
     # broom arms reaching forward to the gutter brooms
     for sx in (-1, 1):
-        p.append(bx((sx * 0.7 - 0.04, yf - 0.4, 0.38), (sx * 0.7 + 0.04, 2.45, 0.44), M["grey"]))
+        # the arms run inboard of the front wheels, then out to the brooms
+        # ahead of them
+        p.append(bx((sx * 0.6 - 0.04, yf - 0.4, 0.38), (sx * 0.6 + 0.04, 2.45, 0.44), M["grey"]))
         p.append(bx((sx * 1.0 - 0.04, 2.38, 0.12), (sx * 1.0 + 0.04, 2.52, 0.44), M["grey"]))
-        p.append(bx((sx * 1.0 - 0.3, 2.41, 0.4), (sx * 0.7, 2.49, 0.44), M["grey"]))
+        p.append(bx(tuple(sorted((sx * 1.0, sx * 0.6))[:1]) + (2.41, 0.4), tuple(sorted((sx * 1.0, sx * 0.6))[1:]) + (2.49, 0.44),
+                    M["grey"]))
     # plate and the step to the cab
     p.append(bx((-0.25, yf, 0.5), (0.25, yf + 0.01, 0.62), M["plate"]))
     p.append(bx((-W / 2 - 0.05, cy0 + 0.3, 0.4), (-W / 2, cy0 + 0.7, 0.45), M["steel"]))
@@ -232,11 +274,20 @@ def bin_truck():
     for sx in (-1, 1):
         p.append(bx((sx * (W / 2) - 0.05, by0 - 0.2, 1.0), (sx * (W / 2) + 0.05, by0 - 0.1, 3.2), M["steel"]))
     p.append(bx((-0.3, yr + 0.02, 0.7), (0.3, yr + 0.05, 0.82), M["plate"]))
-    # wheels: steer axle and tandem drive
-    p += _wheels(2.1, (3.3, -1.9, -3.25), 0.52, 0.32, M)
+    # cab steps under the doors, a fuel tank on the road side between the
+    # axles, mudflaps behind the drive wheels
     for sx in (-1, 1):
-        for yy in (-1.9, -3.25):
-            p.append(bx((sx * 1.05 - 0.16, yy - 0.62, 1.05), (sx * 1.05 + 0.16, yy + 0.62, 1.12), M["black"]))  # guards
+        xa, xb = sorted((sx * (W / 2 - 0.02), sx * (W / 2 + 0.1)))
+        for z in (0.42, 0.78):
+            p.append(bx((xa, cy0 + 0.15, z), (xb, cy0 + 0.85, z + 0.04), M["steel"]))
+        p.append(bx((sx * (W / 2 - 0.25) - 0.18, -4.0, 0.25), (sx * (W / 2 - 0.25) + 0.18, -3.97, 0.75), M["black"]))
+    p.append(cyl(0.28, 1.1, (W / 2 - 0.35, 0.6, 0.62), M["steel"], segs=12, axis="Y"))
+    for y in (0.08, 1.12):
+        p.append(cyl(0.29, 0.04, (W / 2 - 0.35, y, 0.62), M["black"], segs=12, axis="Y"))
+    # wheels: steer axle and tandem drive, in cut arches
+    p = _arches(p, 2.1 / 2 - 0.2, (3.3, -1.9, -3.25), 0.52, M)
+    p += _wheels(2.1, (3.3, -1.9, -3.25), 0.52, 0.32, M)
+    p += _indicators(W / 2 - 0.12, yf + 0.05, yr + 0.05, 0.5, M, side_ys=((cy0 + 0.2, 1.3, W / 2),), rear_z=1.15)
     objs = [("BinTruck", p, (0, 0, 0), None)]
     # the lift arm: the root on the kerb side, a 3 m rail, the clamp at its foot
     root = (-W / 2, 1.6, 0.0)
@@ -363,10 +414,18 @@ def food_van():
     p.append(bx((-W / 2 - 0.01, by1, 0.75), (W / 2 + 0.01, yf - 0.45, 0.95), livery))
     p.append(bx((-0.25, yf + 0.05, 0.4), (0.25, yf + 0.06, 0.52), M["plate"]))
     p.append(bx((-W / 2 + 0.1, yr - 0.05, 0.35), (W / 2 - 0.1, yr + 0.05, 0.55), M["steel"]))
-    p += _wheels(1.9, (1.75, -1.6), 0.42, 0.26, M)
+    # cab doors: seams, handles, and mirrors on arms
     for sx in (-1, 1):
-        for yy in (1.75, -1.6):
-            p.append(bx((sx * 1.1 - 0.02, yy - 0.5, 0.88), (sx * 1.1 + 0.02, yy + 0.5, 0.95), M["black"]))
+        xo = sx * (W / 2 + 0.006)
+        for y in (by1 + 0.05, yf - 0.62):
+            p.append(bx((xo - 0.004, y - 0.006, z0 + 0.1), (xo + 0.004, y + 0.006, z1 - 0.1), M["black"]))
+        p.append(bx((xo - 0.012, by1 + 0.15, 1.2), (xo + 0.012, by1 + 0.3, 1.24), M["steel"]))
+        p.append(bx((sx * (W / 2) - 0.015, yf - 0.75, 1.75), (sx * (W / 2 + 0.22) + 0.015, yf - 0.72, 1.79), M["black"]))
+        p.append(bx((sx * (W / 2 + 0.22) - 0.04, yf - 0.78, 1.55), (sx * (W / 2 + 0.22) + 0.04, yf - 0.72, 1.95),
+                    M["black"]))
+    p = _arches(p, 1.9 / 2 - 0.17, (1.75, -1.6), 0.42, M)
+    p += _wheels(1.9, (1.75, -1.6), 0.42, 0.26, M)
+    p += _indicators(W / 2 - 0.15, yf + 0.05, yr, 1.15, M, side_ys=((by1 + 0.6, 1.0, W / 2),))
     # the back: twin doors with small windows, a seam and a handle
     for sx in (-1, 1):
         x0, x1 = sorted((sx * 0.03, sx * (W / 2 - 0.12)))

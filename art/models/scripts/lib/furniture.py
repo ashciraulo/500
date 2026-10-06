@@ -420,13 +420,14 @@ def fridge():
              bx((-0.35, -0.36, 1.2), (0.35, -0.35, 1.21), M("metal")),
              bx((0.25, -0.38, 1.3), (0.28, -0.36, 1.7), M("steel")),
              bx((0.25, -0.38, 0.6), (0.28, -0.36, 1.1), M("steel"))]
-    # magnets from places you've driven to (more get added in game)
-    rnd = random.Random(9)
-    for i in range(9):
-        x, z = rnd.uniform(-0.28, 0.2), rnd.uniform(1.25, 1.75)
-        parts.append(bx((x, -0.365, z), (x + 0.06, -0.35, z + 0.05),
-                        M(rnd.choice(["rust", "teal", "mustard", "book2", "cream"]))))
+    # the magnets are collected in game (props/home/magnets/) and go on the
+    # FRIDGE_MAGNETS spots on the upper door
     return parts
+
+
+# Magnet spots on the fridge's upper door, (x, z) in the fridge's frame;
+# the door face is at y = -0.35.
+FRIDGE_MAGNETS = [(x, z) for z in (1.68, 1.53, 1.38) for x in (-0.24, -0.12, 0.0, 0.12)]
 
 
 def coffee_machine():

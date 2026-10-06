@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwpdgcghlce05"
-path="res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"
+uid="uid://dnmwe4qt7gt66"
+path="res://.godot/imported/magnet_lighthouse_magnet_lighthouse.png-f04b67f0bd64238ecf3bbb3f557d2a09.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "7718d3491a28c53a61df3bea8cf3988b"
+"md5": "54e33edeb19b078269b138308fc69add"
 }
 
 [deps]
 
-source_file="res://art/models/props/landmarks/trigg_surf_club_club_sign.png"
-dest_files=["res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"]
+source_file="res://art/models/props/home/magnets/magnet_lighthouse_magnet_lighthouse.png"
+dest_files=["res://.godot/imported/magnet_lighthouse_magnet_lighthouse.png-f04b67f0bd64238ecf3bbb3f557d2a09.ctex"]
 
 [params]
 

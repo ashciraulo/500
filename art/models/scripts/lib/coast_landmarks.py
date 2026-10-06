@@ -279,7 +279,7 @@ def trigg_surf_club():
     p.append(bx((7.0, y0 - 0.04, 1.0), (12.5, y0 + 0.02, 2.4), glass))
     for x in (8.4, 9.8, 11.1):
         p.append(bx((x - 0.03, y0 - 0.06, 1.0), (x + 0.03, y0 + 0.02, 2.4), frame))
-    img = FP._sign("club_sign", ["SURF LIFE SAVING CLUB"], 96, 8, "#f4f1e8", "#2e4f6e")
+    img = FP._sign("club_sign", ["SURF LIFE SAVING CLUB"], 192, 16, "#f4f1e8", "#2e4f6e", scale=2)
     p.append(TS._quad_image(img, "ClubSign", 10.0, 0.83, (-4.5, y0 - 0.07, 3.3), facing="-y"))
     p.append(bx((x0 - 0.05, y0 - 0.06, 3.05), (x1 + 0.05, y0 + 0.02, 3.55), fascia))
     # the balcony slab and glass balustrade across the front

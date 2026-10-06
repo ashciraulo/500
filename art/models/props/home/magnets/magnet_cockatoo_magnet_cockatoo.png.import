@@ -2,19 +2,19 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwpdgcghlce05"
-path="res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"
+uid="uid://b2j181560idc1"
+path="res://.godot/imported/magnet_cockatoo_magnet_cockatoo.png-c88a335db86c3ccf1cbfe20a877bb778.ctex"
 metadata={
 "vram_texture": false
 }
 generator_parameters={
-"md5": "7718d3491a28c53a61df3bea8cf3988b"
+"md5": "69724cdfd53b1e00b2c20a4c3b80b140"
 }
 
 [deps]
 
-source_file="res://art/models/props/landmarks/trigg_surf_club_club_sign.png"
-dest_files=["res://.godot/imported/trigg_surf_club_club_sign.png-653695e2f0ea45906083af231f61a9fc.ctex"]
+source_file="res://art/models/props/home/magnets/magnet_cockatoo_magnet_cockatoo.png"
+dest_files=["res://.godot/imported/magnet_cockatoo_magnet_cockatoo.png-c88a335db86c3ccf1cbfe20a877bb778.ctex"]
 
 [params]
 
