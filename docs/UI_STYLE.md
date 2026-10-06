@@ -79,6 +79,47 @@ Set `theme_type_variation` to one of these:
   keys or a pad and click when pressed (the `UiTheme` autoload), using the
   audio thread's `audio/ui` sounds.
 
+## Notices and the challenge card
+
+- **Something happened** (a new bird, a place found, a challenge or job
+  done, a clue): `Notices.post(text, kind)`. One card at a time drops in at
+  the top centre, with a coloured tab, an icon and a small heading for the
+  kind (`KINDS` in `scripts/ui/notices.gd`), and stays up long enough to read.
+  The kind's sound plays as the card appears, so never play a jingle for an
+  event yourself: pass it as the sound instead (`Notices.post(text, "odd",
+  "oddity/odd_midnight_station_found", "", "Music")`). `Activities.say()` and
+  the HUD's `toast()` still work; they post a quiet card whose look is guessed
+  from the opening words.
+- **Something is going on** (a job, a parking bay, a scenic drive, a train
+  race): the challenge card at the top right (`ChallengeCard`). Join the
+  `challenges` group and return `{tag, icon, title, line, detail}` from
+  `challenge_card()` while it runs, `{}` otherwise; `detail` is the live line
+  (time, bumps, markers left). Results go out as a notice.
+- Autosaves are silent and show a small "Saved" mark above the dial.
+- `tools/notice_sheet.gd` shoots every kind of notice into one sheet, plus the
+  challenge card in play.
+
+## Maps
+
+The minimap (`Minimap`, bottom left of the HUD) and the full map
+(`MapScreen`, M or Map on the phone) are both a `MapView`: a street-directory
+page drawn from the map's own data by `MapData` (roads from the tiles' `.p5r`,
+ground from `overview.p5o`, suburb names from `index.json`), so a rebuilt map
+shows up on them with nothing to regenerate. `MapData.shared().street_at(pos)`
+and `suburb_at(pos)` say where a world position is.
+
+What goes on them comes from `MapPins.gather()`, read fresh from the game:
+home, workshops (`workshop_spots`), the tackle shop (`tackle_shops`), the photo
+lab (`photo_labs`), servos, job places you've found and the one you're headed
+for, parking challenges (`parking_bays`), scenic drives, car meets, photo spots
+you've found, fishing and birding spots the journal knows, quiet places once
+found, and the player's own markers (saved in the "map" section). To put
+something new on the maps, add a line there with an icon from `UiStyle.ICONS`
+or `MapView.GLYPHS`.
+
+`tools/map_screens.gd` takes screenshots of both (same arguments as
+`ui_screens.gd`); `tools/minimap_test.gd` checks them headless.
+
 ## Scaling
 
 The UI is laid out for 1280x720 and scaled to the window (`canvas_items`

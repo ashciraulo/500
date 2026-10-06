@@ -231,9 +231,9 @@ func _update_spots() -> void:
 			if sp.get("hidden", false):
 				# A quiet spot: no bucket marks it until you've stood there.
 				Discoveries.discover(FieldJournal.place_key(sp))
-				Activities.say("A quiet spot: %s. Nobody fishes here. It's in the journal." % sp.name)
+				Notices.post("%s. Nobody fishes here. It's in the journal." % sp.name, "quiet", "", "A quiet spot")
 			else:
-				Activities.say("Fishing spot: %s. It's in the journal." % sp.name)
+				Notices.post("%s. It's in the journal." % sp.name, "place", "", "Fishing spot")
 		if sp.get("hidden", false) and not Discoveries.has("fishing/" + id):
 			continue
 		if d < SHOW_RANGE and not _props.has(id):
@@ -660,8 +660,7 @@ func _land() -> void:
 	state = State.LANDED
 	_sound("field/landed_flop")
 	if FieldJournal.fish_species(String(caught.species)).get("wrong", false) and caught.get("first", false):
-		Activities.say("There's already a page about this in the journal. It isn't in your handwriting.")
-		_sound("field/m_page_found")
+		Notices.post("There's already a page about this in the journal. It isn't in your handwriting.", "mystery", "field/m_page_found", "", "UI")
 	state_changed.emit(state)
 	landed.emit(caught)
 	if screen:

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .tilewriter import NRM_Q, POS_Q
+from .tilewriter import POS_Q
 from .variant import (ARRAY, BOOL, DICTIONARY, FLAG_64, FLOAT, INT, NIL, PACKED_BYTE,
                       PACKED_FLOAT32, PACKED_INT32, PACKED_INT64, PACKED_VECTOR2,
                       PACKED_VECTOR3, STRING, unpack_tile)

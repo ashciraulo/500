@@ -21,6 +21,7 @@ var _cooldown := 0.0
 
 func _ready() -> void:
 	add_to_group(&"scenic_drives")
+	add_to_group(&"challenges")
 	if points.is_empty():
 		return
 	global_position = points[0]
@@ -65,8 +66,16 @@ func _process(delta: float) -> void:
 
 func start() -> void:
 	_next = 1
-	Activities.say("Scenic drive: %s. Follow the green markers, no rush." % title)
 	_move_beacon()
+
+
+## For the challenge card (top right) while the drive runs.
+func challenge_card() -> Dictionary:
+	if _next < 0:
+		return {}
+	return {"tag": "Scenic drive", "icon": "flag", "title": title,
+		"line": "Follow the green markers. No rush.",
+		"detail": "Marker %d of %d" % [_next, points.size() - 1]}
 
 
 func stop() -> void:
