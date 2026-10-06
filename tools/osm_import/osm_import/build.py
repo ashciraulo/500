@@ -54,6 +54,8 @@ ROOF_UNDER_ROAD = 0.7   # the box's roof (0.6 m) plus a little ground stays unde
 # Ground fit to roads (World._fit_ground_to_roads).
 CORE_MARGIN = 2.5     # metres past a road's kerb or sidewalk held level with it (half a grid cell)
 EDGE_BLEND = 12.0     # at least this wide an ease from a road's edge back to the ground
+SHORE_GRADE = 0.15    # lake banks rise from the water no steeper than this (1 in 7)
+SHORE_REACH = 60.0    # ...out to this far from the water
 SEED_TOLERANCE = 1.5  # roads further than this from the DEM (ramps, cuttings) don't shape the ground
 DEM_NEAR = 10.0       # open ground starts to take the DEM this far from a road...
 DEM_FAR = 45.0        # ...and has all of it from here
@@ -413,10 +415,12 @@ class World:
             if wb.name == SEA_NAME:
                 self._sculpt_sea(wb)
                 continue
+            lake = wb.level != RIVER_LEVEL
+            pad = SHORE_REACH if lake else 10.0
             for p in polygons_of(wb.geom):
                 b = p.bounds
-                i0, i1 = np.searchsorted(es, [b[0] - 10, b[2] + 10])
-                j0, j1 = np.searchsorted(ns, [b[1] - 10, b[3] + 10])
+                i0, i1 = np.searchsorted(es, [b[0] - pad, b[2] + pad])
+                j0, j1 = np.searchsorted(ns, [b[1] - pad, b[3] + pad])
                 if i1 <= i0 or j1 <= j0:
                     continue
                 E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
@@ -427,8 +431,19 @@ class World:
                 sub[ins] = np.minimum(sub[ins], wb.level - 2.5)
                 near = shapely.contains(p.buffer(6.0), pts).reshape(E.shape) & ~ins
                 sub[near] = np.maximum(sub[near], wb.level + 0.35)
+                kept = ins | near
+                if lake:
+                    # The DEM is a surface model: the reeds and paperbarks round a
+                    # wetland read as a bank metres above the water. Grade the shore
+                    # down to the water instead of leaving a wall.
+                    wet = shapely.contains(p, pts).reshape(E.shape)
+                    d_out = (distance_transform_edt(~wet) - 0.5) * hf.step  # to the shoreline
+                    cap = wb.level + 0.35 + SHORE_GRADE * np.maximum(d_out - 3.0, 0.0)
+                    ramp = ~wet & (d_out <= SHORE_REACH) & (sub > cap)
+                    sub[ramp] = cap[ramp]
+                    kept |= ramp
                 H[j0:j1, i0:i1] = sub
-                self.keep_dem[j0:j1, i0:i1] |= ins | near
+                self.keep_dem[j0:j1, i0:i1] |= kept
         self._fit_ground_to_roads()
         if self.home:
             self._sculpt_home(es, ns)
@@ -544,7 +559,7 @@ class World:
         # embankment) and their heights differ, ease between them instead of
         # leaving a step where the nearer one takes over.
         both = best2 <= CORE_MARGIN
-        gap = np.subtract(best2, best, out=np.full(best.shape, OVERLAP_BLEND), where=both)
+        gap = np.where(both, best2 - np.minimum(best, CORE_MARGIN), OVERLAP_BLEND)
         w2 = np.where(both, 0.5 * (1.0 - _smoothstep(gap / OVERLAP_BLEND)), 0.0)
         target = target + w2 * (np.where(both, target2, target) - target)
         return best, target, fall

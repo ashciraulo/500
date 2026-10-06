@@ -114,7 +114,7 @@ def _world(hf, src_ways, buildings=()):
     w.built_soft = gaussian_filter(w.built.astype(float), BUILT_SOFT / hf.step)
     w.bare = w._bare_earth()
     ways = densify_ways(src_ways)
-    h = compute_node_heights(ways, w.bare)["road"]
+    h = compute_node_heights(ways, w.bare).get("road", {})
     w.ways = [LinearWay(x.id, x.tags, "road", x.coords, np.array([h[int(n)] for n in x.nodes]), x.nodes,
                         styles.road_width(x.tags), False, False, False) for x in ways]
     return w
@@ -150,3 +150,26 @@ def test_ground_under_a_road_is_level_across_and_eases_out():
     assert np.abs(np.diff(col)).max() / STEP < 0.2
     # Far from the road the slope is the DEM's own.
     assert abs(hf.sample(0.0, 250.0) - (20.0 + 0.06 * 250.0)) < 0.05
+
+
+def test_lake_shore_is_graded_not_a_wall():
+    # A wetland: the DEM reads the reeds round the water as a bank 5 m above it.
+    from shapely.geometry import Point
+    from osm_import.build import SHORE_GRADE, WaterBody
+    lake = Point(0, 0).buffer(120)
+    hf = field(lambda E, N: np.where(np.hypot(E, N) < 120, 4.0, 9.0))
+    w = _world(hf, [])
+    w.water = [w._water_body(type("A", (), {"geom": lake, "tags": {"natural": "water"}})())]
+    w._sculpt_terrain()
+    H = hf.H
+    level = w.water[0].level
+    # The shore comes down to the water (the bank was a 4 m wall)...
+    assert hf.sample(125.0, 0.0) - level < 1.2
+    # ...on a slope a person can walk down, with no step anywhere on dry land.
+    es, ns = hf.node_coords()
+    E, N = np.meshgrid(es, ns)
+    dry = np.hypot(E, N) >= 120
+    assert (np.abs(np.diff(H, axis=0)) / STEP)[dry[1:] & dry[:-1]].max() <= SHORE_GRADE + 0.03
+    assert (np.abs(np.diff(H, axis=1)) / STEP)[dry[:, 1:] & dry[:, :-1]].max() <= SHORE_GRADE + 0.03
+    # Away from the water the ground is untouched.
+    assert abs(hf.sample(250.0, 250.0) - 9.0) < 0.05
