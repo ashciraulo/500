@@ -45,6 +45,8 @@ func _initialize() -> void:
 		["full_street", func() -> void:
 			_zoom(1.4, Vector2(60.0, 120.0))
 			_screen().call("_select", 1), 20, Callable()],
+		["full_lanes", func() -> void: _zoom(0.8, Vector2(20.0, -30.0)), 20, Callable()],
+		["full_carpark", func() -> void: _zoom(1.0, Vector2(-680.0, -230.0)), 20, Callable()],
 		["full_city", func() -> void: _zoom(22.0, Vector2(-3500.0, 3000.0)), 20, Callable()],
 		["full_pad", func() -> void:
 			UiStyle.using_pad = true
