@@ -311,7 +311,8 @@ meet), `bream` (Mends St jetty), `ferry`, `sunset` (Scarborough) and
 `kangaroo_paw`. Each is a 12 x 12 pixel picture cut out round its outline,
 6 cm across and 6 mm thick, made in `lib/magnets.py`. The origin is at the
 middle of the back, and the magnet faces +Z. They go on the `Magnet_1`..`12`
-empties on the fridge door. The fridge no longer has magnets baked in.
+empties on the fridge door. The fridge still has its nine plain magnets baked
+into the `Fridge-col` mesh for now.
 
 ## Found parts
 
