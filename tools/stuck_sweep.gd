@@ -5,6 +5,7 @@ extends SceneTree
 ##
 ##   godot --headless --path . --script res://tools/stuck_sweep.gd -- out=/tmp/stuck.json [tiles=0_0,-1_0] [step=0.5]
 ##   godot --headless --path . --script res://tools/stuck_sweep.gd -- around=-8,-1,150   (x, z, radius in metres)
+##   ... -- part=0/4 out=/tmp/p0.json resume   (carry on a stopped run from its out= file)
 ##
 ## The whole map takes hours at 0.5 m: split it with part=0/4 .. part=3/4 in
 ## four processes (each with its own out=), or use step=1.
@@ -76,6 +77,7 @@ var _area := Rect2()  # around=: only this square (x, z)
 var _ray := PhysicsRayQueryParameters3D.new()
 var _water_ray := PhysicsRayQueryParameters3D.new()
 var _home_at := Vector3.ZERO
+var _done_before: Array = []  # tiles a stopped run already did (resume)
 var _part := [0, 1]  # part=k/n: every n-th tile from the k-th, to split a run across processes
 
 
@@ -113,6 +115,20 @@ func _initialize() -> void:
 			if (i / 8) % _part[1] == _part[0]:
 				mine.append(_tiles[i])
 		_tiles = mine
+	if OS.get_cmdline_user_args().has("resume") and FileAccess.file_exists(_out):
+		# Carry on from a stopped run: keep what it found, skip the tiles it did.
+		var was: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(_out))
+		var done: Array = was.get("done", [])
+		for t: Dictionary in was.traps:
+			_traps.append(t)
+		for r: Dictionary in was.rough:
+			_rough.append(r)
+		var left: Array[String] = []
+		for t in _tiles:
+			if not done.has(t):
+				left.append(t)
+		_tiles = left
+		_done_before = done
 	_world = Node3D.new()
 	root.add_child(_world)
 	var home: Dictionary = _index.get("home", {})
@@ -143,6 +159,7 @@ func _process(_delta: float) -> bool:
 	_phase = 0
 	_at += 1
 	if _at % 10 == 0:
+		_save()
 		print("STUCK SWEEP %d / %d tiles, %d traps, %.0f s" % [_at, _tiles.size(), _traps.size(),
 			(Time.get_ticks_msec() - _started) / 1000.0])
 	return false
@@ -219,6 +236,8 @@ func _sweep_tile(key: String) -> void:
 	ny.resize(n * MAX_LAYERS)
 	var grade := PackedVector2Array()  # its rise per metre east and south
 	grade.resize(n * MAX_LAYERS)
+	var room := PackedFloat32Array()  # the first thing above each floor
+	room.resize(n * MAX_LAYERS)
 	for c in n:
 		var x := rect.position.x + (c % nx + 0.5) * _step
 		var z := rect.position.y + (c / nx + 0.5) * _step
@@ -235,6 +254,7 @@ func _sweep_tile(key: String) -> void:
 			if (hit.normal as Vector3).y >= MIN_NORMAL_Y and ceiling - y >= HEADROOM and depth <= WADE_DEPTH:
 				h[c * MAX_LAYERS + layer] = y
 				wet[c * MAX_LAYERS + layer] = 1 if depth > 0.05 else 0
+				room[c * MAX_LAYERS + layer] = ceiling
 				var normal := hit.normal as Vector3
 				ny[c * MAX_LAYERS + layer] = normal.y
 				grade[c * MAX_LAYERS + layer] = Vector2(-normal.x, -normal.z) / normal.y
@@ -288,6 +308,10 @@ func _sweep_tile(key: String) -> void:
 				if lb < 0:
 					continue
 				var b := h[o * MAX_LAYERS + lb]
+				# Dropping to a floor under something (a tunnel floor under its lid
+				# and the bank beside it) needs room to walk in at this height.
+				if room[o * MAX_LAYERS + lb] < a + HEADROOM:
+					continue
 				var top_y := maxf(a, b)
 				var edge := (mini(c, o)) * 2 + (0 if d.y == 0 else 1)
 				var blocked := false
@@ -336,6 +360,7 @@ func _sweep_tile(key: String) -> void:
 		var sum := Vector3.ZERO
 		var kinds := {}
 		var entry := Vector3.INF
+		var into := Vector3.INF  # the trap floor you get in at
 		var climb := INF
 		for g: int in group:
 			var c := g / MAX_LAYERS
@@ -347,6 +372,7 @@ func _sweep_tile(key: String) -> void:
 				if back[src] == 1 and reach[src] == 1 and entry == Vector3.INF:
 					var sc := src / MAX_LAYERS
 					entry = Vector3(rect.position.x + (sc % nx + 0.5) * _step, h[src], rect.position.y + (sc / nx + 0.5) * _step)
+					into = p
 			# The smallest step up to a floor that does lead back.
 			var cx := c % nx
 			var cz := c / nx
@@ -371,7 +397,7 @@ func _sweep_tile(key: String) -> void:
 		for k: String in kinds:
 			if main_kind == "" or kinds[k] > kinds[main_kind]:
 				main_kind = k
-		_traps.append({tile = key, at = _v(centre), area = snappedf(area, 0.25), entry = _v(entry), floor = main_kind,
+		_traps.append({tile = key, at = _v(centre), area = snappedf(area, 0.25), entry = _v(entry), into = _v(into), floor = main_kind,
 			climb = snappedf(climb, 0.01) if climb != INF else -1.0,
 			home_m = snappedf(Vector2(centre.x - _home_at.x, centre.z - _home_at.z).length(), 1.0)})
 
@@ -634,12 +660,19 @@ func _v(p: Vector3) -> Array:
 	return [snappedf(p.x, 0.1), snappedf(p.y, 0.01), snappedf(p.z, 0.1)]
 
 
+## Everything so far, with the tiles done, so a stopped run can carry on (resume).
+func _save() -> void:
+	var f := FileAccess.open(_out, FileAccess.WRITE)
+	f.store_string(JSON.stringify({step = _step, tiles = _done_before.size() + _tiles.size(),
+		done = _done_before + _tiles.slice(0, _at),
+		traps = _traps, rough = _rough}, "  "))
+	f.close()
+
+
 func _finish() -> void:
 	_traps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.home_m < b.home_m)
-	var f := FileAccess.open(_out, FileAccess.WRITE)
 	_rough.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.home_m < b.home_m)
-	f.store_string(JSON.stringify({step = _step, tiles = _tiles.size(), traps = _traps, rough = _rough}, "  "))
-	f.close()
+	_save()
 	var big := _traps.filter(func(t: Dictionary) -> bool: return t.area >= 4.0)
 	print("STUCK SWEEP %d traps (%d of 4 m² or more) in %d tiles, %.0f s, written to %s" % [_traps.size(), big.size(),
 		_tiles.size(), (Time.get_ticks_msec() - _started) / 1000.0, _out])
