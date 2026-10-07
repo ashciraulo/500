@@ -796,9 +796,82 @@ func _run_step() -> bool:
 				cl.set_time(8.0)
 				pt.clear()
 				_check(pt.movers.is_empty(), "the path people go home")
+				pt.enabled = false
+				_next()
+		14:  # The player's car stops dead in a back street: traffic goes round it.
+			if _frame == 1:
+				_settle()
+				_focus.position = Vector3(-20, 0, 200)
+				var lane = null
+				for l in _graph.lanes:
+					var mid: Vector3 = l.point(l.length * 0.5)
+					if not l.connector and l.tangent(l.length * 0.5).x > 0.9 and absf(mid.z - 200.0) < 3.0 and mid.x > -100.0 and mid.x < 60.0:
+						lane = l
+				var car := RigidBody3D.new()
+				car.freeze = true
+				car.contact_monitor = true
+				car.max_contacts_reported = 4
+				var shape := CollisionShape3D.new()
+				shape.shape = BoxShape3D.new()
+				shape.shape.size = Vector3(1.7, 1.5, 3.6)
+				car.add_child(shape)
+				_root3d.add_child(car)
+				var at: float = lane.length * 0.7
+				var dir: Vector3 = lane.tangent(at)
+				car.global_transform = Transform3D(Basis.looking_at(dir, Vector3.UP), lane.point(at) + Vector3(0, 0.75, 0))
+				_mark.player = car
+				# Not in the player_car group: the car sounds would take it for the real one.
+				_traffic._player = car
+				car.collision_mask |= _traffic.TRAFFIC_LAYER
+				_mark.blocked = _traffic.spawn_vehicle_at(&"sedan", lane, at - 45.0, 8.0)
+				_mark.round_serial = _mark.blocked.serial if _mark.blocked else -1
+				_mark.round_hits = 0
+				_mark.round_passed = -1.0
+			var car: RigidBody3D = _mark.player
+			var v = _mark.blocked
+			if v != null and v.serial == _mark.round_serial and _mark.round_passed < 0.0:
+				var rel: Vector3 = v.position - car.global_position
+				var fwd := -car.global_basis.z
+				var along := rel.dot(fwd)
+				var side := rel.dot(TrafficGraph.left_of(fwd))
+				if absf(along) < (v.length + 3.6) * 0.5 and absf(side) < (v.width + 1.7) * 0.5:
+					_mark.round_hits += 1
+				if along > v.length:
+					_mark.round_passed = _seconds()
+			if _seconds() >= 40.0:
+				_check(_mark.round_passed > 0.0, "a car stuck behind the player's stopped car goes round it (by %.0f s)" % _mark.round_passed)
+				_check(_mark.round_hits == 0, "and doesn't drive through it (%d frames)" % _mark.round_hits)
+				_next()
+		15:  # The player's car lands on a parked car: it doesn't stay wedged there.
+			var car: RigidBody3D = _mark.player
+			if _frame == 1:
+				_traffic.clear_all()
+				var parked := StaticBody3D.new()
+				parked.collision_layer = _traffic.TRAFFIC_LAYER
+				var shape := CollisionShape3D.new()
+				shape.shape = BoxShape3D.new()
+				shape.shape.size = Vector3(1.8, 1.4, 4.5)
+				parked.add_child(shape)
+				_root3d.add_child(parked)
+				parked.global_position = Vector3(300, 0.7, 600)
+				_mark.parked = parked
+				_mark.ghosted = false
+				car.global_transform = Transform3D(Basis(), Vector3(300, 2.3, 600))
+				car.freeze = false
+			var parked: StaticBody3D = _mark.parked
+			if _frame == 120:
+				_mark.sat_on = car.get_colliding_bodies().has(parked)
+			if _frame > 120 and parked.collision_layer == 0:
+				_mark.ghosted = true
+			if _frame == 360:
+				car.freeze = true
+				car.global_position = Vector3(300, 2.3, 620)
+			if _seconds() >= 7.0:
+				_check(_mark.sat_on and _mark.ghosted, "a car the player's car is stuck on stops being solid after a few seconds (sat on it %s, let go %s)" % [_mark.sat_on, _mark.ghosted])
+				_check(parked.collision_layer == _traffic.TRAFFIC_LAYER, "and is solid again once the player is clear of it")
 				_root3d.queue_free()
 				_next()
-		14:  # The main scene gets traffic on the Perth map's roads.
+		16:  # The main scene gets traffic on the Perth map's roads.
 			if _main == null:
 				_main = load("res://scenes/main.tscn").instantiate()
 				root.add_child(_main)
@@ -832,7 +905,7 @@ func _run_step() -> bool:
 				_mark.roo = wild.spawn_group(TrafficWildlife.Kind.ROO, cp + Vector3(-9, 0, 0), 1, false)
 				_mark.roo_start = cp + Vector3(-9, 0, 0)
 				_next()
-		15:  # Wildlife reacts to the player.
+		17:  # Wildlife reacts to the player.
 			if _seconds() >= 3.0:
 				var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 				var wild: TrafficWildlife = traffic.wildlife
@@ -852,7 +925,7 @@ func _run_step() -> bool:
 				_check(hopped > 10.0, "the kangaroo bounds away (%.0f m)" % hopped)
 				wild.enabled = true
 				_next()
-		16:  # Boats on the Swan, and the ferry to Mends St.
+		18:  # Boats on the Swan, and the ferry to Mends St.
 			var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 			var boats: TrafficBoats = traffic.boats
 			if not boats.ready_for_boats() and _seconds() < 30.0:
@@ -880,7 +953,7 @@ func _run_step() -> bool:
 			_mark.boat_start = Vector3(1000, 0, 1750)
 			_mark.boat_dry_frames = 0
 			_next()
-		17:  # Boats sail about and keep off the land.
+		19:  # Boats sail about and keep off the land.
 			var traffic = _main.get_node("LoFi/SubViewport/World/Traffic")
 			var boats: TrafficBoats = traffic.boats
 			for b in _mark.boats:
