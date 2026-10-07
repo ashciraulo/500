@@ -128,7 +128,9 @@ func _update_chase(delta: float) -> void:
 	if _look_idle > 1.5:
 		_look_yaw = lerp_angle(_look_yaw, 0.0, 1.0 - exp(-3.0 * delta))
 		_look_pitch = lerpf(_look_pitch, 0.0, 1.0 - exp(-3.0 * delta))
-	# Positive pitch looks up, as on foot: the camera swings down behind the car.
+	# Positive pitch looks up, as on foot. Looking down swings the camera up
+	# over the car; looking up tilts the view but keeps the camera at chase
+	# height, so it never ends up skimming the road.
 	_look_pitch = clampf(_look_pitch, -0.6, 0.3)
 
 	var car_pos := _car.global_position
@@ -147,7 +149,7 @@ func _update_chase(delta: float) -> void:
 		yaw = car_yaw + PI
 		pitch = 0.0
 	var turn := Basis(Vector3.UP, yaw)
-	var orbit := turn * Basis(Vector3.RIGHT, pitch)
+	var orbit := turn * Basis(Vector3.RIGHT, minf(pitch, 0.0))
 	# Under a low roof (carport, car park), drop the camera and pull it in so
 	# it stays below the ceiling instead of filming the roof.
 	var height := chase_height * fit + speed_t * speed_rise
@@ -161,6 +163,9 @@ func _update_chase(delta: float) -> void:
 	# the view orbits the car instead of swinging it off the side of the screen.
 	var ahead := look_ahead + speed_t * speed_look_ahead
 	var target := car_pos + Vector3.UP * look_height + turn * Vector3(0.0, 0.0, -ahead)
+	if pitch > 0.0:
+		# Half the stick's tilt, so the car stays in the lower part of the view.
+		target += Vector3.UP * (distance + ahead) * tan(pitch * 0.5)
 
 	# On a steep slope the road behind can be higher than the car: lift the
 	# camera clear of it rather than letting the wall check pull it in low.
