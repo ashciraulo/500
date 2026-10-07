@@ -1028,6 +1028,25 @@ func _check_signal_rebuild() -> void:
 
 ## The map's tiles go into the graph a few roads at a time: the result must
 ## match adding the whole lot at once.
+## A two-lane one-way street meeting a T where the only way on is a turn
+## (Elder St into Malcolm St): both lanes take it, neither dead-ends.
+func _check_forced_turn() -> void:
+	var net = load("res://traffic/scripts/traffic_test_networks.gd").Net.new()
+	var two := { "oneway": true, "lanes_fwd": 2, "kind": "secondary" }
+	var t: int = net.node(100, 0)
+	net.road(net.node(0, 0), t, two)
+	net.road(t, net.node(100, 100), two)  # Away to the right: the way on.
+	net.road(net.node(100, -100), t, two)  # One-way coming in from the left.
+	var g := TrafficGraph.new()
+	g.add_data(net.data())
+	var stuck := 0
+	for lane in g.lanes:
+		if lane.road.pts[0].x < 1.0:
+			if lane.next.is_empty():
+				stuck += 1
+	_check(stuck == 0, "every lane of a road takes the only way on at a T (%d dead-end)" % stuck)
+
+
 func _check_pieces() -> void:
 	var data: Dictionary = load("res://traffic/scripts/traffic_test_networks.gd").sandbox()
 	var pieces: Array = _traffic._split_network(data)
@@ -1062,6 +1081,7 @@ func _check_pieces() -> void:
 func _check_graph() -> void:
 	_check_signal_rebuild()
 	_check_pieces()
+	_check_forced_turn()
 	var g = _graph
 	_check(g.roads.size() > 25, "sandbox network loads (%d roads)" % g.roads.size())
 	_check(g.signal_controllers.size() == 2, "two signal junctions (%d)" % g.signal_controllers.size())
