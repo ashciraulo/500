@@ -51,18 +51,25 @@ renders a few views (needs a display or `xvfb-run`).
    network over about 30 m of road, measured in metres, so profiles curve
    gently instead of following every lump in the surface model. Bridges are
    lifted, tunnels and cuttings sunk, with ramps at a maximum grade; streets
-   under a bridge keep their headroom; the two halves of a divided road and
-   roads whose asphalt touches are tied level.
+   under a bridge keep their headroom (not slip roads joined to it or running
+   beside it); the two halves of a divided road and roads whose asphalt
+   touches are tied level for the smoothing, but the bridge and headroom
+   bounds never spread across those ties.
 4. **build.py** fits the terrain to the roads: under each road the ground
    takes the road's height (level cross-sections), among buildings the ground
    is interpolated from the roads around it (the DEM there is a surface model
    full of building mounds), open ground and water keep the DEM, and every
    road edge eases back over at least 12 m (embankments and cuttings get
-   wider side slopes). Then for each 500 m tile it builds: land
+   wider side slopes). A road a metre or more above another road whose
+   asphalt it overlaps (a slip road OSM doesn't tag as a bridge, leaving the
+   deck over the freeway it joins) is drawn on a deck there instead, and the
+   ground keeps to the lower road. Then for each 500 m tile it builds: land
    cover ground, road and footpath surfaces (clipped to the grid so they hug
    the terrain), kerbs, lane markings (left-hand traffic), bridge decks with
-   parapets and piers, tunnel boxes, rail, extruded buildings with facade
-   bands and roofs, trees and street lights.
+   parapets (open where another road joins the deck) and piers, tunnel
+   boxes, rail, extruded buildings with facade bands and roofs, trees and
+   street lights. Roads that run off the built map end at a row of concrete
+   barriers 8 m inside the edge, and traffic stops short of them.
 5. **tilewriter.py** quantises and writes each tile as a brotli-compressed
    Godot Variant (`.p5t`, magic `P5TB`) that `map/scripts/tile_loader.gd`
    decodes natively. Tiles built before stage 4 are zlib (`P5TZ`) and are

@@ -74,6 +74,42 @@ def _speed(tags):
     return int(m.group(1)) if m else None
 
 
+EDGE_STOP = 4.0  # traffic ends this far short of the barriers closing a road at the map's edge
+
+
+def _on_map(w, closures) -> list:
+    """`w` as traffic drives it: cut EDGE_STOP short of each barrier where it
+    runs off the built map (World.edge_closures), the stretches beyond left
+    out. Cut ends get new node ids. Returns [w] when there is nothing to cut."""
+    if not closures:
+        return [w]
+    from dataclasses import replace
+    s = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(w.xy, axis=0), axis=1))])
+    cl = sorted(closures, key=lambda c: c["s"])
+    spans, start = [], (0.0 if cl[0]["sign"] > 0 else None)
+    for c in cl:
+        if c["sign"] > 0 and start is not None:
+            spans.append((start, c["s"] - EDGE_STOP))
+            start = None
+        elif c["sign"] < 0:
+            start = c["s"] + EDGE_STOP
+    if start is not None:
+        spans.append((start, s[-1]))
+    out = []
+    for n, (a, b) in enumerate(spans):
+        if b - a < 1.0:
+            continue
+        keep = (s > a + 0.5) & (s < b - 0.5)
+        at = np.r_[a, s[keep], b]
+        xy = np.column_stack([np.interp(at, s, w.xy[:, 0]), np.interp(at, s, w.xy[:, 1])])
+        ids = [int(w.nodes[0]) if a <= 0.5 else -(2 ** 52 + abs(int(w.id)) * 16 + 2 * n)]
+        ids += [int(i) for i in w.nodes[keep]]
+        ids.append(int(w.nodes[-1]) if b >= s[-1] - 0.5 else -(2 ** 52 + abs(int(w.id)) * 16 + 2 * n + 1))
+        out.append(replace(w, xy=xy, h=np.interp(at, s, w.h),
+                           nodes=np.array(ids, dtype=np.int64)))
+    return out
+
+
 def _path(w, hf=None) -> dict:
     """A foot or bike path for the traffic data: Godot points, its name, and
     the plan midpoint that decides which tile carries it.
@@ -157,7 +193,12 @@ class TrafficNetwork:
     def __init__(self, world):
         self.w = world
         hf = world.hf
-        ways = [w for w in world.ways if w.group == "road" and drives(w.tags)]
+        closed: dict[int, list] = {}
+        for c in getattr(world, "closures", ()):
+            closed.setdefault(c["way"], []).append(c)
+        ways = [p for w in world.ways if w.group == "road" and drives(w.tags)
+                for p in _on_map(w, closed.get(w.id))]
+        part_base: dict[int, int] = {}
         ctrl_tags = {int(nid): t for nid, t, _, _ in world.control_nodes}
         # Where ways must be split: junctions plus give-way/stop nodes.
         split = set(world.junctions)
@@ -194,7 +235,9 @@ class TrafficNetwork:
             oneway = styles.is_oneway(w.tags) or reverse
             fwd, back = lane_split(w.tags, oneway)
             speed = _speed(w.tags)
-            for part, (k0, k1) in enumerate(zip(cuts[:-1], cuts[1:])):
+            base = part_base.get(w.id, 0)
+            part_base[w.id] = base + len(cuts) - 1
+            for part, (k0, k1) in enumerate(zip(cuts[:-1], cuts[1:]), start=base):
                 xy = w.xy[k0:k1 + 1]
                 h = w.h[k0:k1 + 1]
                 a, b = nodes[k0], nodes[k1]

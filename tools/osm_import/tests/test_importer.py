@@ -482,3 +482,170 @@ def test_no_cracks_along_footpaths_on_curved_streets():
                            for s in mats.values() if s.arrays() is not None])
     solid = shapely.union_all(shapely.polygons(np.concatenate([tris[:, :, :2], tris[:, :1, :2]], axis=1)))
     assert tb.box.difference(solid).area < 0.5  # drape drops specks under 0.01 m²
+
+
+def _interchange():
+    """A freeway along y = 0 under a street bridge along x = 0, and a slip
+    road leaving the bridge's deck over the freeway's edge that comes down
+    beside it (their asphalt touching) and merges into it. OSM tags only
+    the street's span as a bridge."""
+    fx = np.arange(-200, 201, 5.0)
+    freeway = Way(1, {"highway": "motorway", "oneway": "yes", "lanes": "3"},
+                  np.arange(1000, 1000 + len(fx), dtype=np.int64), np.column_stack([fx, np.zeros_like(fx)]))
+    by = np.arange(-150, 151, 5.0)
+    bid = np.arange(2000, 2000 + len(by), dtype=np.int64)
+    bxy = np.column_stack([np.zeros_like(by), by])
+    a, b = np.searchsorted(by, [-25, 25])
+    street = {"highway": "trunk", "lanes": "2"}
+    ways = [freeway,
+            Way(2, street, bid[:a + 1], bxy[:a + 1]),
+            Way(3, {**street, "bridge": "yes", "layer": "1"}, bid[a:b + 1], bxy[a:b + 1]),
+            Way(4, street, bid[b:], bxy[b:])]
+    sx = np.r_[0.0, 6.0, 12.0, np.arange(20, 141, 10.0), 150.0, 160.0]
+    sy = np.r_[-5.0, -8.0, -9.5, np.full(13, -9.5), -6.0, 0.0]
+    sid = np.r_[bid[np.searchsorted(by, -5)], 3001 + np.arange(len(sx) - 2), 1000 + np.searchsorted(fx, 160)]
+    slip = Way(5, {"highway": "motorway_link", "oneway": "yes"}, sid.astype(np.int64), np.column_stack([sx, sy]))
+    return ways + [slip], slip
+
+
+def test_slip_road_off_a_bridge_comes_down_at_a_driveable_grade():
+    from osm_import.build import _carriageway_pairs
+
+    ways, slip = _interchange()
+    h = compute_node_heights(ways, flat_field(0.0), _carriageway_pairs(ways))["road"]
+    deck = h[int(slip.nodes[0])]
+    assert deck > 5.0
+    prof = np.array([h[int(n)] for n in slip.nodes])
+    grade = np.abs(np.diff(prof)) / np.linalg.norm(np.diff(slip.coords, axis=0), axis=1)
+    # Not pulled down to the freeway beside it (it had a 4 m drop off the deck).
+    assert grade.max() <= 0.07, np.round(prof, 2)
+    # The freeway still clears the bridge, and isn't lifted by the slip road.
+    assert max(h[1000 + k] for k in range(len(ways[0].nodes))) < 0.5
+
+
+def test_slip_road_over_the_freeway_is_drawn_on_a_deck_with_no_parapet_across_it():
+    import shapely
+    from types import SimpleNamespace as NS
+    from osm_import.build import LIFT, LinearWay, TileBuilder, World, _carriageway_pairs
+    from osm_import.common import TileKey
+
+    ways, slip = _interchange()
+    hf = flat_field(0.0, size=1200.0)
+    h = compute_node_heights(ways, hf, _carriageway_pairs(ways))["road"]
+    lw = [LinearWay(w.id, w.tags, "road", w.coords, np.array([h[int(n)] for n in w.nodes]), w.nodes,
+                    styles.road_width(w.tags), styles.is_bridge(w.tags), False, False) for w in ways]
+    world = NS(ways=lw)
+    World._lift_stacked(world)
+    freeway, deck, sl = lw[0], lw[2], lw[-1]
+    # The slip road is over the freeway where it leaves the deck, and on the ground further on.
+    assert freeway.lift is None and deck.lift is None
+    assert sl.lift is not None and sl.lift[:2].all() and not sl.lift[-5:].any()
+    pieces = sl.pieces()
+    assert [p.bridge for p in pieces] == [True, False]
+    assert pieces[0].nodes[0] == slip.nodes[0] and pieces[1].nodes[-1] == slip.nodes[-1]
+    assert pieces[0].nodes[-1] == pieces[1].nodes[0]
+    assert all(dh > LIFT for dh in sl.h[sl.lift] - 0.0)
+
+    # Its deck and the bridge's meet with no parapet across either.
+    world = NS(hf=hf, tile_size=500, ways=lw, ways_near=lambda b: lw, doubled_paths=set(), home=None,
+               water=[], water_union=Polygon(), cover=[])
+    tb = TileBuilder(world, TileKey(0, -1))
+    assert sum(p.bridge for p in tb.ways if p.id == slip.id) == 1
+    tb._bridges()
+    v, _, _, idx = tb.mb.meshes["bridges"]["concrete"].arrays()
+    tris = v[idx]
+    top = h[int(slip.nodes[0])]
+    # Concrete standing up over the deck (parapets), as plan shapes.
+    up = tris[(tris[:, :, 2] > top + 0.3).any(axis=1)]
+    walls_plan = shapely.union_all([shapely.LineString(t[:, :2]).buffer(0.05) for t in up])
+    lane = shapely.LineString(slip.coords[:3]).buffer(1.2)  # the slip road's middle, off the deck
+    assert walls_plan.intersection(lane).area < 0.05
+    # The far side keeps its parapet all along, past where the approach joins (no gap there).
+    half = styles.road_width(ways[2].tags) / 2
+    far = shapely.LineString([(-half + 0.3, -25.0), (-half + 0.3, -0.5)])
+    assert walls_plan.intersection(far).length > 24.0
+
+
+def test_roads_running_off_the_built_map_are_closed_with_barriers():
+    from types import SimpleNamespace as NS
+    from osm_import.build import EDGE_INSET, LinearWay, TileBuilder, World
+    from osm_import.common import TileKey
+
+    hf = flat_field(10.0, size=1200.0)
+    # East along y = 250 from tile 0_0 into 1_0, which isn't built; and a
+    # street wholly inside the tile.
+    xs = np.linspace(300, 700, 9)
+    off = LinearWay(1, {"highway": "primary"}, "road", np.column_stack([xs, np.full(9, 250.0)]), np.full(9, 10.0),
+                    np.arange(1, 10), 7.0, False, False, True)
+    inner = LinearWay(2, {"highway": "residential"}, "road", np.array([[100.0, 100.0], [400.0, 100.0]]),
+                      np.full(2, 10.0), np.array([20, 21]), 6.6, False, False, True)
+    world = NS(ways=[off, inner], tile_size=500)
+    closures = World.edge_closures(world, {"0_0"})
+    assert len(closures) == 1
+    c = closures[0]
+    assert c["way"] == 1 and np.allclose(c["xy"], [500 - EDGE_INSET, 250], atol=1.0) and np.allclose(c["out"], [1, 0])
+
+    world = NS(hf=hf, tile_size=500, ways=[off, inner], ways_near=lambda b: [off, inner], doubled_paths=set(),
+               home=None, water=[], water_union=Polygon(), cover=[], closures=closures)
+    tb = TileBuilder(world, TileKey(0, 0))
+    tb._edge_barriers()
+    v, n, _, idx = tb.mb.meshes["props"]["concrete"].arrays()
+    # Across the road and its sidewalks, standing on it, facing out.
+    assert v[:, 1].min() < 250 - 3.5 - 2.0 and v[:, 1].max() > 250 + 3.5 + 2.0
+    assert np.isclose(v[:, 2].max(), 10.0 + 0.75, atol=0.05)
+    assert np.abs(v[:, 0] - c["xy"][0]).max() < 0.5
+    tri = v[idx]
+    fn = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    side = np.abs(fn[:, 0]) > np.abs(fn[:, 1]) + np.abs(fn[:, 2])  # the faces towards and away from the edge
+    assert side.any() and (np.sign(fn[side, 0]) == np.sign(tri[side, :, 0].mean(axis=1) - c["xy"][0])).all()
+
+
+def test_traffic_stops_short_of_the_barriers_at_the_map_edge():
+    from osm_import.build import LinearWay, World
+    from osm_import.traffic import EDGE_STOP, _on_map
+    from types import SimpleNamespace as NS
+
+    # Out of tile 0_0 into 1_0 (not built) and back into 2_0.
+    xs = np.linspace(300, 1300, 21)
+    w = LinearWay(7, {"highway": "primary"}, "road", np.column_stack([xs, np.full(21, 250.0)]),
+                  np.linspace(10, 20, 21), np.arange(100, 121), 7.0, False, False, True)
+    closures = World.edge_closures(NS(ways=[w], tile_size=500), {"0_0", "2_0"})
+    assert [c["sign"] for c in closures] == [1.0, -1.0]
+    parts = _on_map(w, closures)
+    assert len(parts) == 2
+    a, b = parts
+    assert a.nodes[0] == 100 and a.nodes[-1] < 0 and b.nodes[0] < 0 and b.nodes[-1] == 120
+    assert np.isclose(a.xy[-1, 0], closures[0]["xy"][0] - EDGE_STOP)
+    assert np.isclose(b.xy[0, 0], closures[1]["xy"][0] + EDGE_STOP)
+    assert np.isclose(a.h[-1], np.interp(a.xy[-1, 0], xs, w.h))
+    assert len(set(a.nodes) | set(b.nodes)) == len(a.nodes) + len(b.nodes)
+    assert _on_map(w, None) == [w]
+
+
+def test_one_row_of_barriers_across_both_halves_of_a_divided_road():
+    from osm_import.build import _merge_closures
+
+    c = dict(out=np.array([0.0, 1.0]), h=5.0, grade_separated=False, half=5.1)
+    rows = _merge_closures([{**c, "xy": np.array([100.0, 492.0])}, {**c, "xy": np.array([106.0, 492.5])},
+                            {**c, "xy": np.array([300.0, 492.0])}])
+    assert len(rows) == 2
+    assert np.allclose(rows[0]["xy"], [103.0, 492.0]) and np.isclose(rows[0]["half"], 8.1)
+
+
+def test_a_lifted_deck_carries_on_until_the_ground_meets_it():
+    from types import SimpleNamespace as NS
+    from osm_import.build import LIFT_REACH, LinearWay, World
+
+    xs = np.arange(0, 101, 5.0)
+    h = np.interp(xs, [0, 30, 45, 100], [6.0, 4.0, 0.1, 0.0])
+    w = LinearWay(1, {"highway": "motorway_link"}, "road", np.column_stack([xs, np.zeros_like(xs)]), h,
+                  np.arange(1, 22), 4.5, False, False, False, lift=xs <= 20)
+    World._land_lifts(NS(ways=[w], hf=flat_field(0.0)))
+    # On over the ground until it is within 15 cm of the road (at 45 m, where
+    # the deck now lands), and no further.
+    assert np.array_equal(w.lift, xs <= 40)
+    # Never more than LIFT_REACH past where it was lifted.
+    w = LinearWay(1, {"highway": "motorway_link"}, "road", np.column_stack([xs, np.zeros_like(xs)]),
+                  np.full(len(xs), 3.0), np.arange(1, 22), 4.5, False, False, False, lift=xs <= 20)
+    World._land_lifts(NS(ways=[w], hf=flat_field(0.0)))
+    assert np.array_equal(w.lift, xs < 20 + LIFT_REACH)
