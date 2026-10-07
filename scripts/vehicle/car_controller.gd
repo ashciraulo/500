@@ -111,6 +111,13 @@ const SKIM := 0.12
 ## Above this suspension speed (m/s) the dampers stiffen no further, so a sharp
 ## edge at speed doesn't kick the car off the road.
 const DAMPER_KNEE := 1.2
+## The last part of the suspension's travel (a fraction of it) where a rubber
+## bump stop takes over, firming up fast. Without it the spring runs out of
+## travel on a dip at speed and the body itself thumps the road and bounces.
+const BUMP_STOP := 0.75
+const BUMP_STOP_RATE := 8.0
+## Half the length of road a tyre's suspension averages over; see `_footprint`.
+const FOOTPRINT := 0.2
 ## How much of the drop from the centre of mass to the road the tyres' grip
 ## acts through (1 = at the road). Grip pushing at road level rolls a tall
 ## little car onto its door handles in a hard corner and lifts the inside
@@ -121,8 +128,12 @@ const GRIP_LEVER := 0.5
 const GRIP_ASSIST := 1.2
 ## See step 5 of _physics_process: extra weight (in g) and pitch/roll damping
 ## while some wheels are off the road.
-const LIGHT_PULL := 0.6
+const LIGHT_PULL := 1.0
 const LIGHT_STEADY := 3.0
+## How long after the last wheel leaves the road that still counts as a hop
+## (not a jump), and how hard (per second) the car's rise is soaked up then.
+const HUG_TIME := 0.5
+const HUG_DAMP := 6.0
 const BRAKE_ASSIST := 1.45
 ## The highest step a tyre rides up, in tyre radii (a 13 cm kerb is 0.45; the
 ## map's kerbs reach 22 cm where streets slope, and 40 cm is still a wall).
@@ -160,9 +171,12 @@ const FIELD_GEAR_CLASSIC := {
 	&"tackle_box": [Vector3(0.0, -0.23, -0.55), 0.0],
 	&"camera": [Vector3(0.0, -0.03, -0.55), -0.3],
 }
-@export var spring_strength := 26000.0
+## Soft springs (with a stiff anti-roll bar for the corners) so a wheel keeps
+## the road over a dip of 11 cm before it lifts. The Pop's wheel markers in its
+## scene are set for this spring's sag; see `_fit_rig` for other bodies.
+@export var spring_strength := 20000.0
 @export var damper_strength := 2400.0
-@export var anti_roll_strength := 4500.0
+@export var anti_roll_strength := 6500.0
 
 @export_group("Tyres and brakes")
 @export var tire_grip := 1.05
@@ -338,6 +352,7 @@ var _shift_timer := 0.0
 var _pending_gear := 1
 var _reverse_hold := 0.0
 var _brake_reverse := false  # reverse was picked with the brake key
+var _air_time := 0.0  # since the last wheel touched the road
 var _headlights_manual := false
 var _spawn_transform: Transform3D
 var _ray_query := PhysicsRayQueryParameters3D.new()
@@ -429,7 +444,7 @@ func _physics_process(delta: float) -> void:
 				wheel.normal = hit.normal
 		else:
 			wheel.grounded = true
-			wheel.hit_distance = origin.distance_to(hit.position)
+			wheel.hit_distance = _footprint(origin, up, total_ray, origin.distance_to(hit.position), space)
 			_climb_step(wheel, origin, up, total_ray, space)
 			wheel.compression = clampf(total_ray - wheel.hit_distance, 0.0, suspension_length)
 			wheel.contact = hit.position
@@ -465,6 +480,13 @@ func _physics_process(delta: float) -> void:
 			var knee := clampf(compression_speed, -DAMPER_KNEE, DAMPER_KNEE)
 			var damping := (knee + (compression_speed - knee) * 0.25) * damper_strength
 			load = wheel.compression * spring_strength + damping
+			# Bump stop: by how far the road is into the last of the travel,
+			# past the end of it too. It only pushes while it's being squashed
+			# (a soaked-up thump), not as the car rises off it, so it can't
+			# throw the car back up into the air.
+			var stop_in: float = total_ray - wheel.hit_distance - suspension_length * BUMP_STOP
+			if stop_in > 0.0 and compression_speed > 0.0:
+				load += stop_in * stop_in / (suspension_length * (1.0 - BUMP_STOP)) * spring_strength * BUMP_STOP_RATE * 0.5
 			load += (wheel.compression - opposite.compression) * anti_roll_strength
 			load = maxf(load, 0.0)
 			# The tyre grips with a load that follows the spring but rides
@@ -536,12 +558,16 @@ func _physics_process(delta: float) -> void:
 	# 4. Air drag.
 	apply_central_force(-linear_velocity * linear_velocity.length() * drag_coefficient)
 
-	# 5. Over a crest, with wheels off the road but not all of them, pull the
-	# car back down onto them and calm its pitch and roll, so a lump in the
-	# road is a lurch rather than a launch. Fully airborne (off a ramp) it flies.
-	if grounded_wheels > 0 and grounded_wheels < 4:
+	# 5. Over a crest or a hump, with wheels off the road, pull the car back
+	# down onto them, take the spring out of its rise and calm its pitch and
+	# roll, so a lump in the road is a lurch rather than a launch. Only for a
+	# moment after leaving the road: off a real ramp it flies.
+	_air_time = 0.0 if grounded_wheels > 0 else _air_time + delta
+	if grounded_wheels < 4 and _air_time < HUG_TIME:
 		var missing := float(4 - grounded_wheels) / 4.0
-		apply_central_force(Vector3.DOWN * mass * 9.81 * LIGHT_PULL * missing)
+		# Toward the car's own floor, so on a hill it's toward the road.
+		var rise := maxf(linear_velocity.dot(up), 0.0)
+		apply_central_force(-up * mass * (9.81 * LIGHT_PULL + rise * HUG_DAMP) * missing)
 		var tumble := angular_velocity - up * angular_velocity.dot(up)
 		apply_torque(-tumble * mass * LIGHT_STEADY * missing)
 
@@ -1268,6 +1294,28 @@ func _capture_rig() -> void:
 			var col := get_node_or_null(shape_name) as CollisionShape3D
 			if col and col.shape is BoxShape3D:
 				_rig_defaults.shapes[shape_name] = [col.position, (col.shape as BoxShape3D).size]
+
+
+## The road under a tyre's whole contact patch, not one point: the average
+## of the ray at the hub and two either side of it, fore and aft. The map's
+## roads are facets half a metre long, and a single ray feels every crease
+## between them as a little kick; a tyre rolls over them.
+func _footprint(origin: Vector3, up: Vector3, total_ray: float, centre: float, space: PhysicsDirectSpaceState3D) -> float:
+	var along := -global_basis.z * FOOTPRINT
+	var sum := centre
+	var n := 1
+	for side: float in [-1.0, 1.0]:
+		_ray_query.from = origin + along * side
+		_ray_query.to = _ray_query.from - up * (total_ray + SKIM)
+		var probe := space.intersect_ray(_ray_query)
+		if probe.is_empty():
+			continue
+		var d: float = _ray_query.from.distance_to(probe.position)
+		# A kerb or a wall beside the patch isn't road under it.
+		if absf(d - centre) < FOOTPRINT * 0.5:
+			sum += d
+			n += 1
+	return sum / n
 
 
 ## A round tyre rides up a kerb before its centre gets there: probe the

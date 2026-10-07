@@ -26,11 +26,15 @@ enum Mode { CHASE, INTERIOR }
 @export var fov_fast := 80.0
 
 @export_group("Interior")
-@export var interior_fov := 72.0
-## From the DriverSeat marker to the driver's eyes: up and a little forward,
-## tipped down a touch, so the road shows over the dash.
-@export var eye_offset := Vector3(0.0, 0.1, -0.06)
-@export var eye_pitch_deg := -3.0
+## Narrower than a chase lens, so the windscreen fills more of the view.
+@export var interior_fov := 58.0
+## From the DriverSeat marker to the driver's eyes: up near the headlining
+## and forward toward the glass, tipped down a touch, so the road shows over
+## the dash. Lower roofs (the classics) bring it down to fit; see `_headroom_above`.
+@export var eye_offset := Vector3(0.0, 0.15, -0.15)
+@export var eye_pitch_deg := -3.5
+## Space kept between the eye and the roof lining above it.
+const HEAD_CLEARANCE := 0.06
 @export var stick_look_speed := 2.2
 
 var _car: CarController
@@ -42,6 +46,8 @@ var _look_idle := 0.0
 var _lean := Vector3.ZERO
 var _last_car_velocity := Vector3.ZERO
 var _ray_query := PhysicsRayQueryParameters3D.new()
+var _headroom_body: Node = null
+var _headroom := INF
 
 
 func _ready() -> void:
@@ -156,8 +162,36 @@ func _update_interior(delta: float) -> void:
 	_lean = _lean.lerp(lean_target, 1.0 - exp(-6.0 * delta))
 
 	var seat_basis := seat.global_basis.orthonormalized()
-	global_position = seat.global_position + seat_basis * (eye_offset + _lean)
+	var eye := eye_offset
+	eye.y = minf(eye.y, _headroom_above(seat) - HEAD_CLEARANCE)
+	global_position = seat.global_position + seat_basis * (eye + _lean)
 	_camera.global_transform = Transform3D(
 		seat_basis * Basis(Vector3.UP, _look_yaw) * Basis(Vector3.RIGHT, _look_pitch + deg_to_rad(eye_pitch_deg)),
 		global_position)
 	_camera.fov = interior_fov
+
+
+## How far above the seat marker the car's lowest roof surface is, over the
+## eye: the classics are a good 10 cm lower inside than the Pop. Measured
+## once from the body's meshes whenever the body changes.
+func _headroom_above(seat: Node3D) -> float:
+	var body := _car.get_node_or_null(^"Body")
+	if body == _headroom_body:
+		return _headroom
+	_headroom_body = body
+	_headroom = INF
+	if body == null:
+		return _headroom
+	var to_seat := seat.global_transform.affine_inverse()
+	for mi: MeshInstance3D in body.find_children("*", "MeshInstance3D", true, false):
+		# Hidden ones too: a folded soft top still comes back over your head.
+		if mi.mesh == null:
+			continue
+		var xf := to_seat * mi.global_transform
+		for si in mi.mesh.get_surface_count():
+			for v: Vector3 in mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]:
+				var p := xf * v
+				# Straight over the head, from the eye back to the headrest.
+				if absf(p.x) < 0.15 and p.z > eye_offset.z - 0.1 and p.z < 0.15 and p.y > 0.05:
+					_headroom = minf(_headroom, p.y)
+	return _headroom
