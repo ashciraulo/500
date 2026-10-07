@@ -213,6 +213,17 @@ func _build_buses() -> void:
 		AudioServer.add_bus_effect(eng, _engine_comp)
 	else:
 		_engine_comp = AudioServer.get_bus_effect(eng, 0) as AudioEffectCompressor
+	# Tyres: the roar sits at its cap close up, but layers, road joints and cat's
+	# eyes stack on it at speed; this holds the bus near the cruising level so
+	# the radio stays on top. Kerbs and bumps still punch through (5 ms attack).
+	var tyres := AudioServer.get_bus_index("Tyres")
+	if AudioServer.get_bus_effect_count(tyres) == 0:
+		var comp := AudioEffectCompressor.new()
+		comp.threshold = TYRES_COMP_THRESHOLD_DB
+		comp.ratio = TYRES_COMP_RATIO
+		comp.attack_us = 5000.0
+		comp.release_ms = 300.0
+		AudioServer.add_bus_effect(tyres, comp)
 	# Ambience and Weather: dulled through the walls when you're indoors at home.
 	for bus in INDOOR_DULLED:
 		var i := AudioServer.get_bus_index(bus)
@@ -285,8 +296,11 @@ static func _slider_db(settings: Node, key: String) -> float:
 ## The Engine bus compressor (see _build_buses): where it starts, how hard it
 ## holds the loud end down, and the make-up gain that lifts the idle.
 const ENGINE_COMP_THRESHOLD_DB := -34.0
-const ENGINE_COMP_RATIO := 2.5
+const ENGINE_COMP_RATIO := 3.0
 const ENGINE_COMP_GAIN_DB := 9.0
+## The Tyres bus compressor: where the roar stops growing with speed.
+const TYRES_COMP_THRESHOLD_DB := -30.0
+const TYRES_COMP_RATIO := 3.0
 
 
 ## Settings menu hook: linear volume 0..1 for a bus ("Master", "Music", "Radio", ...).

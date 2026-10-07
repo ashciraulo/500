@@ -184,10 +184,12 @@ start swapping in your own recordings, regenerate only what you need.
   and cruising at city speeds stays about 6 dB under the radio, in the car
   and in the chase view. Close to the car the 3D players sit at their
   `max_db` cap, so their own `volume_db` can't set the level; for the same
-  reason the tyre roar's level is its cap (`TyreAudio.ROLL_MAX_DB`), with
-  skids, kerbs and bumps louder. sound_check drives a straight road at
-  50 km/h with the radio on and fails if the engine or tyres come within
-  3 dB of the radio.
+  reason the tyre roar's level is its cap (`TyreAudio.ROLL_MAX_DB`), and a
+  compressor on the Tyres bus (`Audio.TYRES_COMP_*`) stops layers, joints
+  and cat's eyes stacking up at speed (kerbs and bumps still punch
+  through). sound_check drives a straight road with the radio on (50 km/h
+  in both views, 62 in the chase view) and fails if the engine or tyres
+  come within 4 dB of the radio.
 - **Menu sounds** play on the UI bus, which sits at `Audio.UI_DB` (-14 dB,
   the files are mastered hot) under the Effects slider. Buttons tick and
   click once, through UiTheme. sound_check fails if opening the pause menu
