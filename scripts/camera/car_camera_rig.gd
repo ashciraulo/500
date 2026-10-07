@@ -13,10 +13,12 @@ enum Mode { CHASE, INTERIOR }
 @export var mode := Mode.CHASE
 
 @export_group("Chase")
-@export var chase_distance := 4.3
-@export var chase_height := 1.55
-@export var look_height := 0.75
-@export var look_ahead := 1.5
+# Low and nearly level, aimed well up the road past the car, so you see
+# where you're going rather than the roof.
+@export var chase_distance := 4.6
+@export var chase_height := 1.3
+@export var look_height := 1.0
+@export var look_ahead := 5.0
 ## How fast the camera swings round behind the car.
 @export var yaw_follow := 6.0
 @export var position_follow := 9.0
@@ -25,6 +27,10 @@ enum Mode { CHASE, INTERIOR }
 
 @export_group("Interior")
 @export var interior_fov := 72.0
+## From the DriverSeat marker to the driver's eyes: up and a little forward,
+## tipped down a touch, so the road shows over the dash.
+@export var eye_offset := Vector3(0.0, 0.1, -0.06)
+@export var eye_pitch_deg := -3.0
 @export var stick_look_speed := 2.2
 
 var _car: CarController
@@ -150,8 +156,8 @@ func _update_interior(delta: float) -> void:
 	_lean = _lean.lerp(lean_target, 1.0 - exp(-6.0 * delta))
 
 	var seat_basis := seat.global_basis.orthonormalized()
-	global_position = seat.global_position + seat_basis * _lean
+	global_position = seat.global_position + seat_basis * (eye_offset + _lean)
 	_camera.global_transform = Transform3D(
-		seat_basis * Basis(Vector3.UP, _look_yaw) * Basis(Vector3.RIGHT, _look_pitch),
+		seat_basis * Basis(Vector3.UP, _look_yaw) * Basis(Vector3.RIGHT, _look_pitch + deg_to_rad(eye_pitch_deg)),
 		global_position)
 	_camera.fov = interior_fov

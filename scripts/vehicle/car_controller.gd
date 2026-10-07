@@ -103,6 +103,27 @@ const RPM_PER_RAD_S := 60.0 / TAU
 @export var suspension_length := 0.30
 ## How far ahead of a wheel (in tyre radii) to look for a kerb, furthest first.
 const STEP_PROBES: Array[float] = [0.8, 0.55, 0.3]
+## Over a crest or a lump a tyre can lift for a moment. It keeps gripping on
+## what it remembers of its load for this long (s) while it's within SKIM of
+## the road, so one bump doesn't turn the car loose.
+const SKIM_TIME := 0.25
+const SKIM := 0.12
+## Above this suspension speed (m/s) the dampers stiffen no further, so a sharp
+## edge at speed doesn't kick the car off the road.
+const DAMPER_KNEE := 1.2
+## How much of the drop from the centre of mass to the road the tyres' grip
+## acts through (1 = at the road). Grip pushing at road level rolls a tall
+## little car onto its door handles in a hard corner and lifts the inside
+## wheels; acting higher, it leans and pitches like a car on firm springs.
+const GRIP_LEVER := 0.5
+## Every car grips and stops harder than its real figures: in a game you judge
+## corners from a screen, so the car forgives a bit more than a real one.
+const GRIP_ASSIST := 1.2
+## See step 5 of _physics_process: extra weight (in g) and pitch/roll damping
+## while some wheels are off the road.
+const LIGHT_PULL := 0.6
+const LIGHT_STEADY := 3.0
+const BRAKE_ASSIST := 1.45
 ## The highest step a tyre rides up, in tyre radii (a 13 cm kerb is 0.45; the
 ## map's kerbs reach 22 cm where streets slope, and 40 cm is still a wall).
 const STEP_CLIMB := 0.9
@@ -168,7 +189,7 @@ const FIELD_GEAR_CLASSIC := {
 ## the cap off (pure lock table).
 @export_range(0.0, 1.0) var steer_assist := 1.0
 ## Steering angle past the grip limit that the assist still allows.
-@export var steer_assist_margin := 1.0
+@export var steer_assist_margin := 1.4
 
 # --- Driver inputs, 0..1 (steer -1..1). Set by the player or by AI. ---
 var throttle_input := 0.0
@@ -316,6 +337,7 @@ var _wheels: Array[Dictionary] = []
 var _shift_timer := 0.0
 var _pending_gear := 1
 var _reverse_hold := 0.0
+var _brake_reverse := false  # reverse was picked with the brake key
 var _headlights_manual := false
 var _spawn_transform: Transform3D
 var _ray_query := PhysicsRayQueryParameters3D.new()
@@ -354,6 +376,9 @@ func _ready() -> void:
 			"spin_speed": 0.0,
 			"surface": DEFAULT_SURFACE,
 			"cap": INF,  # drive force the tyre had left last step, N
+			"grip_load": 0.0,  # the load the tyre grips with, smoothed over bumps, N
+			"light": 1.0,  # seconds since this tyre last touched the road
+			"skim": false,  # just off the road (within SKIM)
 		})
 	_capture_rig()
 	var lower := get_node_or_null("LowerBodyCollision") as CollisionShape3D
@@ -389,13 +414,19 @@ func _physics_process(delta: float) -> void:
 	for wheel in _wheels:
 		var origin: Vector3 = wheel.anchor.global_position
 		_ray_query.from = origin
-		_ray_query.to = origin - up * total_ray
+		_ray_query.to = origin - up * (total_ray + SKIM)
 		var hit := space.intersect_ray(_ray_query)
 		wheel.last_compression = wheel.compression
-		if hit.is_empty():
+		wheel.skim = false
+		if hit.is_empty() or origin.distance_to(hit.position) > total_ray:
 			wheel.grounded = false
 			wheel.compression = 0.0
 			wheel.hit_distance = total_ray
+			if not hit.is_empty():
+				# Just off the road: close enough to keep a little grip.
+				wheel.skim = true
+				wheel.contact = hit.position
+				wheel.normal = hit.normal
 		else:
 			wheel.grounded = true
 			wheel.hit_distance = origin.distance_to(hit.position)
@@ -422,23 +453,38 @@ func _physics_process(delta: float) -> void:
 		var forward := -global_basis.z
 		if wheel.front:
 			forward = forward.rotated(up, steer_angle)
-		if not wheel.grounded:
-			wheel.spin_speed = lerpf(wheel.spin_speed, 0.0, delta * 0.5)
-			wheel.cap = 0.0
-			continue
-		grounded_wheels += 1
-		surface_votes[wheel.surface] = surface_votes.get(wheel.surface, 0) + 1
-
-		# Spring, damper and anti-roll bar.
 		var opposite: Dictionary = _wheels[i ^ 1]
-		var compression_speed: float = (wheel.compression - wheel.last_compression) / delta
-		var load: float = wheel.compression * spring_strength + compression_speed * damper_strength
-		load += (wheel.compression - opposite.compression) * anti_roll_strength
-		load = maxf(load, 0.0)
+		var load := 0.0
+		if wheel.grounded:
+			wheel.light = 0.0
+			grounded_wheels += 1
+			surface_votes[wheel.surface] = surface_votes.get(wheel.surface, 0) + 1
+			# Spring, damper and anti-roll bar. The dampers are digressive: past
+			# DAMPER_KNEE they barely firm up, so a sharp lump doesn't kick.
+			var compression_speed: float = (wheel.compression - wheel.last_compression) / delta
+			var knee := clampf(compression_speed, -DAMPER_KNEE, DAMPER_KNEE)
+			var damping := (knee + (compression_speed - knee) * 0.25) * damper_strength
+			load = wheel.compression * spring_strength + damping
+			load += (wheel.compression - opposite.compression) * anti_roll_strength
+			load = maxf(load, 0.0)
+			# The tyre grips with a load that follows the spring but rides
+			# over the spikes and dips of a bumpy road.
+			var static_load := corner_mass * 9.81
+			var target := minf(load, static_load * 2.2)
+			var rate := 40.0 if target > wheel.grip_load else 12.0
+			wheel.grip_load = lerpf(wheel.grip_load, target, 1.0 - exp(-rate * delta))
+			apply_force(up * load, wheel.contact - global_position)
+		else:
+			wheel.light += delta
+			if not wheel.skim or wheel.light > SKIM_TIME:
+				wheel.grip_load = 0.0
+				wheel.spin_speed = lerpf(wheel.spin_speed, 0.0, delta * 0.5)
+				wheel.cap = 0.0
+				continue
+			wheel.grip_load *= exp(-delta / 0.15)
 		var contact: Vector3 = wheel.contact
 		var normal: Vector3 = wheel.normal
 		var offset := contact - global_position
-		apply_force(up * load, offset)
 
 		# Tyre frame on the contact plane.
 		forward = (forward - normal * forward.dot(normal)).normalized()
@@ -447,7 +493,7 @@ func _physics_process(delta: float) -> void:
 		var v_long := point_velocity.dot(forward)
 		var v_lat := point_velocity.dot(right)
 		var surface_info: Dictionary = SURFACES.get(wheel.surface, SURFACES[DEFAULT_SURFACE])
-		var max_force: float = tire_grip * load * surface_info.grip * wet_grip * wear_grip
+		var max_force: float = tire_grip * GRIP_ASSIST * wheel.grip_load * surface_info.grip * wet_grip * wear_grip
 		var stop_force := absf(v_long) * corner_mass / delta
 
 		var lateral := -v_lat * corner_mass / delta * lateral_stiffness
@@ -455,12 +501,12 @@ func _physics_process(delta: float) -> void:
 		if wheel.driven:
 			longitudinal += _drive_share(drive_torque * 0.5 / wheel_radius, wheel, opposite)
 		wheel.cap = sqrt(maxf(max_force * max_force - lateral * lateral, 0.0))
-		var braking := brake * brake_force * wear_brakes * (0.3 if wheel.front else 0.2)
+		var braking := brake * brake_force * BRAKE_ASSIST * wear_brakes * (0.3 if wheel.front else 0.2)
 		if not wheel.front:
 			braking += handbrake_input * handbrake_force * 0.5
 			if handbrake_input > 0.1:
 				max_force *= lerpf(1.0, handbrake_grip, handbrake_input)
-		braking += rolling_resistance * surface_info.rolling * load
+		braking += rolling_resistance * surface_info.rolling * wheel.grip_load
 		longitudinal -= signf(v_long) * minf(braking, stop_force)
 
 		# Friction circle: the tyre can only push so hard in total.
@@ -476,7 +522,8 @@ func _physics_process(delta: float) -> void:
 				slip = maxf(slip, clampf(over * 0.2, 0.0, 1.0))
 			demand = demand.normalized() * max_force
 		worst_slip = maxf(worst_slip, slip)
-		apply_force(right * demand.x + forward * demand.y, offset)
+		var lever := offset - up * offset.dot(up) * (1.0 - GRIP_LEVER)
+		apply_force(right * demand.x + forward * demand.y, lever)
 
 		# Visual wheel spin; driven wheels spin up when they slip.
 		var spin_target := v_long / wheel_radius
@@ -488,6 +535,15 @@ func _physics_process(delta: float) -> void:
 
 	# 4. Air drag.
 	apply_central_force(-linear_velocity * linear_velocity.length() * drag_coefficient)
+
+	# 5. Over a crest, with wheels off the road but not all of them, pull the
+	# car back down onto them and calm its pitch and roll, so a lump in the
+	# road is a lurch rather than a launch. Fully airborne (off a ramp) it flies.
+	if grounded_wheels > 0 and grounded_wheels < 4:
+		var missing := float(4 - grounded_wheels) / 4.0
+		apply_central_force(Vector3.DOWN * mass * 9.81 * LIGHT_PULL * missing)
+		var tumble := angular_velocity - up * angular_velocity.dot(up)
+		apply_torque(-tumble * mass * LIGHT_STEADY * missing)
 
 	tire_slip = worst_slip
 	forward_speed = linear_velocity.dot(-global_basis.z)
@@ -1487,7 +1543,7 @@ func _read_player_input(delta: float) -> void:
 	var raw_brake := Input.get_action_strength("brake")
 	# Rate limit so keyboard input feels like a pedal rather than a switch.
 	throttle_input = move_toward(throttle_input, raw_throttle, delta * (5.0 if raw_throttle > throttle_input else 8.0))
-	brake_input = move_toward(brake_input, raw_brake, delta * (6.0 if raw_brake > brake_input else 10.0))
+	brake_input = move_toward(brake_input, raw_brake, delta * (9.0 if raw_brake > brake_input else 10.0))
 	steer_input = Input.get_axis("steer_right", "steer_left")
 	handbrake_input = Input.get_action_strength("handbrake")
 	if Input.is_action_just_pressed("shift_up"):
@@ -1510,7 +1566,7 @@ func _update_steering(delta: float) -> void:
 	if steer_assist > 0.0:
 		# The road-wheel angle that asks for the tyres' full grip at this speed.
 		var v := maxf(absf(forward_speed), 1.0)
-		var grip_lock := atan(_wheelbase * tire_grip * 9.81 / (v * v)) * steer_assist_margin
+		var grip_lock := atan(_wheelbase * tire_grip * GRIP_ASSIST * 9.81 / (v * v)) * steer_assist_margin
 		# In a slide, hand back the full lock so you can catch it.
 		var sideways := absf(linear_velocity.dot(global_basis.x))
 		var slide := clampf((atan2(sideways, v) - 0.08) / 0.15, 0.0, 1.0)
@@ -1524,28 +1580,43 @@ func _update_steering(delta: float) -> void:
 func _update_transmission_logic(delta: float) -> void:
 	throttle = throttle_input
 	brake = brake_input
-	if transmission == Transmission.AUTOMATIC:
-		# Arcade auto: hold brake at a standstill to reverse, and in reverse
-		# the pedals swap so "brake" drives backwards.
-		var stopped := absf(forward_speed) < 1.0 and not is_shifting
-		if gear > 0 and stopped and brake_input > 0.5 and throttle_input < 0.1:
-			_reverse_hold += delta
-			if _reverse_hold > 0.25:
-				_begin_shift(-1)
-		elif gear == -1 and stopped and throttle_input > 0.5 and brake_input < 0.1:
-			_reverse_hold += delta
-			if _reverse_hold > 0.1:
-				_begin_shift(1)
-		else:
-			_reverse_hold = 0.0
-		if gear == -1:
-			throttle = brake_input
-			brake = throttle_input
-		elif gear >= 1 and not is_shifting:
-			if rpm > auto_upshift_rpm and gear < gear_ratios.size() and throttle > 0.1:
-				_begin_shift(gear + 1)
-			elif rpm < auto_downshift_rpm and gear > 1:
-				_begin_shift(gear - 1)
+	# The brake key means "go backwards" once the car is already rolling back
+	# (after a spin, say), or in automatic once it's stopped: it picks reverse straight away and
+	# drives, rather than braking to a stop first. While reverse was picked
+	# this way the pedals swap, so the accelerator brakes, then picks first.
+	var stopped := absf(forward_speed) < 1.0
+	var rolling_back := forward_speed < -0.5
+	var arcade := transmission == Transmission.AUTOMATIC or _brake_reverse
+	# In manual a standstill hold stays a brake (you're waiting at the lights
+	# in first); only rolling backwards picks reverse.
+	var wants_back := rolling_back or (stopped and transmission == Transmission.AUTOMATIC)
+	if gear >= 0 and not (is_shifting and _pending_gear == -1) and brake_input > 0.5 and throttle_input < 0.1 and wants_back:
+		_reverse_hold += delta
+		# A moment's hold at a standstill (so a tap at the lights stays a
+		# brake); none at all when it's already rolling backwards.
+		if rolling_back or _reverse_hold > 0.2:
+			_begin_shift(-1)
+			_brake_reverse = true
+			arcade = true
+	elif gear == -1 and not is_shifting and arcade and throttle_input > 0.5 and brake_input < 0.1 and (stopped or forward_speed > 0.5):
+		_reverse_hold += delta
+		if forward_speed > 0.5 or _reverse_hold > 0.1:
+			_begin_shift(1)
+			_brake_reverse = false
+	else:
+		_reverse_hold = 0.0
+	if (gear == -1 or (is_shifting and _pending_gear == -1)) and arcade:
+		throttle = brake_input
+		brake = throttle_input
+	elif is_shifting and _pending_gear == 1 and gear == -1:
+		brake = 0.0
+	if transmission == Transmission.AUTOMATIC and gear >= 1 and not is_shifting:
+		if rpm > auto_upshift_rpm and gear < gear_ratios.size() and throttle > 0.1:
+			_begin_shift(gear + 1)
+		elif _road_rpm() < auto_downshift_rpm and gear > 1:
+			# By road speed, not the engine: at a crawl the clutch slips and
+			# the engine sits above idle, but it still wants first.
+			_begin_shift(gear - 1)
 	if gear == -1:
 		# Keep reversing gentle: fade the throttle out above reverse_limit_kmh.
 		throttle *= clampf(1.0 - (speed_kmh() - reverse_limit_kmh) / 6.0, 0.0, 1.0)
@@ -1556,6 +1627,11 @@ func _update_transmission_logic(delta: float) -> void:
 			is_shifting = false
 			gear = _pending_gear
 			gear_changed.emit(gear)
+
+
+## The revs the engine would be at in this gear from road speed alone.
+func _road_rpm() -> float:
+	return absf(forward_speed) / maxf(wheel_radius, 0.01) * absf(_gear_ratio(gear)) * final_drive * RPM_PER_RAD_S
 
 
 func _begin_shift(target: int) -> void:

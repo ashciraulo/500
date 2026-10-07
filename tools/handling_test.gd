@@ -1,0 +1,378 @@
+extends SceneTree
+## How the Pop drives: holding a corner at full keyboard lock at town and
+## open-road speeds, stopping from 80, riding a lumpy road and a row of bumps
+## at 60, and reversing out of a spin with the brake key. Each case runs on
+## its own flat world with the gearbox in automatic, like most players drive.
+##
+##   godot --headless --path . --fixed-fps 120 --script res://tools/handling_test.gd -- --no-save
+##
+## Add car=<id> to drive another car, and report to only print the numbers.
+## Exits with code 1 if any check fails.
+
+const CASES := [
+	{"name": "corner_40", "kind": "corner", "kmh": 40.0},
+	{"name": "corner_60", "kind": "corner", "kmh": 60.0},
+	{"name": "corner_80", "kind": "corner", "kmh": 80.0},
+	{"name": "lane_change_80", "kind": "swerve", "kmh": 80.0},
+	{"name": "brake_80", "kind": "brake", "kmh": 80.0},
+	{"name": "brake_in_corner_70", "kind": "brake_corner", "kmh": 70.0},
+	{"name": "lumpy_60", "kind": "lumpy", "kmh": 60.0},
+	{"name": "bumps_60", "kind": "bumps", "kmh": 60.0},
+	{"name": "rough_60", "kind": "rough", "kmh": 60.0},
+	{"name": "rough_corner_50", "kind": "rough_corner", "kmh": 50.0},
+	{"name": "rolling_back", "kind": "rollback", "kmh": 0.0},
+	{"name": "rolling_back_manual", "kind": "rollback", "kmh": 0.0, "manual": true},
+	{"name": "stopped_reverse", "kind": "stopped", "kmh": 0.0},
+]
+
+var _world: Node3D
+var _car  # CarController (untyped: a tool script compiles before the autoloads)
+var _case := -1
+var _time := 0.0
+var _phase := 0
+var _phase_time := 0.0
+var _failures: Array[String] = []
+var _report := false
+var _m := {}  # measurements for this case
+
+
+func _initialize() -> void:
+	_report = OS.get_cmdline_user_args().has("report")
+
+
+func _process(delta: float) -> bool:
+	if _world == null:
+		_case += 1
+		if _case >= CASES.size():
+			return _finish()
+		var only := ""
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("only="):
+				only = arg.trim_prefix("only=")
+		if only != "" and not String(CASES[_case].name).begins_with(only):
+			return false
+		_build(CASES[_case])
+		return false
+	_time += delta
+	_phase_time += delta
+	if _time < 0.8:
+		return false  # settle
+	var c: Dictionary = CASES[_case]
+	if _step(c, delta):
+		_judge(c)
+		_world.queue_free()
+		_world = null
+	return false
+
+
+func _build(c: Dictionary) -> void:
+	_time = 0.0
+	_phase = 0
+	_phase_time = 0.0
+	_m = {"max_lat_g": 0.0, "max_roll": 0.0, "max_pitch": 0.0, "max_yaw_rate": 0.0, "max_slip": 0.0,
+		"airborne": 0.0, "spun": false, "drift": 0.0}
+	_world = Node3D.new()
+	root.add_child(_world)
+	_box(Vector3(3000, 1, 3000), Vector3(0, -0.5, -1200))
+	match String(c.kind):
+		"lumpy":
+			_lumpy_road()
+		"bumps":
+			_bump_row()
+		"rough", "rough_corner":
+			_rough_ground()
+	_car = (load("res://scenes/vehicles/fiat_500_pop.tscn") as PackedScene).instantiate()
+	_car.player_controlled = false
+	_car.position = Vector3(0, 0.6, 0)
+	_world.add_child(_car)
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("car="):
+			_car.load_vehicle_state({"car_id": arg.trim_prefix("car=")})
+	_car.set_transmission(0 if c.get("manual", false) else 1)
+
+
+## Drive the case; returns true when it's done.
+func _step(c: Dictionary, delta: float) -> bool:
+	var v: Vector3 = _car.linear_velocity
+	var speed := v.length()
+	var fwd: Vector3 = -_car.global_basis.z
+	var kind := String(c.kind)
+	# Watch the car the whole time.
+	var flat := Vector3(v.x, 0, v.z)
+	if flat.length() > 3.0:
+		var heading := Vector3(fwd.x, 0, fwd.z).normalized()
+		var off := absf(heading.signed_angle_to(flat.normalized(), Vector3.UP))
+		if _phase >= 1 and absf(_car.forward_speed) > 3.0:
+			_m.max_slip = maxf(_m.max_slip, rad_to_deg(minf(off, PI - off) if _car.forward_speed < 0 else off))
+			if off > deg_to_rad(40.0) and _car.forward_speed > 0.0:
+				_m.spun = true
+	var yaw_rate: float = absf(_car.angular_velocity.y)
+	if _phase >= 1:
+		_m.max_lat_g = maxf(_m.max_lat_g, yaw_rate * speed / 9.81)
+		_m.max_yaw_rate = maxf(_m.max_yaw_rate, rad_to_deg(yaw_rate))
+		var b: Basis = _car.global_basis
+		_m.max_roll = maxf(_m.max_roll, absf(rad_to_deg(asin(clampf(b.x.y, -1, 1)))))
+		_m.max_pitch = maxf(_m.max_pitch, absf(rad_to_deg(asin(clampf(b.z.y, -1, 1)))))
+		if _car.grounded_wheels < 3:
+			_m.airborne += delta
+	match kind:
+		"corner", "swerve", "brake", "brake_corner", "lumpy", "bumps", "rough", "rough_corner":
+			if _phase == 0:
+				_hold(float(c.kmh), speed)
+				_car.steer_input = 0.0
+				_steer_straight()
+				if speed * 3.6 > float(c.kmh) - 1.0 and _phase_time > 2.0:
+					_next()
+					_m.start = _car.global_position
+					_m.start_yaw = _car.global_rotation.y
+				elif _phase_time > 40.0:
+					_m.never_reached = true
+					return true
+				return false
+			match kind:
+				"corner", "rough_corner":
+					_hold(float(c.kmh), speed)
+					_car.steer_input = 1.0
+					if _phase_time > 6.0:
+						_m.end_kmh = speed * 3.6
+						return true
+				"swerve":
+					_hold(float(c.kmh), speed)
+					# Left for 0.6 s, right for 1.2 s, left 0.6 s, then straight.
+					var t := _phase_time
+					_car.steer_input = 1.0 if t < 0.6 else (-1.0 if t < 1.8 else (1.0 if t < 2.4 else 0.0))
+					if t > 2.4:
+						_steer_straight()
+					if t > 6.0:
+						_m.end_kmh = speed * 3.6
+						return true
+				"brake":
+					_car.throttle_input = 0.0
+					_car.brake_input = 1.0
+					_steer_straight()
+					if speed < 0.3 or _phase_time > 10.0:
+						_m.stop_m = (_car.global_position - _m.start).length()
+						_m.stop_s = _phase_time
+						_m.yaw_change = rad_to_deg(absf(wrapf(_car.global_rotation.y - _m.start_yaw, -PI, PI)))
+						return true
+				"brake_corner":
+					# Turn in, then brake hard while still turning.
+					_car.steer_input = 1.0
+					if _phase_time < 1.0:
+						_hold(float(c.kmh), speed)
+					else:
+						_car.throttle_input = 0.0
+						_car.brake_input = 1.0
+					if speed < 0.5 or _phase_time > 8.0:
+						_m.end_kmh = speed * 3.6
+						return true
+				"lumpy", "bumps", "rough":
+					_hold(float(c.kmh), speed)
+					_steer_straight()
+					var gone: float = (_car.global_position - _m.start).length()
+					_m.drift = maxf(_m.drift, absf(_car.global_position.x))
+					if gone > 200.0 or _phase_time > 20.0:
+						_m.end_kmh = speed * 3.6
+						return true
+		"rollback":
+			# Rolling backwards at 3 m/s in first (a spin, or a hill), then hold the brake key.
+			if _phase == 0:
+				_car.linear_velocity = _car.global_basis.z * 3.0
+				_car.brake_input = 1.0
+				_car.throttle_input = 0.0
+				_next()
+				return false
+			_car.brake_input = 1.0
+			if _phase_time > 1.5:
+				_m.end_speed = _car.forward_speed
+				_m.end_gear = _car.gear
+				return true
+		"stopped":
+			if _phase <= 1:
+				_car.brake_input = 1.0
+				_car.throttle_input = 0.0
+				if _phase == 0:
+					_next()
+				if _phase_time > 2.0:
+					_m.end_speed = _car.forward_speed
+					_m.end_gear = _car.gear
+					_next()
+			else:
+				# Then the accelerator: brakes, picks first and drives off.
+				_car.brake_input = 0.0
+				_car.throttle_input = 1.0
+				if _phase_time > 4.0:
+					_m.fwd_gear = _car.gear
+					_m.fwd_speed = _car.forward_speed
+					return true
+	return false
+
+
+func _judge(c: Dictionary) -> void:
+	var line := "%-20s" % c.name
+	for key in ["end_kmh", "max_lat_g", "max_yaw_rate", "max_slip", "max_roll", "max_pitch", "airborne", "drift", "stop_m", "stop_s", "yaw_change", "end_speed", "end_gear"]:
+		if _m.has(key):
+			var val = _m[key]
+			line += "  %s=%s" % [key, ("%.2f" % val) if val is float else str(val)]
+	line += "  spun=%s" % _m.spun
+	print(line)
+	if _m.get("never_reached", false):
+		_check(false, "%s: got up to %d km/h" % [c.name, c.kmh])
+		return
+	match String(c.kind):
+		"corner":
+			_check(not _m.spun, "%s: holds the corner at full lock without spinning" % c.name)
+			_check(_m.max_slip < 25.0, "%s: no big slide (%.0f deg)" % [c.name, _m.max_slip])
+			if float(c.kmh) <= 60.0:
+				_check(_m.max_lat_g > 0.55, "%s: corners hard enough (%.2f g)" % [c.name, _m.max_lat_g])
+			_check(_m.airborne < 0.1, "%s: keeps its wheels down" % c.name)
+		"swerve":
+			_check(not _m.spun, "%s: a lane change doesn't spin it" % c.name)
+			_check(_m.max_slip < 20.0, "%s: settles after the swerve (%.0f deg slide)" % [c.name, _m.max_slip])
+		"brake":
+			_check(_m.stop_m < 34.0, "%s: stops within 34 m (%.1f m)" % [c.name, _m.stop_m])
+			_check(_m.yaw_change < 5.0, "%s: stops straight (%.1f deg)" % [c.name, _m.yaw_change])
+		"brake_corner":
+			_check(not _m.spun, "%s: braking mid-corner doesn't spin it" % c.name)
+		"rough_corner":
+			_check(not _m.spun, "%s: rough ground mid-corner doesn't spin it" % c.name)
+			_check(_m.max_slip < 25.0, "%s: no big slide on rough ground (%.0f deg)" % [c.name, _m.max_slip])
+			_check(_m.airborne < 0.5, "%s: wheels stay down (%.2f s light)" % [c.name, _m.airborne])
+		"lumpy", "bumps", "rough":
+			_check(not _m.spun, "%s: bumps don't spin it" % c.name)
+			_check(_m.drift < 1.5, "%s: stays in its lane over bumps (%.2f m)" % [c.name, _m.drift])
+			# Crests as sharp as the lumpy road's lift a real car too (it was
+			# 2.3 s light before the skim grip); what matters is landing straight.
+			var light_ok := 2.0 if c.kind == "lumpy" else 0.5
+			_check(_m.airborne < light_ok, "%s: wheels stay down (%.2f s light)" % [c.name, _m.airborne])
+			_check(_m.max_yaw_rate < 12.0, "%s: bumps barely turn it (%.1f deg/s)" % [c.name, _m.max_yaw_rate])
+			_check(_m.end_kmh > float(c.kmh) - 12.0, "%s: keeps its speed (%.0f km/h)" % [c.name, _m.end_kmh])
+		"rollback", "stopped":
+			_check(_m.end_gear == -1, "%s: the brake key picks reverse (gear %d)" % [c.name, _m.end_gear])
+			_check(_m.end_speed < -1.5, "%s: and drives backwards (%.1f m/s)" % [c.name, _m.end_speed])
+			if _m.has("fwd_gear"):
+				_check(_m.fwd_gear >= 1 and _m.fwd_speed > 1.5, "%s: the accelerator then drives forwards again (gear %d, %.1f m/s)" % [c.name, _m.fwd_gear, _m.fwd_speed])
+
+
+func _hold(kmh: float, speed: float) -> void:
+	var target := kmh / 3.6
+	_car.throttle_input = clampf((target - speed) * 0.5 + 0.3, 0.0, 1.0)
+	_car.brake_input = clampf((speed - target - 1.5) * 0.3, 0.0, 1.0)
+
+
+## Keep the car pointed down -Z like a player would.
+func _steer_straight() -> void:
+	var fwd: Vector3 = -_car.global_basis.z
+	var err := atan2(-fwd.x, -fwd.z)  # positive when pointing left of -Z
+	var lateral: float = _car.global_position.x
+	_car.steer_input = clampf(-err * 3.0 - lateral * 0.08, -1.0, 1.0)
+
+
+func _next() -> void:
+	_phase += 1
+	_phase_time = 0.0
+
+
+## A road whose slope changes by up to 7% every metre (like the Pearson St
+## crest before the map's smoothing), 400 m long and 8 m wide.
+func _lumpy_road() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var faces := PackedVector3Array()
+	var h := 0.0
+	var slope := 0.0
+	var z := -10.0
+	var heights: Array[float] = []
+	for i in 420:
+		heights.append(h)
+		slope = clampf(slope + rng.randf_range(-0.07, 0.07), -0.08, 0.08)
+		h = clampf(h + slope, -0.6, 0.6)
+		if absf(h) >= 0.6:
+			slope = -slope * 0.5
+	for i in 419:
+		var z0 := z - i
+		var z1 := z - i - 1
+		var a := Vector3(-4, heights[i], z0)
+		var b := Vector3(4, heights[i], z0)
+		var c := Vector3(-4, heights[i + 1], z1)
+		var d := Vector3(4, heights[i + 1], z1)
+		faces.append_array([a, c, d, a, d, b])
+	var body := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var shape := ConcavePolygonShape3D.new()
+	shape.set_faces(faces)
+	col.shape = shape
+	body.add_child(col)
+	body.position.y = 0.6  # above the flat ground
+	_world.add_child(body)
+	# A ramp up onto it.
+	var ramp := PackedVector3Array([Vector3(-4, -0.6, 10), Vector3(-4, 0, -10), Vector3(4, 0, -10),
+		Vector3(-4, -0.6, 10), Vector3(4, 0, -10), Vector3(4, -0.6, 10)])
+	var rbody := StaticBody3D.new()
+	var rcol := CollisionShape3D.new()
+	var rshape := ConcavePolygonShape3D.new()
+	rshape.set_faces(ramp)
+	rcol.shape = rshape
+	rbody.add_child(rcol)
+	rbody.position.y = 0.6
+	_world.add_child(rbody)
+
+
+## Rough ground both ways: lumps a few centimetres high whose slope changes
+## by several percent every metre, different under each side of the car.
+func _rough_ground() -> void:
+	var size := 400
+	var noise := FastNoiseLite.new()
+	noise.seed = 11
+	noise.frequency = 0.12
+	noise.fractal_octaves = 2
+	var data := PackedFloat32Array()
+	data.resize(size * size)
+	for j in size:
+		for i in size:
+			data[j * size + i] = noise.get_noise_2d(i, j) * 0.09
+	var shape := HeightMapShape3D.new()
+	shape.map_width = size
+	shape.map_depth = size
+	shape.map_data = data
+	var body := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	col.shape = shape
+	body.add_child(col)
+	body.position = Vector3(0, 0.12, -size * 0.5 + 20.0)
+	_world.add_child(body)
+
+
+## Speed-bump-like ridges, 6 cm high, under one side of the car then the other.
+func _bump_row() -> void:
+	for i in 20:
+		var x := -0.7 if i % 2 == 0 else 0.7
+		_box(Vector3(1.0, 0.12, 0.5), Vector3(x, 0.0, -30.0 - i * 9.0))
+
+
+func _box(size: Vector3, at: Vector3) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	col.shape = shape
+	body.add_child(col)
+	body.position = at
+	_world.add_child(body)
+	return body
+
+
+func _check(ok: bool, what: String) -> void:
+	if _report:
+		return
+	print(("  ok   " if ok else "  FAIL ") + what)
+	if not ok:
+		_failures.append(what)
+
+
+func _finish() -> bool:
+	print("HANDLING ", "PASSED" if _failures.is_empty() else "FAILED (%d)" % _failures.size())
+	for f in _failures:
+		print("  - " + f)
+	quit(1 if _failures.size() else 0)
+	return true

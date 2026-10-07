@@ -41,6 +41,7 @@ var _shots := ""
 var _target: Dictionary = {}
 var _money := 0
 var _wait := 0
+var _retries := 0
 var _seen_before := 0
 var _walker: Node3D
 var _fishing: Node
@@ -146,7 +147,11 @@ func _process(_delta: float) -> bool:
 				_check(false, "the galah was never identified (target %s)" % str(_bino.target))
 				_next()
 		2:  # The shot: hit every arc.
-			_aim(_target.birds[0].node)
+			# Hold on the bird being focused; before that, one you can see. A
+			# grazing galah can still wander behind a rise mid-shot and be
+			# lost, so that gets a fresh go at another (a few times at most).
+			var focused = _bino.dial.get("node")
+			_aim(focused if is_instance_valid(focused) else _visible_bird(_target))
 			if _frames == 5:
 				_bino._start_shot()
 				_check(_bino.state == 2, "the focus dial starts")
@@ -157,7 +162,12 @@ func _process(_delta: float) -> bool:
 				_bino._press()
 			elif _frames > 20 and _bino.state != 2 and _wait == 0:
 				_wait = _frames
-			if _wait > 0 and _frames > _wait + 10:
+			if _wait > 0 and _frames > _wait + 10 and _fj.roll.is_empty() and _retries < 3:
+				print("  (lost the galah mid-shot, trying again)")
+				_retries += 1
+				_wait = 0
+				_frames = 0
+			elif _wait > 0 and _frames > _wait + 10:
 				_check(_fj.roll.size() == 1, "a frame on the roll (%d)" % _fj.roll.size())
 				_check(_fj.is_photographed("galah"), "the galah's page has a photo")
 				var e: Dictionary = _fj.entry("galah")
