@@ -60,10 +60,13 @@ var _inside := false
 var _indoors := false
 var _driving := false
 var _base_db := {}          # mixed levels of the buses set_indoors() turns down
-var _effects_db := 0.0      # the Effects slider, which also covers the Cabin bus
+var _effects_db := 0.0      # the Effects slider, which also covers the Cabin and UI buses
+var _car_db := 0.0          # the Your car slider: Engine, Tyres, Cabin
+var _surround_db := 0.0     # the Weather and street slider: Ambience, Weather, Vehicles
 var _world_lp: AudioEffectLowPassFilter
 var _world_shelf: AudioEffectEQ6
 var _radio_lp: AudioEffectLowPassFilter
+var _engine_lift: AudioEffectAmplify
 var _music_player: AudioStreamPlayer
 var _music_name := ""
 var _mission: AudioStreamSynchronized
@@ -196,6 +199,13 @@ func _build_buses() -> void:
 		_world_lp = AudioServer.get_bus_effect(world, 0) as AudioEffectLowPassFilter
 	for bus in ["Vehicles", "Tyres", "Engine"]:
 		_base_db[bus] = AudioServer.get_bus_volume_db(AudioServer.get_bus_index(bus))
+	# Engine: lifted at the quiet end of the rev range (EngineAudio sets it).
+	var eng := AudioServer.get_bus_index("Engine")
+	if AudioServer.get_bus_effect_count(eng) == 0:
+		_engine_lift = AudioEffectAmplify.new()
+		AudioServer.add_bus_effect(eng, _engine_lift)
+	else:
+		_engine_lift = AudioServer.get_bus_effect(eng, 0) as AudioEffectAmplify
 	# Ambience and Weather: dulled through the walls when you're indoors at home.
 	for bus in INDOOR_DULLED:
 		var i := AudioServer.get_bus_index(bus)
@@ -250,11 +260,25 @@ func apply_volume_settings() -> void:
 		if idx >= 0:
 			var v := clampf(float(settings.get(key)), 0.0, 1.0)
 			AudioServer.set_bus_volume_db(idx, SETTINGS_BUSES[key][1] + linear_to_db(maxf(v, 0.0001)))
-	# Cabin sounds (rain on the roof, wipers, indicator, key) are effects too,
-	# but skip World so they aren't muffled with the street: _apply_inside()
-	# adds the Effects slider to the Cabin bus's own level.
-	_effects_db = linear_to_db(maxf(clampf(float(settings.get("volume_effects")), 0.0, 1.0), 0.0001))
+	# Cabin sounds (rain on the roof, wipers, indicator, key) and menu sounds
+	# are effects too, but skip World so they aren't muffled with the street:
+	# _apply_inside() adds the Effects slider to their buses' own levels, and
+	# the Your car / Weather and street sliders to the buses under it.
+	_effects_db = _slider_db(settings, "volume_effects")
+	_car_db = _slider_db(settings, "volume_car")
+	_surround_db = _slider_db(settings, "volume_surroundings")
 	_apply_inside()
+
+
+static func _slider_db(settings: Node, key: String) -> float:
+	var v = settings.get(key)
+	return linear_to_db(maxf(clampf(float(v) if v != null else 1.0, 0.0, 1.0), 0.0001))
+
+
+## The player's engine, lifted at idle and cruising (EngineAudio.quiet_lift_db).
+func set_engine_lift(db: float) -> void:
+	if _engine_lift:
+		_engine_lift.volume_db = db
 
 
 ## Settings menu hook: linear volume 0..1 for a bus ("Master", "Music", "Radio", ...).
@@ -330,7 +354,7 @@ const CABIN_OUT_DB := -20.0
 const CHASE_RADIO_DB := -3.0
 const CHASE_RADIO_LP_HZ := 4000.0
 const CHASE_WEATHER_DB := -22.0
-const CHASE_AMBIENCE_DB := -4.0
+const CHASE_AMBIENCE_DB := -6.0
 
 
 func _apply_inside() -> void:
@@ -344,7 +368,8 @@ func _apply_inside() -> void:
 		_radio_lp.cutoff_hz = 7500.0 if _inside else (CHASE_RADIO_LP_HZ if chase else 1200.0)
 	# Cabin sounds (indicator, wipers, rain on the roof) are distant from outside.
 	# The radio applies its own trim (radio.gd asks radio_trim_db() on the signals).
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), (CABIN_DB if _inside else CABIN_OUT_DB) + _effects_db)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), (CABIN_DB if _inside else CABIN_OUT_DB) + _effects_db + _car_db)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("UI"), _effects_db)
 	# Inside, the street and the weather drop well under the radio and engine.
 	var levels := {"Ambience": -9.0 if _inside else (CHASE_AMBIENCE_DB if chase else 0.0), "Weather": -18.0 if _inside else (CHASE_WEATHER_DB if chase else -4.0),
 			"Vehicles": _base_db.get("Vehicles", 0.0), "Tyres": _base_db.get("Tyres", 0.0),
@@ -353,6 +378,10 @@ func _apply_inside() -> void:
 	var home := _indoors and not _inside
 	for bus in INDOOR_DB:
 		levels[bus] += INDOOR_DB[bus] if home else 0.0
+	for bus in ["Engine", "Tyres"]:
+		levels[bus] += _car_db
+	for bus in ["Ambience", "Weather", "Vehicles"]:
+		levels[bus] += _surround_db
 	for bus in levels:
 		AudioServer.set_bus_volume_db(AudioServer.get_bus_index(bus), levels[bus])
 	for bus in INDOOR_DULLED:

@@ -38,6 +38,9 @@ var _save_button: Button
 var _actions: HBoxContainer  # save, unstick and quit: hidden from the title screen
 var _subtitle: Label
 var _syncing := false
+## The settings columns scroll when they don't fit the screen (a big HUD size).
+var _scroll: ScrollContainer
+var _columns: HBoxContainer
 
 
 func _ready() -> void:
@@ -45,6 +48,9 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
 	_panel.visible = false
+	get_viewport().size_changed.connect(func() -> void:
+		if _panel.visible:
+			_fit_height())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -76,7 +82,19 @@ func open() -> void:
 	_subtitle.visible = not _from_title
 	_resume.text = "Back" if _from_title else "Back to the road"
 	_heading.text = "Settings" if _from_title else "Paused"
+	_fit_height()
 	_resume.grab_focus()
+
+
+## Lets the columns take what height the screen has (after the header and the
+## buttons) and scroll past that, then re-centres the card on its new size.
+func _fit_height() -> void:
+	_scroll.custom_minimum_size.y = 0.0
+	var rest := _panel.get_combined_minimum_size().y
+	var room := get_viewport().get_visible_rect().size.y - rest - 16.0
+	_scroll.custom_minimum_size.y = clampf(_columns.get_combined_minimum_size().y, 0.0, maxf(room, 160.0))
+	_panel.reset_size()
+	_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
 
 
 func close() -> void:
@@ -122,21 +140,34 @@ func _build() -> void:
 	_resume.pressed.connect(close)
 	(head[3] as HBoxContainer).add_child(_resume)
 
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.follow_focus = true
+	box.add_child(_scroll)
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 36)
-	box.add_child(columns)
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(columns)
+	_columns = columns
 	var left := VBoxContainer.new()
 	var right := VBoxContainer.new()
 	for column in [left, right]:
 		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		column.add_theme_constant_override("separation", 8)
+		column.add_theme_constant_override("separation", 7)
 		columns.add_child(column)
 
 	_section(left, "World")
 	_weather = _option(left, "Weather", ["Natural", "Clear", "Light rain", "Storm"], func(i: int) -> void:
 		Settings.weather_choice = i - 1
 		Settings.apply())
-	_time_label = UiStyle.label(left, "", "NoteLabel")
+	var clock_row := HBoxContainer.new()
+	left.add_child(clock_row)
+	_time_label = UiStyle.label(clock_row, "", "NoteLabel")
+	_time_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_time_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_freeze = _check(clock_row, "Stop the clock", func(on: bool) -> void:
+		Settings.clock_frozen = on
+		Settings.apply())
 	var presets := HFlowContainer.new()
 	presets.add_theme_constant_override("h_separation", 5)
 	presets.add_theme_constant_override("v_separation", 5)
@@ -145,9 +176,6 @@ func _build() -> void:
 		var hours: float = preset[1]
 		var chip := _button(presets, preset[0], func() -> void: GameClock.set_time(hours))
 		chip.add_theme_font_size_override("font_size", 13)
-	_freeze = _check(left, "Stop the clock", func(on: bool) -> void:
-		Settings.clock_frozen = on
-		Settings.apply())
 	var lengths: Array[String] = []
 	for minutes in Settings.DAY_LENGTHS:
 		lengths.append("%d min" % minutes)
@@ -158,13 +186,6 @@ func _build() -> void:
 	_cozy = _check(left, "Cozy mode: nothing odd at home", func(on: bool) -> void:
 		Settings.cozy_mode = on
 		Settings.apply())
-
-	_section(left, "Driving")
-	_gearbox = _option(left, "Gearbox", ["Manual", "Automatic"], func(i: int) -> void:
-		Settings.automatic_gearbox = i == 1
-		Settings.apply())
-	_mouse = _slider(left, "Mouse look", 0.0005, 0.006, 0.0005, func(v: float) -> void:
-		Settings.mouse_sensitivity = v)
 
 	_section(right, "Look")
 	_fullscreen = _check(right, "Full screen (F11)", func(on: bool) -> void:
@@ -200,17 +221,30 @@ func _build() -> void:
 		Settings.vertex_snap_scale = 1.1 - v
 		Settings.apply())
 
-	_section(right, "Sound")
+	_section(right, "Driving")
+	_gearbox = _option(right, "Gearbox", ["Manual", "Automatic"], func(i: int) -> void:
+		Settings.automatic_gearbox = i == 1
+		Settings.apply())
+	_mouse = _slider(right, "Mouse look", 0.0005, 0.006, 0.0005, func(v: float) -> void:
+		Settings.mouse_sensitivity = v)
+
+	_section(left, "Sound")
 	for pair in [["volume_master", "Everything"], ["volume_effects", "Effects"],
+			["volume_car", "Your car"], ["volume_surroundings", "Weather and street"],
 			["volume_music", "Music"], ["volume_radio", "Radio"]]:
 		var key: String = pair[0]
-		_volumes[key] = _slider(right, pair[1], 0.0, 1.0, 0.05, func(v: float) -> void:
+		_volumes[key] = _slider(left, pair[1], 0.0, 1.0, 0.05, func(v: float) -> void:
 			Settings.set(key, v)
 			Settings.apply())
-	_button(right, "Open My Music folder", func() -> void:
+	# The My Music folder button sits on the Music row to keep the menu short.
+	var folder := _button(_volumes["volume_music"].get_parent(), "My Music folder", func() -> void:
 		var audio := get_node_or_null("/root/Audio")
 		if audio:
 			audio.radio.open_music_folder())
+	folder.add_theme_font_size_override("font_size", 13)
+	folder.tooltip_text = "Open My Music: put your own songs here for the radio"
+	folder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	folder.get_parent().move_child(folder, 1)
 
 	# In the car: back on its wheels. On foot: back up the drop you fell down,
 	# or back along the way you walked (else home to the front gate).
