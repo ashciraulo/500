@@ -5,6 +5,7 @@ extends SceneTree
 ##
 ##   godot --headless --path . --script res://tools/stuck_sweep.gd -- out=/tmp/stuck.json [tiles=0_0,-1_0] [step=0.5]
 ##   godot --headless --path . --script res://tools/stuck_sweep.gd -- around=-8,-1,150   (x, z, radius in metres)
+##   ... -- part=0/4 out=/tmp/p0.json resume   (carry on a stopped run from its out= file)
 ##
 ## The whole map takes hours at 0.5 m: split it with part=0/4 .. part=3/4 in
 ## four processes (each with its own out=), or use step=1.
@@ -16,8 +17,23 @@ extends SceneTree
 ## down, and nothing in the way at knee and chest height. Starting from the
 ## roads, a trap is any floor you can reach but can't get back from. Each trap
 ## is listed with where it is, how big, how you got in, and how high a step
-## would get you out, nearest to home first. Exits 0; the counts are the
-## result.
+## would get you out, nearest to home first.
+##
+## It also lists uneven ground ("rough"), from the same floors:
+##   crest, dip   on roads and bridge decks, a change of grade over a car's
+##                length sharp enough to throw it: `value` is the speed (km/h)
+##                at which a car leaves the ground over it (a crest) or slams
+##                into it (a dip). Listed under ROUGH_SPEED.
+##   lump, hole   anywhere you walk or drive, more than LUMP (on roads) or
+##                LUMP_GROUND above or below what's 2 m either side of it,
+##                both ways: `value` in metres
+##   step         a sudden step of more than STEP (and not a kerb) between
+##                floors that are flat either side, beyond what the slope
+##                either side climbs: `value` in metres
+##   steep road   asphalt climbing more than STEEP_ROAD degrees over 4 m: `value`
+## Each is one spot per patch of touching cells, at its worst cell, with what's
+## near it (jetty, bridge, tunnel, map edge), since a fix nearby can be the cause.
+## Exits 0; the counts are the result.
 
 ## Player capsule (OnFoot): what it can step up, how much headroom it needs,
 ## and how deep it wades.
@@ -26,6 +42,12 @@ const WADE_DEPTH := 0.6
 const WET_STEP := 0.65  # out of the water, up the bank
 const HEADROOM := 1.75
 const MIN_NORMAL_Y := 0.64  # floor_max_angle 50 degrees
+## Uneven ground (see the top): car speeds (km/h), metres, degrees.
+const ROUGH_SPEED := 50.0
+const LUMP := 0.15
+const LUMP_GROUND := 0.25  # off the road (where two slopes meet in a crease is about 0.2)
+const STEP := 0.12
+const STEEP_ROAD := 12.0
 ## Up to this many floors in one column (street, bridge deck, house floors).
 const MAX_LAYERS := 4
 ## Traps smaller than this (m²) are cracks the capsule can't get into.
@@ -48,10 +70,14 @@ var _at := 0
 var _phase := 0
 var _started := 0
 var _traps: Array[Dictionary] = []
+var _rough: Array[Dictionary] = []
+## The map's extent (x, z), for "near the map edge".
+var _map_rect := Rect2()
 var _area := Rect2()  # around=: only this square (x, z)
 var _ray := PhysicsRayQueryParameters3D.new()
 var _water_ray := PhysicsRayQueryParameters3D.new()
 var _home_at := Vector3.ZERO
+var _done_before: Array = []  # tiles a stopped run already did (resume)
 var _part := [0, 1]  # part=k/n: every n-th tile from the k-th, to split a run across processes
 
 
@@ -76,6 +102,8 @@ func _initialize() -> void:
 		for t: String in _index.tiles:
 			if _area.size == Vector2.ZERO or _tile_rect(t).intersects(_area):
 				_tiles.append(t)
+	for t: String in _index.tiles:
+		_map_rect = _tile_rect(t) if _map_rect.size == Vector2.ZERO else _map_rect.merge(_tile_rect(t))
 	_tiles.sort_custom(func(a: String, b: String) -> bool:
 		var pa := a.split("_")
 		var pb := b.split("_")
@@ -87,6 +115,20 @@ func _initialize() -> void:
 			if (i / 8) % _part[1] == _part[0]:
 				mine.append(_tiles[i])
 		_tiles = mine
+	if OS.get_cmdline_user_args().has("resume") and FileAccess.file_exists(_out):
+		# Carry on from a stopped run: keep what it found, skip the tiles it did.
+		var was: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(_out))
+		var done: Array = was.get("done", [])
+		for t: Dictionary in was.traps:
+			_traps.append(t)
+		for r: Dictionary in was.rough:
+			_rough.append(r)
+		var left: Array[String] = []
+		for t in _tiles:
+			if not done.has(t):
+				left.append(t)
+		_tiles = left
+		_done_before = done
 	_world = Node3D.new()
 	root.add_child(_world)
 	var home: Dictionary = _index.get("home", {})
@@ -117,6 +159,7 @@ func _process(_delta: float) -> bool:
 	_phase = 0
 	_at += 1
 	if _at % 10 == 0:
+		_save()
 		print("STUCK SWEEP %d / %d tiles, %d traps, %.0f s" % [_at, _tiles.size(), _traps.size(),
 			(Time.get_ticks_msec() - _started) / 1000.0])
 	return false
@@ -191,6 +234,10 @@ func _sweep_tile(key: String) -> void:
 	wet.resize(n * MAX_LAYERS)
 	var ny := PackedFloat32Array()  # how flat each floor is (its normal's y)
 	ny.resize(n * MAX_LAYERS)
+	var grade := PackedVector2Array()  # its rise per metre east and south
+	grade.resize(n * MAX_LAYERS)
+	var room := PackedFloat32Array()  # the first thing above each floor
+	room.resize(n * MAX_LAYERS)
 	for c in n:
 		var x := rect.position.x + (c % nx + 0.5) * _step
 		var z := rect.position.y + (c / nx + 0.5) * _step
@@ -207,13 +254,17 @@ func _sweep_tile(key: String) -> void:
 			if (hit.normal as Vector3).y >= MIN_NORMAL_Y and ceiling - y >= HEADROOM and depth <= WADE_DEPTH:
 				h[c * MAX_LAYERS + layer] = y
 				wet[c * MAX_LAYERS + layer] = 1 if depth > 0.05 else 0
-				ny[c * MAX_LAYERS + layer] = (hit.normal as Vector3).y
+				room[c * MAX_LAYERS + layer] = ceiling
+				var normal := hit.normal as Vector3
+				ny[c * MAX_LAYERS + layer] = normal.y
+				grade[c * MAX_LAYERS + layer] = Vector2(-normal.x, -normal.z) / normal.y
 				if body and body.get_meta(&"surface", &"") == &"asphalt" and String(body.name).begins_with("road"):
 					road[c * MAX_LAYERS + layer] = 1
 				kind[c * MAX_LAYERS + layer] = _kind_of(body)
 				layer += 1
 			ceiling = y
 			from = y - 0.05
+	_find_rough(key, rect, nx, nz, h, kind, ny, grade)
 	# Walks between neighbouring floors.
 	var nodes := n * MAX_LAYERS
 	var out_edges: Array[PackedInt32Array] = []
@@ -257,6 +308,10 @@ func _sweep_tile(key: String) -> void:
 				if lb < 0:
 					continue
 				var b := h[o * MAX_LAYERS + lb]
+				# Dropping to a floor under something (a tunnel floor under its lid
+				# and the bank beside it) needs room to walk in at this height.
+				if room[o * MAX_LAYERS + lb] < a + HEADROOM:
+					continue
 				var top_y := maxf(a, b)
 				var edge := (mini(c, o)) * 2 + (0 if d.y == 0 else 1)
 				var blocked := false
@@ -305,6 +360,7 @@ func _sweep_tile(key: String) -> void:
 		var sum := Vector3.ZERO
 		var kinds := {}
 		var entry := Vector3.INF
+		var into := Vector3.INF  # the trap floor you get in at
 		var climb := INF
 		for g: int in group:
 			var c := g / MAX_LAYERS
@@ -316,6 +372,7 @@ func _sweep_tile(key: String) -> void:
 				if back[src] == 1 and reach[src] == 1 and entry == Vector3.INF:
 					var sc := src / MAX_LAYERS
 					entry = Vector3(rect.position.x + (sc % nx + 0.5) * _step, h[src], rect.position.y + (sc / nx + 0.5) * _step)
+					into = p
 			# The smallest step up to a floor that does lead back.
 			var cx := c % nx
 			var cz := c / nx
@@ -340,9 +397,185 @@ func _sweep_tile(key: String) -> void:
 		for k: String in kinds:
 			if main_kind == "" or kinds[k] > kinds[main_kind]:
 				main_kind = k
-		_traps.append({tile = key, at = _v(centre), area = snappedf(area, 0.25), entry = _v(entry), floor = main_kind,
+		_traps.append({tile = key, at = _v(centre), area = snappedf(area, 0.25), entry = _v(entry), into = _v(into), floor = main_kind,
 			climb = snappedf(climb, 0.01) if climb != INF else -1.0,
 			home_m = snappedf(Vector2(centre.x - _home_at.x, centre.z - _home_at.z).length(), 1.0)})
+
+
+# ---------------------------------------------------------------------------
+# Uneven ground
+# ---------------------------------------------------------------------------
+
+## Per kind: 0 not ground you'd walk or drive on (nor the townhouse), 1 ground and paths, 2 roads
+## and bridge decks (cars), 3 kerbed footpaths (a kerb's step is meant to be there).
+var _rough_kind := PackedByteArray()
+## Per kind: what it says about a spot nearby ("jetty", "bridge", "tunnel"), or "".
+var _near_tag: Array[String] = []
+
+
+## The floor in cell `o` that carries on from one at height `a` (the closest
+## within a metre), as an index into h, or -1.
+func _same_floor(h: PackedFloat32Array, o: int, a: float) -> int:
+	var best := -1
+	var gap := 1.0
+	for k in MAX_LAYERS:
+		var b := h[o * MAX_LAYERS + k]
+		if is_nan(b):
+			break
+		if absf(b - a) < gap:
+			gap = absf(b - a)
+			best = o * MAX_LAYERS + k
+	return best
+
+
+func _find_rough(key: String, rect: Rect2, nx: int, nz: int, h: PackedFloat32Array, kind: PackedByteArray,
+		ny: PackedFloat32Array, grade: PackedVector2Array) -> void:
+	var n := nx * nz
+	# Per floor, what's wrong (1 crest, 2 dip, 3 lump, 4 hole, 5 step, 6 steep road) and how much.
+	var what := PackedByteArray()
+	what.resize(n * MAX_LAYERS)
+	var worst := PackedFloat32Array()
+	worst.resize(n * MAX_LAYERS)
+	var s := maxi(1, roundi(2.0 / _step))  # cells to 2 m: about a car's wheelbase
+	var span := s * _step
+	var lift := 9.8 / pow(ROUGH_SPEED / 3.6, 2.0)  # curvature (1/m) that lifts a car at ROUGH_SPEED
+	var steep := tan(deg_to_rad(STEEP_ROAD))
+	for c in n:
+		var cx := c % nx
+		var cz := c / nx
+		for la in MAX_LAYERS:
+			var i := c * MAX_LAYERS + la
+			var a := h[i]
+			if is_nan(a):
+				break
+			var rk := _rough_kind[kind[i]]
+			if rk == 0:
+				continue
+			# Grade changes over a car's length, along both axes and both diagonals.
+			# Lumps: above (or below) the ground 2 m away on both axes, so the
+			# top or foot of a slope isn't one.
+			var bump: Array[float] = []
+			var best_k := 0.0
+			var slope := 0.0  # steepest grade across 4 m (one tilted sliver of mesh isn't a steep road)
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)]:
+				var ax := cx + d.x * s
+				var az := cz + d.y * s
+				var bx := cx - d.x * s
+				var bz := cz - d.y * s
+				if mini(ax, bx) < 0 or mini(az, bz) < 0 or maxi(ax, bx) >= nx or maxi(az, bz) >= nz:
+					continue
+				var ia := _same_floor(h, az * nx + ax, a)
+				var ib := _same_floor(h, bz * nx + bx, a)
+				if ia < 0 or ib < 0:
+					continue
+				# Lumps against the same surface all round (a verge between two
+				# footpaths isn't a hole).
+				if (d.x == 0 or d.y == 0) and kind[ia] == kind[i] and kind[ib] == kind[i]:
+					bump.append(a - (h[ia] + h[ib]) * 0.5)
+				if rk == 2 and _rough_kind[kind[ia]] == 2 and _rough_kind[kind[ib]] == 2:
+					var dist := span * (1.4142 if d.x != 0 and d.y != 0 else 1.0)
+					var k := (h[ia] + h[ib] - 2.0 * a) / (dist * dist)  # < 0: a crest
+					if absf(k) > absf(best_k):
+						best_k = k
+					slope = maxf(slope, absf(h[ia] - h[ib]) / (2.0 * dist))
+			if absf(best_k) > lift:
+				_mark(what, worst, i, 1 if best_k < 0.0 else 2, sqrt(9.8 / absf(best_k)) * 3.6)
+			if bump.size() == 2 and signf(bump[0]) == signf(bump[1]):
+				var r := minf(absf(bump[0]), absf(bump[1]))
+				if r > (LUMP if rk == 2 else LUMP_GROUND):
+					_mark(what, worst, i, 3 if bump[0] > 0.0 else 4, r)
+			# A sudden step to the next cell east or south (each edge once), flat
+			# both sides: the jump less what the slope either side climbs.
+			if ny[i] > 0.97:
+				for d: Vector2i in [Vector2i(1, 0), Vector2i(0, 1)]:
+					var ox := cx + d.x
+					var oz := cz + d.y
+					if ox >= nx or oz >= nz:
+						continue
+					var j := _same_floor(h, oz * nx + ox, a)
+					if j < 0 or ny[j] <= 0.97 or _rough_kind[kind[j]] == 0:
+						continue
+					var rise := (grade[i] + grade[j]).dot(Vector2(d)) * 0.5 * _step
+					var raw := absf(h[j] - a)
+					var jump := absf(h[j] - a - rise)
+					var kerb := (rk == 3 or _rough_kind[kind[j]] == 3) and raw < 0.3
+					if minf(raw, jump) > STEP and raw <= STEP_UP and not kerb:
+						_mark(what, worst, i if h[i] < h[j] else j, 5, jump)
+			if slope > steep:
+				_mark(what, worst, i, 6, rad_to_deg(atan(slope)))
+	# One spot per patch of touching floors with the same finding, at its worst.
+	var seen := PackedByteArray()
+	seen.resize(n * MAX_LAYERS)
+	var tile_rect := _tile_rect(key)
+	var names := ["", "crest", "dip", "lump", "hole", "step", "steep road"]
+	for i in n * MAX_LAYERS:
+		if what[i] == 0 or seen[i] == 1:
+			continue
+		var wk := what[i]
+		var stack := PackedInt32Array([i])
+		seen[i] = 1
+		var cells := 0
+		var top := i
+		while not stack.is_empty():
+			var g := stack[stack.size() - 1]
+			stack.resize(stack.size() - 1)
+			cells += 1
+			# For speeds the lowest is worst; for the rest, the biggest.
+			if (worst[g] < worst[top]) if wk <= 2 else (worst[g] > worst[top]):
+				top = g
+			var gc := g / MAX_LAYERS
+			for dz in [-1, 0, 1]:
+				for dx in [-1, 0, 1]:
+					var ox: int = gc % nx + dx
+					var oz: int = gc / nx + dz
+					if ox < 0 or oz < 0 or ox >= nx or oz >= nz:
+						continue
+					var j := _same_floor(h, oz * nx + ox, h[g])
+					if j >= 0 and seen[j] == 0 and what[j] == wk:
+						seen[j] = 1
+						stack.append(j)
+		var tc := top / MAX_LAYERS
+		var at := Vector3(rect.position.x + (tc % nx + 0.5) * _step, h[top], rect.position.y + (tc / nx + 0.5) * _step)
+		if not tile_rect.has_point(Vector2(at.x, at.z)):
+			continue
+		if _area.size != Vector2.ZERO and not _area.has_point(Vector2(at.x, at.z)):
+			continue
+		_rough.append({tile = key, kind = names[wk], at = _v(at), value = snappedf(worst[top], 0.01),
+			area = snappedf(cells * _step * _step, 0.25), floor = _kind_names[kind[top]],
+			near = _near(at, nx, nz, h, kind, top),
+			home_m = snappedf(Vector2(at.x - _home_at.x, at.z - _home_at.z).length(), 1.0)})
+
+
+## A floor keeps its first finding.
+func _mark(what: PackedByteArray, worst: PackedFloat32Array, i: int, finding: int, value: float) -> void:
+	if what[i] == 0:
+		what[i] = finding
+		worst[i] = value
+
+
+## What's within 20 m of a spot that a fix there could have touched.
+func _near(at: Vector3, nx: int, nz: int, h: PackedFloat32Array, kind: PackedByteArray, top: int) -> String:
+	var tags := {}
+	var r := int(20.0 / _step)
+	var stride := maxi(1, r / 8)
+	var tc := top / MAX_LAYERS
+	for dz in range(-r, r + 1, stride):
+		for dx in range(-r, r + 1, stride):
+			var ox: int = tc % nx + dx
+			var oz: int = tc / nx + dz
+			if ox < 0 or oz < 0 or ox >= nx or oz >= nz:
+				continue
+			for k in MAX_LAYERS:
+				var j := (oz * nx + ox) * MAX_LAYERS + k
+				if is_nan(h[j]):
+					break
+				var tag := _near_tag[kind[j]]
+				if tag != "":
+					tags[tag] = true
+	if at.x - _map_rect.position.x < 40.0 or _map_rect.end.x - at.x < 40.0 \
+			or at.z - _map_rect.position.y < 40.0 or _map_rect.end.y - at.z < 40.0:
+		tags["map edge"] = true
+	return ", ".join(tags.keys())
 
 
 ## How deep the water is over a floor. Only the big water's riverbed is
@@ -373,6 +606,17 @@ func _kind_of(body: Node) -> int:
 		_kind_names.append(n)
 		_walk_kind.append(0 if n.begins_with("buildings") or n.begins_with("props") or n.begins_with("landmarks")
 			or n == "home" or n == "none" else 1)
+		var rough := 0
+		if n.ends_with("_asphalt") and (n.begins_with("roads") or n.begins_with("bridges") or n.begins_with("tunnels")):
+			rough = 2
+		elif n == "roads_sidewalk" or n == "roads_kerb":
+			rough = 3
+		elif n.begins_with("ground") or n.begins_with("roads") or n.begins_with("bridges") or n.begins_with("tunnels") \
+				or n == "props_path" or n == "props_concrete":
+			rough = 1  # not the townhouse: its stairs and furniture are meant to be there
+		_rough_kind.append(rough)
+		_near_tag.append("jetty" if n == "props_path" or n == "props_concrete" else "bridge" if n.begins_with("bridges")
+			else "tunnel" if n.begins_with("tunnels") else "")
 	return mini(int(_kind_ids[n]), 255)
 
 
@@ -416,14 +660,28 @@ func _v(p: Vector3) -> Array:
 	return [snappedf(p.x, 0.1), snappedf(p.y, 0.01), snappedf(p.z, 0.1)]
 
 
+## Everything so far, with the tiles done, so a stopped run can carry on (resume).
+func _save() -> void:
+	var f := FileAccess.open(_out, FileAccess.WRITE)
+	f.store_string(JSON.stringify({step = _step, tiles = _done_before.size() + _tiles.size(),
+		done = _done_before + _tiles.slice(0, _at),
+		traps = _traps, rough = _rough}, "  "))
+	f.close()
+
+
 func _finish() -> void:
 	_traps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.home_m < b.home_m)
-	var f := FileAccess.open(_out, FileAccess.WRITE)
-	f.store_string(JSON.stringify({step = _step, tiles = _tiles.size(), traps = _traps}, "  "))
-	f.close()
+	_rough.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.home_m < b.home_m)
+	_save()
 	var big := _traps.filter(func(t: Dictionary) -> bool: return t.area >= 4.0)
 	print("STUCK SWEEP %d traps (%d of 4 m² or more) in %d tiles, %.0f s, written to %s" % [_traps.size(), big.size(),
 		_tiles.size(), (Time.get_ticks_msec() - _started) / 1000.0, _out])
 	for t: Dictionary in _traps.slice(0, 15):
 		print("  %s  %5.1f m²  %-16s climb %.2f m  %4d m from home  in from %s" % [t.at, t.area, t.floor, t.climb, t.home_m, t.entry])
+	var counts := {}
+	for r: Dictionary in _rough:
+		counts[r.kind] = int(counts.get(r.kind, 0)) + 1
+	print("STUCK SWEEP uneven ground: %s" % [counts])
+	for r: Dictionary in _rough.slice(0, 15):
+		print("  %s  %-10s %6.2f  %-16s %4d m from home  near %s" % [r.at, r.kind, r.value, r.floor, r.home_m, r.near])
 	quit(0)
