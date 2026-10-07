@@ -183,7 +183,13 @@ func _held_by(v) -> String:
 	var chain: Array = []
 	var w = v.wait_on
 	while w != null and chain.size() < 6:
-		chain.append("#%d r%d rank%d %.0fs v%.1f%s" % [w.id, w.reason, w.wait_rank, w.stopped_time, w.speed, " unjam" if w.unjam_time > 0.0 else ""])
+		var gate_text := ""
+		if w.blocked_by is TrafficGraph.SignalGate:
+			var ctl = w.blocked_by.controller
+			gate_text = " (lights group %d state %d phase %d t %.0f live %s at %s)" % [w.blocked_by.group, w.blocked_by.state(), ctl.phase, ctl.timer, _traffic.graph.signal_controllers.has(ctl), w.position.snapped(Vector3.ONE)]
+		elif w.blocked_by is TrafficGraph.Gate:
+			gate_text = " (%s at %s)" % [w.blocked_by.get_class() if not w.blocked_by.get_script() else w.blocked_by.get_script().get_global_name(), w.position.snapped(Vector3.ONE)]
+		chain.append("#%d r%d rank%d %.0fs v%.1f%s%s" % [w.id, w.reason, w.wait_rank, w.stopped_time, w.speed, " unjam" if w.unjam_time > 0.0 else "", gate_text])
 		if w == v:
 			break
 		w = w.wait_on
