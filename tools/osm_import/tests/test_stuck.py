@@ -3,7 +3,7 @@ import numpy as np
 import shapely
 from shapely.geometry import LineString, Polygon, box
 
-from osm_import.build import LID_DROP, RIVER_LEVEL, LinearWay, WaterBody, World, _lid
+from osm_import.build import LID_DROP, RIVER_LEVEL, SEAT_GRADE, LinearWay, WaterBody, World, _lid
 from osm_import.meshbuild import Surface
 from osm_import.terrain import HeightField
 
@@ -120,16 +120,30 @@ def test_road_bridge_parapets_fade_out_where_the_deck_meets_the_street():
     assert (_parapet_heights(foot, xy, xy, top, hf) == PARAPET_H).all()
 
 
-def test_jetty_comes_up_to_the_path_that_leads_onto_it():
-    # Mends St: the footpath reaches the jetty 0.8 m above the bank beside it.
+def test_jetty_comes_up_to_the_street_that_leads_onto_it():
+    # The street (and its footpath) reaches the jetty 0.8 m above the bank beside it.
+    river = box(-300, -300, 0, 300)
+    hf = field(lambda E, N: np.where(E < 0, -2.5, 3.0))
+    jetty = LineString([(2, 0), (-60, 0)]).buffer(1.5, cap_style=2)
+    street = LinearWay(1, {"highway": "residential"}, "road", np.array([[40.0, 0.0], [2.5, 0.0]]),
+                       np.array([3.8, 3.8]), np.array([1, 2]), 6.0, False, False, True)
+    w = _world(hf, [(jetty, "pier", 1)], [WaterBody(river, RIVER_LEVEL, True, "Swan River")], ways=[street])
+    top = w._level_decks()[0].top
+    assert abs(top - 3.75) < 1e-9
+
+
+def test_footpath_profile_off_the_ground_does_not_lift_the_jetty():
+    # Footpaths are drawn on the ground; their profiles come off the bare DEM
+    # and can be metres over it. One 9 m up took a jetty (and the ground round
+    # its end, a 6 m tower on the lawn) with it.
     river = box(-300, -300, 0, 300)
     hf = field(lambda E, N: np.where(E < 0, -2.5, 3.0))
     jetty = LineString([(2, 0), (-60, 0)]).buffer(1.5, cap_style=2)
     path = LinearWay(1, {"highway": "footway"}, "foot", np.array([[40.0, 0.0], [2.5, 0.0]]),
-                     np.array([3.8, 3.8]), np.array([1, 2]), 2.0, False, False, False)
+                     np.array([9.0, 9.0]), np.array([1, 2]), 2.0, False, False, False)
     w = _world(hf, [(jetty, "pier", 1)], [WaterBody(river, RIVER_LEVEL, True, "Swan River")], ways=[path])
-    top = w._level_decks()[0].top
-    assert abs(top - 3.75) < 1e-9
+    assert abs(w._level_decks()[0].top - 3.0) < 0.1
+    assert hf.H.max() < 3.1
 
 
 def test_bank_left_standing_inside_the_water_comes_down_to_the_jetty():
@@ -142,9 +156,13 @@ def test_bank_left_standing_inside_the_water_comes_down_to_the_jetty():
     d, = w._level_decks()
     top = d.top
     assert abs(top - 3.0) < 0.1
-    # The bank comes down to the deck beside it, which ramps down off the quay.
-    assert abs(hf.sample(5.0, 3.0) - (d.heights(5.0, 0.0) - 0.05)) < 0.15
-    assert hf.sample(5.0, 6.0) < top + 0.4         # easing back up to it, no step
+    # The bank comes down to the deck beside it, which ramps down off the quay:
+    # at its side, no more than a step up off the deck...
+    assert abs(hf.sample(5.0, 0.0) - (d.heights(5.0, 0.0) - 0.05)) < 0.05
+    assert hf.sample(5.0, 1.5) - d.heights(5.0, 1.5) < 0.3
+    # ...easing back up to the bank, gently.
+    ys = np.arange(0.0, 40.0, STEP)
+    assert (np.diff(hf.sample(np.full(len(ys), 5.0), ys)) <= SEAT_GRADE * STEP * 1.5).all()
 
 
 def test_jetty_off_a_high_bank_ramps_down_to_just_over_the_water():
@@ -206,3 +224,21 @@ def test_deck_off_a_cliff_stays_level():
     w = _world(hf, [(deck, "pier", 1)], [WaterBody(river, RIVER_LEVEL, True, "Swan River")])
     d, = w._level_decks()
     assert d.landing is None and abs(d.top - 20.0) < 0.1
+
+
+def test_jetties_side_by_side_blend_between_them():
+    # Two jetties off one bank, metres apart at different heights (one off the
+    # quay, one off the beach below it): the ground between them comes to each
+    # and eases between, no tower or pit where their pads meet.
+    river = box(-300, -300, 0, 300)
+    hf = field(lambda E, N: np.where(E < 0, -2.5, np.where(N > 0, 4.0, 1.5)))
+    high = LineString([(4, 8), (-40, 8)]).buffer(1.5, cap_style=2)
+    low = LineString([(4, -8), (-40, -8)]).buffer(1.5, cap_style=2)
+    w = _world(hf, [(high, "pier", 1), (low, "pier", 2)], [WaterBody(river, RIVER_LEVEL, True, "Swan River")])
+    a, b = w._level_decks()
+    on = hf.H[:, (np.asarray(hf.node_coords()[0]) >= 0)]
+    assert on.max() <= max(a.top, 4.0) + 0.1 and on.min() >= min(b.top, 1.5) - 0.1
+    ys = np.arange(-20.0, 25.0, STEP)
+    col = hf.sample(np.full(len(ys), 5.0), ys)
+    was = np.where(ys > 0, 4.0, 1.5)
+    assert np.abs(np.diff(col)).max() <= np.abs(np.diff(was)).max() + 0.1   # no step the bank didn't have

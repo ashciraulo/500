@@ -207,3 +207,20 @@ def test_traffic_lines_drop_points_the_surface_does_not_need():
     assert (out[0] == pts[0]).all() and (out[-1] == pts[-1]).all()
     # Every dropped point is still within 4 cm of the simplified line.
     assert np.abs(np.interp(x, out[:, 0], out[:, 1]) - y).max() <= 0.04 + 1e-4
+
+
+def test_ground_between_carriageways_at_different_heights_has_no_ridge():
+    # Pearson St: the two halves of a divided road run 18 m apart, one 2 m
+    # above the other. The ground across the median comes down evenly; it
+    # dropped in one grid cell where the nearer carriageway changed over.
+    hf = field(lambda E, N: 20.0 + 0.0 * E)
+    oneway = {"highway": "primary", "oneway": "yes"}
+    w = _world(hf, [street(1, -280, -9, 280, -9, every=40.0, tags=oneway),
+                    street(2, 280, 9, -280, 9, every=40.0, tags=oneway, first=100)])
+    w.ways[0].h = np.full(len(w.ways[0].h), 20.0)
+    w.ways[1].h = np.full(len(w.ways[1].h), 22.0)
+    w._fit_ground_to_roads()
+    ys = np.arange(-9.0, 9.1, 0.5)
+    across = hf.sample(np.full(len(ys), 2.5), ys)
+    assert (np.diff(across) >= -1e-6).all()                  # rises from one to the other...
+    assert np.diff(across).max() / 0.5 < 0.3                   # ...over the median, not in one cell

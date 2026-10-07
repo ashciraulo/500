@@ -46,8 +46,11 @@ HOME_RAMP = 30.0        # roads ease to the townhouse's ground over this distanc
 PIER_WIDTH = {"pier": 3.0, "breakwater": 6.0, "groyne": 5.0}  # metres, when OSM has no width
 PATH_TOUCH = 1.0        # a path's node this close to a jetty leads onto it
 LANDING = 3.0           # a jetty is level with the shore this far in from the water
-JETTY_PAD = 3.0         # ground this close to a jetty's shore end is level with its deck...
-JETTY_RAMP = 8.0        # ...and eases back to its own height over this
+JETTY_PAD = 7.5         # ground this close to a jetty's shore end is level with its deck (every
+                        # grid cell its edge crosses, or the ground drawn there leaves a ledge)...
+JETTY_RAMP = 8.0        # ...and eases back to its own height over at least this...
+SEAT_GRADE = 0.2        # ...and wide enough that the change in grade stays under this
+SEAT_REACH = 40.0       # (but never further out than this)
 JETTY_ABOVE = 1.2       # a jetty's deck over the water it stands in
 JETTY_GRADE = 1.0 / 8   # a jetty off a high bank ramps down to that at this grade...
 JETTY_DROP = 6.0        # ...from a bank up to this much higher (past that it's a cliff or a lookout: level)
@@ -438,22 +441,41 @@ class World:
                 top, bottom = deck_heights(self.hf, p, kind, water, level)
                 parts.append([p, kind, oid, top, bottom, level])
         jetty = [k for k, d in enumerate(parts) if d[1] == "pier"]
-        # A path that leads onto a jetty from the land meets it at its own
-        # height: the deck comes up to it, or you step down onto the jetty
-        # and can't step back up (Mends St's footpath is 0.8 m over its bank).
-        on_land = [(w.xy, w.h) for w in self.ways if w.group in ("foot", "road") and not w.grade_separated]
+        # A street or path that leads onto a jetty from the land meets it at
+        # its own height: the deck comes up (or down) to a street, or you step
+        # down onto the jetty and can't step back up, or a car meets a kerb.
+        # Footpaths only lift it: they are drawn on the ground (their profiles
+        # are the bare DEM's and can be metres off it), which comes to the
+        # deck anyway. Touching means the path's edge, not its middle line,
+        # within PATH_TOUCH.
         touch = {k: np.zeros((0, 2)) for k in jetty}
-        if on_land and jetty:
-            xy = np.concatenate([a for a, _ in on_land])
-            hh = np.concatenate([b for _, b in on_land])
+        legs = []
+        for w in self.ways:
+            if w.group not in ("foot", "road") or w.grade_separated or len(w.xy) < 2:
+                continue
+            xy, h = densify(w.xy, w.h, 2.0)
+            if w.group == "foot":
+                h = self.hf.sample(xy[:, 0], xy[:, 1])
+            half = w.width / 2 + (styles.SIDEWALK_WIDTH if w.sidewalk else 0.0)
+            legs.append((xy, h, np.full(len(xy), half + PATH_TOUCH), np.full(len(xy), w.group == "road")))
+        if legs and jetty:
+            xy, hh, rad, road = (np.concatenate(c) for c in zip(*legs))
             dry = ~shapely.contains_xy(water, xy[:, 0], xy[:, 1])
-            xy, hh = xy[dry], hh[dry]
-            pts = shapely.STRtree(shapely.points(xy))
+            xy, hh, rad, road = xy[dry], hh[dry], rad[dry], road[dry]
+            pts = shapely.points(xy)
+            tree = shapely.STRtree(pts)
             for k in jetty:
-                near = pts.query(parts[k][0], predicate="dwithin", distance=PATH_TOUCH)
-                if len(near):
-                    parts[k][3] = max(parts[k][3], float(np.max(hh[near])) - 0.05)
-                    touch[k] = xy[near]
+                near = tree.query(parts[k][0], predicate="dwithin", distance=float(rad.max()) if len(rad) else 0.0)
+                near = near[shapely.distance(parts[k][0], pts[near]) <= rad[near]]
+                if not len(near):
+                    continue
+                streets = near[road[near]]
+                if len(streets):
+                    parts[k][3] = float(np.max(hh[streets])) - 0.05
+                foot = near[~road[near]]
+                if len(foot):
+                    parts[k][3] = max(parts[k][3], float(np.max(hh[foot])) - 0.05)
+                touch[k] = xy[near]
         tree = shapely.STRtree([parts[k][0] for k in jetty])
         group = list(range(len(jetty)))
 
@@ -483,39 +505,115 @@ class World:
                 landing = shapely.union_all(land[r])
                 if not landing.is_empty and 0.3 < top[r] - low[r] <= JETTY_DROP:
                     deck.low, deck.landing = low[r], landing
-            if d[1] in ("pier", "groyne"):
-                self._seat_jetty(deck)
             decks.append(deck)
+        self._seat_jetties([d for d in decks if d.kind in ("pier", "groyne")])
         return decks
 
-    def _seat_jetty(self, deck: Deck):
-        """Ground meets a jetty where it leaves the shore, level with its
-        deck, so you walk on and off it instead of dropping down or climbing
-        up a wall. (Deepening the water round it, so a fall off the side put
-        you back on the bank, cut off more shallows than it rescued.)"""
-        p = deck.poly
+    def _seat_jetties(self, decks: list[Deck]):
+        """Ground meets jetties where they leave the shore, level with their
+        decks, so you walk on and off instead of dropping down or climbing up
+        a wall. (Deepening the water round them, so a fall off the side put
+        you back on the bank, cut off more shallows than it rescued.)
+
+        Within JETTY_PAD of a deck near the water the ground takes the deck's
+        height (where a ramp comes down beside a bank, the ramp's). Past that
+        the change eases out smoothly (a harmonic blend of it, the way a sheet
+        hangs, keeping the lie of the land under it): out to JETTY_RAMP or
+        further, so it stays under SEAT_GRADE, held at the streets round it
+        and left to run along the water's edge, with the river bed left as
+        it is. All jetties in one blend: one at a time, each blending to its
+        own deck, left towers, pits and steps where two met or where a blend
+        was cut off short."""
+        from scipy.sparse import coo_matrix, diags
+        from scipy.sparse.linalg import spsolve
         hf = self.hf
+        H = hf.H
         es, ns = hf.node_coords()
-        reach = JETTY_PAD + JETTY_RAMP
-        b = p.bounds
-        i0, i1 = np.searchsorted(es, [b[0] - reach, b[2] + reach])
-        j0, j1 = np.searchsorted(ns, [b[1] - reach, b[3] + reach])
-        if i1 <= i0 or j1 <= j0:
+        water = self.water_union
+        core = getattr(self, "road_core", np.zeros(H.shape, bool))
+        want = np.full(H.shape, np.nan)   # the pad: the height each node takes...
+        near = np.full(H.shape, np.inf)   # ...from its nearest deck
+        floor = np.full(H.shape, np.inf)  # river bed lower than this is left alone
+        reach = np.zeros(H.shape, bool)   # nodes the blend may move
+        clash = np.zeros(H.shape, bool)   # pad nodes two decks at different heights both claim
+        for deck in decks:
+            b = deck.poly.bounds
+            i0, i1 = np.searchsorted(es, [b[0] - JETTY_PAD, b[2] + JETTY_PAD])
+            j0, j1 = np.searchsorted(ns, [b[1] - JETTY_PAD, b[3] + JETTY_PAD])
+            if i1 <= i0 or j1 <= j0:
+                continue
+            E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
+            pts = shapely.points(E, N)
+            d = shapely.distance(deck.poly, pts)
+            # The deck's height at its nearest point (past the land end of a
+            # ramped one, its top, not the ramp carried on down).
+            at = shapely.get_coordinates(shapely.get_point(shapely.shortest_line(deck.poly, pts.ravel()), 0))
+            top = deck.heights(at[:, 0], at[:, 1]).reshape(E.shape) - 0.05
+            sub = H[j0:j1, i0:i1]
+            wet = shapely.contains_xy(water, E, N)
+            # Inside the water's outline the DEM can keep the bank standing
+            # higher than the deck (Mends St): that comes down to it too.
+            pad = (d < JETTY_PAD) & (~wet | (sub > top)) & ~core[j0:j1, i0:i1]
+            pad &= shapely.dwithin(water, pts, LANDING + JETTY_RAMP)
+            if not pad.any():
+                continue
+            mine = pad & (d < near[j0:j1, i0:i1])
+            nd, wd = near[j0:j1, i0:i1], want[j0:j1, i0:i1]
+            # A node two decks at different heights both reach: the nearer one
+            # (and where it's well clear of that one too, the ground between
+            # them just eases from one to the other, no step where they meet).
+            other = pad & ~mine & np.isfinite(wd)
+            mine2 = mine & np.isfinite(wd)
+            clash[j0:j1, i0:i1] |= (other & (np.abs(wd - top) > 0.25) & (nd > 1.0)) \
+                | (mine2 & (np.abs(wd - top) > 0.25) & (d > 1.0))
+            wd[mine] = top[mine]
+            nd[mine] = d[mine]
+            lowest = deck.low if deck.low is not None else deck.top
+            # Wide enough to keep the blend gentle.
+            run = min(max(JETTY_RAMP, float(np.abs(top[pad] - sub[pad]).max()) / SEAT_GRADE), SEAT_REACH)
+            r = JETTY_PAD + run
+            i0, i1 = np.searchsorted(es, [b[0] - r, b[2] + r])
+            j0, j1 = np.searchsorted(ns, [b[1] - r, b[3] + r])
+            E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
+            inside = shapely.dwithin(deck.poly, shapely.points(E, N), r)
+            reach[j0:j1, i0:i1] |= inside
+            fl = floor[j0:j1, i0:i1]
+            fl[inside] = np.minimum(fl[inside], lowest - 0.05)
+        pad = np.isfinite(want) & ~clash
+        if not pad.any():
             return
-        E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
-        pts = shapely.points(E, N)
-        d = shapely.distance(p, pts)
-        wet = shapely.contains_xy(self.water_union, E, N)
-        sub = hf.H[j0:j1, i0:i1]
-        # Level with the deck beside it, down a ramp too.
-        top = deck.heights(E, N)
-        # Inside the water's outline the DEM can keep the bank standing higher
-        # than the deck (Mends St): that comes down to it too.
-        shore = (~wet | (sub > top)) & (d < reach) & shapely.dwithin(self.water_union, pts, LANDING + JETTY_RAMP)
-        shore &= ~self.road_core[j0:j1, i0:i1]
-        w = _smoothstep((reach - d) / JETTY_RAMP)
-        sub[shore] += w[shore] * (top[shore] - 0.05 - sub[shore])
-        hf.H[j0:j1, i0:i1] = sub
+        wet = np.zeros(H.shape, bool)
+        js, is_ = np.nonzero(reach)
+        wet[js, is_] = shapely.contains_xy(water, es[is_], ns[js])
+        bed = reach & wet & (H < floor) & ~pad          # left as it is, and not pulled on
+        free = reach & ~pad & ~core & ~bed
+        delta = np.where(pad, want - H, 0.0)
+        idx = -np.ones(H.shape, dtype=np.int64)
+        fj, fi = np.nonzero(free)
+        idx[fj, fi] = np.arange(len(fj))
+        n = len(fj)
+        if n:
+            rows, cols, vals = [], [], []
+            rhs = np.zeros(n)
+            diag = np.full(n, 1e-6)
+            nj, ni = H.shape
+            for dj, di in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                j2, i2 = fj + dj, fi + di
+                ok = (j2 >= 0) & (j2 < nj) & (i2 >= 0) & (i2 < ni)
+                j2c, i2c = np.clip(j2, 0, nj - 1), np.clip(i2, 0, ni - 1)
+                ok &= ~bed[j2c, i2c]
+                diag += ok
+                other = idx[j2c, i2c]
+                link = ok & (other >= 0)
+                rows.append(np.nonzero(link)[0])
+                cols.append(other[link])
+                vals.append(-np.ones(int(link.sum())))
+                fixed = ok & (other < 0)
+                rhs[fixed] += delta[j2c[fixed], i2c[fixed]]
+            A = coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(n, n)).tocsr()
+            A = A + diags(diag, format="csr")
+            delta[fj, fi] = spsolve(A.tocsc(), rhs)
+        H += delta
 
     def deck_top(self, oid) -> float:
         """The deck height of a jetty or platform where it leaves the land (its largest piece)."""
@@ -831,7 +929,7 @@ class World:
         # (taken before riverbeds were dug, so keep the water as sculpted).
         H0 = hf.H.copy()
         ref = np.where(self.keep_dem, H0, H0 + self.built_soft * (self.bare.H - H0))
-        best, target, fall = self._road_corridors(HeightField(hf.e0, hf.n0, s, ref))
+        best, target, fall, best2, target2, fall2 = self._road_corridors(HeightField(hf.e0, hf.n0, s, ref))
         core = best <= CORE_MARGIN
         self.road_core = core
         # Roads at ground level seed the interpolated ground; ramps and
@@ -850,10 +948,23 @@ class World:
         # Under the roads: their own heights. Beside them: ease back to the
         # ground, over at least EDGE_BLEND metres (more for embankments).
         fall = np.maximum(fall, 2.0 * np.abs(target - ground) + 3.0)
+        fall2 = np.maximum(fall2, 2.0 * np.abs(target2 - ground) + 3.0)
         ramp = ~core & (best < CORE_MARGIN + fall)
         t = np.where(ramp, _smoothstep((best - CORE_MARGIN) / fall), 1.0)
         out = ground.copy()
         out[ramp] = target[ramp] + t[ramp] * (ground[ramp] - target[ramp])
+        # Between two roads (a median, the corner of a junction, a street
+        # beside an embankment) each one's side slope is weighed by how near
+        # it is, so the ground passes smoothly from one to the other instead
+        # of stepping where the nearer one changes over (0.4-0.9 m ridges
+        # beside Pearson St's carriageways).
+        two = ramp & np.isfinite(best2) & (best2 < CORE_MARGIN + fall2)
+        if two.any():
+            t2 = _smoothstep((best2[two] - CORE_MARGIN) / fall2[two])
+            out2 = target2[two] + t2 * (ground[two] - target2[two])
+            w1 = 1.0 / (best[two] - CORE_MARGIN + 0.5) ** 2
+            w2 = 1.0 / (best2[two] - CORE_MARGIN + 0.5) ** 2
+            out[two] = (w1 * out[two] + w2 * out2) / (w1 + w2)
         out[core] = target[core]
         hf.H[:] = out
 
@@ -861,7 +972,8 @@ class World:
         """For every grid node near a road or railway: how far it is outside
         the paved width of the nearest one (`best`, metres, <= 0 inside), the
         height of that road's centre line at the nearest point (`target`) and
-        how wide its side slopes are (`fall`)."""
+        how wide its side slopes are (`fall`); and the same for the next
+        nearest (`best2`, `target2`, `fall2`)."""
         hf = ref
         H = ref.H
         es, ns = hf.node_coords()
@@ -871,8 +983,11 @@ class World:
         best2 = np.full(H.shape, np.inf)
         target2 = np.zeros(H.shape)
         fall = np.full(H.shape, EDGE_BLEND)
+        fall2 = np.full(H.shape, EDGE_BLEND)
+        owner = np.full(H.shape, -1)       # which run each of those is (a road's
+        owner2 = np.full(H.shape, -1)      # own next stretch isn't another road)
         runs = [(w, xy, h) for w in self.ways if w.group != "foot" for xy, h in w.ground_runs()]
-        for w, wxy, wh in runs:
+        for ri, (w, wxy, wh) in enumerate(runs):
             if len(wxy) < 2:
                 continue
             hw = w.width / 2 + (styles.SIDEWALK_WIDTH if w.sidewalk else 0.6)
@@ -909,17 +1024,27 @@ class World:
                 st = target[j0:j1, i0:i1]
                 sb2 = best2[j0:j1, i0:i1]
                 st2 = target2[j0:j1, i0:i1]
+                sf, sf2 = fall[j0:j1, i0:i1], fall2[j0:j1, i0:i1]
+                so, so2 = owner[j0:j1, i0:i1], owner2[j0:j1, i0:i1]
                 upd = score < sb
-                second = ~upd & (score < sb2)
+                same = so == ri
+                second = ~upd & ~same & (score < sb2)
+                shift = upd & ~same
+                if shift.any():
+                    sb2[shift] = sb[shift]
+                    st2[shift] = st[shift]
+                    sf2[shift] = sf[shift]
+                    so2[shift] = so[shift]
                 if upd.any():
-                    sb2[upd] = sb[upd]
-                    st2[upd] = st[upd]
                     sb[upd] = score[upd]
                     st[upd] = hh[upd] - 0.02
-                    fall[j0:j1, i0:i1][upd] = fl
+                    sf[upd] = fl
+                    so[upd] = ri
                 if second.any():
                     sb2[second] = score[second]
                     st2[second] = hh[second] - 0.02
+                    sf2[second] = fl
+                    so2[second] = ri
         # Where two roads overlap (slip roads merging, a street passing an
         # embankment) and their heights differ, ease between them instead of
         # leaving a step where the nearer one takes over.
@@ -927,7 +1052,7 @@ class World:
         gap = np.where(both, best2 - np.minimum(best, CORE_MARGIN), OVERLAP_BLEND)
         w2 = np.where(both, 0.5 * (1.0 - _smoothstep(gap / OVERLAP_BLEND)), 0.0)
         target = target + w2 * (np.where(both, target2, target) - target)
-        return best, target, fall
+        return best, target, fall, best2, target2, fall2
 
     def _bare_earth(self) -> HeightField:
         """The DEM with building mounds taken out where there are buildings.
