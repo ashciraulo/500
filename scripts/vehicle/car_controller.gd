@@ -116,6 +116,24 @@ const DAMPER_KNEE := 1.2
 ## travel on a dip at speed and the body itself thumps the road and bounces.
 const BUMP_STOP := 0.75
 const BUMP_STOP_RATE := 8.0
+## The lower body (fractions of its height): how far the bumpers' bottoms sit
+## above the floor, and the radius of the rounded runners along the sills
+## and across the bumpers (a small one there, so a wall still stops it); see
+## `_shape_lower_body`.
+const BUMPER_RISE := 0.26
+const RUNNER_RADIUS := 0.2
+const SKID_RADIUS := 0.1
+## Stability control (step 6 of _physics_process): the sideways slip (rad)
+## where it starts, how much more until it's fully on, and how hard it eases
+## an unwanted turn (N m per kg per rad/s).
+const ESC_SLIP := 0.1
+const ESC_RAMP := 0.2
+const ESC_DAMP := 5.0
+## How close (m) the underside gets to the road before it's cushioned, and how
+## hard: per metre into that gap and per m/s it closes, in g for the whole car.
+const CUSHION := 0.08
+const CUSHION_SPRING := 300.0
+const CUSHION_DAMP := 10.0
 ## Half the length of road a tyre's suspension averages over; see `_footprint`.
 const FOOTPRINT := 0.2
 ## How much of the drop from the centre of mass to the road the tyres' grip
@@ -204,6 +222,10 @@ const FIELD_GEAR_CLASSIC := {
 @export_range(0.0, 1.0) var steer_assist := 1.0
 ## Steering angle past the grip limit that the assist still allows.
 @export var steer_assist_margin := 1.4
+## Stability control, like the real Pop's ESC: when the car starts to slide
+## sideways and turns further than the steering asks, it's eased back
+## (0 turns it off). See step 6 of _physics_process.
+@export_range(0.0, 1.0) var stability_assist := 1.0
 
 # --- Driver inputs, 0..1 (steer -1..1). Set by the player or by AI. ---
 var throttle_input := 0.0
@@ -353,6 +375,8 @@ var _pending_gear := 1
 var _reverse_hold := 0.0
 var _brake_reverse := false  # reverse was picked with the brake key
 var _air_time := 0.0  # since the last wheel touched the road
+var _last_slide := 0.0  # sideways slip angle last step, rad (see step 6)
+var _cushions: Array[Vector3] = []  # the underside's lowest points; see step 7
 var _headlights_manual := false
 var _spawn_transform: Transform3D
 var _ray_query := PhysicsRayQueryParameters3D.new()
@@ -398,7 +422,7 @@ func _ready() -> void:
 	_capture_rig()
 	var lower := get_node_or_null("LowerBodyCollision") as CollisionShape3D
 	if lower and lower.shape is BoxShape3D:
-		lower.shape = _lower_hull((lower.shape as BoxShape3D).size)
+		_shape_lower_body(lower, (lower.shape as BoxShape3D).size)
 	if physics_material_override == null:
 		# A slippery underside: a body that touches a kerb lip slides over it
 		# on the wheels' push instead of sticking there.
@@ -570,6 +594,44 @@ func _physics_process(delta: float) -> void:
 		apply_central_force(-up * mass * (9.81 * LIGHT_PULL + rise * HUG_DAMP) * missing)
 		var tumble := angular_velocity - up * angular_velocity.dot(up)
 		apply_torque(-tumble * mass * LIGHT_STEADY * missing)
+
+	# 6. Stability control. With two wheels on grass, a kerb under one side or
+	# the throttle down in a slide, the end of the car with the most grip
+	# can swing it round: once it's sliding more than ESC_SLIP and the
+	# slide is growing, any turn beyond what the steering asks for (at most
+	# what the tyres could do) is eased out, so it skids and straightens up
+	# instead of spinning. Off with the handbrake, so handbrake turns still work.
+	var flat_v := linear_velocity - up * linear_velocity.dot(up)
+	var heading := -global_basis.z
+	var along := flat_v.dot(heading)
+	var slide := 0.0
+	if along > 4.0:
+		slide = atan2(flat_v.dot(global_basis.x), along)
+	if stability_assist > 0.0 and handbrake_input < 0.1 and grounded_wheels >= 2 and along > 4.0:
+		var yaw_rate := angular_velocity.dot(up)
+		var asked := clampf(along * tan(steer_angle) / _wheelbase, -9.81 * tire_grip / along, 9.81 * tire_grip / along)
+		var extra := yaw_rate - asked
+		var growing := (slide - _last_slide) * slide > 0.0
+		var amount := clampf((absf(slide) - ESC_SLIP) / ESC_RAMP, 0.0, 1.0) * stability_assist
+		if growing and amount > 0.0 and extra * yaw_rate > 0.0:
+			apply_torque(-up * extra * mass * ESC_DAMP * amount)
+	_last_slide = slide
+
+	# 7. Bottoming out: the last few centimetres above the road under the
+	# body's lowest points soak up the thump, so a dip that runs the
+	# suspension out of travel lifts the car instead of slamming its floor
+	# onto the road (which kicked it into the air, or into a spin).
+	for point in _cushions:
+		var at := global_transform * point
+		_ray_query.from = at + up * CUSHION
+		_ray_query.to = at - up * CUSHION
+		var hit := space.intersect_ray(_ray_query)
+		if hit.is_empty():
+			continue
+		var into: float = CUSHION - (at - (hit.position as Vector3)).dot(up)
+		var closing := -(linear_velocity + angular_velocity.cross(at - global_position)).dot(up)
+		if into > 0.0 and closing > 0.0:
+			apply_force(up * mass * (CUSHION_SPRING * into + CUSHION_DAMP * closing), at - global_position)
 
 	tire_slip = worst_slip
 	forward_speed = linear_velocity.dot(-global_basis.z)
@@ -1497,37 +1559,80 @@ func _fit_collision(body: Node3D) -> void:
 		var size: Vector3 = rest[1]
 		var pos: Vector3 = rest[0]
 		var scaled := Vector3(size.x * sx, size.y * sy, size.z * sz)
+		col.position = Vector3(pos.x * sx, pos.y * sy, pos.z * sz)
 		if shape_name == "LowerBodyCollision":
-			col.shape = _lower_hull(scaled)
+			_shape_lower_body(col, scaled)
 		else:
 			var box_shape := BoxShape3D.new()
 			box_shape.size = scaled
 			col.shape = box_shape
-		col.position = Vector3(pos.x * sx, pos.y * sy, pos.z * sz)
 
 
-## The lower body as a box with its bottom edges cut away: the overhangs
-## slope up to the bumpers and the sills are bevelled, so a kerb meets a
-## slope and lifts the car instead of hitting a wall. Proportions from the Pop.
+## The lower body: a hull for the bodywork, with its underside made of
+## rounded runners, one along each sill and one across the bottom of each
+## bumper. A flat-sided shape meeting the road's short facets at speed gets
+## shoved back off whichever of its faces is least buried, often a bumper's
+## front or an edge of the floor: the car stopped dead from 66 km/h, or
+## caught on one side and spun. A runner is only ever pushed out from its
+## own middle, so the car rides up and over instead. The runners are
+## rounded at the sides and the ends too, so a kerb's lip meets a curve and
+## lifts the car. Proportions from the Pop.
+func _shape_lower_body(col: CollisionShape3D, size: Vector3) -> void:
+	col.shape = _lower_hull(size)
+	var d := _underside(size)
+	var runners := {
+		"NoseSkid": [Vector3(0.0, -d.h + d.rise + d.skid, -d.l + d.skid), d.skid, size.x, Vector3(0.0, 0.0, PI * 0.5)],
+		"TailSkid": [Vector3(0.0, -d.h + d.rise + d.skid, d.l - d.skid), d.skid, size.x, Vector3(0.0, 0.0, PI * 0.5)],
+		"LeftRunner": [Vector3(-d.w + d.r, -d.h + d.floor_up + d.r, (d.front - d.rear) * 0.5), d.r,
+			size.z - d.front - d.rear, Vector3(PI * 0.5, 0.0, 0.0)],
+		"RightRunner": [Vector3(d.w - d.r, -d.h + d.floor_up + d.r, (d.front - d.rear) * 0.5), d.r,
+			size.z - d.front - d.rear, Vector3(PI * 0.5, 0.0, 0.0)],
+	}
+	for runner_name: String in runners:
+		var spec: Array = runners[runner_name]
+		var runner := get_node_or_null(runner_name) as CollisionShape3D
+		if runner == null:
+			runner = CollisionShape3D.new()
+			runner.name = runner_name
+			add_child(runner)
+		var capsule := CapsuleShape3D.new()
+		capsule.radius = spec[1]
+		capsule.height = spec[2]
+		runner.shape = capsule
+		runner.rotation = spec[3]
+		runner.position = col.position + spec[0]
+	# The runners' lowest points, for the cushions in step 7.
+	_cushions.clear()
+	for x: float in [-d.w + d.r, d.w - d.r]:
+		_cushions.append(col.position + Vector3(x, -d.h + d.floor_up, -d.l + d.front + d.r))
+		_cushions.append(col.position + Vector3(x, -d.h + d.floor_up, d.l - d.rear - d.r))
+	for end: float in [-1.0, 1.0]:
+		_cushions.append(col.position + Vector3(0.0, -d.h + d.rise, end * (d.l - d.skid)))
+
+
+## The lower body's proportions, from its size.
+static func _underside(size: Vector3) -> Dictionary:
+	return {
+		"w": size.x * 0.5, "h": size.y * 0.5, "l": size.z * 0.5,
+		"rise": size.y * BUMPER_RISE,  # bumper bottoms this much higher than the floor
+		"front": size.z * 0.13, "rear": size.z * 0.1,  # overhangs, up to the bumpers
+		"floor_up": size.y * 0.2,  # the floor between the axles rides over a 22 cm kerb's lip
+		"r": size.y * RUNNER_RADIUS,
+		"skid": size.y * SKID_RADIUS,
+	}
+
+
+## The bodywork above the runners: a box whose bottom sits along the
+## runners' middles, so only they touch the ground.
 static func _lower_hull(size: Vector3) -> ConvexPolygonShape3D:
-	var w := size.x * 0.5
-	var h := size.y * 0.5
-	var l := size.z * 0.5
-	var rise := size.y * 0.26  # Bumper bottoms this much higher than the floor.
-	var front := size.z * 0.13  # Front overhang slope length.
-	var rear := size.z * 0.1
-	var sill := size.x * 0.06
-	var floor_up := size.y * 0.2  # The floor between the axles rides over a 22 cm kerb's lip.
+	var d := _underside(size)
 	var points := PackedVector3Array()
-	for x in [-1.0, 1.0]:
-		points.append(Vector3(x * w, h, -l))
-		points.append(Vector3(x * w, h, l))
-		points.append(Vector3(x * w, -h + rise, -l))
-		points.append(Vector3(x * w, -h + rise, l))
-		points.append(Vector3(x * w, -h + rise, -l + front))
-		points.append(Vector3(x * w, -h + rise, l - rear))
-		points.append(Vector3(x * (w - sill), -h + floor_up, -l + front))
-		points.append(Vector3(x * (w - sill), -h + floor_up, l - rear))
+	for x: float in [-d.w, d.w]:
+		for end: float in [-1.0, 1.0]:
+			points.append(Vector3(x, d.h, end * d.l))
+			points.append(Vector3(x, -d.h + d.rise + d.skid, end * (d.l - 0.01)))
+		points.append(Vector3(x, -d.h + d.floor_up + d.r, -d.l + d.front))
+		points.append(Vector3(x, -d.h + d.floor_up + d.r, d.l - d.rear))
 	var hull := ConvexPolygonShape3D.new()
 	hull.points = points
 	return hull
