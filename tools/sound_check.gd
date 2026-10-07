@@ -41,9 +41,11 @@ const MAX_SIRENS_PER_DAY := 5.0
 const WORLD_BUSES := [&"World", &"Engine", &"Vehicles", &"Tyres", &"SFX", &"Ambience", &"Weather"]
 ## In a storm in the car, how far under the radio the cabin (rain on the roof,
 ## wipers) and the rain and wind outside must sit at loud moments (dB, 90th
-## percentile of the meters over 8 s; thunder aside). The rain loops start at
-## random points and have louder and quieter stretches, so readings swing by
-## a few dB: these sit about 3 dB under the quietest of 8 tries.
+## percentile of the meters over 8 s; thunder aside). The rain and wind loops
+## start at random points and have louder and quieter stretches (the wind bed
+## swings about 9 dB), so each reading starts them at their loudest 8 s
+## (STORM_LOUDEST) and reads over 8 s of real time: the worst stretch you can
+## hear in play, the same every run.
 const CABIN_UNDER_RADIO_DB := 5.0
 const STORM_UNDER_RADIO_DB := 8.0
 ## The same for the rain and wind at the wheel in the chase view.
@@ -51,6 +53,10 @@ const CHASE_STORM_UNDER_RADIO_DB := 6.0
 ## How far the idling engine must sit over the rain (in the cabin and outside),
 ## in both views, so you hear your car without turning everything up.
 const ENGINE_OVER_STORM_DB := 2.0
+## Where the loudest 8 s of each storm loop starts (s; ambience layer ids,
+## measured off the .ogg files). Re-measure if a loop is replaced.
+const STORM_LOUDEST := {"rain_heavy_out": 20.0, "wind": 8.0, "rain_heavy_roof": 34.5,
+		"rain_heavy_fabric": 23.0, "rain_screen": 3.0}
 ## Cruising with the radio on, how far your engine and your tyres must each
 ## sit under the radio (dB, mean of the meters; measured about 6-10 dB under).
 const CAR_UNDER_RADIO_DB := 4.0
@@ -232,11 +238,16 @@ func _check_sliders() -> void:
 ## every other sound exactly where it was.
 func _check_sub_slider(players: Array, key: String, buses: Array, label: String) -> void:
 	var before := await _gains_with(players, {})
+	var bus_before := {}
+	for p in before:
+		bus_before[p] = p.bus
 	var after := await _gains_with(players, {key: 0.0})
 	var wrong: Array[String] = []
 	for p in players:
 		if not (before.has(p) and after.has(p)):
 			continue  # a one-shot that finished meanwhile
+		if p.bus != bus_before[p]:
+			continue  # a pooled one-shot player picked up another sound on another bus
 		var chain := _bus_chain(p.bus)
 		var under := buses.any(func(b) -> bool: return chain.has(b))
 		if (under and after[p] > -60.0) or (not under and absf(after[p] - before[p]) > 0.1):
@@ -342,6 +353,7 @@ func _check_storm_in_car() -> void:
 	_audio.radio.set_station("cinquecento")
 	await _wait(10.0)  # the rain and wipers fade in
 	_check(_audio.is_player_inside(), "the interior view puts the player in the car")
+	_storm_at_loudest()
 	var loud: Dictionary = await _bus_levels(8.0)
 	var radio: float = loud["Radio"]
 	var cabin: float = loud["Cabin"]
@@ -376,6 +388,7 @@ func _check_storm_in_car() -> void:
 	await _wait(4.0)
 	_check(not _audio.is_player_inside() and _audio.has_method("is_player_driving") and _audio.is_player_driving(),
 			"the chase view hears the car from outside, at the wheel")
+	_storm_at_loudest()
 	var chase: Dictionary = await _bus_levels(8.0)
 	var chase_storm: float = chase["Weather"] + AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
 	print("storm in the chase view: radio %.1f dB, storm %.1f dB" % [chase["Radio"], chase_storm])
@@ -386,6 +399,15 @@ func _check_storm_in_car() -> void:
 	_check(chase_engine - chase_storm >= ENGINE_OVER_STORM_DB,
 			"in a storm in the chase view the idling engine is heard over the rain (%.1f dB over)" % (chase_engine - chase_storm))
 	weather.set_state(weather.State.CLEAR, true)
+
+
+## Moves the playing storm loops to the start of their loudest 8 s.
+func _storm_at_loudest() -> void:
+	var layers: Dictionary = _audio.ambience._layers
+	for id in STORM_LOUDEST:
+		var p: AudioStreamPlayer = layers.get(id)
+		if p and p.playing:
+			p.seek(STORM_LOUDEST[id])
 
 
 ## Opens and shuts the pause menu (the card clicks, the pause clicks, focus
@@ -502,10 +524,13 @@ func _cruise(car: RigidBody3D, a: Vector3, dir: Vector3, target: float, seconds:
 
 ## Each bus's level at loud moments over `seconds`: the 90th percentile of
 ## its meter (dB, after its own fader).
+## Reads every bus for `seconds` of real time: the sound plays in real time
+## while frames run as fast as they can (on CI several times faster), so a
+## window counted in frames would hear only a second or two of the loops.
 func _bus_levels(seconds: float) -> Dictionary:
 	var readings := {}
-	var until := _frame + int(seconds * FPS)
-	while _frame < until:
+	var until := Time.get_ticks_msec() + int(seconds * 1000.0)
+	while Time.get_ticks_msec() < until:
 		await process_frame
 		for i in AudioServer.bus_count:
 			var b := AudioServer.get_bus_name(i)

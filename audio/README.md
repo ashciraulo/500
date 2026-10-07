@@ -174,7 +174,9 @@ start swapping in your own recordings, regenerate only what you need.
   `tools/sound_check.gd` fails if anything bypasses the sliders straight
   to Master, if a slider reaches the wrong sounds, and if in a storm the
   rain, wind and wipers aren't well under the radio or the idling engine
-  isn't heard over the rain, in either view. In the chase view the street
+  isn't heard over the rain, in either view. The storm readings start the
+  rain and wind loops at their loudest 8 s and last 8 s of real time, so
+  they hear the worst gusts and read the same on every machine. In the chase view the street
   sounds as it does outside, but the radio stays near its in-car level and
   the rain and wind duck under it (`Audio.set_player_driving`, set by
   CarSounds).
