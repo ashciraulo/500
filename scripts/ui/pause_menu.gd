@@ -228,7 +228,7 @@ func _build() -> void:
 	_mouse = _slider(right, "Mouse look", 0.0005, 0.006, 0.0005, func(v: float) -> void:
 		Settings.mouse_sensitivity = v)
 
-	_section(left, "Sound")
+	var sound_head := _section(left, "Sound")
 	for pair in [["volume_master", "Everything"], ["volume_effects", "Effects"],
 			["volume_car", "Your car"], ["volume_surroundings", "Weather and street"],
 			["volume_music", "Music"], ["volume_radio", "Radio"]]:
@@ -236,15 +236,15 @@ func _build() -> void:
 		_volumes[key] = _slider(left, pair[1], 0.0, 1.0, 0.05, func(v: float) -> void:
 			Settings.set(key, v)
 			Settings.apply())
-	# The My Music folder button sits on the Music row to keep the menu short.
-	var folder := _button(_volumes["volume_music"].get_parent(), "My Music folder", func() -> void:
+	# The My Music folder button sits at the end of the Sound heading, to keep
+	# the menu short without crowding a slider.
+	var folder := _button(sound_head, "My Music folder", func() -> void:
 		var audio := get_node_or_null("/root/Audio")
 		if audio:
 			audio.radio.open_music_folder())
 	folder.add_theme_font_size_override("font_size", 13)
 	folder.tooltip_text = "Open My Music: put your own songs here for the radio"
 	folder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	folder.get_parent().move_child(folder, 1)
 
 	# In the car: back on its wheels. On foot: back up the drop you fell down,
 	# or back along the way you walked (else home to the front gate).
@@ -299,12 +299,12 @@ func _sync_from_settings() -> void:
 	_syncing = false
 
 
-func _section(parent: Control, text: String) -> void:
+func _section(parent: Control, text: String) -> HBoxContainer:
 	if parent.get_child_count() > 0:
 		var gap := Control.new()
 		gap.custom_minimum_size.y = 6
 		parent.add_child(gap)
-	UiStyle.section(parent, text)
+	return UiStyle.section(parent, text)
 
 
 func _button(parent: Control, text: String, action: Callable) -> Button:

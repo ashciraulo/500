@@ -66,7 +66,7 @@ var _surround_db := 0.0     # the Weather and street slider: Ambience, Weather, 
 var _world_lp: AudioEffectLowPassFilter
 var _world_shelf: AudioEffectEQ6
 var _radio_lp: AudioEffectLowPassFilter
-var _engine_lift: AudioEffectAmplify
+var _engine_comp: AudioEffectCompressor
 var _music_player: AudioStreamPlayer
 var _music_name := ""
 var _mission: AudioStreamSynchronized
@@ -199,13 +199,20 @@ func _build_buses() -> void:
 		_world_lp = AudioServer.get_bus_effect(world, 0) as AudioEffectLowPassFilter
 	for bus in ["Vehicles", "Tyres", "Engine"]:
 		_base_db[bus] = AudioServer.get_bus_volume_db(AudioServer.get_bus_index(bus))
-	# Engine: lifted at the quiet end of the rev range (EngineAudio sets it).
+	# Engine: the loops run from about -45 LUFS at idle to -22 pulling hard,
+	# so a compressor evens them out: the idle comes up over the rain and
+	# cruising stays under the radio. The tone still says how hard it's working.
 	var eng := AudioServer.get_bus_index("Engine")
 	if AudioServer.get_bus_effect_count(eng) == 0:
-		_engine_lift = AudioEffectAmplify.new()
-		AudioServer.add_bus_effect(eng, _engine_lift)
+		_engine_comp = AudioEffectCompressor.new()
+		_engine_comp.threshold = ENGINE_COMP_THRESHOLD_DB
+		_engine_comp.ratio = ENGINE_COMP_RATIO
+		_engine_comp.gain = ENGINE_COMP_GAIN_DB
+		_engine_comp.attack_us = 5000.0
+		_engine_comp.release_ms = 300.0
+		AudioServer.add_bus_effect(eng, _engine_comp)
 	else:
-		_engine_lift = AudioServer.get_bus_effect(eng, 0) as AudioEffectAmplify
+		_engine_comp = AudioServer.get_bus_effect(eng, 0) as AudioEffectCompressor
 	# Ambience and Weather: dulled through the walls when you're indoors at home.
 	for bus in INDOOR_DULLED:
 		var i := AudioServer.get_bus_index(bus)
@@ -275,10 +282,11 @@ static func _slider_db(settings: Node, key: String) -> float:
 	return linear_to_db(maxf(clampf(float(v) if v != null else 1.0, 0.0, 1.0), 0.0001))
 
 
-## The player's engine, lifted at idle and cruising (EngineAudio.quiet_lift_db).
-func set_engine_lift(db: float) -> void:
-	if _engine_lift:
-		_engine_lift.volume_db = db
+## The Engine bus compressor (see _build_buses): where it starts, how hard it
+## holds the loud end down, and the make-up gain that lifts the idle.
+const ENGINE_COMP_THRESHOLD_DB := -34.0
+const ENGINE_COMP_RATIO := 2.5
+const ENGINE_COMP_GAIN_DB := 9.0
 
 
 ## Settings menu hook: linear volume 0..1 for a bus ("Master", "Music", "Radio", ...).
@@ -345,6 +353,10 @@ func is_indoors() -> bool:
 	return _indoors
 
 
+## Menu clicks and notices: the files are mastered hot, so the UI bus sits
+## down here to match the game around it (still under the Effects slider).
+const UI_DB := -14.0
+
 ## Cabin bus level in the car and heard from outside it, before the Effects
 ## slider. In the car it sits under the radio.
 const CABIN_DB := -6.0
@@ -369,7 +381,7 @@ func _apply_inside() -> void:
 	# Cabin sounds (indicator, wipers, rain on the roof) are distant from outside.
 	# The radio applies its own trim (radio.gd asks radio_trim_db() on the signals).
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), (CABIN_DB if _inside else CABIN_OUT_DB) + _effects_db + _car_db)
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("UI"), _effects_db)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("UI"), UI_DB + _effects_db)
 	# Inside, the street and the weather drop well under the radio and engine.
 	var levels := {"Ambience": -9.0 if _inside else (CHASE_AMBIENCE_DB if chase else 0.0), "Weather": -18.0 if _inside else (CHASE_WEATHER_DB if chase else -4.0),
 			"Vehicles": _base_db.get("Vehicles", 0.0), "Tyres": _base_db.get("Tyres", 0.0),

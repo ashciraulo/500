@@ -23,13 +23,9 @@ extends Node3D
 ## The bus it plays on: Engine for the player's car (the Car slider), Vehicles
 ## for traffic.
 @export var bus := &"Engine"
-## How much the quiet end of the rev range (idle, cruising) is lifted, fading
-## to nothing at the redline and under full load. The recorded loops run from
-## about -45 LUFS at idle to -22 at the top; without this the engine vanishes
-## under the street and the rain whenever you aren't pushing it. Only the player's engine (on
-## the Engine bus) lifts, through Audio.set_engine_lift(): close to the car
-## the players sit at their max_db cap, so their own volume can't do it.
-@export var quiet_lift_db := 10.0
+## (The recorded loops run from about -45 LUFS at idle to -22 at the top. On
+## the Engine bus a compressor evens that out, so your idle is heard over the
+## rain and cruising doesn't bury the radio: see Audio._build_buses.)
 @export var unit_size := 10.0
 @export var max_distance := 250.0
 ## Classic gearboxes clunk louder; also picks classic or modern gear sounds.
@@ -381,19 +377,9 @@ func _process(delta: float) -> void:
 	var on_w := sqrt(_load)
 	var off_w := sqrt(1.0 - _load)
 	var gain := _master if running or _master > 0.0 else 0.0
-	if bus == &"Engine" and quiet_lift_db > 0.0:
-		Audio.set_engine_lift(lift_at(x))
 	_mix(_on, x, on_w * gain)
 	_mix(_off, x, off_w * gain)
 	_extras(delta, x)
-
-
-## The quiet-end lift (dB) at `x` (rpm, or km/h for electric sets) and the
-## current load: full at idle off the throttle, none at the redline or
-## pulling hard (those loops are loud enough already).
-func lift_at(x: float) -> float:
-	var t := clampf((x - _idle) / maxf(_redline - _idle, 1.0), 0.0, 1.0)
-	return quiet_lift_db * (1.0 - t) * (1.0 - _load)
 
 
 func _mix(layers: Array, x: float, layer_gain: float) -> void:

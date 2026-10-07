@@ -22,6 +22,9 @@ extends SceneTree
 ##   (after the World bus, which the Weather bus feeds) and leaves the radio.
 ##   At the wheel in the chase view the radio still sits over the storm. In
 ##   both views the idling engine is heard over the rain.
+## - Driving at city speeds (about 50 km/h) with the radio on, in both views,
+##   the radio sits over your own engine and tyres at default levels.
+## - Menu clicks (opening the pause menu) sit with the game, not over it.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/sound_check.gd -- --no-save
 ##
@@ -47,6 +50,14 @@ const CHASE_STORM_UNDER_RADIO_DB := 6.0
 ## How far the idling engine must sit over the rain (in the cabin and outside),
 ## in both views, so you hear your car without turning everything up.
 const ENGINE_OVER_STORM_DB := 2.0
+## Cruising at about 50 km/h with the radio on, how far your engine and your
+## tyres must each sit under the radio (dB, mean of the meters; measured
+## about 5-8 dB under, so 3 leaves room for the meters' swing).
+const CAR_UNDER_RADIO_DB := 3.0
+const CRUISE_KMH := 50.0
+## The loudest a menu click may peak at (dB on the UI bus, at full volume;
+## measured about -14, and -6.5 before the UI bus came down).
+const MENU_CLICK_MAX_DB := -12.0
 
 var _main: Node
 var _audio: Node
@@ -102,7 +113,9 @@ func _run() -> void:
 	await _check_sliders()
 	await _check_falloff()
 	await _check_storm_in_car()
+	await _check_menu_clicks()
 	_check_sirens(traffic, ear)
+	await _check_radio_over_car(traffic)  # last: it drives the car away from home
 	_finish()
 
 
@@ -204,8 +217,8 @@ func _check_sliders() -> void:
 	_check(not ui.is_empty() and ui.all(func(p) -> bool: return low[p] <= -60.0), "menu sounds follow the Effects slider")
 	# The player's engine plays on Engine (Your car); traffic engines on Vehicles.
 	var car: Node = _world.get_node("Car")
-	var mine: Array = players.filter(func(p) -> bool: return p is AudioStreamPlayer3D and car.is_ancestor_of(p) and "quiet_lift_db" in p.get_parent())
-	var traffic_engines: Array = players.filter(func(p) -> bool: return "quiet_lift_db" in p.get_parent() and not car.is_ancestor_of(p))
+	var mine: Array = players.filter(func(p) -> bool: return p is AudioStreamPlayer3D and car.is_ancestor_of(p) and "engine_set" in p.get_parent())
+	var traffic_engines: Array = players.filter(func(p) -> bool: return "engine_set" in p.get_parent() and not car.is_ancestor_of(p))
 	_check(not mine.is_empty() and mine.all(func(p) -> bool: return p.bus == &"Engine"), "your car's engine plays on the Engine bus")
 	_check(not traffic_engines.is_empty() and traffic_engines.all(func(p) -> bool: return p.bus == &"Vehicles"),
 			"traffic engines play on the Vehicles bus, not your car's")
@@ -371,6 +384,116 @@ func _check_storm_in_car() -> void:
 	_check(chase_engine - chase_storm >= ENGINE_OVER_STORM_DB,
 			"in a storm in the chase view the idling engine is heard over the rain (%.1f dB over)" % (chase_engine - chase_storm))
 	weather.set_state(weather.State.CLEAR, true)
+
+
+## Opens and shuts the pause menu (the card clicks, the pause clicks, focus
+## ticks) and reads the loudest moment on the UI bus.
+func _check_menu_clicks() -> void:
+	var menu: Node = _main.get_node("PauseMenu")
+	var peak := -100.0
+	var ui := AudioServer.get_bus_index("UI")
+	for step in 2:
+		if step == 0:
+			menu.open()
+		else:
+			menu.close()
+		var until := _frame + FPS
+		while _frame < until:
+			await process_frame
+			peak = maxf(peak, maxf(AudioServer.get_bus_peak_volume_left_db(ui, 0), AudioServer.get_bus_peak_volume_right_db(ui, 0)))
+	_check(peak > -60.0 and peak <= MENU_CLICK_MAX_DB,
+			"menu clicks sit with the game (peak %.1f dB, at most %.0f)" % [peak, MENU_CLICK_MAX_DB])
+
+
+## Drives the car down a long straight road near home at about 50 km/h with
+## the radio on, in the interior view and then the chase view, and compares
+## the radio with your own engine and tyres as heard (Engine and Tyres feed
+## World, so the World fader counts).
+func _check_radio_over_car(traffic: Node) -> void:
+	var car: RigidBody3D = _world.get_node("Car")
+	var settings: Node = root.get_node("Settings")
+	var auto: bool = settings.automatic_gearbox
+	settings.automatic_gearbox = true
+	settings.apply()
+	var lane = null
+	var best := INF
+	for l in traffic.graph.lanes:
+		if l.connector or l.length < 200.0 or l.pts.size() < 2:
+			continue
+		var a: Vector3 = l.pts[0]
+		var b: Vector3 = l.pts[l.pts.size() - 1]
+		if a.distance_to(b) < 0.98 * l.length or absf(a.y - b.y) > 0.03 * l.length:
+			continue  # bends or climbs
+		var d := a.distance_to(car.global_position)
+		if d < best:
+			best = d
+			lane = l
+	_check(lane != null, "there is a long straight road near home to drive down")
+	if lane != null:
+		print("  driving down a %.0f m road %.0f m from home" % [lane.length, best])
+	if lane == null:
+		return
+	var rig: Node = _world.get_node("CameraRig")
+	_audio.radio.set_station("cinquecento")
+	for view in ["interior", "chase"]:
+		if (rig.mode == rig.Mode.INTERIOR) != (view == "interior"):
+			rig.toggle_mode()
+		var a: Vector3 = lane.pts[0]
+		var dir: Vector3 = (lane.pts[lane.pts.size() - 1] - a).normalized()
+		car.global_transform = Transform3D(Basis.looking_at(dir, Vector3.UP), a + Vector3.UP * 0.8)
+		car.linear_velocity = dir * CRUISE_KMH / 3.6
+		car.angular_velocity = Vector3.ZERO
+		var levels: Dictionary = await _cruise(car, a, dir, 3.0)  # get settled
+		levels = await _cruise(car, a, dir, 6.0)
+		var wf := AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
+		var radio: float = levels["Radio"]
+		var engine: float = levels["Engine"] + wf
+		var tyres: float = levels["Tyres"] + wf
+		print("cruising in the %s view at %.0f km/h: radio %.1f dB, engine %.1f dB, tyres %.1f dB"
+				% [view, levels["kmh"], radio, engine, tyres])
+		_check(levels["kmh"] > CRUISE_KMH - 15.0 and levels["kmh"] < CRUISE_KMH + 15.0,
+				"the car cruises at about %.0f km/h in the %s view (%.0f)" % [CRUISE_KMH, view, levels["kmh"]])
+		_check(radio - engine >= CAR_UNDER_RADIO_DB and radio - tyres >= CAR_UNDER_RADIO_DB,
+				"cruising in the %s view the radio is heard over your engine and tyres (%.1f and %.1f dB over)"
+				% [view, radio - engine, radio - tyres])
+	for action in ["accelerate", "steer_left", "steer_right"]:
+		Input.action_release(action)
+	settings.automatic_gearbox = auto
+	settings.apply()
+
+
+## Holds about CRUISE_KMH along a straight line from `a` (throttle and a
+## little steering, like a player) for `seconds`, returning each bus's mean
+## meter level (dB) and the mean speed ("kmh").
+func _cruise(car: RigidBody3D, a: Vector3, dir: Vector3, seconds: float) -> Dictionary:
+	var sums := {}
+	var kmh := 0.0
+	var n := 0
+	var until := _frame + int(seconds * FPS)
+	while _frame < until:
+		await process_frame
+		var v := car.linear_velocity.length() * 3.6
+		Input.action_release("accelerate")
+		if v < CRUISE_KMH - 4.0:
+			Input.action_press("accelerate", 0.7)
+		elif v < CRUISE_KMH:
+			Input.action_press("accelerate", 0.3)
+		var ahead := a + dir * ((car.global_position - a).dot(dir) + 15.0)
+		var steer := clampf((car.global_transform.affine_inverse() * ahead).x * 0.15, -1.0, 1.0)
+		Input.action_release("steer_left")
+		Input.action_release("steer_right")
+		if absf(steer) > 0.02:
+			Input.action_press("steer_right" if steer > 0.0 else "steer_left", absf(steer))
+		kmh += v
+		n += 1
+		for i in AudioServer.bus_count:
+			var b := AudioServer.get_bus_name(i)
+			var db := maxf(-100.0, maxf(AudioServer.get_bus_peak_volume_left_db(i, 0), AudioServer.get_bus_peak_volume_right_db(i, 0)))
+			sums[b] = sums.get(b, 0.0) + db_to_linear(db)
+	var out := {"kmh": kmh / maxf(n, 1)}
+	for b in sums:
+		out[b] = linear_to_db(maxf(sums[b] / maxf(n, 1), 1e-5))
+	return out
 
 
 ## Each bus's level at loud moments over `seconds`: the 90th percentile of

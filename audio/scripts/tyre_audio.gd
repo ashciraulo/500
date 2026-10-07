@@ -31,6 +31,11 @@ const ROLL := {
 	"wet": [["tyre/tyre_roll_wet", 50.0]],
 }
 
+## The road roar's ceiling. Close to the car (in it, or the chase camera just
+## behind) the players sit at their max_db cap, so this sets how loud the roll
+## is: well under the radio. Skids, kerbs and bumps keep the default cap.
+const ROLL_MAX_DB := -9.0
+
 ## Game surfaces that share a sound.
 const SURFACE_ALIAS := {&"concrete": &"asphalt", &"dirt": &"gravel"}
 
@@ -54,6 +59,7 @@ func _ready() -> void:
 		for l in layers:
 			if Audio.has(l[0]) and not _roll.has(l[0]):
 				_roll[l[0]] = _loop(l[0])
+				_roll[l[0]].max_db = ROLL_MAX_DB
 	_skid = _loop("tyre/tyre_skid_dry")
 	_skid_wet = _loop("tyre/tyre_skid_wet")
 	_scrape = _loop("impact/impact_metal_scrape")
