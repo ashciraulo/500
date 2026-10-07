@@ -73,6 +73,8 @@ func setup(traffic_manager: Node) -> void:
 			e.unit_size = 6.0 if kind != &"bus" else 9.0
 			e.max_distance = HEAR_RADIUS * 1.3
 			e.volume_db = -4.0
+			e.bus = &"Vehicles"  # traffic, not your car (the Surroundings slider)
+			e.quiet_lift_db = 0.0
 			e.name = "TrafficEngine_%s_%d" % [kind, i]
 			add_child(e)
 			e.silence()
