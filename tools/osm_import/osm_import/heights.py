@@ -111,10 +111,12 @@ def _way_length(coords) -> float:
     return float(np.linalg.norm(np.diff(coords, axis=0), axis=1).sum())
 
 
-def compute_node_heights(ways, hf: HeightField, couple=()) -> dict[str, dict[int, float]]:
+def compute_node_heights(ways, hf: HeightField, couple=(), tie=()) -> dict[str, dict[int, float]]:
     """Heights of every node of the road, rail and path networks. `couple`
     lists (node, node) pairs that should end up level with each other (the
-    two carriageways of a divided road)."""
+    two carriageways of a divided road). `tie` pairs are held level through
+    every pass, not just the first (halves of a street across a median, which
+    the side streets at a crossroads would otherwise pull apart)."""
     out: dict[str, dict[int, float]] = {}
     by_group = defaultdict(list)
     for w in ways:
@@ -122,7 +124,7 @@ def compute_node_heights(ways, hf: HeightField, couple=()) -> dict[str, dict[int
         if g:
             by_group[g].append(w)
     for g, ws in by_group.items():
-        out[g] = _solve_group(g, ws, hf, couple if g == "road" else ())
+        out[g] = _solve_group(g, ws, hf, couple if g == "road" else (), tie if g == "road" else ())
     return out
 
 
@@ -185,7 +187,7 @@ def _smooth(h0, a, b, d, length, fixed=None, fixed_h=None):
     return h
 
 
-def _solve_group(group: str, ways, hf: HeightField, couple=()) -> dict[int, float]:
+def _solve_group(group: str, ways, hf: HeightField, couple=(), tie=()) -> dict[int, float]:
     index: dict[int, int] = {}
     pos = []
     ea, eb, ed, eg = [], [], [], []
@@ -209,15 +211,18 @@ def _solve_group(group: str, ways, hf: HeightField, couple=()) -> dict[int, floa
     eg = np.array(eg)
     keep = a != b
     a, b, d, eg = a[keep], b[keep], d[keep], eg[keep]
-    n_own = len(a)
     # Two carriageways of one street: tie each node to the one beside it.
-    ca = [index[i] for i, j in couple if i in index and j in index]
-    cb = [index[j] for i, j in couple if i in index and j in index]
-    if ca:
-        a = np.concatenate([a, ca])
-        b = np.concatenate([b, cb])
-        d = np.concatenate([d, np.full(len(ca), COUPLE_LENGTH)])
-        eg = np.concatenate([eg, np.full(len(ca), GRADE[group])])
+    # Ties come first and take part in every pass; couples only in the first.
+    for pp in (tie, couple):
+        if pp is couple:
+            n_own = len(a)
+        ca = [index[i] for i, j in pp if i in index and j in index]
+        cb = [index[j] for i, j in pp if i in index and j in index]
+        if ca:
+            a = np.concatenate([a, ca])
+            b = np.concatenate([b, cb])
+            d = np.concatenate([d, np.full(len(ca), COUPLE_LENGTH)])
+            eg = np.concatenate([eg, np.full(len(ca), GRADE[group])])
     base = hf.sample(xy[:, 0], xy[:, 1])
     adj: dict[int, dict[int, tuple]] = defaultdict(dict)
     for i, j, dd, gg in zip(a.tolist(), b.tolist(), d.tolist(), eg.tolist()):

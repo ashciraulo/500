@@ -4,7 +4,7 @@
   "scene": "res://art/models/props/landmarks/jetty_lamp.glb",
   "p": [
    6044.42,
-   5.83,
+   5.81,
    -1614.0
   ],
   "yaw": -3.0194
@@ -14,7 +14,7 @@
   "scene": "res://art/models/props/landmarks/jetty_rail.glb",
   "p": [
    6043.2,
-   5.83,
+   5.81,
    -1635.18
   ],
   "yaw": 0.1292
@@ -24,7 +24,7 @@
   "scene": "res://art/models/props/landmarks/jetty_rail.glb",
   "p": [
    6044.49,
-   5.83,
+   5.81,
    -1625.26
   ],
   "yaw": 0.1292

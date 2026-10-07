@@ -62,7 +62,6 @@ class _Lots:
 
 def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[dict]:
     """POIs inside this build's terrain and on built tiles."""
-    from .build import deck_heights  # build imports this module
     hf = world.hf
     lots = _Lots(world)
     zoo = shapely.union_all([a.geom for a in world.poi_areas if a.tags.get("tourism") == "zoo"]) \
@@ -126,7 +125,7 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
             inner = np.asarray(max(polygons_of(inset), key=lambda q: q.area).exterior.coords) \
                 if not inset.is_empty else ring
             far = inner[int(np.argmax(np.hypot(*(inner - land).T)))]
-            top, _ = deck_heights(hf, max(polygons_of(g), key=lambda q: q.area), kind)
+            top = world.deck_top(spec["pier"])
             park, _ = park_near(float(land[0]), float(land[1]), SPOT_PARK)
             if park is None:
                 continue
