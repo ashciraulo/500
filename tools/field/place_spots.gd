@@ -9,7 +9,9 @@ extends SceneTree
 ##
 ## Rerun after a map rebuild. Spots it can't place (off the built map) are
 ## left without `stand` and don't appear in the game. A spot's `reach` (m)
-## overrides how far from `near` it may look; ONLY_SPOT=<substr> in the
+## overrides how far from `near` it may look, and a deck spot's `round` how
+## many of the 8 ways round its stand must be water (3; a boardwalk ending
+## at a sand strip has less); ONLY_SPOT=<substr> in the
 ## environment places just the matching spots.
 
 const PATH := "res://data/field/fishing_spots.json"
@@ -73,6 +75,7 @@ func _place(spot: Dictionary) -> void:
 	# The map's coast can sit a couple of hundred metres off the real beach.
 	var reach := 70.0 if deck else (320.0 if spot.water == "ocean" else 260.0)
 	reach = float(spot.get("reach", reach))
+	var round_min := float(spot.get("round", 3.0))
 	var step := 2.0 if deck else 4.0
 	var space := _car.get_world_3d().direct_space_state
 	var x := -reach
@@ -90,7 +93,7 @@ func _place(spot: Dictionary) -> void:
 			var surface := StringName(hit.collider.get_meta("surface", &""))
 			if (hit.collider as CollisionObject3D).collision_layer & 2:
 				continue  # a building
-			if deck and (surface != &"brick" or _water_round(hit.position) < 3.0):
+			if deck and (surface != &"brick" or _water_round(hit.position) < round_min):
 				continue
 			if not deck and (surface == &"asphalt" or _boats.water_at(hit.position, 0.0)):
 				continue
