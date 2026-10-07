@@ -135,6 +135,11 @@ var _siren: AudioStreamWAV
 var _focus: Node3D
 var _player: RigidBody3D
 var _player_proxy := PlayerProxy.new()
+## Traffic bodies the stopped player car is pressed against (body -> seconds).
+var _pinned := {}
+## Bodies made passable to free the player, until the player is clear of them.
+var _ghosts := {}
+var _pin_query: PhysicsShapeQueryParameters3D
 ## The player out of the car and walking (scripts/player/on_foot.gd).
 var _walker: CharacterBody3D
 var _walker_proxy := PlayerProxy.new()
@@ -417,6 +422,8 @@ func clear_all() -> void:
 	night.clear()
 	rides.clear()
 	paths.clear()
+	_pinned.clear()
+	_ghosts.clear()
 	_warm = 2.0
 
 
@@ -425,6 +432,7 @@ func _physics_process(delta: float) -> void:
 	_time += delta
 	_process_networks()
 	_update_focus()
+	_unpin_player(delta)
 	for controller in graph.signal_controllers:
 		controller.update(delta)
 		if controller.changed_this_frame:
@@ -460,6 +468,56 @@ func _physics_process(delta: float) -> void:
 
 
 # --- Focus, player and camera -------------------------------------------------
+
+## Seconds the stopped player car can sit pressed against one of ours before it
+## stops being solid, so a crash or a bad landing never leaves the player wedged.
+const UNPIN_AFTER := 3.0
+const UNPIN_CLEAR := 8.0
+
+func _unpin_player(dt: float) -> void:
+	for body in _ghosts.keys():
+		if not is_instance_valid(body):
+			_ghosts.erase(body)
+			continue
+		var gone: bool = not body.is_visible_in_tree()
+		var far: bool = _player == null or not is_instance_valid(_player) \
+				or _player.global_position.distance_to(body.global_position) > UNPIN_CLEAR
+		if gone or far:
+			if not gone and body.collision_layer == 0:
+				body.collision_layer = TRAFFIC_LAYER
+			_ghosts.erase(body)
+	if _player == null or not is_instance_valid(_player) or not _player.is_inside_tree():
+		_pinned.clear()
+		return
+	var touching := {}
+	if _player.linear_velocity.length() < 1.0:
+		# The car's body, and its wheels' reach below it: they ride on
+		# anything they hit, a car roof included.
+		if _pin_query == null:
+			_pin_query = PhysicsShapeQueryParameters3D.new()
+			var box := BoxShape3D.new()
+			box.size = Vector3(2.3, 3.4, 4.2)
+			_pin_query.shape = box
+			_pin_query.collision_mask = TRAFFIC_LAYER
+		_pin_query.transform = _player.global_transform.translated_local(Vector3(0, -0.8, 0))
+		for hit in _player.get_world_3d().direct_space_state.intersect_shape(_pin_query, 8):
+			var body = hit.collider
+			if body is CollisionObject3D and body.get_meta("traffic", &"") != &"train":
+				touching[body] = _pinned.get(body, 0.0) + dt
+	_pinned = touching
+	for body in _pinned:
+		if _pinned[body] < UNPIN_AFTER:
+			continue
+		body.collision_layer = 0
+		_ghosts[body] = true
+		_player.sleeping = false  # Or it'd stay sat in mid-air.
+		for v in vehicles:
+			if v.body == body:
+				v.round_player = 8.0
+				break
+	for body in _ghosts:
+		_pinned.erase(body)
+
 
 func _update_focus() -> void:
 	if _player == null or not is_instance_valid(_player):
@@ -1249,7 +1307,8 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 	# Our own nose too: someone merging or cutting in alongside it is
 	# already in the way (gap 0), not something to drive on through.
 	var d := -v.length * 0.3
-	var side := TrafficGraph.left_of(v.forward) * v.lateral
+	# Going round the player: look where we're heading, not where we are.
+	var side := TrafficGraph.left_of(v.forward) * (v.lateral_target if v.round_player > 0.0 else v.lateral)
 	# Changing lanes: still partly in the old one, so check along both.
 	var drift := Vector3.ZERO
 	if v.change_from:
@@ -1510,7 +1569,58 @@ func _react_to_player(v: TrafficVehicle, dt: float) -> void:
 		elif v.reason == TrafficVehicle.Reason.PLAYER and v.speed < 0.5 and v.stopped_time > 2.5:
 			if v.horn_cooldown <= 0.0:
 				_sound_horn(v, 0.3 if _rng.randf() < 0.6 else 0.9)
+			# They're not going anywhere: go round them.
+			if v.stopped_time > ROUND_PLAYER_AFTER and _player_proxy.speed < 1.0 and not _player_queued(v, along):
+				v.round_player = maxf(v.round_player, 1.0)
+		if v.round_player > 0.0:
+			v.round_player -= dt
+			_go_round_player(v, along, side)
+	elif v.round_player > 0.0:
+		v.round_player -= dt
 	v.lateral = move_toward(v.lateral, v.lateral_target, dt * 1.4)
+
+
+## Seconds stopped by the player's stationary car before going round it.
+const ROUND_PLAYER_AFTER := 5.0
+const PLAYER_HALF_WIDTH := 0.85
+
+
+## The player's waiting their turn too: in a queue, or up at a junction.
+func _player_queued(v: TrafficVehicle, along: float) -> bool:
+	var lane: TrafficGraph.Lane = v.route[0]
+	var at := v.s + along
+	if at > lane.length - 30.0:
+		return true
+	for o in lane.vehicles:
+		if o.s > at and o.s < at + 15.0:
+			return true
+	return false
+
+
+## Steer out past the player's car on the side away from it (the right,
+## unless it's sitting over to our right), once that side of the road is
+## clear. `along`, `side`: where the player is from us.
+func _go_round_player(v: TrafficVehicle, along: float, side: float) -> void:
+	var lane: TrafficGraph.Lane = v.route[0]
+	if lane.connector or along < -v.length:
+		return  # In a junction, or past them already.
+	v.round_player = maxf(v.round_player, 0.5)  # Keep at it till we're by.
+	var clear := v.width * 0.5 + PLAYER_HALF_WIDTH + 0.5
+	var want := v.lateral + side + (clear if side < -0.3 else -clear)
+	want = clampf(want, -4.2, 1.6)
+	if absf(want - v.lateral - side) < clear - 0.1:
+		return  # Not enough room that way either: wait.
+	for o in _agents_near(v.position, 50.0):
+		if o == v or not o is TrafficVehicle:
+			continue
+		var rel: Vector3 = o.position - v.position
+		var o_along := rel.dot(v.forward)
+		var o_side := rel.dot(TrafficGraph.left_of(v.forward))
+		if o_along < 0.0 and (o.route[0] == v.route[0] or o.forward.dot(v.forward) < 0.5 or o.speed < 4.0):
+			continue  # Queued behind us, or already past us going the other way.
+		if o_along > -12.0 and o_along < 45.0 and absf(o_side - (want - v.lateral)) < (v.width + o.width) * 0.5 + 0.6:
+			return  # Something coming in that part of the road.
+	v.lateral_target = want
 
 
 func _sound_horn(v: TrafficVehicle, duration: float) -> void:
@@ -2077,6 +2187,7 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	v.serial = _serial
 	v.bunch = 0
 	v.bunch_side = 0.0
+	v.round_player = 0.0
 	v.trail.clear()
 	v.ride_roads = {}
 	v.lateral = 0.0
