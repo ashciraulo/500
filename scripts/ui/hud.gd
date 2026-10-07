@@ -15,6 +15,7 @@ const HELP := [
 		["E / Q", "RB / LB", "Gear up and down"],
 		["G", "Select", "Manual or automatic"],
 		["C", "Y", "Chase or interior camera"],
+		["Hold Z", "Hold R3", "Look behind"],
 		["L", "D-pad up", "Headlights"],
 		["O", "", "Roof (convertibles)"],
 		["H", "", "Horn"],

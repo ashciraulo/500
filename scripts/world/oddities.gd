@@ -167,6 +167,7 @@ func _spawn_follower() -> void:
 		lamp.spot_range = 40.0
 		lamp.spot_angle = 30.0
 		_follower.add_child(lamp)
+		_follower.add_child(_lamp_flare(Vector3(x * 0.8, 0.2, -1.95)))
 	# Appear well back down the road you just drove.
 	_follower.global_position = _trail[0]
 	for i in range(_trail.size() - 1, -1, -1):
@@ -176,6 +177,36 @@ func _spawn_follower() -> void:
 	_follow_time = 0.0
 	# Heard from well behind you (it stays 60-120 m back in the mix).
 	_follower.add_child(_loop_player("oddity/odd_follower_engine_loop", 20.0, -2.0))
+
+
+## A small glow that stays a few pixels across however far back the car is,
+## so its headlights read in the mirror view (look behind) from 60 m back.
+func _lamp_flare(at: Vector3) -> MeshInstance3D:
+	var glow := GradientTexture2D.new()
+	glow.fill = GradientTexture2D.FILL_RADIAL
+	glow.fill_from = Vector2(0.5, 0.5)
+	glow.fill_to = Vector2(1.0, 0.5)
+	glow.width = 32
+	glow.height = 32
+	glow.gradient = Gradient.new()
+	glow.gradient.set_color(0, Color(1.0, 0.95, 0.82, 1.0))
+	glow.gradient.set_color(1, Color(1.0, 0.93, 0.75, 0.0))
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.fixed_size = true
+	mat.albedo_texture = glow
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.035, 0.035)
+	var flare := MeshInstance3D.new()
+	flare.name = "LampFlare"
+	flare.mesh = quad
+	flare.material_override = mat
+	flare.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	flare.position = at
+	return flare
 
 
 func _move_follower(delta: float) -> void:
