@@ -66,6 +66,9 @@ func is_open() -> bool:
 
 # --- raising and lowering -----------------------------------------------------------
 
+const PULL_OVER := "Pull over first: the binoculars need a stopped car."
+
+
 ## Why the binoculars can't come up right now ("" if they can).
 func blocked_reason() -> String:
 	var tree := get_tree()
@@ -90,7 +93,7 @@ func blocked_reason() -> String:
 		return "busy"
 	var parked: bool = _car.is_parked_for_viewing() if _car.has_method("is_parked_for_viewing") else _car.linear_velocity.length() <= 1.4
 	if not parked:
-		return "Pull over first: the binoculars need a stopped car."
+		return PULL_OVER
 	return ""
 
 
@@ -219,6 +222,9 @@ func _apply_post(on: bool) -> void:
 func _input(event: InputEvent) -> void:
 	if state == State.CLOSED:
 		if event.is_action_pressed("binoculars") and not event.is_echo():
+			# On a pad, R3 is look-behind while the car's moving: say nothing.
+			if event is InputEventJoypadButton and blocked_reason() == PULL_OVER:
+				return
 			if open():
 				get_viewport().set_input_as_handled()
 		return

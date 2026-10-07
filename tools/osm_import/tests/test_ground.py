@@ -84,6 +84,24 @@ def test_divided_road_halves_come_out_level():
     assert np.abs(a - b)[3:-3].max() < 0.15
 
 
+def test_divided_road_halves_across_a_planted_median_come_out_level():
+    from osm_import.build import _carriageway_pairs, _median_pairs
+    # Pearson St at Campus Way: two-lane halves 12.5 m apart, sampling DEM
+    # heights 1.75 m apart, met in lumps at every median crossing.
+    hf = field(lambda E, N: 20.0 + 0.14 * N)
+    tags = {"highway": "primary", "oneway": "yes", "name": "Pearson Street", "lanes": "2"}
+    ways = densify_ways([street(1, -200, 6.25, 200, 6.25, every=50.0, tags=tags),
+                         street(2, 200, -6.25, -200, -6.25, every=50.0, tags=tags, first=100)])
+    pairs = _carriageway_pairs(ways)
+    h = compute_node_heights(ways, hf, pairs)["road"]
+    wide = _median_pairs(ways, h)
+    assert wide                                   # too far apart for the narrow pairing...
+    h = compute_node_heights(ways, hf, pairs, tie=wide)["road"]   # ...so a second pass ties them
+    a = np.array([h[int(n)] for n in ways[0].nodes])
+    b = np.array([h[int(n)] for n in ways[1].nodes])[::-1]
+    assert np.abs(a - b)[3:-3].max() < 0.3
+
+
 def test_street_keeps_headroom_under_a_bridge():
     # The DEM has a mound right where a street passes under a freeway bridge.
     hf = field(lambda E, N: 10.0 + 3.0 * np.exp(-(E ** 2 + N ** 2) / (2 * 20.0 ** 2)))

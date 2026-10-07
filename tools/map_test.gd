@@ -78,6 +78,7 @@ func _process(_delta: float) -> bool:
 				# James Street, round the corner from home.
 				var hit := _ray_down(Vector3(-29, 20, 54))
 				_check(not hit.is_empty() and hit.collider.get_meta("surface", &"") == &"asphalt", "map roads are asphalt colliders")
+				_check_walkers_on_ground(traffic)
 				var poles := 0
 				for body in _map.find_children("props", "StaticBody3D", true, false):
 					poles += body.get_child_count()
@@ -136,6 +137,33 @@ func _process(_delta: float) -> bool:
 				quit(1)
 			return true
 	return false
+
+
+## Pedestrians walk the traffic graph's footpaths and footways at the heights
+## the map's traffic data gives them, so those must be the ground's heights:
+## paths that kept their own height profile had walkers metres in the air
+## over James Street Mall and the Herdsman Lake trail.
+func _check_walkers_on_ground(traffic) -> void:
+	if traffic == null:
+		return
+	var space := (_main.get_node("LoFi/SubViewport/World") as Node3D).get_world_3d().direct_space_state
+	var n := 0
+	var off: Array = []
+	for edge in traffic.graph.ped_edges:
+		var pts: PackedVector3Array = edge.pts
+		for i in pts.size():
+			var p := pts[i]
+			if _flat(p).distance_to(_flat(_spawn.origin)) > 400.0 or not _map.has_collision_at(p):
+				continue
+			n += 1
+			# The first ground under the walker's head: above them if they're sunk, below if floating.
+			var q := PhysicsRayQueryParameters3D.create(p + Vector3(0, 3, 0), p - Vector3(0, 12, 0), 1, [_car.get_rid()])
+			var hit := space.intersect_ray(q)
+			var gap: float = p.y - (hit.position.y if not hit.is_empty() else p.y - 15.0)
+			if absf(gap) > 1.0:
+				off.append("%+.1f m at (%.0f, %.0f)" % [gap, p.x, p.z])
+	_check(n > 500 and off.size() <= n / 100, "walkers stand on the ground (%d of %d path points more than 1 m off%s)"
+		% [off.size(), n, (": " + ", ".join(off.slice(0, 4))) if not off.is_empty() else ""])
 
 
 func _ray_down(p: Vector3) -> Dictionary:

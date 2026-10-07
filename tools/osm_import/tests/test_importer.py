@@ -370,6 +370,43 @@ def test_service_roads_listed_for_the_maps():
     assert np.allclose(lanes[0]["pts"][:, 2], 0) and np.isclose(lanes[0]["pts"][-1, 0], 40)
 
 
+def test_walkers_on_paths_stand_on_the_ground_drawn_there():
+    from osm_import.traffic import TrafficNetwork
+    from types import SimpleNamespace as NS
+
+    # Sloping ground, 1 m per 10 m east, with a 3 m bump the path's own
+    # profile (smoothed from the bare DEM) doesn't know about.
+    n = 201
+    e = np.arange(n) * 5.0 - 500
+    H = np.tile(e / 10.0, (n, 1))
+    H[:, 100:103] += 3.0
+    hf = HeightField(-500, -500, 5.0, H)
+
+    def way(tags, h, bridge=False, tunnel=False):
+        xy = np.array([(-40.0, 3.0), (60.0, 3.0)])
+        return NS(group="foot", tags={"highway": "footway", "bicycle": "designated", **tags}, xy=xy,
+                  h=np.asarray(h, float), bridge=bridge, tunnel=tunnel, grade_separated=bridge or tunnel)
+
+    net = TrafficNetwork.__new__(TrafficNetwork)
+    net.w = NS(hf=hf, ways=[
+        way({"name": "On the ground"}, [8.5, 8.5]),                      # metres over the slope
+        way({"name": "Bridge", "bridge": "yes"}, [20.0, 20.0], bridge=True),
+        way({"name": "Deep tunnel", "tunnel": "yes"}, [-30.0, -30.0], tunnel=True),
+        way({"name": "Shallow tunnel", "tunnel": "yes"}, [-3.0, 3.0], tunnel=True),  # the build leaves it out
+    ])
+    paths = {f["name"]: f["pts"] for f in net._cycleways()}
+    for name in ("On the ground", "Shallow tunnel"):
+        p = paths[name]
+        assert np.abs(np.diff(p[:, 0])).max() <= 2.5 + 1e-6
+        ground = hf.sample(p[:, 0], -p[:, 2])
+        assert np.abs(p[:, 1] - (ground + 0.05)).max() < 1e-3, name
+        # Between the points, too: walkers go straight from one to the next.
+        mid = (p[1:] + p[:-1]) / 2
+        assert np.abs(mid[:, 1] - hf.sample(mid[:, 0], -mid[:, 2]) - 0.05).max() < 0.35, name
+    assert np.allclose(paths["Bridge"][:, 1], 20.05) and len(paths["Bridge"]) == 2
+    assert np.allclose(paths["Deep tunnel"][:, 1], -29.95)
+
+
 def test_tunnel_roofs_stay_under_the_ground_with_no_holes_beside_them():
     import shapely
     from types import SimpleNamespace as NS
