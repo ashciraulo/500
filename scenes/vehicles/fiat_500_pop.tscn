@@ -39,7 +39,7 @@ script = ExtResource("2_body")
 [node name="Wheels" type="Node3D" parent="."]
 
 [node name="WheelFL" type="Marker3D" parent="Wheels"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.705, 0.05, -1.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.705, 0.024, -1.15)
 
 [node name="Visual" type="Node3D" parent="Wheels/WheelFL"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
@@ -49,7 +49,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
 [node name="Wheel" parent="Wheels/WheelFL/Visual/Spin" instance=ExtResource("5_wheel_l")]
 
 [node name="WheelFR" type="Marker3D" parent="Wheels"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.705, 0.05, -1.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.705, 0.024, -1.15)
 
 [node name="Visual" type="Node3D" parent="Wheels/WheelFR"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
@@ -59,7 +59,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
 [node name="Wheel" parent="Wheels/WheelFR/Visual/Spin" instance=ExtResource("6_wheel_r")]
 
 [node name="WheelRL" type="Marker3D" parent="Wheels"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.705, 0.05, 1.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.705, 0.024, 1.15)
 
 [node name="Visual" type="Node3D" parent="Wheels/WheelRL"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
@@ -69,7 +69,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
 [node name="Wheel" parent="Wheels/WheelRL/Visual/Spin" instance=ExtResource("5_wheel_l")]
 
 [node name="WheelRR" type="Marker3D" parent="Wheels"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.705, 0.05, 1.15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.705, 0.024, 1.15)
 
 [node name="Visual" type="Node3D" parent="Wheels/WheelRR"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
