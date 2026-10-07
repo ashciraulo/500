@@ -125,7 +125,11 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
             inner = np.asarray(max(polygons_of(inset), key=lambda q: q.area).exterior.coords) \
                 if not inset.is_empty else ring
             far = inner[int(np.argmax(np.hypot(*(inner - land).T)))]
-            top = world.deck_top(spec["pier"])
+            # On a straight jetty, out on the end of its middle line.
+            mid = _deck_end(deck, land)
+            if mid is not None:
+                far = mid
+            top = world.deck_height(spec["pier"], float(far[0]), float(far[1]))
             park, _ = park_near(float(land[0]), float(land[1]), SPOT_PARK)
             if park is None:
                 continue
@@ -241,3 +245,20 @@ def _suburb(world, e, n) -> str:
     d = np.hypot(*(world._suburb_xy - [e, n]).T)
     k = int(np.argmin(d))
     return world._suburb_names[k] if d[k] < 2500 else ""
+
+
+def _deck_end(deck, land, back: float = 2.5):
+    """The point on a long, straight deck's middle line `back` metres in from
+    the end furthest from `land`, or None if that isn't well on the deck."""
+    c = np.asarray(deck.minimum_rotated_rectangle.exterior.coords)[:4]
+    sides = [c[1] - c[0], c[2] - c[1]]
+    long_side, short = sorted(sides, key=lambda v: -np.hypot(*v))
+    length, width = np.hypot(*long_side), np.hypot(*short)
+    if length < 3.0 * width:
+        return None
+    axis = long_side / length
+    mid = c.mean(axis=0)
+    if np.dot(np.asarray(land[:2]) - mid, axis) > 0:
+        axis = -axis
+    p = mid + axis * (length / 2 - back)
+    return p if deck.buffer(-min(1.0, width / 3)).contains(Point(*p)) else None
