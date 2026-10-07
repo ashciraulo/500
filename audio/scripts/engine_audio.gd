@@ -20,6 +20,16 @@ extends Node3D
 @export var engine_set := "fire12"
 @export var vehicle_path: NodePath
 @export var volume_db := 0.0
+## The bus it plays on: Engine for the player's car (the Car slider), Vehicles
+## for traffic.
+@export var bus := &"Engine"
+## How much the quiet end of the rev range (idle, cruising) is lifted, fading
+## to nothing at the redline and under full load. The recorded loops run from
+## about -45 LUFS at idle to -22 at the top; without this the engine vanishes
+## under the street and the rain whenever you aren't pushing it. Only the player's engine (on
+## the Engine bus) lifts, through Audio.set_engine_lift(): close to the car
+## the players sit at their max_db cap, so their own volume can't do it.
+@export var quiet_lift_db := 10.0
 @export var unit_size := 10.0
 @export var max_distance := 250.0
 ## Classic gearboxes clunk louder; also picks classic or modern gear sounds.
@@ -239,7 +249,7 @@ func _apply_parts() -> void:
 func _make_player(s: AudioStream) -> AudioStreamPlayer3D:
 	var p := AudioStreamPlayer3D.new()
 	p.stream = s
-	p.bus = "Engine"
+	p.bus = bus
 	p.unit_size = unit_size
 	p.max_distance = max_distance
 	p.volume_db = -80.0
@@ -317,7 +327,7 @@ func _on_gear_changed(new_gear: int) -> void:
 	_last_gear = new_gear
 	var kind := "classic" if classic_gearbox else "modern"
 	Audio.play_at("engine/extras/eng_gear_clunk_" + kind, global_position,
-			volume_db - (2.0 if classic_gearbox else 8.0), "Engine")
+			volume_db - (2.0 if classic_gearbox else 8.0), bus)
 
 
 func _read_vehicle() -> void:
@@ -371,9 +381,19 @@ func _process(delta: float) -> void:
 	var on_w := sqrt(_load)
 	var off_w := sqrt(1.0 - _load)
 	var gain := _master if running or _master > 0.0 else 0.0
+	if bus == &"Engine" and quiet_lift_db > 0.0:
+		Audio.set_engine_lift(lift_at(x))
 	_mix(_on, x, on_w * gain)
 	_mix(_off, x, off_w * gain)
 	_extras(delta, x)
+
+
+## The quiet-end lift (dB) at `x` (rpm, or km/h for electric sets) and the
+## current load: full at idle off the throttle, none at the redline or
+## pulling hard (those loops are loud enough already).
+func lift_at(x: float) -> float:
+	var t := clampf((x - _idle) / maxf(_redline - _idle, 1.0), 0.0, 1.0)
+	return quiet_lift_db * (1.0 - t) * (1.0 - _load)
 
 
 func _mix(layers: Array, x: float, layer_gain: float) -> void:
@@ -457,12 +477,12 @@ func _extras(delta: float, x: float) -> void:
 			_spool.stop()
 		if _last_throttle > 0.7 and throttle < 0.2 and _boost > 0.45:
 			var which := "engine/extras/eng_blowoff" if randf() < 0.5 else "engine/extras/eng_turbo_flutter"
-			Audio.play_at(which, global_position, volume_db - 6.0, "Engine")
+			Audio.play_at(which, global_position, volume_db - 6.0, bus)
 	# Overrun pops: throttle shut at decent revs.
 	if pops > 0.0 and _load < 0.15 and x > _idle * 2.5:
 		_pop_timer -= delta
 		if _pop_timer <= 0.0:
 			_pop_timer = randf_range(0.08, 0.6) / pops
 			if randf() < 0.5 * pops * rpm_norm:
-				Audio.play_at("engine/extras/eng_backfire", global_position, volume_db - 4.0, "Engine", 0.15)
+				Audio.play_at("engine/extras/eng_backfire", global_position, volume_db - 4.0, bus, 0.15)
 	_last_throttle = throttle

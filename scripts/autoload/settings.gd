@@ -43,6 +43,10 @@ var volume_master := 1.0
 var volume_music := 1.0
 var volume_radio := 1.0
 var volume_effects := 1.0
+## Under Effects: your own car (engine, tyres, the sounds in the cabin) and
+## the surroundings (the street, traffic and the weather).
+var volume_car := 1.0
+var volume_surroundings := 1.0
 
 
 func _ready() -> void:
@@ -134,4 +138,5 @@ func _keys() -> PackedStringArray:
 		"vertex_snap_scale", "lofi_preset", "color_levels", "dither_strength", "affine_strength",
 		"softness", "show_help", "fullscreen", "ui_size", "cozy_mode",
 		"volume_master", "volume_music", "volume_radio", "volume_effects",
+		"volume_car", "volume_surroundings",
 	])

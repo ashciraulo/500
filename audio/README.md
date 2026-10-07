@@ -163,16 +163,27 @@ start swapping in your own recordings, regenerate only what you need.
   `data/cars/cars.json` to its engine set, and the horn style follows (classic
   meep, Abarth blare, modern).
 - **Volume settings**: `Settings.volume_master`, `volume_effects`,
-  `volume_music` and `volume_radio` (0..1, sliders in the pause menu's
-  Sound section, next to an "Open My Music folder" button). Effects covers
-  everything in the world and the car's cabin sounds (rain on the roof,
-  wipers, indicator); only menu sounds ignore it. `tools/sound_check.gd`
-  fails if anything else bypasses the sliders straight to Master, and if
-  in a storm in the car (interior view) the rain, wind and wipers aren't
-  well under the radio at default levels, or if at the wheel in the chase
-  view the storm isn't under the radio. In the chase view the street sounds
-  as it does outside, but the radio stays near its in-car level and the rain
-  and wind duck under it (`Audio.set_player_driving`, set by CarSounds).
+  `volume_car`, `volume_surroundings`, `volume_music` and `volume_radio`
+  (0..1, sliders in the pause menu's Sound section: Everything, Effects,
+  Your car, Weather and street, Music, Radio, with a "My Music folder"
+  button on the Music row). Effects covers every sound but music and the radio:
+  the world, the car's cabin sounds (rain on the roof, wipers, indicator)
+  and the menus. Under it, Your car turns down the Engine, Tyres and Cabin
+  buses and Weather and street the Ambience, Weather and Vehicles buses
+  (traffic engines play on Vehicles; `EngineAudio.bus`).
+  `tools/sound_check.gd` fails if anything bypasses the sliders straight
+  to Master, if a slider reaches the wrong sounds, and if in a storm the
+  rain, wind and wipers aren't well under the radio or the idling engine
+  isn't heard over the rain, in either view. In the chase view the street
+  sounds as it does outside, but the radio stays near its in-car level and
+  the rain and wind duck under it (`Audio.set_player_driving`, set by
+  CarSounds).
+- **Engine level**: the recorded loops run from about -45 LUFS at idle to
+  -22 at the top. The player's engine is lifted up to
+  `EngineAudio.quiet_lift_db` (10 dB) at idle off the throttle, fading to
+  nothing at the redline or under full load, through an Amplify effect on
+  the Engine bus (`Audio.set_engine_lift`). Close to the car the players
+  sit at their `max_db` cap, so their own `volume_db` can't do it.
 - **`Audio.radio`** (`radio.gd`): Radio Cinquecento, Notte FM, My Music and
   (after midnight only) an unlisted station. The two built-in stations run
   like real broadcasts: each keeps its place while you listen elsewhere,
@@ -193,7 +204,7 @@ The game makes a `Music` folder next to the save files:
 - macOS: `~/Library/Application Support/Godot/app_userdata/500/Music`
 - Linux: `~/.local/share/godot/app_userdata/500/Music`
 
-(the pause menu's "Open My Music folder" button opens it.) Drop MP3, OGG or WAV files in. Each
+(the "My Music folder" button on the pause menu's Music row opens it.) Drop MP3, OGG or WAV files in. Each
 subfolder becomes a playlist; "All music" plays everything. Tune the radio to
 My Music: tracks play through the car-stereo filter, shuffle by default, and
 carry on faintly when you step out. Track names come from the files' tags, or
