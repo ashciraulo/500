@@ -120,6 +120,17 @@ jobs:
             exit 1
           fi
 
+      - name: Handling test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 120 --script res://tools/handling_test.gd -- --no-save 2>&1 \
+            | tee handling.log | grep -E "ok |FAIL|HANDLING|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" handling.log; then
+            echo "::error::GDScript errors while test driving"
+            exit 1
+          fi
+
       - name: Dev mode test
         if: env.ALREADY_TESTED != 'true'
         run: |
