@@ -7,7 +7,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -6.0,
    "hmax": 3.0,
-   "bytes": 40289,
+   "bytes": 40381,
    "traffic": "-22_-27.p5r"
   },
   "-21_-27": {
@@ -17,7 +17,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -7.0,
    "hmax": 6.91,
-   "bytes": 184260,
+   "bytes": 186297,
    "traffic": "-21_-27.p5r"
   },
   "-20_-27": {
@@ -26,8 +26,8 @@
    "file": "-20_-27.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": -5.31,
-   "hmax": 21.99,
-   "bytes": 463326,
+   "hmax": 22.01,
+   "bytes": 464982,
    "traffic": "-20_-27.p5r"
   },
   "-19_-27": {
@@ -36,8 +36,8 @@
    "file": "-19_-27.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": 5.84,
-   "hmax": 32.93,
-   "bytes": 390356,
+   "hmax": 32.94,
+   "bytes": 390463,
    "traffic": "-19_-27.p5r"
   },
   "-18_-27": {
@@ -46,8 +46,8 @@
    "file": "-18_-27.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": 14.72,
-   "hmax": 42.12,
-   "bytes": 350666,
+   "hmax": 42.16,
+   "bytes": 350293,
    "traffic": "-18_-27.p5r"
   },
   "-25_-26": {
@@ -85,9 +85,9 @@
    "j": -26,
    "file": "-22_-26.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": -6.52,
-   "hmax": 14.19,
-   "bytes": 255253,
+   "hmin": -6.53,
+   "hmax": 14.47,
+   "bytes": 259345,
    "traffic": "-22_-26.p5r"
   },
   "-21_-26": {
@@ -96,8 +96,8 @@
    "file": "-21_-26.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": -7.0,
-   "hmax": 19.93,
-   "bytes": 260888,
+   "hmax": 19.92,
+   "bytes": 263072,
    "traffic": "-21_-26.p5r"
   },
   "-20_-26": {
@@ -105,9 +105,9 @@
    "j": -26,
    "file": "-20_-26.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": -4.36,
-   "hmax": 26.65,
-   "bytes": 451114,
+   "hmin": -4.34,
+   "hmax": 26.66,
+   "bytes": 449996,
    "traffic": "-20_-26.p5r"
   },
   "-19_-26": {
@@ -126,8 +126,8 @@
    "file": "-18_-26.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": 19.06,
-   "hmax": 48.92,
-   "bytes": 426258,
+   "hmax": 48.91,
+   "bytes": 425518,
    "traffic": "-18_-26.p5r"
   },
   "-25_-25": {
@@ -146,8 +146,8 @@
    "file": "-24_-25.p5t",
    "region": "north_mole",
    "hmin": -6.0,
-   "hmax": 2.14,
-   "bytes": 25464,
+   "hmax": 1.62,
+   "bytes": 25471,
    "traffic": "-24_-25.p5r"
   },
   "-23_-25": {
@@ -156,8 +156,8 @@
    "file": "-23_-25.p5t",
    "region": "north_mole",
    "hmin": -6.0,
-   "hmax": 6.75,
-   "bytes": 57701,
+   "hmax": 6.68,
+   "bytes": 59591,
    "traffic": "-23_-25.p5r"
   },
   "-22_-25": {
@@ -166,8 +166,8 @@
    "file": "-22_-25.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": -6.0,
-   "hmax": 37.51,
-   "bytes": 427855,
+   "hmax": 37.5,
+   "bytes": 429437,
    "traffic": "-22_-25.p5r"
   },
   "-21_-25": {
@@ -175,9 +175,9 @@
    "j": -25,
    "file": "-21_-25.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 1.5,
-   "hmax": 31.1,
-   "bytes": 475984,
+   "hmin": 1.72,
+   "hmax": 31.09,
+   "bytes": 474822,
    "traffic": "-21_-25.p5r"
   },
   "-20_-25": {
@@ -185,9 +185,9 @@
    "j": -25,
    "file": "-20_-25.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 1.37,
-   "hmax": 45.32,
-   "bytes": 476585,
+   "hmin": 1.38,
+   "hmax": 45.31,
+   "bytes": 481917,
    "traffic": "-20_-25.p5r"
   },
   "-19_-25": {
@@ -227,7 +227,7 @@
    "region": "north_mole",
    "hmin": -6.0,
    "hmax": 15.16,
-   "bytes": 144677,
+   "bytes": 144848,
    "traffic": "-24_-24.p5r"
   },
   "-23_-24": {
@@ -237,7 +237,7 @@
    "region": "north_mole",
    "hmin": -3.97,
    "hmax": 15.97,
-   "bytes": 158634,
+   "bytes": 158732,
    "traffic": "-23_-24.p5r"
   },
   "-22_-24": {
@@ -246,8 +246,8 @@
    "file": "-22_-24.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": -2.09,
-   "hmax": 16.77,
-   "bytes": 130285,
+   "hmax": 16.78,
+   "bytes": 130364,
    "traffic": "-22_-24.p5r"
   },
   "-21_-24": {
@@ -257,7 +257,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -1.56,
    "hmax": 22.47,
-   "bytes": 429033,
+   "bytes": 428396,
    "traffic": "-21_-24.p5r"
   },
   "-20_-24": {
@@ -265,9 +265,9 @@
    "j": -24,
    "file": "-20_-24.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 4.92,
+   "hmin": 4.91,
    "hmax": 42.62,
-   "bytes": 441508,
+   "bytes": 442058,
    "traffic": "-20_-24.p5r"
   },
   "-19_-24": {
@@ -277,7 +277,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": 7.0,
    "hmax": 56.28,
-   "bytes": 439222,
+   "bytes": 438676,
    "traffic": "-19_-24.p5r"
   },
   "-18_-24": {
@@ -285,9 +285,9 @@
    "j": -24,
    "file": "-18_-24.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 20.68,
-   "hmax": 49.43,
-   "bytes": 313997,
+   "hmin": 20.69,
+   "hmax": 49.44,
+   "bytes": 314852,
    "traffic": "-18_-24.p5r"
   },
   "-17_-24": {
@@ -295,9 +295,9 @@
    "j": -24,
    "file": "-17_-24.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 21.17,
-   "hmax": 41.92,
-   "bytes": 347497,
+   "hmin": 21.16,
+   "hmax": 41.91,
+   "bytes": 347797,
    "traffic": "-17_-24.p5r"
   },
   "-25_-23": {
@@ -316,8 +316,8 @@
    "file": "-24_-23.p5t",
    "region": "north_mole",
    "hmin": -6.0,
-   "hmax": 16.08,
-   "bytes": 69628,
+   "hmax": 16.09,
+   "bytes": 69528,
    "traffic": "-24_-23.p5r"
   },
   "-23_-23": {
@@ -327,7 +327,7 @@
    "region": "north_mole",
    "hmin": -3.97,
    "hmax": 18.52,
-   "bytes": 248505,
+   "bytes": 248510,
    "traffic": "-23_-23.p5r"
   },
   "-22_-23": {
@@ -356,8 +356,8 @@
    "file": "-20_-23.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": -1.56,
-   "hmax": 37.89,
-   "bytes": 427014,
+   "hmax": 37.91,
+   "bytes": 427177,
    "traffic": "-20_-23.p5r"
   },
   "-19_-23": {
@@ -366,8 +366,8 @@
    "file": "-19_-23.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": 7.0,
-   "hmax": 58.42,
-   "bytes": 378349,
+   "hmax": 58.41,
+   "bytes": 377660,
    "traffic": "-19_-23.p5r"
   },
   "-18_-23": {
@@ -375,9 +375,9 @@
    "j": -23,
    "file": "-18_-23.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 19.52,
-   "hmax": 49.11,
-   "bytes": 392091,
+   "hmin": 19.53,
+   "hmax": 49.12,
+   "bytes": 391145,
    "traffic": "-18_-23.p5r"
   },
   "-17_-23": {
@@ -385,9 +385,9 @@
    "j": -23,
    "file": "-17_-23.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 13.27,
-   "hmax": 38.23,
-   "bytes": 433471,
+   "hmin": 13.28,
+   "hmax": 38.22,
+   "bytes": 432250,
    "traffic": "-17_-23.p5r"
   },
   "1_-23": {
@@ -396,8 +396,8 @@
    "file": "1_-23.p5t",
    "region": "bull_creek_mouth",
    "hmin": -2.5,
-   "hmax": 38.2,
-   "bytes": 342646,
+   "hmax": 38.66,
+   "bytes": 342419,
    "traffic": "1_-23.p5r"
   },
   "-25_-22": {
@@ -435,9 +435,9 @@
    "j": -22,
    "file": "-22_-22.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": -0.99,
+   "hmin": -1.0,
    "hmax": 14.84,
-   "bytes": 305368,
+   "bytes": 305698,
    "traffic": "-22_-22.p5r"
   },
   "-21_-22": {
@@ -457,7 +457,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -2.56,
    "hmax": 21.78,
-   "bytes": 122343,
+   "bytes": 122721,
    "traffic": "-20_-22.p5r"
   },
   "-19_-22": {
@@ -467,7 +467,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -4.0,
    "hmax": 55.03,
-   "bytes": 442956,
+   "bytes": 442934,
    "traffic": "-19_-22.p5r"
   },
   "-18_-22": {
@@ -476,8 +476,8 @@
    "file": "-18_-22.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": -2.5,
-   "hmax": 49.58,
-   "bytes": 464800,
+   "hmax": 49.56,
+   "bytes": 464370,
    "traffic": "-18_-22.p5r"
   },
   "-17_-22": {
@@ -485,9 +485,9 @@
    "j": -22,
    "file": "-17_-22.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 10.85,
+   "hmin": 10.84,
    "hmax": 49.16,
-   "bytes": 386047,
+   "bytes": 385745,
    "traffic": "-17_-22.p5r"
   },
   "-16_-22": {
@@ -505,9 +505,9 @@
    "j": -22,
    "file": "0_-22.p5t",
    "region": "bull_creek_mouth",
-   "hmin": 5.36,
-   "hmax": 18.57,
-   "bytes": 343509,
+   "hmin": 5.34,
+   "hmax": 18.34,
+   "bytes": 344521,
    "traffic": "0_-22.p5r"
   },
   "1_-22": {
@@ -516,8 +516,8 @@
    "file": "1_-22.p5t",
    "region": "bull_creek_mouth",
    "hmin": -2.5,
-   "hmax": 15.77,
-   "bytes": 235521,
+   "hmax": 15.78,
+   "bytes": 234633,
    "traffic": "1_-22.p5r"
   },
   "-20_-21": {
@@ -526,8 +526,8 @@
    "file": "-20_-21.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": -1.56,
-   "hmax": 25.39,
-   "bytes": 304932,
+   "hmax": 25.47,
+   "bytes": 304272,
    "traffic": "-20_-21.p5r"
   },
   "-19_-21": {
@@ -537,7 +537,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -4.0,
    "hmax": 33.8,
-   "bytes": 481475,
+   "bytes": 481912,
    "traffic": "-19_-21.p5r"
   },
   "-18_-21": {
@@ -547,7 +547,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -4.0,
    "hmax": 58.91,
-   "bytes": 311961,
+   "bytes": 312573,
    "traffic": "-18_-21.p5r"
   },
   "-17_-21": {
@@ -576,8 +576,8 @@
    "file": "-15_-21.p5t",
    "region": "canning_hwy",
    "hmin": 15.81,
-   "hmax": 47.67,
-   "bytes": 363191,
+   "hmax": 47.66,
+   "bytes": 363102,
    "traffic": "-15_-21.p5r"
   },
   "-14_-21": {
@@ -586,8 +586,8 @@
    "file": "-14_-21.p5t",
    "region": "canning_hwy",
    "hmin": 4.53,
-   "hmax": 36.38,
-   "bytes": 290178,
+   "hmax": 36.69,
+   "bytes": 291287,
    "traffic": "-14_-21.p5r"
   },
   "-13_-21": {
@@ -595,9 +595,9 @@
    "j": -21,
    "file": "-13_-21.p5t",
    "region": "canning_hwy",
-   "hmin": 8.86,
+   "hmin": 8.88,
    "hmax": 42.16,
-   "bytes": 206396,
+   "bytes": 206419,
    "traffic": "-13_-21.p5r"
   },
   "-12_-21": {
@@ -636,8 +636,8 @@
    "file": "-8_-21.p5t",
    "region": "alfred_cove",
    "hmin": 1.66,
-   "hmax": 27.14,
-   "bytes": 251401,
+   "hmax": 27.16,
+   "bytes": 251054,
    "traffic": "-8_-21.p5r"
   },
   "-7_-21": {
@@ -656,8 +656,8 @@
    "file": "-6_-21.p5t",
    "region": "alfred_cove",
    "hmin": 15.06,
-   "hmax": 37.95,
-   "bytes": 301032,
+   "hmax": 37.97,
+   "bytes": 300613,
    "traffic": "-6_-21.p5r"
   },
   "-1_-21": {
@@ -665,9 +665,9 @@
    "j": -21,
    "file": "-1_-21.p5t",
    "region": "bull_creek_mouth",
-   "hmin": 5.32,
+   "hmin": 5.31,
    "hmax": 35.28,
-   "bytes": 255760,
+   "bytes": 255487,
    "traffic": "-1_-21.p5r"
   },
   "0_-21": {
@@ -676,8 +676,8 @@
    "file": "0_-21.p5t",
    "region": "bull_creek_mouth",
    "hmin": -3.91,
-   "hmax": 17.74,
-   "bytes": 321455,
+   "hmax": 17.75,
+   "bytes": 322303,
    "traffic": "0_-21.p5r"
   },
   "1_-21": {
@@ -705,9 +705,9 @@
    "j": -20,
    "file": "-20_-20.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 3.59,
-   "hmax": 33.86,
-   "bytes": 287037,
+   "hmin": 3.56,
+   "hmax": 33.88,
+   "bytes": 287273,
    "traffic": "-20_-20.p5r"
   },
   "-19_-20": {
@@ -715,9 +715,9 @@
    "j": -20,
    "file": "-19_-20.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 2.55,
-   "hmax": 35.77,
-   "bytes": 410224,
+   "hmin": 2.56,
+   "hmax": 35.78,
+   "bytes": 410077,
    "traffic": "-19_-20.p5r"
   },
   "-15_-20": {
@@ -737,7 +737,7 @@
    "region": "canning_hwy",
    "hmin": 10.66,
    "hmax": 39.94,
-   "bytes": 420568,
+   "bytes": 420662,
    "traffic": "-14_-20.p5r"
   },
   "-13_-20": {
@@ -757,7 +757,7 @@
    "region": "canning_hwy",
    "hmin": 35.91,
    "hmax": 66.09,
-   "bytes": 421907,
+   "bytes": 422045,
    "traffic": "-12_-20.p5r"
   },
   "-11_-20": {
@@ -805,9 +805,9 @@
    "j": -20,
    "file": "-7_-20.p5t",
    "region": "canning_hwy",
-   "hmin": 6.35,
-   "hmax": 29.95,
-   "bytes": 196136,
+   "hmin": 6.34,
+   "hmax": 29.94,
+   "bytes": 196149,
    "traffic": "-7_-20.p5r"
   },
   "-6_-20": {
@@ -815,9 +815,9 @@
    "j": -20,
    "file": "-6_-20.p5t",
    "region": "alfred_cove",
-   "hmin": 16.83,
+   "hmin": 16.81,
    "hmax": 42.66,
-   "bytes": 219100,
+   "bytes": 219498,
    "traffic": "-6_-20.p5r"
   },
   "-1_-20": {
@@ -827,7 +827,7 @@
    "region": "bull_creek_mouth",
    "hmin": -3.45,
    "hmax": 37.48,
-   "bytes": 236521,
+   "bytes": 236908,
    "traffic": "-1_-20.p5r"
   },
   "0_-20": {
@@ -837,7 +837,7 @@
    "region": "bull_creek_mouth",
    "hmin": -4.0,
    "hmax": 19.46,
-   "bytes": 169797,
+   "bytes": 169655,
    "traffic": "0_-20.p5r"
   },
   "1_-20": {
@@ -846,7 +846,7 @@
    "file": "1_-20.p5t",
    "region": "bull_creek_mouth",
    "hmin": -4.0,
-   "hmax": 22.49,
+   "hmax": 22.5,
    "bytes": 83529,
    "traffic": "1_-20.p5r"
   },
@@ -866,8 +866,8 @@
    "file": "3_-20.p5t",
    "region": "bull_creek_mouth",
    "hmin": -2.5,
-   "hmax": 16.05,
-   "bytes": 246963,
+   "hmax": 16.06,
+   "bytes": 247001,
    "traffic": "3_-20.p5r"
   },
   "-20_-19": {
@@ -875,9 +875,9 @@
    "j": -19,
    "file": "-20_-19.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": -3.85,
-   "hmax": 33.55,
-   "bytes": 404164,
+   "hmin": -3.84,
+   "hmax": 33.56,
+   "bytes": 402420,
    "traffic": "-20_-19.p5r"
   },
   "-19_-19": {
@@ -956,8 +956,8 @@
    "file": "-7_-19.p5t",
    "region": "canning_hwy",
    "hmin": -2.5,
-   "hmax": 16.99,
-   "bytes": 250090,
+   "hmax": 16.97,
+   "bytes": 250101,
    "traffic": "-7_-19.p5r"
   },
   "-6_-19": {
@@ -965,9 +965,9 @@
    "j": -19,
    "file": "-6_-19.p5t",
    "region": "canning_hwy",
-   "hmin": 2.74,
-   "hmax": 47.05,
-   "bytes": 271055,
+   "hmin": 2.75,
+   "hmax": 47.06,
+   "bytes": 270462,
    "traffic": "-6_-19.p5r"
   },
   "-5_-19": {
@@ -976,8 +976,8 @@
    "file": "-5_-19.p5t",
    "region": "canning_hwy",
    "hmin": 14.59,
-   "hmax": 54.85,
-   "bytes": 265563,
+   "hmax": 54.84,
+   "bytes": 265065,
    "traffic": "-5_-19.p5r"
   },
   "-1_-19": {
@@ -986,8 +986,8 @@
    "file": "-1_-19.p5t",
    "region": "bull_creek_mouth",
    "hmin": -2.5,
-   "hmax": 28.53,
-   "bytes": 213305,
+   "hmax": 28.54,
+   "bytes": 213777,
    "traffic": "-1_-19.p5r"
   },
   "0_-19": {
@@ -1006,8 +1006,8 @@
    "file": "1_-19.p5t",
    "region": "bull_creek_mouth",
    "hmin": -2.5,
-   "hmax": 22.43,
-   "bytes": 212457,
+   "hmax": 22.44,
+   "bytes": 213275,
    "traffic": "1_-19.p5r"
   },
   "2_-19": {
@@ -1036,8 +1036,8 @@
    "file": "-20_-18.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": -6.0,
-   "hmax": 42.81,
-   "bytes": 266033,
+   "hmax": 42.84,
+   "bytes": 265919,
    "traffic": "-20_-18.p5r"
   },
   "-19_-18": {
@@ -1045,9 +1045,9 @@
    "j": -18,
    "file": "-19_-18.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": -3.21,
-   "hmax": 37.58,
-   "bytes": 297265,
+   "hmin": -3.22,
+   "hmax": 37.59,
+   "bytes": 295674,
    "traffic": "-19_-18.p5r"
   },
   "-14_-18": {
@@ -1146,8 +1146,8 @@
    "file": "-1_-18.p5t",
    "region": "bull_creek_mouth",
    "hmin": -2.5,
-   "hmax": 37.14,
-   "bytes": 309153,
+   "hmax": 37.12,
+   "bytes": 308924,
    "traffic": "-1_-18.p5r"
   },
   "0_-18": {
@@ -1157,7 +1157,7 @@
    "region": "bull_creek_mouth",
    "hmin": -3.5,
    "hmax": 11.97,
-   "bytes": 93960,
+   "bytes": 94163,
    "traffic": "0_-18.p5r"
   },
   "11_-18": {
@@ -1205,9 +1205,9 @@
    "j": -17,
    "file": "-19_-17.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 17.1,
+   "hmin": 17.09,
    "hmax": 52.09,
-   "bytes": 313965,
+   "bytes": 313891,
    "traffic": "-19_-17.p5r"
   },
   "-14_-17": {
@@ -1215,9 +1215,9 @@
    "j": -17,
    "file": "-14_-17.p5t",
    "region": "point_walter",
-   "hmin": -3.13,
-   "hmax": 34.39,
-   "bytes": 113715,
+   "hmin": -3.12,
+   "hmax": 34.41,
+   "bytes": 114025,
    "traffic": "-14_-17.p5r"
   },
   "-13_-17": {
@@ -1307,7 +1307,7 @@
    "region": "kent_st_weir",
    "hmin": -2.73,
    "hmax": 16.9,
-   "bytes": 271465,
+   "bytes": 271648,
    "traffic": "13_-17.p5r"
   },
   "-20_-16": {
@@ -1325,9 +1325,9 @@
    "j": -16,
    "file": "-19_-16.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 13.83,
-   "hmax": 50.63,
-   "bytes": 367898,
+   "hmin": 13.84,
+   "hmax": 50.62,
+   "bytes": 369085,
    "traffic": "-19_-16.p5r"
   },
   "-14_-16": {
@@ -1346,8 +1346,8 @@
    "file": "-13_-16.p5t",
    "region": "point_walter",
    "hmin": -2.5,
-   "hmax": 45.14,
-   "bytes": 301533,
+   "hmax": 45.12,
+   "bytes": 301249,
    "traffic": "-13_-16.p5r"
   },
   "-12_-16": {
@@ -1357,7 +1357,7 @@
    "region": "point_walter",
    "hmin": -2.5,
    "hmax": 59.88,
-   "bytes": 295921,
+   "bytes": 295882,
    "traffic": "-12_-16.p5r"
   },
   "-11_-16": {
@@ -1405,9 +1405,9 @@
    "j": -16,
    "file": "-1_-16.p5t",
    "region": "canning_hwy",
-   "hmin": -3.49,
+   "hmin": -3.5,
    "hmax": 72.62,
-   "bytes": 156463,
+   "bytes": 156290,
    "traffic": "-1_-16.p5r"
   },
   "11_-16": {
@@ -1425,9 +1425,9 @@
    "j": -16,
    "file": "12_-16.p5t",
    "region": "kent_st_weir",
-   "hmin": 1.1,
-   "hmax": 17.77,
-   "bytes": 247795,
+   "hmin": 1.09,
+   "hmax": 17.78,
+   "bytes": 248032,
    "traffic": "12_-16.p5r"
   },
   "13_-16": {
@@ -1445,9 +1445,9 @@
    "j": -16,
    "file": "14_-16.p5t",
    "region": "kent_st_weir",
-   "hmin": 3.4,
-   "hmax": 25.43,
-   "bytes": 372779,
+   "hmin": 3.41,
+   "hmax": 25.44,
+   "bytes": 371922,
    "traffic": "14_-16.p5r"
   },
   "-20_-15": {
@@ -1487,7 +1487,7 @@
    "region": "point_walter",
    "hmin": -3.5,
    "hmax": 21.29,
-   "bytes": 185256,
+   "bytes": 184886,
    "traffic": "-13_-15.p5r"
   },
   "-12_-15": {
@@ -1527,7 +1527,7 @@
    "region": "canning_hwy",
    "hmin": -4.0,
    "hmax": 113.2,
-   "bytes": 335820,
+   "bytes": 335652,
    "traffic": "-1_-15.p5r"
   },
   "0_-15": {
@@ -1537,7 +1537,7 @@
    "region": "canning_hwy",
    "hmin": -2.5,
    "hmax": 24.38,
-   "bytes": 412390,
+   "bytes": 411708,
    "traffic": "0_-15.p5r"
   },
   "13_-15": {
@@ -1636,8 +1636,8 @@
    "file": "0_-14.p5t",
    "region": "canning_hwy",
    "hmin": -2.5,
-   "hmax": 24.51,
-   "bytes": 418276,
+   "hmax": 24.5,
+   "bytes": 419004,
    "traffic": "0_-14.p5r"
   },
   "1_-14": {
@@ -1656,8 +1656,8 @@
    "file": "-20_-13.p5t",
    "region": "coast_road",
    "hmin": -6.0,
-   "hmax": 34.17,
-   "bytes": 137884,
+   "hmax": 34.03,
+   "bytes": 136984,
    "traffic": "-20_-13.p5r"
   },
   "-19_-13": {
@@ -1697,7 +1697,7 @@
    "region": "coast_road",
    "hmin": -3.5,
    "hmax": 19.78,
-   "bytes": 261097,
+   "bytes": 261227,
    "traffic": "-16_-13.p5r"
   },
   "0_-13": {
@@ -1726,8 +1726,8 @@
    "file": "-20_-12.p5t",
    "region": "coast_road",
    "hmin": -6.0,
-   "hmax": 27.68,
-   "bytes": 189742,
+   "hmax": 27.69,
+   "bytes": 189478,
    "traffic": "-20_-12.p5r"
   },
   "-19_-12": {
@@ -1735,9 +1735,9 @@
    "j": -12,
    "file": "-19_-12.p5t",
    "region": "coast_road",
-   "hmin": 10.99,
-   "hmax": 41.46,
-   "bytes": 250695,
+   "hmin": 11.0,
+   "hmax": 41.47,
+   "bytes": 250325,
    "traffic": "-19_-12.p5r"
   },
   "-18_-12": {
@@ -1745,9 +1745,9 @@
    "j": -12,
    "file": "-18_-12.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 6.07,
-   "hmax": 33.01,
-   "bytes": 449899,
+   "hmin": 6.06,
+   "hmax": 33.0,
+   "bytes": 451178,
    "traffic": "-18_-12.p5r"
   },
   "-17_-12": {
@@ -1756,8 +1756,8 @@
    "file": "-17_-12.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": 8.97,
-   "hmax": 40.02,
-   "bytes": 227097,
+   "hmax": 40.03,
+   "bytes": 227968,
    "traffic": "-17_-12.p5r"
   },
   "-16_-12": {
@@ -1767,7 +1767,7 @@
    "region": "coast_road",
    "hmin": -3.5,
    "hmax": 37.07,
-   "bytes": 149208,
+   "bytes": 149110,
    "traffic": "-16_-12.p5r"
   },
   "1_-12": {
@@ -1775,9 +1775,9 @@
    "j": -12,
    "file": "1_-12.p5t",
    "region": "canning_hwy",
-   "hmin": 13.36,
+   "hmin": 13.38,
    "hmax": 39.41,
-   "bytes": 304314,
+   "bytes": 303628,
    "traffic": "1_-12.p5r"
   },
   "2_-12": {
@@ -1786,8 +1786,8 @@
    "file": "2_-12.p5t",
    "region": "canning_hwy",
    "hmin": 14.53,
-   "hmax": 36.74,
-   "bytes": 310790,
+   "hmax": 36.75,
+   "bytes": 310690,
    "traffic": "2_-12.p5r"
   },
   "-20_-11": {
@@ -1796,8 +1796,8 @@
    "file": "-20_-11.p5t",
    "region": "coast_road",
    "hmin": -6.0,
-   "hmax": 32.6,
-   "bytes": 226000,
+   "hmax": 32.59,
+   "bytes": 225661,
    "traffic": "-20_-11.p5r"
   },
   "-19_-11": {
@@ -1806,8 +1806,8 @@
    "file": "-19_-11.p5t",
    "region": "coast_road",
    "hmin": 17.59,
-   "hmax": 50.33,
-   "bytes": 370907,
+   "hmax": 50.34,
+   "bytes": 370636,
    "traffic": "-19_-11.p5r"
   },
   "-18_-11": {
@@ -1815,9 +1815,9 @@
    "j": -11,
    "file": "-18_-11.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 11.24,
-   "hmax": 40.85,
-   "bytes": 378512,
+   "hmin": 11.25,
+   "hmax": 40.84,
+   "bytes": 378396,
    "traffic": "-18_-11.p5r"
   },
   "-17_-11": {
@@ -1825,9 +1825,9 @@
    "j": -11,
    "file": "-17_-11.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 16.17,
-   "hmax": 48.57,
-   "bytes": 233536,
+   "hmin": 16.16,
+   "hmax": 48.56,
+   "bytes": 233598,
    "traffic": "-17_-11.p5r"
   },
   "-16_-11": {
@@ -1875,9 +1875,9 @@
    "j": -11,
    "file": "1_-11.p5t",
    "region": "canning_hwy",
-   "hmin": 11.11,
-   "hmax": 40.29,
-   "bytes": 269983,
+   "hmin": 11.12,
+   "hmax": 40.28,
+   "bytes": 269842,
    "traffic": "1_-11.p5r"
   },
   "2_-11": {
@@ -1915,9 +1915,9 @@
    "j": -11,
    "file": "5_-11.p5t",
    "region": "victoria_park",
-   "hmin": 12.1,
-   "hmax": 40.07,
-   "bytes": 346453,
+   "hmin": 12.09,
+   "hmax": 40.06,
+   "bytes": 347027,
    "traffic": "5_-11.p5r"
   },
   "6_-11": {
@@ -1925,9 +1925,9 @@
    "j": -11,
    "file": "6_-11.p5t",
    "region": "victoria_park",
-   "hmin": 14.57,
-   "hmax": 40.63,
-   "bytes": 427051,
+   "hmin": 14.56,
+   "hmax": 40.62,
+   "bytes": 426691,
    "traffic": "6_-11.p5r"
   },
   "7_-11": {
@@ -1955,9 +1955,9 @@
    "j": -11,
    "file": "9_-11.p5t",
    "region": "victoria_park",
-   "hmin": 19.26,
-   "hmax": 42.8,
-   "bytes": 353951,
+   "hmin": 19.25,
+   "hmax": 42.81,
+   "bytes": 354252,
    "traffic": "9_-11.p5r"
   },
   "10_-11": {
@@ -1966,8 +1966,8 @@
    "file": "10_-11.p5t",
    "region": "victoria_park",
    "hmin": 18.81,
-   "hmax": 39.87,
-   "bytes": 325320,
+   "hmax": 39.88,
+   "bytes": 325499,
    "traffic": "10_-11.p5r"
   },
   "-20_-10": {
@@ -1976,8 +1976,8 @@
    "file": "-20_-10.p5t",
    "region": "coast_road",
    "hmin": -6.0,
-   "hmax": 43.01,
-   "bytes": 159496,
+   "hmax": 42.97,
+   "bytes": 159021,
    "traffic": "-20_-10.p5r"
   },
   "-19_-10": {
@@ -1985,9 +1985,9 @@
    "j": -10,
    "file": "-19_-10.p5t",
    "region": "coast_road",
-   "hmin": 14.32,
-   "hmax": 46.13,
-   "bytes": 425870,
+   "hmin": 14.31,
+   "hmax": 46.12,
+   "bytes": 425868,
    "traffic": "-19_-10.p5r"
   },
   "-18_-10": {
@@ -1996,8 +1996,8 @@
    "file": "-18_-10.p5t",
    "region": "coast_road",
    "hmin": 11.47,
-   "hmax": 38.51,
-   "bytes": 413988,
+   "hmax": 38.5,
+   "bytes": 414416,
    "traffic": "-18_-10.p5r"
   },
   "-17_-10": {
@@ -2006,8 +2006,8 @@
    "file": "-17_-10.p5t",
    "region": "stirling_hwy_fremantle",
    "hmin": 17.88,
-   "hmax": 46.35,
-   "bytes": 293449,
+   "hmax": 46.34,
+   "bytes": 293747,
    "traffic": "-17_-10.p5r"
   },
   "-16_-10": {
@@ -2015,9 +2015,9 @@
    "j": -10,
    "file": "-16_-10.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": -2.93,
-   "hmax": 52.46,
-   "bytes": 230849,
+   "hmin": -2.94,
+   "hmax": 52.47,
+   "bytes": 230535,
    "traffic": "-16_-10.p5r"
   },
   "-15_-10": {
@@ -2027,7 +2027,7 @@
    "region": "stirling_hwy_fremantle",
    "hmin": -3.5,
    "hmax": 42.56,
-   "bytes": 115157,
+   "bytes": 115197,
    "traffic": "-15_-10.p5r"
   },
   "-8_-10": {
@@ -2047,7 +2047,7 @@
    "region": "pelican_point",
    "hmin": -3.5,
    "hmax": 17.17,
-   "bytes": 121285,
+   "bytes": 120976,
    "traffic": "-7_-10.p5r"
   },
   "-6_-10": {
@@ -2095,9 +2095,9 @@
    "j": -10,
    "file": "4_-10.p5t",
    "region": "victoria_park",
-   "hmin": 19.51,
-   "hmax": 44.05,
-   "bytes": 293868,
+   "hmin": 19.5,
+   "hmax": 44.06,
+   "bytes": 294325,
    "traffic": "4_-10.p5r"
   },
   "5_-10": {
@@ -2105,9 +2105,9 @@
    "j": -10,
    "file": "5_-10.p5t",
    "region": "victoria_park",
-   "hmin": 14.61,
-   "hmax": 46.55,
-   "bytes": 298019,
+   "hmin": 14.62,
+   "hmax": 46.53,
+   "bytes": 297986,
    "traffic": "5_-10.p5r"
   },
   "6_-10": {
@@ -2115,9 +2115,9 @@
    "j": -10,
    "file": "6_-10.p5t",
    "region": "victoria_park",
-   "hmin": 14.98,
+   "hmin": 14.97,
    "hmax": 32.88,
-   "bytes": 233788,
+   "bytes": 233437,
    "traffic": "6_-10.p5r"
   },
   "7_-10": {
@@ -2127,7 +2127,7 @@
    "region": "victoria_park",
    "hmin": 14.09,
    "hmax": 40.81,
-   "bytes": 323176,
+   "bytes": 323988,
    "traffic": "7_-10.p5r"
   },
   "8_-10": {
@@ -2187,7 +2187,7 @@
    "region": "coast_road",
    "hmin": 8.56,
    "hmax": 26.44,
-   "bytes": 338941,
+   "bytes": 337688,
    "traffic": "-18_-9.p5r"
   },
   "-17_-9": {
@@ -2195,9 +2195,9 @@
    "j": -9,
    "file": "-17_-9.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 10.95,
-   "hmax": 46.36,
-   "bytes": 396728,
+   "hmin": 10.97,
+   "hmax": 46.34,
+   "bytes": 395557,
    "traffic": "-17_-9.p5r"
   },
   "-16_-9": {
@@ -2205,9 +2205,9 @@
    "j": -9,
    "file": "-16_-9.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 24.57,
-   "hmax": 48.71,
-   "bytes": 376319,
+   "hmin": 24.56,
+   "hmax": 48.72,
+   "bytes": 376242,
    "traffic": "-16_-9.p5r"
   },
   "-15_-9": {
@@ -2215,9 +2215,9 @@
    "j": -9,
    "file": "-15_-9.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 10.71,
-   "hmax": 36.9,
-   "bytes": 312341,
+   "hmin": 10.72,
+   "hmax": 36.91,
+   "bytes": 312673,
    "traffic": "-15_-9.p5r"
   },
   "-14_-9": {
@@ -2256,8 +2256,8 @@
    "file": "-8_-9.p5t",
    "region": "pelican_point",
    "hmin": 6.47,
-   "hmax": 37.26,
-   "bytes": 261591,
+   "hmax": 37.31,
+   "bytes": 260911,
    "traffic": "-8_-9.p5r"
   },
   "-7_-9": {
@@ -2277,7 +2277,7 @@
    "region": "pelican_point",
    "hmin": -3.5,
    "hmax": 17.51,
-   "bytes": 137847,
+   "bytes": 137500,
    "traffic": "-6_-9.p5r"
   },
   "-5_-9": {
@@ -2295,9 +2295,9 @@
    "j": -9,
    "file": "3_-9.p5t",
    "region": "victoria_park",
-   "hmin": 14.05,
+   "hmin": 14.03,
    "hmax": 38.88,
-   "bytes": 284084,
+   "bytes": 283633,
    "traffic": "3_-9.p5r"
   },
   "4_-9": {
@@ -2305,9 +2305,9 @@
    "j": -9,
    "file": "4_-9.p5t",
    "region": "victoria_park",
-   "hmin": 16.96,
-   "hmax": 38.05,
-   "bytes": 403131,
+   "hmin": 16.97,
+   "hmax": 38.03,
+   "bytes": 403487,
    "traffic": "4_-9.p5r"
   },
   "5_-9": {
@@ -2337,7 +2337,7 @@
    "region": "victoria_park",
    "hmin": 17.66,
    "hmax": 39.91,
-   "bytes": 269271,
+   "bytes": 269013,
    "traffic": "7_-9.p5r"
   },
   "8_-9": {
@@ -2355,9 +2355,9 @@
    "j": -9,
    "file": "9_-9.p5t",
    "region": "victoria_park",
-   "hmin": 12.74,
-   "hmax": 35.05,
-   "bytes": 495657,
+   "hmin": 12.75,
+   "hmax": 35.06,
+   "bytes": 496918,
    "traffic": "9_-9.p5r"
   },
   "10_-9": {
@@ -2395,9 +2395,9 @@
    "j": -8,
    "file": "-17_-8.p5t",
    "region": "coast_road",
-   "hmin": 10.35,
-   "hmax": 45.46,
-   "bytes": 290598,
+   "hmin": 10.38,
+   "hmax": 45.47,
+   "bytes": 291015,
    "traffic": "-17_-8.p5r"
   },
   "-14_-8": {
@@ -2415,9 +2415,9 @@
    "j": -8,
    "file": "-13_-8.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 14.21,
+   "hmin": 14.22,
    "hmax": 41.25,
-   "bytes": 268429,
+   "bytes": 267942,
    "traffic": "-13_-8.p5r"
   },
   "-12_-8": {
@@ -2435,9 +2435,9 @@
    "j": -8,
    "file": "-11_-8.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": 10.73,
+   "hmin": 10.72,
    "hmax": 34.0,
-   "bytes": 226791,
+   "bytes": 226237,
    "traffic": "-11_-8.p5r"
   },
   "-10_-8": {
@@ -2545,9 +2545,9 @@
    "j": -8,
    "file": "0_-8.p5t",
    "region": "first_slice",
-   "hmin": 7.07,
+   "hmin": 7.06,
    "hmax": 41.66,
-   "bytes": 342990,
+   "bytes": 342214,
    "traffic": "0_-8.p5r"
   },
   "1_-8": {
@@ -2555,9 +2555,9 @@
    "j": -8,
    "file": "1_-8.p5t",
    "region": "first_slice",
-   "hmin": 8.69,
-   "hmax": 38.6,
-   "bytes": 325144,
+   "hmin": 8.72,
+   "hmax": 38.59,
+   "bytes": 325642,
    "traffic": "1_-8.p5r"
   },
   "2_-8": {
@@ -2565,9 +2565,9 @@
    "j": -8,
    "file": "2_-8.p5t",
    "region": "first_slice",
-   "hmin": 6.13,
-   "hmax": 29.13,
-   "bytes": 286908,
+   "hmin": 6.12,
+   "hmax": 29.12,
+   "bytes": 286575,
    "traffic": "2_-8.p5r"
   },
   "3_-8": {
@@ -2586,7 +2586,7 @@
    "file": "4_-8.p5t",
    "region": "first_slice",
    "hmin": 10.62,
-   "hmax": 51.64,
+   "hmax": 51.62,
    "bytes": 389972,
    "traffic": "4_-8.p5r"
   },
@@ -2605,9 +2605,9 @@
    "j": -8,
    "file": "6_-8.p5t",
    "region": "victoria_park",
-   "hmin": 12.36,
-   "hmax": 53.17,
-   "bytes": 374145,
+   "hmin": 12.38,
+   "hmax": 53.19,
+   "bytes": 374220,
    "traffic": "6_-8.p5r"
   },
   "7_-8": {
@@ -2617,7 +2617,7 @@
    "region": "victoria_park",
    "hmin": 18.59,
    "hmax": 41.62,
-   "bytes": 352189,
+   "bytes": 351556,
    "traffic": "7_-8.p5r"
   },
   "8_-8": {
@@ -2685,9 +2685,9 @@
    "j": -7,
    "file": "-8_-7.p5t",
    "region": "stirling_hwy_fremantle",
-   "hmin": -0.11,
+   "hmin": -0.12,
    "hmax": 44.28,
-   "bytes": 324417,
+   "bytes": 325035,
    "traffic": "-8_-7.p5r"
   },
   "-7_-7": {
@@ -2696,7 +2696,7 @@
    "file": "-7_-7.p5t",
    "region": "first_slice",
    "hmin": -2.5,
-   "hmax": 46.79,
+   "hmax": 46.78,
    "bytes": 411098,
    "traffic": "-7_-7.p5r"
   },
@@ -2707,7 +2707,7 @@
    "region": "first_slice",
    "hmin": -3.5,
    "hmax": 35.92,
-   "bytes": 126166,
+   "bytes": 126518,
    "traffic": "-6_-7.p5r"
   },
   "-5_-7": {
@@ -2755,9 +2755,9 @@
    "j": -7,
    "file": "-1_-7.p5t",
    "region": "first_slice",
-   "hmin": 2.8,
+   "hmin": 2.81,
    "hmax": 24.16,
-   "bytes": 364661,
+   "bytes": 364409,
    "traffic": "-1_-7.p5r"
   },
   "0_-7": {
@@ -2776,8 +2776,8 @@
    "file": "1_-7.p5t",
    "region": "first_slice",
    "hmin": -2.5,
-   "hmax": 30.83,
-   "bytes": 219736,
+   "hmax": 30.81,
+   "bytes": 220168,
    "traffic": "1_-7.p5r"
   },
   "2_-7": {
@@ -2787,7 +2787,7 @@
    "region": "first_slice",
    "hmin": -3.5,
    "hmax": 17.04,
-   "bytes": 277156,
+   "bytes": 277734,
    "traffic": "2_-7.p5r"
   },
   "3_-7": {
@@ -2796,8 +2796,8 @@
    "file": "3_-7.p5t",
    "region": "first_slice",
    "hmin": -2.31,
-   "hmax": 23.08,
-   "bytes": 357708,
+   "hmax": 23.09,
+   "bytes": 358215,
    "traffic": "3_-7.p5r"
   },
   "4_-7": {
@@ -2825,9 +2825,9 @@
    "j": -7,
    "file": "6_-7.p5t",
    "region": "victoria_park",
-   "hmin": 6.35,
-   "hmax": 35.85,
-   "bytes": 345977,
+   "hmin": 6.34,
+   "hmax": 35.84,
+   "bytes": 346217,
    "traffic": "6_-7.p5r"
   },
   "7_-7": {
@@ -2855,9 +2855,9 @@
    "j": -7,
    "file": "9_-7.p5t",
    "region": "victoria_park",
-   "hmin": 15.21,
-   "hmax": 34.77,
-   "bytes": 440093,
+   "hmin": 15.22,
+   "hmax": 34.78,
+   "bytes": 439987,
    "traffic": "9_-7.p5r"
   },
   "10_-7": {
@@ -2865,9 +2865,9 @@
    "j": -7,
    "file": "10_-7.p5t",
    "region": "victoria_park",
-   "hmin": 12.96,
-   "hmax": 36.57,
-   "bytes": 349509,
+   "hmin": 12.97,
+   "hmax": 36.56,
+   "bytes": 349528,
    "traffic": "10_-7.p5r"
   },
   "-18_-6": {
@@ -2885,7 +2885,7 @@
    "j": -6,
    "file": "-17_-6.p5t",
    "region": "coast_road",
-   "hmin": 23.64,
+   "hmin": 23.62,
    "hmax": 48.53,
    "bytes": 399193,
    "traffic": "-17_-6.p5r"
@@ -2946,8 +2946,8 @@
    "file": "-2_-6.p5t",
    "region": "first_slice",
    "hmin": -2.5,
-   "hmax": 20.08,
-   "bytes": 198231,
+   "hmax": 20.09,
+   "bytes": 197565,
    "traffic": "-2_-6.p5r"
   },
   "-1_-6": {
@@ -2956,8 +2956,8 @@
    "file": "-1_-6.p5t",
    "region": "first_slice",
    "hmin": -3.5,
-   "hmax": 124.34,
-   "bytes": 335725,
+   "hmax": 124.39,
+   "bytes": 334982,
    "traffic": "-1_-6.p5r"
   },
   "0_-6": {
@@ -2996,8 +2996,8 @@
    "file": "3_-6.p5t",
    "region": "first_slice",
    "hmin": -2.5,
-   "hmax": 17.54,
-   "bytes": 133166,
+   "hmax": 17.53,
+   "bytes": 132801,
    "traffic": "3_-6.p5r"
   },
   "4_-6": {
@@ -3007,7 +3007,7 @@
    "region": "first_slice",
    "hmin": -3.5,
    "hmax": 14.01,
-   "bytes": 141478,
+   "bytes": 141695,
    "traffic": "4_-6.p5r"
   },
   "5_-6": {
@@ -3026,8 +3026,8 @@
    "file": "6_-6.p5t",
    "region": "victoria_park",
    "hmin": -0.03,
-   "hmax": 29.49,
-   "bytes": 485385,
+   "hmax": 29.5,
+   "bytes": 485604,
    "traffic": "6_-6.p5r"
   },
   "7_-6": {
@@ -3095,9 +3095,9 @@
    "j": -5,
    "file": "-7_-5.p5t",
    "region": "first_slice",
-   "hmin": 14.04,
-   "hmax": 41.46,
-   "bytes": 334039,
+   "hmin": 14.03,
+   "hmax": 41.47,
+   "bytes": 332686,
    "traffic": "-7_-5.p5r"
   },
   "-6_-5": {
@@ -3105,9 +3105,9 @@
    "j": -5,
    "file": "-6_-5.p5t",
    "region": "first_slice",
-   "hmin": 16.43,
-   "hmax": 32.6,
-   "bytes": 227555,
+   "hmin": 16.44,
+   "hmax": 32.59,
+   "bytes": 227382,
    "traffic": "-6_-5.p5r"
   },
   "-5_-5": {
@@ -3137,7 +3137,7 @@
    "region": "first_slice",
    "hmin": -4.19,
    "hmax": 58.28,
-   "bytes": 188873,
+   "bytes": 189509,
    "traffic": "-3_-5.p5r"
   },
   "-2_-5": {
@@ -3145,9 +3145,9 @@
    "j": -5,
    "file": "-2_-5.p5t",
    "region": "first_slice",
-   "hmin": -4.21,
-   "hmax": 21.95,
-   "bytes": 379912,
+   "hmin": -4.22,
+   "hmax": 21.94,
+   "bytes": 380352,
    "traffic": "-2_-5.p5r"
   },
   "-1_-5": {
@@ -3157,7 +3157,7 @@
    "region": "first_slice",
    "hmin": -3.5,
    "hmax": 35.53,
-   "bytes": 143730,
+   "bytes": 144889,
    "traffic": "-1_-5.p5r"
   },
   "0_-5": {
@@ -3196,8 +3196,8 @@
    "file": "3_-5.p5t",
    "region": "first_slice",
    "hmin": -2.5,
-   "hmax": 1.83,
-   "bytes": 34737,
+   "hmax": 1.75,
+   "bytes": 33924,
    "traffic": "3_-5.p5r"
   },
   "4_-5": {
@@ -3207,7 +3207,7 @@
    "region": "first_slice",
    "hmin": -4.43,
    "hmax": 13.77,
-   "bytes": 223112,
+   "bytes": 222876,
    "traffic": "4_-5.p5r"
   },
   "5_-5": {
@@ -3215,9 +3215,9 @@
    "j": -5,
    "file": "5_-5.p5t",
    "region": "victoria_park",
-   "hmin": -4.43,
+   "hmin": -4.44,
    "hmax": 14.78,
-   "bytes": 337182,
+   "bytes": 335967,
    "traffic": "5_-5.p5r"
   },
   "6_-5": {
@@ -3226,8 +3226,8 @@
    "file": "6_-5.p5t",
    "region": "victoria_park",
    "hmin": -4.0,
-   "hmax": 21.56,
-   "bytes": 323761,
+   "hmax": 21.47,
+   "bytes": 323506,
    "traffic": "6_-5.p5r"
   },
   "7_-5": {
@@ -3235,9 +3235,9 @@
    "j": -5,
    "file": "7_-5.p5t",
    "region": "victoria_park",
-   "hmin": 1.6,
-   "hmax": 21.63,
-   "bytes": 383549,
+   "hmin": 1.59,
+   "hmax": 21.62,
+   "bytes": 383959,
    "traffic": "7_-5.p5r"
   },
   "8_-5": {
@@ -3245,9 +3245,9 @@
    "j": -5,
    "file": "8_-5.p5t",
    "region": "victoria_park",
-   "hmin": 1.4,
-   "hmax": 39.05,
-   "bytes": 386323,
+   "hmin": 1.41,
+   "hmax": 39.06,
+   "bytes": 385804,
    "traffic": "8_-5.p5r"
   },
   "9_-5": {
@@ -3265,9 +3265,9 @@
    "j": -5,
    "file": "10_-5.p5t",
    "region": "victoria_park",
-   "hmin": 17.15,
-   "hmax": 31.63,
-   "bytes": 368171,
+   "hmin": 17.16,
+   "hmax": 31.62,
+   "bytes": 367596,
    "traffic": "10_-5.p5r"
   },
   "-18_-4": {
@@ -3295,9 +3295,9 @@
    "j": -4,
    "file": "-7_-4.p5t",
    "region": "first_slice",
-   "hmin": 13.17,
-   "hmax": 37.88,
-   "bytes": 310262,
+   "hmin": 13.19,
+   "hmax": 37.78,
+   "bytes": 309497,
    "traffic": "-7_-4.p5r"
   },
   "-6_-4": {
@@ -3306,8 +3306,8 @@
    "file": "-6_-4.p5t",
    "region": "first_slice",
    "hmin": 18.78,
-   "hmax": 46.79,
-   "bytes": 260598,
+   "hmax": 46.78,
+   "bytes": 259830,
    "traffic": "-6_-4.p5r"
   },
   "-5_-4": {
@@ -3337,7 +3337,7 @@
    "region": "first_slice",
    "hmin": -3.75,
    "hmax": 80.38,
-   "bytes": 481537,
+   "bytes": 481200,
    "traffic": "-3_-4.p5r"
   },
   "-2_-4": {
@@ -3347,7 +3347,7 @@
    "region": "first_slice",
    "hmin": -4.0,
    "hmax": 83.41,
-   "bytes": 495026,
+   "bytes": 495314,
    "traffic": "-2_-4.p5r"
   },
   "-1_-4": {
@@ -3366,8 +3366,8 @@
    "file": "0_-4.p5t",
    "region": "first_slice",
    "hmin": -3.5,
-   "hmax": 37.99,
-   "bytes": 56768,
+   "hmax": 37.65,
+   "bytes": 56750,
    "traffic": "0_-4.p5r"
   },
   "1_-4": {
@@ -3376,8 +3376,8 @@
    "file": "1_-4.p5t",
    "region": "first_slice",
    "hmin": -3.5,
-   "hmax": 28.27,
-   "bytes": 142799,
+   "hmax": 27.55,
+   "bytes": 142567,
    "traffic": "1_-4.p5r"
   },
   "2_-4": {
@@ -3386,8 +3386,8 @@
    "file": "2_-4.p5t",
    "region": "first_slice",
    "hmin": -2.5,
-   "hmax": 89.99,
-   "bytes": 193907,
+   "hmax": 90.0,
+   "bytes": 192775,
    "traffic": "2_-4.p5r"
   },
   "3_-4": {
@@ -3396,8 +3396,8 @@
    "file": "3_-4.p5t",
    "region": "first_slice",
    "hmin": -2.5,
-   "hmax": 106.15,
-   "bytes": 288184,
+   "hmax": 106.16,
+   "bytes": 288256,
    "traffic": "3_-4.p5r"
   },
   "4_-4": {
@@ -3405,9 +3405,9 @@
    "j": -4,
    "file": "4_-4.p5t",
    "region": "first_slice",
-   "hmin": -1.46,
+   "hmin": -1.47,
    "hmax": 99.75,
-   "bytes": 460477,
+   "bytes": 460278,
    "traffic": "4_-4.p5r"
   },
   "5_-4": {
@@ -3417,7 +3417,7 @@
    "region": "east_perth",
    "hmin": -2.5,
    "hmax": 22.12,
-   "bytes": 215164,
+   "bytes": 214575,
    "traffic": "5_-4.p5r"
   },
   "6_-4": {
@@ -3427,7 +3427,7 @@
    "region": "east_perth",
    "hmin": -3.39,
    "hmax": 7.15,
-   "bytes": 73467,
+   "bytes": 73767,
    "traffic": "6_-4.p5r"
   },
   "7_-4": {
@@ -3435,9 +3435,9 @@
    "j": -4,
    "file": "7_-4.p5t",
    "region": "east_perth",
-   "hmin": -2.61,
-   "hmax": 58.55,
-   "bytes": 393053,
+   "hmin": -2.59,
+   "hmax": 58.56,
+   "bytes": 393681,
    "traffic": "7_-4.p5r"
   },
   "8_-4": {
@@ -3445,9 +3445,9 @@
    "j": -4,
    "file": "8_-4.p5t",
    "region": "victoria_park",
-   "hmin": 0.13,
+   "hmin": 0.12,
    "hmax": 36.88,
-   "bytes": 535138,
+   "bytes": 534982,
    "traffic": "8_-4.p5r"
   },
   "9_-4": {
@@ -3465,9 +3465,9 @@
    "j": -4,
    "file": "10_-4.p5t",
    "region": "victoria_park",
-   "hmin": 14.39,
-   "hmax": 39.79,
-   "bytes": 388634,
+   "hmin": 14.41,
+   "hmax": 39.78,
+   "bytes": 388641,
    "traffic": "10_-4.p5r"
   },
   "-18_-3": {
@@ -3497,7 +3497,7 @@
    "region": "first_slice",
    "hmin": 18.16,
    "hmax": 42.34,
-   "bytes": 341877,
+   "bytes": 341443,
    "traffic": "-7_-3.p5r"
   },
   "-6_-3": {
@@ -3505,9 +3505,9 @@
    "j": -3,
    "file": "-6_-3.p5t",
    "region": "first_slice",
-   "hmin": 26.46,
-   "hmax": 59.76,
-   "bytes": 340213,
+   "hmin": 26.47,
+   "hmax": 59.75,
+   "bytes": 338359,
    "traffic": "-6_-3.p5r"
   },
   "-5_-3": {
@@ -3515,9 +3515,9 @@
    "j": -3,
    "file": "-5_-3.p5t",
    "region": "first_slice",
-   "hmin": 44.26,
+   "hmin": 44.25,
    "hmax": 73.34,
-   "bytes": 232179,
+   "bytes": 232398,
    "traffic": "-5_-3.p5r"
   },
   "-4_-3": {
@@ -3535,9 +3535,9 @@
    "j": -3,
    "file": "-3_-3.p5t",
    "region": "first_slice",
-   "hmin": 52.67,
-   "hmax": 89.57,
-   "bytes": 297145,
+   "hmin": 52.66,
+   "hmax": 89.56,
+   "bytes": 296795,
    "traffic": "-3_-3.p5r"
   },
   "-2_-3": {
@@ -3546,8 +3546,8 @@
    "file": "-2_-3.p5t",
    "region": "first_slice",
    "hmin": -1.47,
-   "hmax": 106.48,
-   "bytes": 410539,
+   "hmax": 106.5,
+   "bytes": 410597,
    "traffic": "-2_-3.p5r"
   },
   "-1_-3": {
@@ -3555,9 +3555,9 @@
    "j": -3,
    "file": "-1_-3.p5t",
    "region": "first_slice",
-   "hmin": -11.18,
-   "hmax": 59.21,
-   "bytes": 582307,
+   "hmin": -11.19,
+   "hmax": 59.22,
+   "bytes": 579812,
    "traffic": "-1_-3.p5r"
   },
   "0_-3": {
@@ -3566,8 +3566,8 @@
    "file": "0_-3.p5t",
    "region": "first_slice",
    "hmin": -4.0,
-   "hmax": 260.6,
-   "bytes": 520357,
+   "hmax": 260.74,
+   "bytes": 518784,
    "traffic": "0_-3.p5r"
   },
   "1_-3": {
@@ -3575,9 +3575,9 @@
    "j": -3,
    "file": "1_-3.p5t",
    "region": "first_slice",
-   "hmin": -1.71,
-   "hmax": 186.0,
-   "bytes": 508092,
+   "hmin": -1.7,
+   "hmax": 186.01,
+   "bytes": 507927,
    "traffic": "1_-3.p5r"
   },
   "2_-3": {
@@ -3585,9 +3585,9 @@
    "j": -3,
    "file": "2_-3.p5t",
    "region": "first_slice",
-   "hmin": 9.99,
-   "hmax": 124.79,
-   "bytes": 424225,
+   "hmin": 10.0,
+   "hmax": 124.78,
+   "bytes": 424255,
    "traffic": "2_-3.p5r"
   },
   "3_-3": {
@@ -3595,9 +3595,9 @@
    "j": -3,
    "file": "3_-3.p5t",
    "region": "first_slice",
-   "hmin": 11.58,
-   "hmax": 77.15,
-   "bytes": 394636,
+   "hmin": 11.59,
+   "hmax": 77.16,
+   "bytes": 394872,
    "traffic": "3_-3.p5r"
   },
   "4_-3": {
@@ -3605,9 +3605,9 @@
    "j": -3,
    "file": "4_-3.p5t",
    "region": "first_slice",
-   "hmin": 3.55,
-   "hmax": 58.93,
-   "bytes": 488901,
+   "hmin": 3.56,
+   "hmax": 58.94,
+   "bytes": 488324,
    "traffic": "4_-3.p5r"
   },
   "5_-3": {
@@ -3635,9 +3635,9 @@
    "j": -3,
    "file": "7_-3.p5t",
    "region": "east_perth",
-   "hmin": -3.3,
+   "hmin": -3.28,
    "hmax": 112.62,
-   "bytes": 355235,
+   "bytes": 355071,
    "traffic": "7_-3.p5r"
   },
   "-18_-2": {
@@ -3645,8 +3645,8 @@
    "j": -2,
    "file": "-18_-2.p5t",
    "region": "coast_road",
-   "hmin": 14.7,
-   "hmax": 36.54,
+   "hmin": 14.69,
+   "hmax": 36.53,
    "bytes": 252181,
    "traffic": "-18_-2.p5r"
   },
@@ -3675,9 +3675,9 @@
    "j": -2,
    "file": "-10_-2.p5t",
    "region": "leederville_subiaco",
-   "hmin": 15.45,
-   "hmax": 37.33,
-   "bytes": 271869,
+   "hmin": 15.44,
+   "hmax": 37.34,
+   "bytes": 271727,
    "traffic": "-10_-2.p5r"
   },
   "-9_-2": {
@@ -3725,9 +3725,9 @@
    "j": -2,
    "file": "-5_-2.p5t",
    "region": "first_slice",
-   "hmin": 34.57,
-   "hmax": 72.05,
-   "bytes": 382811,
+   "hmin": 34.56,
+   "hmax": 72.0,
+   "bytes": 380388,
    "traffic": "-5_-2.p5r"
   },
   "-4_-2": {
@@ -3735,9 +3735,9 @@
    "j": -2,
    "file": "-4_-2.p5t",
    "region": "first_slice",
-   "hmin": 42.54,
-   "hmax": 91.8,
-   "bytes": 281754,
+   "hmin": 42.62,
+   "hmax": 91.81,
+   "bytes": 279452,
    "traffic": "-4_-2.p5r"
   },
   "-3_-2": {
@@ -3745,9 +3745,9 @@
    "j": -2,
    "file": "-3_-2.p5t",
    "region": "first_slice",
-   "hmin": 52.67,
-   "hmax": 88.86,
-   "bytes": 372904,
+   "hmin": 52.66,
+   "hmax": 88.88,
+   "bytes": 371969,
    "traffic": "-3_-2.p5r"
   },
   "-2_-2": {
@@ -3755,9 +3755,9 @@
    "j": -2,
    "file": "-2_-2.p5t",
    "region": "first_slice",
-   "hmin": 14.56,
-   "hmax": 116.58,
-   "bytes": 511492,
+   "hmin": 14.62,
+   "hmax": 116.53,
+   "bytes": 511155,
    "traffic": "-2_-2.p5r"
   },
   "-1_-2": {
@@ -3766,8 +3766,8 @@
    "file": "-1_-2.p5t",
    "region": "first_slice",
    "hmin": 12.22,
-   "hmax": 198.79,
-   "bytes": 404806,
+   "hmax": 198.72,
+   "bytes": 403565,
    "traffic": "-1_-2.p5r"
   },
   "0_-2": {
@@ -3776,8 +3776,8 @@
    "file": "0_-2.p5t",
    "region": "first_slice",
    "hmin": 7.06,
-   "hmax": 278.79,
-   "bytes": 448598,
+   "hmax": 278.78,
+   "bytes": 455397,
    "traffic": "0_-2.p5r"
   },
   "1_-2": {
@@ -3786,8 +3786,8 @@
    "file": "1_-2.p5t",
    "region": "first_slice",
    "hmin": 7.09,
-   "hmax": 114.89,
-   "bytes": 552913,
+   "hmax": 114.91,
+   "bytes": 552239,
    "traffic": "1_-2.p5r"
   },
   "2_-2": {
@@ -3795,9 +3795,9 @@
    "j": -2,
    "file": "2_-2.p5t",
    "region": "first_slice",
-   "hmin": 9.08,
-   "hmax": 63.13,
-   "bytes": 475107,
+   "hmin": 9.06,
+   "hmax": 63.12,
+   "bytes": 474614,
    "traffic": "2_-2.p5r"
   },
   "3_-2": {
@@ -3805,9 +3805,9 @@
    "j": -2,
    "file": "3_-2.p5t",
    "region": "first_slice",
-   "hmin": 11.1,
-   "hmax": 77.25,
-   "bytes": 518491,
+   "hmin": 11.12,
+   "hmax": 77.22,
+   "bytes": 518103,
    "traffic": "3_-2.p5r"
   },
   "4_-2": {
@@ -3817,7 +3817,7 @@
    "region": "first_slice",
    "hmin": -2.52,
    "hmax": 49.38,
-   "bytes": 525953,
+   "bytes": 525366,
    "traffic": "4_-2.p5r"
   },
   "5_-2": {
@@ -3827,7 +3827,7 @@
    "region": "east_perth",
    "hmin": -4.0,
    "hmax": 80.98,
-   "bytes": 264114,
+   "bytes": 264198,
    "traffic": "5_-2.p5r"
   },
   "6_-2": {
@@ -3836,8 +3836,8 @@
    "file": "6_-2.p5t",
    "region": "east_perth",
    "hmin": -4.0,
-   "hmax": 45.6,
-   "bytes": 394955,
+   "hmax": 45.61,
+   "bytes": 396212,
    "traffic": "6_-2.p5r"
   },
   "7_-2": {
@@ -3845,9 +3845,9 @@
    "j": -2,
    "file": "7_-2.p5t",
    "region": "east_perth",
-   "hmin": -3.3,
-   "hmax": 19.01,
-   "bytes": 529214,
+   "hmin": -3.28,
+   "hmax": 18.97,
+   "bytes": 526573,
    "traffic": "7_-2.p5r"
   },
   "-18_-1": {
@@ -3896,8 +3896,8 @@
    "file": "-14_-1.p5t",
    "region": "bold_park",
    "hmin": 7.44,
-   "hmax": 29.99,
-   "bytes": 225859,
+   "hmax": 30.0,
+   "bytes": 225691,
    "traffic": "-14_-1.p5r"
   },
   "-13_-1": {
@@ -3925,9 +3925,9 @@
    "j": -1,
    "file": "-10_-1.p5t",
    "region": "leederville_subiaco",
-   "hmin": 14.46,
-   "hmax": 39.85,
-   "bytes": 286380,
+   "hmin": 14.47,
+   "hmax": 39.84,
+   "bytes": 286894,
    "traffic": "-10_-1.p5r"
   },
   "-9_-1": {
@@ -3945,9 +3945,9 @@
    "j": -1,
    "file": "-8_-1.p5t",
    "region": "leederville_subiaco",
-   "hmin": 18.95,
-   "hmax": 51.81,
-   "bytes": 442664,
+   "hmin": 18.94,
+   "hmax": 51.75,
+   "bytes": 443469,
    "traffic": "-8_-1.p5r"
   },
   "-7_-1": {
@@ -3957,7 +3957,7 @@
    "region": "first_slice",
    "hmin": 13.0,
    "hmax": 54.72,
-   "bytes": 490013,
+   "bytes": 490352,
    "traffic": "-7_-1.p5r"
   },
   "-6_-1": {
@@ -3966,8 +3966,8 @@
    "file": "-6_-1.p5t",
    "region": "first_slice",
    "hmin": 22.88,
-   "hmax": 62.05,
-   "bytes": 450062,
+   "hmax": 62.06,
+   "bytes": 451516,
    "traffic": "-6_-1.p5r"
   },
   "-5_-1": {
@@ -3975,9 +3975,9 @@
    "j": -1,
    "file": "-5_-1.p5t",
    "region": "first_slice",
-   "hmin": 25.86,
-   "hmax": 58.77,
-   "bytes": 397784,
+   "hmin": 25.84,
+   "hmax": 58.78,
+   "bytes": 397317,
    "traffic": "-5_-1.p5r"
   },
   "-4_-1": {
@@ -3985,9 +3985,9 @@
    "j": -1,
    "file": "-4_-1.p5t",
    "region": "first_slice",
-   "hmin": 35.05,
+   "hmin": 35.06,
    "hmax": 83.72,
-   "bytes": 425919,
+   "bytes": 425663,
    "traffic": "-4_-1.p5r"
   },
   "-3_-1": {
@@ -3996,8 +3996,8 @@
    "file": "-3_-1.p5t",
    "region": "first_slice",
    "hmin": 36.75,
-   "hmax": 92.17,
-   "bytes": 414139,
+   "hmax": 92.19,
+   "bytes": 414034,
    "traffic": "-3_-1.p5r"
   },
   "-2_-1": {
@@ -4005,9 +4005,9 @@
    "j": -1,
    "file": "-2_-1.p5t",
    "region": "first_slice",
-   "hmin": 14.13,
-   "hmax": 75.77,
-   "bytes": 412342,
+   "hmin": 14.12,
+   "hmax": 75.78,
+   "bytes": 409987,
    "traffic": "-2_-1.p5r"
   },
   "-1_-1": {
@@ -4015,9 +4015,9 @@
    "j": -1,
    "file": "-1_-1.p5t",
    "region": "first_slice",
-   "hmin": 7.1,
-   "hmax": 58.95,
-   "bytes": 590114,
+   "hmin": 7.09,
+   "hmax": 58.94,
+   "bytes": 590883,
    "traffic": "-1_-1.p5r"
   },
   "0_-1": {
@@ -4025,9 +4025,9 @@
    "j": -1,
    "file": "0_-1.p5t",
    "region": "first_slice",
-   "hmin": 3.98,
-   "hmax": 110.39,
-   "bytes": 487046,
+   "hmin": 3.97,
+   "hmax": 110.59,
+   "bytes": 512951,
    "traffic": "0_-1.p5r"
   },
   "1_-1": {
@@ -4035,9 +4035,9 @@
    "j": -1,
    "file": "1_-1.p5t",
    "region": "first_slice",
-   "hmin": 5.13,
-   "hmax": 93.61,
-   "bytes": 484439,
+   "hmin": 5.12,
+   "hmax": 93.56,
+   "bytes": 517564,
    "traffic": "1_-1.p5r"
   },
   "2_-1": {
@@ -4047,7 +4047,7 @@
    "region": "first_slice",
    "hmin": 3.69,
    "hmax": 70.72,
-   "bytes": 462258,
+   "bytes": 494741,
    "traffic": "2_-1.p5r"
   },
   "3_-1": {
@@ -4055,9 +4055,9 @@
    "j": -1,
    "file": "3_-1.p5t",
    "region": "first_slice",
-   "hmin": 5.58,
+   "hmin": 5.59,
    "hmax": 32.59,
-   "bytes": 510023,
+   "bytes": 509757,
    "traffic": "3_-1.p5r"
   },
   "4_-1": {
@@ -4066,8 +4066,8 @@
    "file": "4_-1.p5t",
    "region": "first_slice",
    "hmin": 6.69,
-   "hmax": 36.07,
-   "bytes": 506337,
+   "hmax": 36.06,
+   "bytes": 506524,
    "traffic": "4_-1.p5r"
   },
   "5_-1": {
@@ -4077,7 +4077,7 @@
    "region": "east_perth",
    "hmin": -4.0,
    "hmax": 28.78,
-   "bytes": 327085,
+   "bytes": 328816,
    "traffic": "5_-1.p5r"
   },
   "6_-1": {
@@ -4096,8 +4096,8 @@
    "file": "7_-1.p5t",
    "region": "east_perth",
    "hmin": -2.5,
-   "hmax": 23.98,
-   "bytes": 344735,
+   "hmax": 23.97,
+   "bytes": 344433,
    "traffic": "7_-1.p5r"
   },
   "-19_0": {
@@ -4166,8 +4166,8 @@
    "file": "-13_0.p5t",
    "region": "bold_park",
    "hmin": 3.91,
-   "hmax": 24.04,
-   "bytes": 332504,
+   "hmax": 24.03,
+   "bytes": 331778,
    "traffic": "-13_0.p5r"
   },
   "-11_0": {
@@ -4187,7 +4187,7 @@
    "region": "leederville_subiaco",
    "hmin": 14.25,
    "hmax": 39.0,
-   "bytes": 308955,
+   "bytes": 308752,
    "traffic": "-10_0.p5r"
   },
   "-9_0": {
@@ -4197,7 +4197,7 @@
    "region": "leederville_subiaco",
    "hmin": 10.72,
    "hmax": 38.16,
-   "bytes": 398084,
+   "bytes": 398370,
    "traffic": "-9_0.p5r"
   },
   "-8_0": {
@@ -4205,9 +4205,9 @@
    "j": 0,
    "file": "-8_0.p5t",
    "region": "leederville_subiaco",
-   "hmin": -1.0,
+   "hmin": 12.69,
    "hmax": 33.38,
-   "bytes": 436251,
+   "bytes": 436244,
    "traffic": "-8_0.p5r"
   },
   "-7_0": {
@@ -4215,9 +4215,9 @@
    "j": 0,
    "file": "-7_0.p5t",
    "region": "first_slice",
-   "hmin": 13.2,
-   "hmax": 50.71,
-   "bytes": 536971,
+   "hmin": 13.22,
+   "hmax": 50.72,
+   "bytes": 537420,
    "traffic": "-7_0.p5r"
   },
   "-6_0": {
@@ -4225,9 +4225,9 @@
    "j": 0,
    "file": "-6_0.p5t",
    "region": "first_slice",
-   "hmin": 15.46,
-   "hmax": 103.77,
-   "bytes": 579028,
+   "hmin": 15.47,
+   "hmax": 103.78,
+   "bytes": 579074,
    "traffic": "-6_0.p5r"
   },
   "-5_0": {
@@ -4235,9 +4235,9 @@
    "j": 0,
    "file": "-5_0.p5t",
    "region": "first_slice",
-   "hmin": 21.43,
+   "hmin": 21.44,
    "hmax": 50.19,
-   "bytes": 398577,
+   "bytes": 398319,
    "traffic": "-5_0.p5r"
   },
   "-4_0": {
@@ -4246,8 +4246,8 @@
    "file": "-4_0.p5t",
    "region": "first_slice",
    "hmin": 32.06,
-   "hmax": 60.64,
-   "bytes": 402442,
+   "hmax": 60.62,
+   "bytes": 401778,
    "traffic": "-4_0.p5r"
   },
   "-3_0": {
@@ -4255,9 +4255,9 @@
    "j": 0,
    "file": "-3_0.p5t",
    "region": "first_slice",
-   "hmin": 17.92,
+   "hmin": 17.91,
    "hmax": 69.09,
-   "bytes": 489979,
+   "bytes": 491529,
    "traffic": "-3_0.p5r"
   },
   "-2_0": {
@@ -4265,9 +4265,9 @@
    "j": 0,
    "file": "-2_0.p5t",
    "region": "first_slice",
-   "hmin": 13.99,
+   "hmin": 14.0,
    "hmax": 53.09,
-   "bytes": 570576,
+   "bytes": 569258,
    "traffic": "-2_0.p5r"
   },
   "-1_0": {
@@ -4275,9 +4275,9 @@
    "j": 0,
    "file": "-1_0.p5t",
    "region": "first_slice",
-   "hmin": 9.63,
-   "hmax": 39.05,
-   "bytes": 523861,
+   "hmin": 9.62,
+   "hmax": 39.06,
+   "bytes": 522829,
    "traffic": "-1_0.p5r"
   },
   "0_0": {
@@ -4285,9 +4285,9 @@
    "j": 0,
    "file": "0_0.p5t",
    "region": "first_slice",
-   "hmin": 9.71,
-   "hmax": 40.52,
-   "bytes": 458333,
+   "hmin": 9.72,
+   "hmax": 40.53,
+   "bytes": 490839,
    "traffic": "0_0.p5r"
   },
   "1_0": {
@@ -4295,9 +4295,9 @@
    "j": 0,
    "file": "1_0.p5t",
    "region": "first_slice",
-   "hmin": 9.6,
-   "hmax": 36.02,
-   "bytes": 460352,
+   "hmin": 9.59,
+   "hmax": 36.03,
+   "bytes": 461193,
    "traffic": "1_0.p5r"
   },
   "2_0": {
@@ -4305,9 +4305,9 @@
    "j": 0,
    "file": "2_0.p5t",
    "region": "first_slice",
-   "hmin": 13.86,
-   "hmax": 42.45,
-   "bytes": 398965,
+   "hmin": 13.84,
+   "hmax": 42.44,
+   "bytes": 399481,
    "traffic": "2_0.p5r"
   },
   "3_0": {
@@ -4315,9 +4315,9 @@
    "j": 0,
    "file": "3_0.p5t",
    "region": "first_slice",
-   "hmin": 12.96,
-   "hmax": 60.3,
-   "bytes": 353266,
+   "hmin": 12.97,
+   "hmax": 60.28,
+   "bytes": 354053,
    "traffic": "3_0.p5r"
   },
   "4_0": {
@@ -4326,8 +4326,8 @@
    "file": "4_0.p5t",
    "region": "first_slice",
    "hmin": 8.5,
-   "hmax": 40.42,
-   "bytes": 433128,
+   "hmax": 40.44,
+   "bytes": 433027,
    "traffic": "4_0.p5r"
   },
   "5_0": {
@@ -4336,8 +4336,8 @@
    "file": "5_0.p5t",
    "region": "east_perth",
    "hmin": -2.5,
-   "hmax": 18.07,
-   "bytes": 112446,
+   "hmax": 18.06,
+   "bytes": 112590,
    "traffic": "5_0.p5r"
   },
   "6_0": {
@@ -4366,8 +4366,8 @@
    "file": "-19_1.p5t",
    "region": "coast_road",
    "hmin": -4.97,
-   "hmax": 23.46,
-   "bytes": 312050,
+   "hmax": 23.44,
+   "bytes": 311711,
    "traffic": "-19_1.p5r"
   },
   "-18_1": {
@@ -4375,9 +4375,9 @@
    "j": 1,
    "file": "-18_1.p5t",
    "region": "coast_road",
-   "hmin": 15.15,
-   "hmax": 49.33,
-   "bytes": 299253,
+   "hmin": 15.16,
+   "hmax": 49.34,
+   "bytes": 296585,
    "traffic": "-18_1.p5r"
   },
   "-17_1": {
@@ -4385,9 +4385,9 @@
    "j": 1,
    "file": "-17_1.p5t",
    "region": "bold_park",
-   "hmin": 29.6,
-   "hmax": 63.7,
-   "bytes": 243468,
+   "hmin": 29.59,
+   "hmax": 63.69,
+   "bytes": 240168,
    "traffic": "-17_1.p5r"
   },
   "-16_1": {
@@ -4395,9 +4395,9 @@
    "j": 1,
    "file": "-16_1.p5t",
    "region": "bold_park",
-   "hmin": 37.96,
-   "hmax": 72.63,
-   "bytes": 213944,
+   "hmin": 37.97,
+   "hmax": 72.62,
+   "bytes": 213175,
    "traffic": "-16_1.p5r"
   },
   "-15_1": {
@@ -4405,9 +4405,9 @@
    "j": 1,
    "file": "-15_1.p5t",
    "region": "bold_park",
-   "hmin": 20.64,
+   "hmin": 20.66,
    "hmax": 82.12,
-   "bytes": 262216,
+   "bytes": 262108,
    "traffic": "-15_1.p5r"
   },
   "-14_1": {
@@ -4415,9 +4415,9 @@
    "j": 1,
    "file": "-14_1.p5t",
    "region": "bold_park",
-   "hmin": 3.27,
-   "hmax": 45.86,
-   "bytes": 293578,
+   "hmin": 3.28,
+   "hmax": 45.84,
+   "bytes": 291318,
    "traffic": "-14_1.p5r"
   },
   "-13_1": {
@@ -4425,9 +4425,9 @@
    "j": 1,
    "file": "-13_1.p5t",
    "region": "bold_park",
-   "hmin": 3.13,
+   "hmin": 3.12,
    "hmax": 24.44,
-   "bytes": 324359,
+   "bytes": 323933,
    "traffic": "-13_1.p5r"
   },
   "-11_1": {
@@ -4445,9 +4445,9 @@
    "j": 1,
    "file": "-10_1.p5t",
    "region": "leederville_subiaco",
-   "hmin": 15.26,
-   "hmax": 33.17,
-   "bytes": 358858,
+   "hmin": 15.25,
+   "hmax": 33.16,
+   "bytes": 358744,
    "traffic": "-10_1.p5r"
   },
   "-9_1": {
@@ -4455,9 +4455,9 @@
    "j": 1,
    "file": "-9_1.p5t",
    "region": "leederville_subiaco",
-   "hmin": 13.6,
+   "hmin": 13.59,
    "hmax": 37.56,
-   "bytes": 282201,
+   "bytes": 282223,
    "traffic": "-9_1.p5r"
   },
   "-8_1": {
@@ -4476,8 +4476,8 @@
    "file": "-7_1.p5t",
    "region": "first_slice",
    "hmin": 14.16,
-   "hmax": 49.76,
-   "bytes": 309719,
+   "hmax": 49.75,
+   "bytes": 309190,
    "traffic": "-7_1.p5r"
   },
   "-6_1": {
@@ -4505,9 +4505,9 @@
    "j": 1,
    "file": "-4_1.p5t",
    "region": "first_slice",
-   "hmin": 19.75,
+   "hmin": 19.84,
    "hmax": 60.47,
-   "bytes": 351893,
+   "bytes": 352248,
    "traffic": "-4_1.p5r"
   },
   "-3_1": {
@@ -4515,9 +4515,9 @@
    "j": 1,
    "file": "-3_1.p5t",
    "region": "first_slice",
-   "hmin": 14.85,
-   "hmax": 48.23,
-   "bytes": 560818,
+   "hmin": 14.84,
+   "hmax": 48.22,
+   "bytes": 559537,
    "traffic": "-3_1.p5r"
   },
   "-2_1": {
@@ -4525,9 +4525,9 @@
    "j": 1,
    "file": "-2_1.p5t",
    "region": "first_slice",
-   "hmin": 15.36,
-   "hmax": 54.1,
-   "bytes": 441386,
+   "hmin": 15.38,
+   "hmax": 54.09,
+   "bytes": 440300,
    "traffic": "-2_1.p5r"
   },
   "-1_1": {
@@ -4535,9 +4535,9 @@
    "j": 1,
    "file": "-1_1.p5t",
    "region": "first_slice",
-   "hmin": 18.61,
-   "hmax": 49.14,
-   "bytes": 393948,
+   "hmin": 18.62,
+   "hmax": 49.16,
+   "bytes": 394296,
    "traffic": "-1_1.p5r"
   },
   "0_1": {
@@ -4547,7 +4547,7 @@
    "region": "first_slice",
    "hmin": 17.59,
    "hmax": 37.22,
-   "bytes": 426917,
+   "bytes": 426312,
    "traffic": "0_1.p5r"
   },
   "1_1": {
@@ -4555,9 +4555,9 @@
    "j": 1,
    "file": "1_1.p5t",
    "region": "first_slice",
-   "hmin": 17.02,
-   "hmax": 35.46,
-   "bytes": 478056,
+   "hmin": 17.03,
+   "hmax": 35.47,
+   "bytes": 477879,
    "traffic": "1_1.p5r"
   },
   "2_1": {
@@ -4566,8 +4566,8 @@
    "file": "2_1.p5t",
    "region": "first_slice",
    "hmin": 17.06,
-   "hmax": 52.24,
-   "bytes": 452192,
+   "hmax": 52.22,
+   "bytes": 452350,
    "traffic": "2_1.p5r"
   },
   "3_1": {
@@ -4575,9 +4575,9 @@
    "j": 1,
    "file": "3_1.p5t",
    "region": "first_slice",
-   "hmin": 13.83,
+   "hmin": 13.84,
    "hmax": 50.66,
-   "bytes": 433759,
+   "bytes": 432893,
    "traffic": "3_1.p5r"
   },
   "4_1": {
@@ -4585,9 +4585,9 @@
    "j": 1,
    "file": "4_1.p5t",
    "region": "first_slice",
-   "hmin": 12.33,
-   "hmax": 32.85,
-   "bytes": 456532,
+   "hmin": 12.34,
+   "hmax": 32.84,
+   "bytes": 455264,
    "traffic": "4_1.p5r"
   },
   "5_1": {
@@ -4597,7 +4597,7 @@
    "region": "east_perth",
    "hmin": -2.5,
    "hmax": 45.11,
-   "bytes": 273562,
+   "bytes": 274068,
    "traffic": "5_1.p5r"
   },
   "6_1": {
@@ -4617,7 +4617,7 @@
    "region": "east_perth",
    "hmin": -2.5,
    "hmax": 39.26,
-   "bytes": 109886,
+   "bytes": 109764,
    "traffic": "7_1.p5r"
   },
   "9_1": {
@@ -4627,7 +4627,7 @@
    "region": "bayswater_riverside",
    "hmin": 2.12,
    "hmax": 27.0,
-   "bytes": 337019,
+   "bytes": 337255,
    "traffic": "9_1.p5r"
   },
   "10_1": {
@@ -4636,8 +4636,8 @@
    "file": "10_1.p5t",
    "region": "bayswater_riverside",
    "hmin": -3.5,
-   "hmax": 26.33,
-   "bytes": 223314,
+   "hmax": 26.51,
+   "bytes": 223664,
    "traffic": "10_1.p5r"
   },
   "11_1": {
@@ -4646,8 +4646,8 @@
    "file": "11_1.p5t",
    "region": "bayswater_riverside",
    "hmin": -4.0,
-   "hmax": 17.45,
-   "bytes": 334989,
+   "hmax": 17.47,
+   "bytes": 335068,
    "traffic": "11_1.p5r"
   },
   "12_1": {
@@ -4657,7 +4657,7 @@
    "region": "bayswater_riverside",
    "hmin": -3.5,
    "hmax": 24.14,
-   "bytes": 500763,
+   "bytes": 499449,
    "traffic": "12_1.p5r"
   },
   "13_1": {
@@ -4665,9 +4665,9 @@
    "j": 1,
    "file": "13_1.p5t",
    "region": "bayswater_riverside",
-   "hmin": 3.42,
+   "hmin": 3.41,
    "hmax": 21.62,
-   "bytes": 386288,
+   "bytes": 386777,
    "traffic": "13_1.p5r"
   },
   "-19_2": {
@@ -4696,8 +4696,8 @@
    "file": "-17_2.p5t",
    "region": "bold_park",
    "hmin": 35.97,
-   "hmax": 79.27,
-   "bytes": 294150,
+   "hmax": 79.25,
+   "bytes": 294025,
    "traffic": "-17_2.p5r"
   },
   "-16_2": {
@@ -4705,9 +4705,9 @@
    "j": 2,
    "file": "-16_2.p5t",
    "region": "bold_park",
-   "hmin": 32.89,
-   "hmax": 75.7,
-   "bytes": 192743,
+   "hmin": 32.91,
+   "hmax": 75.69,
+   "bytes": 192514,
    "traffic": "-16_2.p5r"
   },
   "-15_2": {
@@ -4716,8 +4716,8 @@
    "file": "-15_2.p5t",
    "region": "bold_park",
    "hmin": 26.75,
-   "hmax": 52.77,
-   "bytes": 238583,
+   "hmax": 52.78,
+   "bytes": 238893,
    "traffic": "-15_2.p5r"
   },
   "-14_2": {
@@ -4725,9 +4725,9 @@
    "j": 2,
    "file": "-14_2.p5t",
    "region": "bold_park",
-   "hmin": 18.67,
-   "hmax": 45.42,
-   "bytes": 231232,
+   "hmin": 18.66,
+   "hmax": 45.41,
+   "bytes": 230810,
    "traffic": "-14_2.p5r"
   },
   "-13_2": {
@@ -4735,9 +4735,9 @@
    "j": 2,
    "file": "-13_2.p5t",
    "region": "bold_park",
-   "hmin": 13.85,
+   "hmin": 13.84,
    "hmax": 33.59,
-   "bytes": 299244,
+   "bytes": 299049,
    "traffic": "-13_2.p5r"
   },
   "-11_2": {
@@ -4755,9 +4755,9 @@
    "j": 2,
    "file": "-10_2.p5t",
    "region": "leederville_subiaco",
-   "hmin": 11.11,
-   "hmax": 31.79,
-   "bytes": 281892,
+   "hmin": 11.09,
+   "hmax": 31.78,
+   "bytes": 281282,
    "traffic": "-10_2.p5r"
   },
   "-9_2": {
@@ -4767,7 +4767,7 @@
    "region": "leederville_subiaco",
    "hmin": 15.91,
    "hmax": 36.38,
-   "bytes": 217423,
+   "bytes": 217497,
    "traffic": "-9_2.p5r"
   },
   "-8_2": {
@@ -4785,9 +4785,9 @@
    "j": 2,
    "file": "-7_2.p5t",
    "region": "leederville_subiaco",
-   "hmin": 17.99,
-   "hmax": 45.76,
-   "bytes": 263264,
+   "hmin": 18.0,
+   "hmax": 45.75,
+   "bytes": 262792,
    "traffic": "-7_2.p5r"
   },
   "-6_2": {
@@ -4805,9 +4805,9 @@
    "j": 2,
    "file": "-5_2.p5t",
    "region": "leederville_subiaco",
-   "hmin": 9.55,
-   "hmax": 49.67,
-   "bytes": 283491,
+   "hmin": 9.56,
+   "hmax": 49.66,
+   "bytes": 283518,
    "traffic": "-5_2.p5r"
   },
   "-4_2": {
@@ -4815,9 +4815,9 @@
    "j": 2,
    "file": "-4_2.p5t",
    "region": "leederville_subiaco",
-   "hmin": 9.55,
-   "hmax": 52.21,
-   "bytes": 467405,
+   "hmin": 9.56,
+   "hmax": 52.22,
+   "bytes": 466329,
    "traffic": "-4_2.p5r"
   },
   "-3_2": {
@@ -4825,9 +4825,9 @@
    "j": 2,
    "file": "-3_2.p5t",
    "region": "leederville_subiaco",
-   "hmin": 17.04,
-   "hmax": 44.83,
-   "bytes": 393654,
+   "hmin": 17.03,
+   "hmax": 44.84,
+   "bytes": 392193,
    "traffic": "-3_2.p5r"
   },
   "0_2": {
@@ -4835,9 +4835,9 @@
    "j": 2,
    "file": "0_2.p5t",
    "region": "mount_lawley",
-   "hmin": 22.01,
-   "hmax": 44.42,
-   "bytes": 354866,
+   "hmin": 22.09,
+   "hmax": 44.41,
+   "bytes": 354123,
    "traffic": "0_2.p5r"
   },
   "1_2": {
@@ -4865,9 +4865,9 @@
    "j": 2,
    "file": "3_2.p5t",
    "region": "mount_lawley",
-   "hmin": 19.65,
+   "hmin": 19.66,
    "hmax": 47.0,
-   "bytes": 461445,
+   "bytes": 461304,
    "traffic": "3_2.p5r"
   },
   "4_2": {
@@ -4875,9 +4875,9 @@
    "j": 2,
    "file": "4_2.p5t",
    "region": "mount_lawley",
-   "hmin": 17.8,
-   "hmax": 49.93,
-   "bytes": 324505,
+   "hmin": 17.78,
+   "hmax": 49.94,
+   "bytes": 324457,
    "traffic": "4_2.p5r"
   },
   "5_2": {
@@ -4887,7 +4887,7 @@
    "region": "mount_lawley",
    "hmin": 15.0,
    "hmax": 46.78,
-   "bytes": 352570,
+   "bytes": 352313,
    "traffic": "5_2.p5r"
   },
   "6_2": {
@@ -4897,7 +4897,7 @@
    "region": "guildford",
    "hmin": -2.5,
    "hmax": 61.64,
-   "bytes": 268616,
+   "bytes": 268156,
    "traffic": "6_2.p5r"
   },
   "9_2": {
@@ -4906,8 +4906,8 @@
    "file": "9_2.p5t",
    "region": "bayswater_riverside",
    "hmin": 11.34,
-   "hmax": 43.07,
-   "bytes": 230444,
+   "hmax": 43.06,
+   "bytes": 230466,
    "traffic": "9_2.p5r"
   },
   "10_2": {
@@ -4926,8 +4926,8 @@
    "file": "11_2.p5t",
    "region": "bayswater_riverside",
    "hmin": -4.0,
-   "hmax": 17.96,
-   "bytes": 198804,
+   "hmax": 17.97,
+   "bytes": 198462,
    "traffic": "11_2.p5r"
   },
   "12_2": {
@@ -4936,8 +4936,8 @@
    "file": "12_2.p5t",
    "region": "bayswater_riverside",
    "hmin": -2.5,
-   "hmax": 18.4,
-   "bytes": 238434,
+   "hmax": 18.84,
+   "bytes": 238466,
    "traffic": "12_2.p5r"
   },
   "13_2": {
@@ -4975,9 +4975,9 @@
    "j": 3,
    "file": "-17_3.p5t",
    "region": "bold_park",
-   "hmin": 36.04,
+   "hmin": 36.03,
    "hmax": 72.59,
-   "bytes": 283042,
+   "bytes": 283137,
    "traffic": "-17_3.p5r"
   },
   "-16_3": {
@@ -4985,9 +4985,9 @@
    "j": 3,
    "file": "-16_3.p5t",
    "region": "bold_park",
-   "hmin": 41.58,
+   "hmin": 41.56,
    "hmax": 71.03,
-   "bytes": 347025,
+   "bytes": 346529,
    "traffic": "-16_3.p5r"
   },
   "-15_3": {
@@ -4995,9 +4995,9 @@
    "j": 3,
    "file": "-15_3.p5t",
    "region": "bold_park",
-   "hmin": 27.27,
-   "hmax": 49.79,
-   "bytes": 265049,
+   "hmin": 27.28,
+   "hmax": 49.78,
+   "bytes": 265534,
    "traffic": "-15_3.p5r"
   },
   "-14_3": {
@@ -5015,9 +5015,9 @@
    "j": 3,
    "file": "-13_3.p5t",
    "region": "bold_park",
-   "hmin": 13.15,
+   "hmin": 13.16,
    "hmax": 32.69,
-   "bytes": 208318,
+   "bytes": 207958,
    "traffic": "-13_3.p5r"
   },
   "-12_3": {
@@ -5035,9 +5035,9 @@
    "j": 3,
    "file": "-11_3.p5t",
    "region": "leederville_subiaco",
-   "hmin": 1.7,
-   "hmax": 34.99,
-   "bytes": 310551,
+   "hmin": 1.69,
+   "hmax": 35.0,
+   "bytes": 307885,
    "traffic": "-11_3.p5r"
   },
   "-10_3": {
@@ -5045,9 +5045,9 @@
    "j": 3,
    "file": "-10_3.p5t",
    "region": "leederville_subiaco",
-   "hmin": 0.2,
+   "hmin": 0.19,
    "hmax": 26.47,
-   "bytes": 255123,
+   "bytes": 254005,
    "traffic": "-10_3.p5r"
   },
   "-9_3": {
@@ -5055,9 +5055,9 @@
    "j": 3,
    "file": "-9_3.p5t",
    "region": "leederville_subiaco",
-   "hmin": 0.2,
+   "hmin": 0.19,
    "hmax": 29.25,
-   "bytes": 232365,
+   "bytes": 232390,
    "traffic": "-9_3.p5r"
   },
   "-8_3": {
@@ -5105,9 +5105,9 @@
    "j": 3,
    "file": "-4_3.p5t",
    "region": "leederville_subiaco",
-   "hmin": 9.55,
-   "hmax": 29.87,
-   "bytes": 269960,
+   "hmin": 9.56,
+   "hmax": 29.88,
+   "bytes": 269795,
    "traffic": "-4_3.p5r"
   },
   "-3_3": {
@@ -5125,9 +5125,9 @@
    "j": 3,
    "file": "0_3.p5t",
    "region": "mount_lawley",
-   "hmin": 28.35,
-   "hmax": 64.82,
-   "bytes": 296873,
+   "hmin": 28.34,
+   "hmax": 64.81,
+   "bytes": 297213,
    "traffic": "0_3.p5r"
   },
   "1_3": {
@@ -5147,7 +5147,7 @@
    "region": "mount_lawley",
    "hmin": 26.31,
    "hmax": 53.19,
-   "bytes": 332137,
+   "bytes": 332224,
    "traffic": "2_3.p5r"
   },
   "3_3": {
@@ -5155,9 +5155,9 @@
    "j": 3,
    "file": "3_3.p5t",
    "region": "mount_lawley",
-   "hmin": 26.24,
-   "hmax": 60.2,
-   "bytes": 307972,
+   "hmin": 26.25,
+   "hmax": 60.19,
+   "bytes": 307781,
    "traffic": "3_3.p5r"
   },
   "4_3": {
@@ -5165,9 +5165,9 @@
    "j": 3,
    "file": "4_3.p5t",
    "region": "mount_lawley",
-   "hmin": 28.29,
-   "hmax": 80.21,
-   "bytes": 283546,
+   "hmin": 28.28,
+   "hmax": 80.22,
+   "bytes": 283862,
    "traffic": "4_3.p5r"
   },
   "5_3": {
@@ -5175,9 +5175,9 @@
    "j": 3,
    "file": "5_3.p5t",
    "region": "mount_lawley",
-   "hmin": 24.02,
-   "hmax": 48.92,
-   "bytes": 343200,
+   "hmin": 24.03,
+   "hmax": 48.94,
+   "bytes": 343553,
    "traffic": "5_3.p5r"
   },
   "6_3": {
@@ -5185,9 +5185,9 @@
    "j": 3,
    "file": "6_3.p5t",
    "region": "guildford",
-   "hmin": 21.08,
-   "hmax": 51.76,
-   "bytes": 350557,
+   "hmin": 21.06,
+   "hmax": 51.75,
+   "bytes": 350894,
    "traffic": "6_3.p5r"
   },
   "7_3": {
@@ -5195,8 +5195,8 @@
    "j": 3,
    "file": "7_3.p5t",
    "region": "guildford",
-   "hmin": 19.02,
-   "hmax": 42.76,
+   "hmin": 19.03,
+   "hmax": 42.75,
    "bytes": 342357,
    "traffic": "7_3.p5r"
   },
@@ -5237,7 +5237,7 @@
    "region": "bayswater_riverside",
    "hmin": -4.0,
    "hmax": 16.75,
-   "bytes": 274468,
+   "bytes": 274565,
    "traffic": "11_3.p5r"
   },
   "12_3": {
@@ -5246,8 +5246,8 @@
    "file": "12_3.p5t",
    "region": "bayswater_riverside",
    "hmin": -3.5,
-   "hmax": 17.68,
-   "bytes": 264628,
+   "hmax": 17.69,
+   "bytes": 265153,
    "traffic": "12_3.p5r"
   },
   "13_3": {
@@ -5257,7 +5257,7 @@
    "region": "bayswater_riverside",
    "hmin": -3.46,
    "hmax": 13.02,
-   "bytes": 203789,
+   "bytes": 204319,
    "traffic": "13_3.p5r"
   },
   "-19_4": {
@@ -5266,8 +5266,8 @@
    "file": "-19_4.p5t",
    "region": "coast_road",
    "hmin": -6.0,
-   "hmax": 25.36,
-   "bytes": 224855,
+   "hmax": 25.34,
+   "bytes": 224092,
    "traffic": "-19_4.p5r"
   },
   "-18_4": {
@@ -5275,9 +5275,9 @@
    "j": 4,
    "file": "-18_4.p5t",
    "region": "coast_road",
-   "hmin": 15.8,
+   "hmin": 15.78,
    "hmax": 54.91,
-   "bytes": 309075,
+   "bytes": 308504,
    "traffic": "-18_4.p5r"
   },
   "-17_4": {
@@ -5285,9 +5285,9 @@
    "j": 4,
    "file": "-17_4.p5t",
    "region": "bold_park",
-   "hmin": 37.74,
+   "hmin": 37.75,
    "hmax": 52.62,
-   "bytes": 314080,
+   "bytes": 314484,
    "traffic": "-17_4.p5r"
   },
   "-16_4": {
@@ -5296,8 +5296,8 @@
    "file": "-16_4.p5t",
    "region": "bold_park",
    "hmin": 20.31,
-   "hmax": 53.26,
-   "bytes": 290472,
+   "hmax": 53.25,
+   "bytes": 290159,
    "traffic": "-16_4.p5r"
   },
   "-15_4": {
@@ -5315,9 +5315,9 @@
    "j": 4,
    "file": "-14_4.p5t",
    "region": "bold_park",
-   "hmin": 16.93,
+   "hmin": 16.94,
    "hmax": 46.78,
-   "bytes": 168920,
+   "bytes": 168759,
    "traffic": "-14_4.p5r"
   },
   "-13_4": {
@@ -5325,9 +5325,9 @@
    "j": 4,
    "file": "-13_4.p5t",
    "region": "bold_park",
-   "hmin": 10.29,
-   "hmax": 35.52,
-   "bytes": 322290,
+   "hmin": 10.28,
+   "hmax": 35.56,
+   "bytes": 321458,
    "traffic": "-13_4.p5r"
   },
   "-12_4": {
@@ -5335,9 +5335,9 @@
    "j": 4,
    "file": "-12_4.p5t",
    "region": "herdsman_lake",
-   "hmin": 10.8,
+   "hmin": 10.78,
    "hmax": 27.47,
-   "bytes": 342026,
+   "bytes": 340630,
    "traffic": "-12_4.p5r"
   },
   "-11_4": {
@@ -5345,9 +5345,9 @@
    "j": 4,
    "file": "-11_4.p5t",
    "region": "leederville_subiaco",
-   "hmin": 1.7,
-   "hmax": 23.17,
-   "bytes": 177181,
+   "hmin": 1.69,
+   "hmax": 23.31,
+   "bytes": 176820,
    "traffic": "-11_4.p5r"
   },
   "-10_4": {
@@ -5386,8 +5386,8 @@
    "file": "-7_4.p5t",
    "region": "leederville_subiaco",
    "hmin": 9.97,
-   "hmax": 33.15,
-   "bytes": 278747,
+   "hmax": 33.16,
+   "bytes": 279180,
    "traffic": "-7_4.p5r"
   },
   "-6_4": {
@@ -5395,9 +5395,9 @@
    "j": 4,
    "file": "-6_4.p5t",
    "region": "leederville_subiaco",
-   "hmin": 9.55,
-   "hmax": 31.61,
-   "bytes": 138812,
+   "hmin": 9.56,
+   "hmax": 31.62,
+   "bytes": 138768,
    "traffic": "-6_4.p5r"
   },
   "-5_4": {
@@ -5405,9 +5405,9 @@
    "j": 4,
    "file": "-5_4.p5t",
    "region": "leederville_subiaco",
-   "hmin": 9.55,
+   "hmin": 9.56,
    "hmax": 36.72,
-   "bytes": 340372,
+   "bytes": 340019,
    "traffic": "-5_4.p5r"
   },
   "-4_4": {
@@ -5415,9 +5415,9 @@
    "j": 4,
    "file": "-4_4.p5t",
    "region": "leederville_subiaco",
-   "hmin": 16.64,
-   "hmax": 40.11,
-   "bytes": 279315,
+   "hmin": 16.66,
+   "hmax": 40.12,
+   "bytes": 279271,
    "traffic": "-4_4.p5r"
   },
   "-3_4": {
@@ -5445,9 +5445,9 @@
    "j": 4,
    "file": "-1_4.p5t",
    "region": "osborne_park",
-   "hmin": 18.18,
+   "hmin": 18.19,
    "hmax": 33.62,
-   "bytes": 311326,
+   "bytes": 311250,
    "traffic": "-1_4.p5r"
   },
   "0_4": {
@@ -5455,9 +5455,9 @@
    "j": 4,
    "file": "0_4.p5t",
    "region": "mount_lawley",
-   "hmin": 30.07,
+   "hmin": 30.06,
    "hmax": 45.31,
-   "bytes": 250826,
+   "bytes": 250612,
    "traffic": "0_4.p5r"
   },
   "1_4": {
@@ -5466,8 +5466,8 @@
    "file": "1_4.p5t",
    "region": "mount_lawley",
    "hmin": 27.31,
-   "hmax": 47.98,
-   "bytes": 303009,
+   "hmax": 47.97,
+   "bytes": 302613,
    "traffic": "1_4.p5r"
   },
   "2_4": {
@@ -5505,9 +5505,9 @@
    "j": 4,
    "file": "5_4.p5t",
    "region": "mount_lawley",
-   "hmin": 21.95,
-   "hmax": 41.07,
-   "bytes": 317706,
+   "hmin": 21.94,
+   "hmax": 41.06,
+   "bytes": 318134,
    "traffic": "5_4.p5r"
   },
   "8_4": {
@@ -5565,8 +5565,8 @@
    "j": 4,
    "file": "13_4.p5t",
    "region": "guildford",
-   "hmin": -0.86,
-   "hmax": 16.55,
+   "hmin": -0.88,
+   "hmax": 16.56,
    "bytes": 277111,
    "traffic": "13_4.p5r"
   },
@@ -5576,8 +5576,8 @@
    "file": "14_4.p5t",
    "region": "ashfield_flats",
    "hmin": 2.91,
-   "hmax": 22.23,
-   "bytes": 376280,
+   "hmax": 22.22,
+   "bytes": 376715,
    "traffic": "14_4.p5r"
   },
   "15_4": {
@@ -5647,7 +5647,7 @@
    "region": "bold_park",
    "hmin": 27.72,
    "hmax": 45.41,
-   "bytes": 283677,
+   "bytes": 284058,
    "traffic": "-14_5.p5r"
   },
   "-13_5": {
@@ -5657,7 +5657,7 @@
    "region": "bold_park",
    "hmin": 9.5,
    "hmax": 34.91,
-   "bytes": 266723,
+   "bytes": 267205,
    "traffic": "-13_5.p5r"
   },
   "-12_5": {
@@ -5665,9 +5665,9 @@
    "j": 5,
    "file": "-12_5.p5t",
    "region": "herdsman_lake",
-   "hmin": 4.2,
+   "hmin": 4.19,
    "hmax": 28.97,
-   "bytes": 320068,
+   "bytes": 318848,
    "traffic": "-12_5.p5r"
   },
   "-11_5": {
@@ -5705,9 +5705,9 @@
    "j": 5,
    "file": "-8_5.p5t",
    "region": "herdsman_lake",
-   "hmin": 1.7,
-   "hmax": 20.76,
-   "bytes": 254210,
+   "hmin": 1.69,
+   "hmax": 20.75,
+   "bytes": 250729,
    "traffic": "-8_5.p5r"
   },
   "-4_5": {
@@ -5725,9 +5725,9 @@
    "j": 5,
    "file": "-3_5.p5t",
    "region": "osborne_park",
-   "hmin": 25.21,
-   "hmax": 58.67,
-   "bytes": 331203,
+   "hmin": 25.22,
+   "hmax": 58.69,
+   "bytes": 330715,
    "traffic": "-3_5.p5r"
   },
   "-2_5": {
@@ -5746,8 +5746,8 @@
    "file": "0_5.p5t",
    "region": "mount_lawley",
    "hmin": 26.12,
-   "hmax": 46.21,
-   "bytes": 277265,
+   "hmax": 46.22,
+   "bytes": 277251,
    "traffic": "0_5.p5r"
   },
   "1_5": {
@@ -5756,8 +5756,8 @@
    "file": "1_5.p5t",
    "region": "mount_lawley",
    "hmin": 25.75,
-   "hmax": 42.93,
-   "bytes": 286254,
+   "hmax": 42.94,
+   "bytes": 285127,
    "traffic": "1_5.p5r"
   },
   "2_5": {
@@ -5765,9 +5765,9 @@
    "j": 5,
    "file": "2_5.p5t",
    "region": "mount_lawley",
-   "hmin": 23.51,
-   "hmax": 43.37,
-   "bytes": 291640,
+   "hmin": 23.5,
+   "hmax": 43.38,
+   "bytes": 291767,
    "traffic": "2_5.p5r"
   },
   "3_5": {
@@ -5775,9 +5775,9 @@
    "j": 5,
    "file": "3_5.p5t",
    "region": "mount_lawley",
-   "hmin": 22.86,
-   "hmax": 55.37,
-   "bytes": 247292,
+   "hmin": 22.88,
+   "hmax": 55.38,
+   "bytes": 247438,
    "traffic": "3_5.p5r"
   },
   "4_5": {
@@ -5785,9 +5785,9 @@
    "j": 5,
    "file": "4_5.p5t",
    "region": "mount_lawley",
-   "hmin": 21.95,
-   "hmax": 35.8,
-   "bytes": 355266,
+   "hmin": 21.94,
+   "hmax": 35.81,
+   "bytes": 354221,
    "traffic": "4_5.p5r"
   },
   "5_5": {
@@ -5806,8 +5806,8 @@
    "file": "9_5.p5t",
    "region": "bayswater_riverside",
    "hmin": 19.03,
-   "hmax": 41.43,
-   "bytes": 334275,
+   "hmax": 41.44,
+   "bytes": 334875,
    "traffic": "9_5.p5r"
   },
   "10_5": {
@@ -5815,9 +5815,9 @@
    "j": 5,
    "file": "10_5.p5t",
    "region": "bayswater_riverside",
-   "hmin": 15.17,
+   "hmin": 15.19,
    "hmax": 38.72,
-   "bytes": 349231,
+   "bytes": 349979,
    "traffic": "10_5.p5r"
   },
   "11_5": {
@@ -5845,9 +5845,9 @@
    "j": 5,
    "file": "13_5.p5t",
    "region": "guildford",
-   "hmin": -2.7,
-   "hmax": 25.05,
-   "bytes": 459900,
+   "hmin": -2.72,
+   "hmax": 24.88,
+   "bytes": 458664,
    "traffic": "13_5.p5r"
   },
   "14_5": {
@@ -5855,9 +5855,9 @@
    "j": 5,
    "file": "14_5.p5t",
    "region": "guildford",
-   "hmin": 7.52,
-   "hmax": 27.8,
-   "bytes": 230662,
+   "hmin": 7.53,
+   "hmax": 27.81,
+   "bytes": 231016,
    "traffic": "14_5.p5r"
   },
   "15_5": {
@@ -5897,7 +5897,7 @@
    "region": "ashfield_flats",
    "hmin": -3.5,
    "hmax": 19.35,
-   "bytes": 163066,
+   "bytes": 163088,
    "traffic": "18_5.p5r"
   },
   "-19_6": {
@@ -5925,9 +5925,9 @@
    "j": 6,
    "file": "-12_6.p5t",
    "region": "herdsman_lake",
-   "hmin": 10.49,
-   "hmax": 27.96,
-   "bytes": 335432,
+   "hmin": 10.5,
+   "hmax": 27.97,
+   "bytes": 333253,
    "traffic": "-12_6.p5r"
   },
   "-11_6": {
@@ -5936,8 +5936,8 @@
    "file": "-11_6.p5t",
    "region": "herdsman_lake",
    "hmin": 0.97,
-   "hmax": 21.15,
-   "bytes": 276543,
+   "hmax": 21.16,
+   "bytes": 276049,
    "traffic": "-11_6.p5r"
   },
   "-10_6": {
@@ -5965,9 +5965,9 @@
    "j": 6,
    "file": "-8_6.p5t",
    "region": "herdsman_lake",
-   "hmin": 1.7,
+   "hmin": 1.69,
    "hmax": 37.19,
-   "bytes": 309312,
+   "bytes": 308419,
    "traffic": "-8_6.p5r"
   },
   "-7_6": {
@@ -5977,7 +5977,7 @@
    "region": "osborne_park",
    "hmin": 12.47,
    "hmax": 31.78,
-   "bytes": 339196,
+   "bytes": 338368,
    "traffic": "-7_6.p5r"
   },
   "-6_6": {
@@ -5985,9 +5985,9 @@
    "j": 6,
    "file": "-6_6.p5t",
    "region": "osborne_park",
-   "hmin": 12.52,
-   "hmax": 38.36,
-   "bytes": 341621,
+   "hmin": 12.53,
+   "hmax": 38.34,
+   "bytes": 341269,
    "traffic": "-6_6.p5r"
   },
   "-5_6": {
@@ -5997,7 +5997,7 @@
    "region": "osborne_park",
    "hmin": 21.12,
    "hmax": 48.72,
-   "bytes": 325548,
+   "bytes": 326260,
    "traffic": "-5_6.p5r"
   },
   "-4_6": {
@@ -6095,9 +6095,9 @@
    "j": 7,
    "file": "-12_7.p5t",
    "region": "herdsman_lake",
-   "hmin": 9.36,
+   "hmin": 9.41,
    "hmax": 20.94,
-   "bytes": 241443,
+   "bytes": 240831,
    "traffic": "-12_7.p5r"
   },
   "-11_7": {
@@ -6106,8 +6106,8 @@
    "file": "-11_7.p5t",
    "region": "herdsman_lake",
    "hmin": 0.97,
-   "hmax": 21.13,
-   "bytes": 340264,
+   "hmax": 21.34,
+   "bytes": 339174,
    "traffic": "-11_7.p5r"
   },
   "-10_7": {
@@ -6116,8 +6116,8 @@
    "file": "-10_7.p5t",
    "region": "herdsman_lake",
    "hmin": 0.97,
-   "hmax": 19.65,
-   "bytes": 107311,
+   "hmax": 19.66,
+   "bytes": 106669,
    "traffic": "-10_7.p5r"
   },
   "-9_7": {
@@ -6125,9 +6125,9 @@
    "j": 7,
    "file": "-9_7.p5t",
    "region": "herdsman_lake",
-   "hmin": 1.7,
-   "hmax": 29.65,
-   "bytes": 243841,
+   "hmin": 1.69,
+   "hmax": 29.66,
+   "bytes": 242473,
    "traffic": "-9_7.p5r"
   },
   "-8_7": {
@@ -6135,9 +6135,9 @@
    "j": 7,
    "file": "-8_7.p5t",
    "region": "osborne_park",
-   "hmin": 10.48,
+   "hmin": 10.47,
    "hmax": 30.16,
-   "bytes": 304763,
+   "bytes": 304580,
    "traffic": "-8_7.p5r"
   },
   "-7_7": {
@@ -6145,9 +6145,9 @@
    "j": 7,
    "file": "-7_7.p5t",
    "region": "osborne_park",
-   "hmin": 12.45,
-   "hmax": 36.37,
-   "bytes": 260061,
+   "hmin": 12.44,
+   "hmax": 36.38,
+   "bytes": 260222,
    "traffic": "-7_7.p5r"
   },
   "-6_7": {
@@ -6156,8 +6156,8 @@
    "file": "-6_7.p5t",
    "region": "osborne_park",
    "hmin": 10.88,
-   "hmax": 31.72,
-   "bytes": 278146,
+   "hmax": 31.69,
+   "bytes": 278030,
    "traffic": "-6_7.p5r"
   },
   "-5_7": {
@@ -6165,9 +6165,9 @@
    "j": 7,
    "file": "-5_7.p5t",
    "region": "osborne_park",
-   "hmin": 17.01,
-   "hmax": 53.86,
-   "bytes": 270467,
+   "hmin": 17.0,
+   "hmax": 53.88,
+   "bytes": 269442,
    "traffic": "-5_7.p5r"
   },
   "12_7": {
@@ -6246,8 +6246,8 @@
    "file": "-18_8.p5t",
    "region": "coast_road",
    "hmin": 14.09,
-   "hmax": 46.55,
-   "bytes": 201957,
+   "hmax": 46.56,
+   "bytes": 201620,
    "traffic": "-18_8.p5r"
   },
   "-12_8": {
@@ -6255,9 +6255,9 @@
    "j": 8,
    "file": "-12_8.p5t",
    "region": "herdsman_lake",
-   "hmin": 2.83,
+   "hmin": 2.81,
    "hmax": 28.59,
-   "bytes": 254804,
+   "bytes": 253977,
    "traffic": "-12_8.p5r"
   },
   "-11_8": {
@@ -6267,7 +6267,7 @@
    "region": "herdsman_lake",
    "hmin": 10.09,
    "hmax": 21.56,
-   "bytes": 316773,
+   "bytes": 315739,
    "traffic": "-11_8.p5r"
   },
   "-10_8": {
@@ -6275,9 +6275,9 @@
    "j": 8,
    "file": "-10_8.p5t",
    "region": "osborne_park",
-   "hmin": 1.7,
-   "hmax": 29.45,
-   "bytes": 305453,
+   "hmin": 1.69,
+   "hmax": 29.44,
+   "bytes": 304920,
    "traffic": "-10_8.p5r"
   },
   "-9_8": {
@@ -6285,9 +6285,9 @@
    "j": 8,
    "file": "-9_8.p5t",
    "region": "osborne_park",
-   "hmin": 5.27,
-   "hmax": 32.63,
-   "bytes": 219644,
+   "hmin": 5.28,
+   "hmax": 32.62,
+   "bytes": 219429,
    "traffic": "-9_8.p5r"
   },
   "-8_8": {
@@ -6296,8 +6296,8 @@
    "file": "-8_8.p5t",
    "region": "osborne_park",
    "hmin": 13.78,
-   "hmax": 39.13,
-   "bytes": 249914,
+   "hmax": 39.12,
+   "bytes": 250489,
    "traffic": "-8_8.p5r"
   },
   "-7_8": {
@@ -6305,9 +6305,9 @@
    "j": 8,
    "file": "-7_8.p5t",
    "region": "osborne_park",
-   "hmin": 13.67,
-   "hmax": 39.1,
-   "bytes": 250876,
+   "hmin": 13.66,
+   "hmax": 39.09,
+   "bytes": 250626,
    "traffic": "-7_8.p5r"
   },
   "-6_8": {
@@ -6315,9 +6315,9 @@
    "j": 8,
    "file": "-6_8.p5t",
    "region": "osborne_park",
-   "hmin": 10.87,
-   "hmax": 26.1,
-   "bytes": 227244,
+   "hmin": 10.88,
+   "hmax": 26.09,
+   "bytes": 226873,
    "traffic": "-6_8.p5r"
   },
   "-5_8": {
@@ -6345,9 +6345,9 @@
    "j": 8,
    "file": "12_8.p5t",
    "region": "guildford",
-   "hmin": 19.46,
+   "hmin": 19.47,
    "hmax": 41.38,
-   "bytes": 276010,
+   "bytes": 275367,
    "traffic": "12_8.p5r"
   },
   "15_8": {
@@ -6365,9 +6365,9 @@
    "j": 8,
    "file": "16_8.p5t",
    "region": "guildford",
-   "hmin": 15.99,
-   "hmax": 35.99,
-   "bytes": 394978,
+   "hmin": 16.0,
+   "hmax": 36.0,
+   "bytes": 395178,
    "traffic": "16_8.p5r"
   },
   "17_8": {
@@ -6415,9 +6415,9 @@
    "j": 9,
    "file": "-13_9.p5t",
    "region": "osborne_park",
-   "hmin": 15.92,
-   "hmax": 70.92,
-   "bytes": 208786,
+   "hmin": 15.91,
+   "hmax": 70.91,
+   "bytes": 208788,
    "traffic": "-13_9.p5r"
   },
   "-12_9": {
@@ -6425,9 +6425,9 @@
    "j": 9,
    "file": "-12_9.p5t",
    "region": "osborne_park",
-   "hmin": 13.33,
-   "hmax": 38.23,
-   "bytes": 264959,
+   "hmin": 13.34,
+   "hmax": 38.22,
+   "bytes": 264017,
    "traffic": "-12_9.p5r"
   },
   "-11_9": {
@@ -6435,9 +6435,9 @@
    "j": 9,
    "file": "-11_9.p5t",
    "region": "osborne_park",
-   "hmin": 11.33,
+   "hmin": 11.31,
    "hmax": 33.19,
-   "bytes": 530941,
+   "bytes": 529849,
    "traffic": "-11_9.p5r"
   },
   "-10_9": {
@@ -6446,8 +6446,8 @@
    "file": "-10_9.p5t",
    "region": "osborne_park",
    "hmin": 10.81,
-   "hmax": 31.89,
-   "bytes": 369826,
+   "hmax": 31.88,
+   "bytes": 369265,
    "traffic": "-10_9.p5r"
   },
   "-9_9": {
@@ -6465,9 +6465,9 @@
    "j": 9,
    "file": "-8_9.p5t",
    "region": "osborne_park",
-   "hmin": 18.21,
-   "hmax": 37.17,
-   "bytes": 222065,
+   "hmin": 18.22,
+   "hmax": 37.19,
+   "bytes": 222146,
    "traffic": "-8_9.p5r"
   },
   "-7_9": {
@@ -6477,7 +6477,7 @@
    "region": "osborne_park",
    "hmin": 16.12,
    "hmax": 44.06,
-   "bytes": 352094,
+   "bytes": 352279,
    "traffic": "-7_9.p5r"
   },
   "-6_9": {
@@ -6485,9 +6485,9 @@
    "j": 9,
    "file": "-6_9.p5t",
    "region": "osborne_park",
-   "hmin": 18.95,
-   "hmax": 33.11,
-   "bytes": 202148,
+   "hmin": 18.94,
+   "hmax": 33.12,
+   "bytes": 203050,
    "traffic": "-6_9.p5r"
   },
   "-5_9": {
@@ -6495,9 +6495,9 @@
    "j": 9,
    "file": "-5_9.p5t",
    "region": "osborne_park",
-   "hmin": 21.13,
-   "hmax": 64.43,
-   "bytes": 254832,
+   "hmin": 21.12,
+   "hmax": 64.44,
+   "bytes": 254879,
    "traffic": "-5_9.p5r"
   },
   "16_9": {
@@ -6506,8 +6506,8 @@
    "file": "16_9.p5t",
    "region": "guildford",
    "hmin": 17.28,
-   "hmax": 34.76,
-   "bytes": 268975,
+   "hmax": 34.75,
+   "bytes": 269152,
    "traffic": "16_9.p5r"
   },
   "17_9": {
@@ -6515,7 +6515,7 @@
    "j": 9,
    "file": "17_9.p5t",
    "region": "guildford",
-   "hmin": 16.58,
+   "hmin": 16.56,
    "hmax": 35.56,
    "bytes": 373430,
    "traffic": "17_9.p5r"
@@ -6525,8 +6525,8 @@
    "j": 9,
    "file": "18_9.p5t",
    "region": "guildford",
-   "hmin": 10.43,
-   "hmax": 36.13,
+   "hmin": 10.44,
+   "hmax": 36.12,
    "bytes": 372073,
    "traffic": "18_9.p5r"
   },
@@ -6547,7 +6547,7 @@
    "region": "guildford",
    "hmin": -3.5,
    "hmax": 18.52,
-   "bytes": 176261,
+   "bytes": 176356,
    "traffic": "20_9.p5r"
   },
   "21_9": {
@@ -6565,9 +6565,9 @@
    "j": 9,
    "file": "22_9.p5t",
    "region": "guildford",
-   "hmin": 0.6,
-   "hmax": 21.52,
-   "bytes": 187690,
+   "hmin": 0.59,
+   "hmax": 21.53,
+   "bytes": 187107,
    "traffic": "22_9.p5r"
   },
   "23_9": {
@@ -6576,8 +6576,8 @@
    "file": "23_9.p5t",
    "region": "guildford",
    "hmin": 1.44,
-   "hmax": 18.96,
-   "bytes": 199766,
+   "hmax": 18.97,
+   "bytes": 199694,
    "traffic": "23_9.p5r"
   },
   "-19_10": {
@@ -6595,9 +6595,9 @@
    "j": 10,
    "file": "-18_10.p5t",
    "region": "coast_road",
-   "hmin": 8.52,
+   "hmin": 8.53,
    "hmax": 37.5,
-   "bytes": 204714,
+   "bytes": 204470,
    "traffic": "-18_10.p5r"
   },
   "-14_10": {
@@ -6605,9 +6605,9 @@
    "j": 10,
    "file": "-14_10.p5t",
    "region": "osborne_park",
-   "hmin": 34.73,
-   "hmax": 76.48,
-   "bytes": 284280,
+   "hmin": 34.72,
+   "hmax": 76.47,
+   "bytes": 284338,
    "traffic": "-14_10.p5r"
   },
   "-13_10": {
@@ -6616,8 +6616,8 @@
    "file": "-13_10.p5t",
    "region": "osborne_park",
    "hmin": 22.16,
-   "hmax": 68.05,
-   "bytes": 271336,
+   "hmax": 68.06,
+   "bytes": 270955,
    "traffic": "-13_10.p5r"
   },
   "-12_10": {
@@ -6625,9 +6625,9 @@
    "j": 10,
    "file": "-12_10.p5t",
    "region": "osborne_park",
-   "hmin": 18.67,
+   "hmin": 18.69,
    "hmax": 40.47,
-   "bytes": 228619,
+   "bytes": 228256,
    "traffic": "-12_10.p5r"
   },
   "-11_10": {
@@ -6635,9 +6635,9 @@
    "j": 10,
    "file": "-11_10.p5t",
    "region": "osborne_park",
-   "hmin": 13.04,
-   "hmax": 28.73,
-   "bytes": 292491,
+   "hmin": 13.03,
+   "hmax": 28.72,
+   "bytes": 292777,
    "traffic": "-11_10.p5r"
   },
   "-9_10": {
@@ -6645,9 +6645,9 @@
    "j": 10,
    "file": "-9_10.p5t",
    "region": "osborne_park",
-   "hmin": 8.37,
+   "hmin": 8.38,
    "hmax": 30.84,
-   "bytes": 240054,
+   "bytes": 240820,
    "traffic": "-9_10.p5r"
   },
   "-8_10": {
@@ -6655,9 +6655,9 @@
    "j": 10,
    "file": "-8_10.p5t",
    "region": "osborne_park",
-   "hmin": 16.98,
-   "hmax": 34.92,
-   "bytes": 261039,
+   "hmin": 16.97,
+   "hmax": 34.91,
+   "bytes": 260907,
    "traffic": "-8_10.p5r"
   },
   "-7_10": {
@@ -6665,9 +6665,9 @@
    "j": 10,
    "file": "-7_10.p5t",
    "region": "osborne_park",
-   "hmin": 10.9,
-   "hmax": 35.1,
-   "bytes": 344355,
+   "hmin": 10.91,
+   "hmax": 35.19,
+   "bytes": 345032,
    "traffic": "-7_10.p5r"
   },
   "-6_10": {
@@ -6676,8 +6676,8 @@
    "file": "-6_10.p5t",
    "region": "osborne_park",
    "hmin": 20.81,
-   "hmax": 40.9,
-   "bytes": 281651,
+   "hmax": 40.88,
+   "bytes": 280973,
    "traffic": "-6_10.p5r"
   },
   "-5_10": {
@@ -6685,9 +6685,9 @@
    "j": 10,
    "file": "-5_10.p5t",
    "region": "osborne_park",
-   "hmin": 29.26,
-   "hmax": 50.15,
-   "bytes": 267830,
+   "hmin": 29.19,
+   "hmax": 50.16,
+   "bytes": 268169,
    "traffic": "-5_10.p5r"
   },
   "19_10": {
@@ -6706,8 +6706,8 @@
    "file": "20_10.p5t",
    "region": "guildford",
    "hmin": -4.0,
-   "hmax": 21.29,
-   "bytes": 336222,
+   "hmax": 21.28,
+   "bytes": 336757,
    "traffic": "20_10.p5r"
   },
   "21_10": {
@@ -6715,9 +6715,9 @@
    "j": 10,
    "file": "21_10.p5t",
    "region": "guildford",
-   "hmin": 3.17,
+   "hmin": 3.19,
    "hmax": 24.84,
-   "bytes": 283851,
+   "bytes": 283267,
    "traffic": "21_10.p5r"
   },
   "22_10": {
@@ -6725,9 +6725,9 @@
    "j": 10,
    "file": "22_10.p5t",
    "region": "guildford",
-   "hmin": 7.43,
-   "hmax": 27.29,
-   "bytes": 382206,
+   "hmin": 7.44,
+   "hmax": 27.28,
+   "bytes": 381957,
    "traffic": "22_10.p5r"
   },
   "23_10": {
@@ -6745,9 +6745,9 @@
    "j": 10,
    "file": "24_10.p5t",
    "region": "guildford",
-   "hmin": 2.89,
-   "hmax": 20.35,
-   "bytes": 194821,
+   "hmin": 2.88,
+   "hmax": 20.34,
+   "bytes": 194902,
    "traffic": "24_10.p5r"
   },
   "-19_11": {
@@ -6756,8 +6756,8 @@
    "file": "-19_11.p5t",
    "region": "coast_road",
    "hmin": -6.0,
-   "hmax": 89.21,
-   "bytes": 343660,
+   "hmax": 89.22,
+   "bytes": 342969,
    "traffic": "-19_11.p5r"
   },
   "-18_11": {
@@ -6765,9 +6765,9 @@
    "j": 11,
    "file": "-18_11.p5t",
    "region": "coast_road",
-   "hmin": 7.42,
-   "hmax": 42.71,
-   "bytes": 221004,
+   "hmin": 7.41,
+   "hmax": 42.72,
+   "bytes": 220711,
    "traffic": "-18_11.p5r"
   },
   "-17_11": {
@@ -6805,9 +6805,9 @@
    "j": 11,
    "file": "-14_11.p5t",
    "region": "osborne_park",
-   "hmin": 24.93,
-   "hmax": 55.9,
-   "bytes": 260636,
+   "hmin": 24.94,
+   "hmax": 55.91,
+   "bytes": 260145,
    "traffic": "-14_11.p5r"
   },
   "-9_11": {
@@ -6816,8 +6816,8 @@
    "file": "-9_11.p5t",
    "region": "osborne_park",
    "hmin": -2.5,
-   "hmax": 26.83,
-   "bytes": 427514,
+   "hmax": 26.81,
+   "bytes": 427816,
    "traffic": "-9_11.p5r"
   },
   "-8_11": {
@@ -6835,9 +6835,9 @@
    "j": 11,
    "file": "-7_11.p5t",
    "region": "osborne_park",
-   "hmin": 8.92,
-   "hmax": 31.02,
-   "bytes": 374899,
+   "hmin": 8.91,
+   "hmax": 31.03,
+   "bytes": 375476,
    "traffic": "-7_11.p5r"
   },
   "-6_11": {
@@ -6845,9 +6845,9 @@
    "j": 11,
    "file": "-6_11.p5t",
    "region": "osborne_park",
-   "hmin": 15.52,
-   "hmax": 32.39,
-   "bytes": 237626,
+   "hmin": 15.53,
+   "hmax": 32.41,
+   "bytes": 237640,
    "traffic": "-6_11.p5r"
   },
   "-5_11": {
@@ -6855,9 +6855,9 @@
    "j": 11,
    "file": "-5_11.p5t",
    "region": "osborne_park",
-   "hmin": 26.02,
-   "hmax": 52.74,
-   "bytes": 228949,
+   "hmin": 26.03,
+   "hmax": 52.75,
+   "bytes": 229059,
    "traffic": "-5_11.p5r"
   },
   "20_11": {
@@ -6887,7 +6887,7 @@
    "region": "guildford",
    "hmin": -4.0,
    "hmax": 23.41,
-   "bytes": 179689,
+   "bytes": 179462,
    "traffic": "22_11.p5r"
   },
   "23_11": {
@@ -6896,8 +6896,8 @@
    "file": "23_11.p5t",
    "region": "guildford",
    "hmin": 0.69,
-   "hmax": 23.24,
-   "bytes": 195676,
+   "hmax": 23.47,
+   "bytes": 194717,
    "traffic": "23_11.p5r"
   },
   "-19_12": {
@@ -6905,9 +6905,9 @@
    "j": 12,
    "file": "-19_12.p5t",
    "region": "coast_road",
-   "hmin": -4.37,
-   "hmax": 41.98,
-   "bytes": 273240,
+   "hmin": -4.38,
+   "hmax": 41.94,
+   "bytes": 273903,
    "traffic": "-19_12.p5r"
   },
   "-18_12": {
@@ -6925,9 +6925,9 @@
    "j": 12,
    "file": "-9_12.p5t",
    "region": "osborne_park",
-   "hmin": 11.2,
+   "hmin": 11.22,
    "hmax": 30.97,
-   "bytes": 391741,
+   "bytes": 391766,
    "traffic": "-9_12.p5r"
   },
   "-8_12": {
@@ -6945,9 +6945,9 @@
    "j": 12,
    "file": "-7_12.p5t",
    "region": "osborne_park",
-   "hmin": 7.14,
-   "hmax": 32.0,
-   "bytes": 355482,
+   "hmin": 7.16,
+   "hmax": 31.97,
+   "bytes": 355401,
    "traffic": "-7_12.p5r"
   },
   "-6_12": {
@@ -6955,9 +6955,9 @@
    "j": 12,
    "file": "-6_12.p5t",
    "region": "osborne_park",
-   "hmin": 10.95,
-   "hmax": 33.51,
-   "bytes": 266967,
+   "hmin": 10.94,
+   "hmax": 33.5,
+   "bytes": 266784,
    "traffic": "-6_12.p5r"
   },
   "-5_12": {
@@ -6965,8 +6965,8 @@
    "j": 12,
    "file": "-5_12.p5t",
    "region": "osborne_park",
-   "hmin": 21.48,
-   "hmax": 40.65,
+   "hmin": 21.47,
+   "hmax": 40.66,
    "bytes": 252286,
    "traffic": "-5_12.p5r"
   },
@@ -6995,8 +6995,8 @@
    "j": 13,
    "file": "-19_13.p5t",
    "region": "coast_road",
-   "hmin": -2.2,
-   "hmax": 33.86,
+   "hmin": -2.22,
+   "hmax": 33.84,
    "bytes": 341998,
    "traffic": "-19_13.p5r"
   },
@@ -7066,8 +7066,8 @@
    "file": "-20_15.p5t",
    "region": "coast_road",
    "hmin": -6.0,
-   "hmax": 20.48,
-   "bytes": 231424,
+   "hmax": 20.5,
+   "bytes": 231125,
    "traffic": "-20_15.p5r"
   },
   "-19_15": {
@@ -7077,7 +7077,7 @@
    "region": "coast_road",
    "hmin": 12.38,
    "hmax": 33.47,
-   "bytes": 246744,
+   "bytes": 246577,
    "traffic": "-19_15.p5r"
   },
   "-18_15": {
@@ -7085,8 +7085,8 @@
    "j": 15,
    "file": "-18_15.p5t",
    "region": "coast_road",
-   "hmin": 9.07,
-   "hmax": 35.57,
+   "hmin": 9.06,
+   "hmax": 35.56,
    "bytes": 313555,
    "traffic": "-18_15.p5r"
   },
@@ -7106,8 +7106,8 @@
    "file": "-20_16.p5t",
    "region": "trigg",
    "hmin": -6.0,
-   "hmax": 22.08,
-   "bytes": 148471,
+   "hmax": 22.06,
+   "bytes": 147560,
    "traffic": "-20_16.p5r"
   },
   "-19_16": {
@@ -7115,9 +7115,9 @@
    "j": 16,
    "file": "-19_16.p5t",
    "region": "trigg",
-   "hmin": 9.7,
+   "hmin": 9.69,
    "hmax": 32.06,
-   "bytes": 226853,
+   "bytes": 227352,
    "traffic": "-19_16.p5r"
   },
   "-18_16": {
@@ -7147,7 +7147,7 @@
    "region": "trigg",
    "hmin": -6.0,
    "hmax": 20.94,
-   "bytes": 143021,
+   "bytes": 142905,
    "traffic": "-20_17.p5r"
   },
   "-19_17": {
@@ -7155,9 +7155,9 @@
    "j": 17,
    "file": "-19_17.p5t",
    "region": "trigg",
-   "hmin": 10.65,
-   "hmax": 31.68,
-   "bytes": 243848,
+   "hmin": 10.66,
+   "hmax": 31.69,
+   "bytes": 244170,
    "traffic": "-19_17.p5r"
   },
   "-18_17": {
@@ -7917,7 +7917,7 @@
    "id": "guildford_antiques",
    "position": [
     11141.63,
-    11.04,
+    11.06,
     -5136.22
    ],
    "yaw": -0.2537,
@@ -7964,7 +7964,7 @@
    "id": "spray_shop",
    "position": [
     -592.98,
-    20.08,
+    20.3,
     -526.3
    ],
    "yaw": -0.4744,
@@ -8139,7 +8139,7 @@
    "region": "first_slice",
    "position": [
     -546.85,
-    34.47,
+    34.48,
     461.92
    ]
   },
@@ -8184,7 +8184,7 @@
    "region": "leederville_subiaco",
    "position": [
     -4202.07,
-    18.55,
+    18.54,
     -605.04
    ]
   },
@@ -8247,7 +8247,7 @@
    "region": "east_perth",
    "position": [
     3472.86,
-    6.55,
+    6.58,
     771.51
    ]
   },
@@ -8490,7 +8490,7 @@
    "region": "coast_road",
    "position": [
     -9641.27,
-    1.74,
+    1.75,
     -7853.67
    ]
   },
@@ -8580,13 +8580,13 @@
    "name": "Cottesloe Beach",
    "p": [
     -9651.5,
-    11.09,
+    11.11,
     5354.68
    ],
    "yaw": 2.7377,
    "at": [
     -9707.13,
-    9.85,
+    9.86,
     5484.83
    ],
    "suburb": "Cottesloe"
@@ -8716,7 +8716,7 @@
    "name": "Trigg Beach",
    "p": [
     -9647.74,
-    2.26,
+    2.27,
     -7808.34
    ],
    "yaw": 2.9703,
@@ -9038,13 +9038,13 @@
    "name": "McDonald's",
    "p": [
     -5218.75,
-    17.0,
+    16.99,
     -4825.22
    ],
    "yaw": -0.8778,
    "at": [
     -5218.75,
-    16.7,
+    16.69,
     -4825.22
    ],
    "brand": "McDonald's",
@@ -9056,13 +9056,13 @@
    "name": "McDonalds Jolimont",
    "p": [
     -3919.61,
-    22.68,
+    22.67,
     130.42
    ],
    "yaw": 0.0031,
    "at": [
     -3919.61,
-    22.38,
+    22.37,
     130.42
    ],
    "brand": "McDonald's",
@@ -9151,7 +9151,7 @@
    "yaw": 0.7503,
    "at": [
     1013.06,
-    4.61,
+    4.16,
     3141.93
    ],
    "suburb": "South Perth"
@@ -9168,7 +9168,7 @@
    "yaw": 1.622,
    "at": [
     334.74,
-    8.27,
+    7.18,
     1329.6
    ],
    "suburb": "Perth"
@@ -9182,11 +9182,11 @@
     8.49,
     -1672.84
    ],
-   "yaw": -2.2114,
+   "yaw": -2.1726,
    "at": [
-    6043.47,
-    5.83,
-    -1610.14
+    6049.56,
+    5.81,
+    -1610.9
    ],
    "suburb": "Bayswater"
   },
@@ -9202,7 +9202,7 @@
    "yaw": -1.2512,
    "at": [
     -2512.09,
-    1.69,
+    1.2,
     4398.45
    ],
    "suburb": "Crawley"
@@ -9219,7 +9219,7 @@
    "yaw": -0.0024,
    "at": [
     3.14,
-    5.21,
+    4.85,
     2727.65
    ],
    "suburb": "South Perth"
@@ -9250,11 +9250,11 @@
     3.72,
     7281.0
    ],
-   "yaw": -0.6608,
+   "yaw": -0.8293,
    "at": [
-    -6283.46,
-    2.59,
-    7184.22
+    -6271.49,
+    2.24,
+    7201.14
    ],
    "suburb": "Bicton"
   },
@@ -9298,15 +9298,15 @@
    "kind": "fishing",
    "name": "South Mole",
    "p": [
-    -11414.1,
-    3.16,
-    12183.0
+    -10722.79,
+    3.06,
+    12018.85
    ],
-   "yaw": -1.631,
+   "yaw": 1.7924,
    "at": [
-    -10952.99,
+    -11504.91,
     1.69,
-    12210.78
+    12195.08
    ],
    "suburb": "Fremantle"
   },
@@ -9316,7 +9316,7 @@
    "name": "Trigg Island rocks",
    "p": [
     -9647.74,
-    2.26,
+    2.27,
     -7808.34
    ],
    "yaw": 1.4052,
@@ -9385,7 +9385,7 @@
    "name": "Fremantle Markets",
    "p": [
     -9887.39,
-    8.11,
+    8.12,
     12150.17
    ],
    "yaw": -2.8253,
@@ -9402,13 +9402,13 @@
    "name": "Indiana Tea House",
    "p": [
     -9651.5,
-    11.09,
+    11.11,
     5354.68
    ],
    "yaw": 2.9417,
    "at": [
     -9679.96,
-    13.44,
+    13.45,
     5495.1
    ],
    "suburb": "Cottesloe"
@@ -9442,7 +9442,7 @@
    "yaw": 2.3017,
    "at": [
     3324.37,
-    5.36,
+    5.37,
     567.12
    ],
    "suburb": "Burswood"
@@ -9453,13 +9453,13 @@
    "name": "RAC Arena",
    "p": [
     -93.06,
-    20.19,
+    19.86,
     437.74
    ],
    "yaw": 0.4414,
    "at": [
     -176.08,
-    18.04,
+    18.15,
     262.02
    ],
    "suburb": "Perth"
@@ -9470,7 +9470,7 @@
    "name": "Rendezvous Observation City",
    "p": [
     -9270.95,
-    14.67,
+    14.72,
     -6109.28
    ],
    "yaw": -2.8288,
@@ -9544,7 +9544,7 @@
    "yaw": 2.7681,
    "at": [
     -10706.46,
-    0.67,
+    1.01,
     12991.98
    ]
   },
@@ -9655,7 +9655,7 @@
    "name": "Glendalough lookout",
    "p": [
     -3679.39,
-    11.99,
+    12.0,
     -3186.67
    ],
    "yaw": 1.2648,
@@ -9746,7 +9746,7 @@
    "yaw": 2.9787,
    "at": [
     -8780.42,
-    13.43,
+    13.4,
     10524.34
    ],
    "suburb": "Prawn Bay"
@@ -9774,13 +9774,13 @@
    "name": "West Perth lookout",
    "p": [
     -907.33,
-    64.85,
+    64.39,
     1023.1
    ],
    "yaw": -1.9958,
    "at": [
     -756.23,
-    60.31,
+    60.32,
     1091.49
    ],
    "suburb": "West Perth"
@@ -9882,7 +9882,7 @@
    "yaw": -1.2158,
    "at": [
     480.37,
-    31.53,
+    31.64,
     1000.8
    ],
    "suburb": "Kings Park"
@@ -9967,7 +9967,7 @@
    "yaw": -2.4443,
    "at": [
     385.84,
-    25.18,
+    25.19,
     779.03
    ],
    "suburb": "Wembley"
@@ -10001,7 +10001,7 @@
    "yaw": -0.5174,
    "at": [
     480.37,
-    34.15,
+    34.2,
     1111.69
    ],
    "suburb": "South Perth"
@@ -10018,7 +10018,7 @@
    "yaw": 1.1179,
    "at": [
     574.91,
-    38.26,
+    38.25,
     1111.69
    ],
    "suburb": "East Perth"
@@ -10065,13 +10065,13 @@
    "name": "Vibe Subiaco",
    "p": [
     -2164.68,
-    48.49,
+    48.62,
     693.4
    ],
    "yaw": -1.0752,
    "at": [
     -2164.68,
-    48.19,
+    48.32,
     693.4
    ],
    "brand": "Vibe",
@@ -10083,13 +10083,13 @@
    "name": "Caltex",
    "p": [
     -2412.68,
-    23.44,
+    23.45,
     -3586.82
    ],
    "yaw": -2.5507,
    "at": [
     -2412.68,
-    23.14,
+    23.15,
     -3586.82
    ],
    "brand": "Caltex",
@@ -10119,13 +10119,13 @@
    "name": "BP",
    "p": [
     -3185.49,
-    20.8,
+    20.77,
     -605.89
    ],
    "yaw": 1.5638,
    "at": [
     -3185.49,
-    20.5,
+    20.47,
     -605.89
    ],
    "brand": "BP",
@@ -10296,13 +10296,13 @@
    "name": "Ampol",
    "p": [
     -5646.55,
-    22.78,
+    22.82,
     -4948.2
    ],
    "yaw": 1.1041,
    "at": [
     -5646.55,
-    22.48,
+    22.52,
     -4948.2
    ],
    "brand": "Ampol",
@@ -10385,13 +10385,13 @@
    "name": "Ampol",
    "p": [
     1469.77,
-    12.77,
+    12.83,
     285.54
    ],
    "yaw": -2.0306,
    "at": [
     1469.77,
-    12.47,
+    12.53,
     285.54
    ],
    "brand": "Ampol",
@@ -10492,13 +10492,13 @@
    "name": "Shell",
    "p": [
     -3647.01,
-    11.35,
+    11.4,
     10378.84
    ],
    "yaw": -1.5664,
    "at": [
     -3647.01,
-    11.05,
+    11.1,
     10378.84
    ],
    "brand": "Shell",
@@ -10510,13 +10510,13 @@
    "name": "BP",
    "p": [
     -9048.48,
-    14.3,
+    14.34,
     -5678.93
    ],
    "yaw": -3.1407,
    "at": [
     -9048.48,
-    14.0,
+    14.04,
     -5678.93
    ],
    "brand": "BP",
@@ -10528,13 +10528,13 @@
    "name": "BP",
    "p": [
     -9072.82,
-    14.46,
+    14.5,
     -5687.74
    ],
    "yaw": 0.0009,
    "at": [
     -9072.82,
-    14.16,
+    14.2,
     -5687.74
    ],
    "brand": "BP",
@@ -10600,13 +10600,13 @@
    "name": "Reddy Express",
    "p": [
     -3964.29,
-    22.99,
+    23.0,
     161.18
    ],
    "yaw": -1.8379,
    "at": [
     -3964.29,
-    22.69,
+    22.7,
     161.18
    ],
    "brand": "Shell",
@@ -10672,13 +10672,13 @@
    "name": "Caltex",
    "p": [
     376.16,
-    28.09,
+    28.13,
     -1025.1
    ],
    "yaw": -0.4689,
    "at": [
     376.16,
-    27.79,
+    27.83,
     -1025.1
    ],
    "brand": "Caltex",
@@ -10690,13 +10690,13 @@
    "name": "Coles Express",
    "p": [
     498.85,
-    42.45,
+    42.39,
     -2456.85
    ],
    "yaw": -2.3497,
    "at": [
     498.85,
-    42.15,
+    42.09,
     -2456.85
    ],
    "brand": "Coles Express",
@@ -10815,13 +10815,13 @@
    "name": "Coles Express",
    "p": [
     -372.55,
-    9.2,
+    9.15,
     7382.24
    ],
    "yaw": 0.0294,
    "at": [
     -372.55,
-    8.9,
+    8.85,
     7382.24
    ],
    "brand": "Coles Express",
@@ -10905,13 +10905,13 @@
    "name": "Ampol Foodary Applecross",
    "p": [
     -287.14,
-    6.46,
+    6.47,
     7274.1
    ],
    "yaw": 1.5038,
    "at": [
     -287.14,
-    6.16,
+    6.17,
     7274.1
    ],
    "brand": "Ampol",
@@ -10977,13 +10977,13 @@
    "name": "Shell NightOwl",
    "p": [
     2181.75,
-    20.42,
+    20.34,
     -855.94
    ],
    "yaw": -0.912,
    "at": [
     2181.75,
-    20.12,
+    20.04,
     -855.94
    ],
    "brand": "Shell",
@@ -11066,13 +11066,13 @@
    "name": "United",
    "p": [
     -8195.66,
-    22.58,
+    22.59,
     4167.63
    ],
    "yaw": -0.8688,
    "at": [
     -8195.66,
-    22.28,
+    22.29,
     4167.63
    ],
    "brand": "United",
