@@ -31,6 +31,8 @@ CITY_FOOT = {"pedestrian", "footway", "path", "steps"}
 CARRIAGEWAY_GAP = 0.6  # clear space kept between opposing one-way carriageways
 MAX_SHIFT = 3.0  # most two carriageways are pulled apart, in metres
 MERGE_ZONE = 15.0  # metres from a node both sides share where they may converge
+WALK_STEP = 2.5  # metres between the points a path on the ground takes its height from
+SHALLOW_TUNNEL = 6.2  # build.TUNNEL_HEIGHT + 0.6: path tunnels with less ground over them are left out
 NO_CARS = {"private", "no"}
 
 
@@ -72,11 +74,26 @@ def _speed(tags):
     return int(m.group(1)) if m else None
 
 
-def _path(w) -> dict:
+def _path(w, hf=None) -> dict:
     """A foot or bike path for the traffic data: Godot points, its name, and
-    the plan midpoint that decides which tile carries it."""
-    return {"pts": np.column_stack([w.xy[:, 0], w.h + 0.05, -w.xy[:, 1]]).astype(np.float32),
+    the plan midpoint that decides which tile carries it.
+
+    With the ground `hf`, a path on the ground follows the ground it's drawn
+    on. Its own height profile is smoothed from the bare-earth DEM, before
+    the ground is fitted to the streets and shaped round lakes and decks, and
+    the two can be metres apart: walkers floated over James Street Mall and
+    the Herdsman Lake trail."""
+    pts = np.column_stack([w.xy[:, 0], w.h + 0.05, -w.xy[:, 1]])
+    if hf is not None and not getattr(w, "bridge", False):
+        dense = _densify(pts, WALK_STEP)
+        ground = hf.sample(dense[:, 0], -dense[:, 2])
+        # A tunnel stays below unless the ground hardly covers it (the build leaves those out).
+        if not getattr(w, "tunnel", False) or np.mean(ground < dense[:, 1] - 0.05 + SHALLOW_TUNNEL) > 0.5:
+            pts = dense
+            pts[:, 1] = ground + 0.05
+    return {"pts": pts.astype(np.float32),
             "name": w.tags.get("name", ""), "_mid": tuple(w.xy[len(w.xy) // 2]), "_way": w}
+
 
 
 def _densify(pts, step: float):
@@ -280,7 +297,7 @@ class TrafficNetwork:
             line = LineString(w.xy)
             if w in bridge or line.distance(stadium) < STADIUM_WALK or \
                     any(line.distance(p) < BRIDGE_APPROACH for p in ends):
-                out.append(_path(w))
+                out.append(_path(w, self.w.hf))
         return out
 
     def _city_footways(self, taken) -> list:
@@ -296,7 +313,7 @@ class TrafficNetwork:
                 continue
             e, n = w.xy[len(w.xy) // 2]
             if e0 <= e < e1 and n0 <= n < n1:
-                f = _path(w)
+                f = _path(w, self.w.hf)
                 if t.get("highway") == "pedestrian":
                     f["kind"] = "mall"
                 out.append(f)
@@ -313,7 +330,7 @@ class TrafficNetwork:
             hw = t.get("highway")
             if hw == "cycleway" or (hw in ("path", "footway") and t.get("bicycle") in ("designated", "yes")
                                     and t.get("footway") != "sidewalk"):
-                out.append(_path(w))
+                out.append(_path(w, self.w.hf))
         return out
 
     def _service_roads(self) -> list:
