@@ -55,6 +55,14 @@ var yaw_basis := Basis.IDENTITY
 ## Why we're slowing down right now, and who for.
 var reason := Reason.NONE
 var blocked_by: Object
+## The car we're stopped for, and how firmly (see TrafficManager._break_jams):
+## 0 giving way, 1 taking turns at a merge, 2 something across our path,
+## 3 queued behind them.
+var wait_on: TrafficVehicle
+var wait_rank := 0
+## Going ahead of this car to break a jam, for `unjam_time` more seconds.
+var unjam: TrafficVehicle
+var unjam_time := 0.0
 var stopped_time := 0.0
 var yield_wait := 0.0
 var stop_sign_wait := 0.0

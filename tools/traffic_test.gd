@@ -800,6 +800,8 @@ func _run_step() -> bool:
 				_next()
 		14:  # The player's car stops dead in a back street: traffic goes round it.
 			if _frame == 1:
+				# (Here, where _settle reseeds the dice after it.)
+				_check_jam_breaker()
 				_settle()
 				_focus.position = Vector3(-20, 0, 200)
 				var lane = null
@@ -1028,6 +1030,55 @@ func _check_signal_rebuild() -> void:
 
 ## The map's tiles go into the graph a few roads at a time: the result must
 ## match adding the whole lot at once.
+## Three cars each stopped for the next (a merge turn, a car across the
+## path, a commitment to give way to): one of them goes, the softest wait
+## first, never through a car queued in front; a queue that isn't a ring is
+## left alone.
+func _check_jam_breaker() -> void:
+	var lane = null
+	for l in _graph.lanes:
+		if not l.connector and l.length > 80.0:
+			lane = l
+			break
+	var cars: Array = []
+	for k in 4:
+		cars.append(_traffic.spawn_vehicle_at(&"sedan", lane, 10.0 + k * 15.0, 0.0))
+	var a = cars[0]
+	var b = cars[1]
+	var c = cars[2]
+	var d = cars[3]
+	for x in cars:
+		x.stopped_time = 10.0
+		x.speed = 0.0
+	# a queued behind b (hard), b stopped for c across its path, c giving way
+	# to a: c should go.
+	a.wait_on = b
+	a.wait_rank = 3
+	b.wait_on = c
+	b.wait_rank = 2
+	c.wait_on = a
+	c.wait_rank = 0
+	# d just waits on a: not in the ring.
+	d.wait_on = a
+	d.wait_rank = 0
+	_traffic._break_jams()
+	_check(c.unjam == a and c.unjam_time > 0.0 and a.unjam == null and b.unjam == null and d.unjam == null,
+			"a ring of cars waiting on each other lets the one giving way go (picked %s)" % [cars.map(func(x): return x.unjam != null)])
+	_check(_traffic._ignoring(c, a) and not _traffic._ignoring(b, c), "and only that car stops waiting, only for that one")
+	for x in cars:
+		x.unjam = null
+		x.unjam_time = 0.0
+		x.wait_on = null
+	# A plain queue: no ring, nobody jumps it.
+	a.wait_on = b
+	b.wait_on = c
+	c.wait_on = null
+	_traffic._break_jams()
+	_check(cars.all(func(x): return x.unjam == null), "a plain queue is left alone")
+	for x in cars:
+		_traffic._despawn_vehicle(x)
+
+
 ## A two-lane one-way street meeting a T where the only way on is a turn
 ## (Elder St into Malcolm St): both lanes take it, neither dead-ends.
 func _check_forced_turn() -> void:

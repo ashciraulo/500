@@ -96,7 +96,7 @@ var step_ms := 0.0
 ## Counters for tests and debugging.
 ## Where red lights were run, for tests.
 var red_run_log: Array[String] = []
-var stats := { "spawned": 0, "despawned": 0, "created": 0, "red_runs": 0, "peds_created": 0, "trains": 0 }
+var stats := { "spawned": 0, "despawned": 0, "created": 0, "red_runs": 0, "peds_created": 0, "trains": 0, "jams": 0 }
 
 var _rng := RandomNumberGenerator.new()
 var _pool := {}
@@ -140,6 +140,9 @@ var _pinned := {}
 ## Bodies made passable to free the player, until the player is clear of them.
 var _ghosts := {}
 var _pin_query: PhysicsShapeQueryParameters3D
+var _jam_timer := 0.0
+## The car that made the last junction check fail (see _break_jams).
+var _culprit: TrafficVehicle
 ## The player out of the car and walking (scripts/player/on_foot.gd).
 var _walker: CharacterBody3D
 var _walker_proxy := PlayerProxy.new()
@@ -440,6 +443,10 @@ func _physics_process(delta: float) -> void:
 	_update_trains(delta)
 	_update_crossings(delta)
 	_rebuild_hash()
+	_jam_timer -= delta
+	if _jam_timer <= 0.0:
+		_jam_timer = 0.5
+		_break_jams()
 	var lights_on := _headlights_wanted()
 	for v in vehicles:
 		_drive(v, delta)
@@ -774,6 +781,12 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 	v.lifetime += dt
 	_extend_route(v)
 	var lane: TrafficGraph.Lane = v.route[0]
+	if not v.commits.is_empty() and not lane.connector and v.stopped_time > COMMIT_STALE:
+		# Cleared to go but held up short of the junction (a queue past it,
+		# a red that came up): think again rather than keep everyone
+		# crossing our path waiting on a car that isn't coming.
+		v.commits = []
+		v.cleared = null
 	var wet: float = Weather.wetness
 	var a_max := 1.1 if v.is_bus else 1.8
 	var b_comf := 2.4
@@ -809,6 +822,8 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 	var lead_speed := 0.0
 	var reason := TrafficVehicle.Reason.NONE
 	var who: Object = null
+	var lead_soft := false  # Leader only by taking turns into one lane.
+	var yield_for: TrafficVehicle = null  # Who a junction check is waiting on.
 
 	# 1. The vehicle in front on our lanes.
 	var base := -v.s
@@ -818,6 +833,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 			break
 		var best := INF
 		var best_o: TrafficVehicle = null
+		var best_soft := false
 		for o in l.vehicles:
 			if o == v:
 				continue
@@ -851,9 +867,12 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 				for o in sib.vehicles:
 					if i == 0 and (o.s < v.s or (o.s == v.s and o.id < v.id)):
 						continue
+					if _ignoring(v, o):
+						continue
 					if o.s < 8.0 and base + o.s < best:
 						best = base + o.s
 						best_o = o
+						best_soft = true
 		if l.connector:
 			# Someone on another move into the same exit lane, nearer its end:
 			# they're in front once the paths join.
@@ -861,13 +880,14 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 				if other.next[0] != l.next[0]:
 					continue
 				for o in other.vehicles:
-					if o == v:
+					if o == v or _ignoring(v, o):
 						continue
 					# Distances to the end of the junction, where the paths meet.
 					var d: float = (base + l.length) - (other.length - o.s)
 					if (d > 0.0 or (d == 0.0 and o.id < v.id)) and d < best:
 						best = d
 						best_o = o
+						best_soft = true
 		if best_o:
 			var g: float = best - (best_o.length + v.length) * 0.5
 			if g < gap:
@@ -875,6 +895,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 				lead_speed = best_o.speed
 				reason = TrafficVehicle.Reason.LEADER
 				who = best_o
+				lead_soft = best_soft
 			break
 		base += l.length
 
@@ -971,6 +992,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 			# Just a bend in the road, unless a lane ends here: then merge in
 			# turn with the car alongside.
 			if not l.conflicts.is_empty() and not v.commits.has(l) and base < 40.0:
+				_culprit = null
 				if _merge_turn(l, v, base):
 					if base < 10.0:
 						v.commits.append(l)
@@ -981,6 +1003,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 						lead_speed = 0.0
 						reason = TrafficVehicle.Reason.YIELD
 						who = l
+						yield_for = _culprit
 			base += l.length
 			continue
 		if l.connector and i > 0:
@@ -994,6 +1017,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 				# After a long wait at a give-way, edge out anyway (but never
 				# into a junction someone is crossing).
 				var chain := _junction_chain(v, i)
+				_culprit = null
 				var clear := true
 				var has_priority := not l.full_stop
 				for c in chain:
@@ -1019,6 +1043,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 						lead_speed = 0.0
 						reason = TrafficVehicle.Reason.YIELD
 						who = l
+						yield_for = _culprit
 					if v.speed < 0.3 and d < 4.0:
 						v.yield_wait += dt
 			break
@@ -1150,6 +1175,24 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 
 	v.reason = reason
 	v.blocked_by = who if v.speed < 1.0 else null
+	v.wait_on = null
+	if v.speed < 1.0:
+		if who is TrafficVehicle:
+			v.wait_on = who
+			match reason:
+				TrafficVehicle.Reason.LEADER:
+					v.wait_rank = 1 if lead_soft else 3
+				TrafficVehicle.Reason.OBSTACLE:
+					v.wait_rank = 2
+				_:
+					v.wait_rank = 0
+		elif reason == TrafficVehicle.Reason.YIELD and yield_for != null:
+			v.wait_on = yield_for
+			v.wait_rank = 0
+	if v.unjam_time > 0.0:
+		v.unjam_time -= dt
+		if v.unjam_time <= 0.0:
+			v.unjam = null
 	if v.speed < 0.2:
 		v.stopped_time += dt
 	else:
@@ -1216,14 +1259,16 @@ func _merge_turn(c: TrafficGraph.Lane, v: TrafficVehicle, d: float) -> bool:
 		if other.next[0] != c.next[0]:
 			continue
 		for o in other.vehicles:
-			if o != v and o.s < o.length + 2.0:
+			if o != v and o.s < o.length + 2.0 and not _ignoring(v, o):
+				_culprit = o
 				return false
 		# Held at their own red: they're not coming.
 		var held: bool = other.in_lane.signal_gate != null and other.in_lane.signal_gate.state() != TrafficGraph.Gate.GO
 		for o in other.in_lane.vehicles:
-			if o == v:
+			if o == v or _ignoring(v, o):
 				continue
 			if o.commits.has(other):
+				_culprit = o
 				return false
 			if held:
 				continue
@@ -1232,6 +1277,7 @@ func _merge_turn(c: TrafficGraph.Lane, v: TrafficVehicle, d: float) -> bool:
 			var rem: float = other.in_lane.length - o.s - o.length * 0.5 + other.length
 			var mine: float = d + c.length
 			if rem < mine - 0.5 or (absf(rem - mine) <= 0.5 and o.id < v.id):
+				_culprit = o
 				return false
 	return true
 
@@ -1247,9 +1293,10 @@ func _junction_clear(c: TrafficGraph.Lane, v: TrafficVehicle) -> bool:
 				merge = true
 		var window := 2.5 if merge else 6.0
 		for o in l.vehicles:
-			if o == v:
+			if o == v or _ignoring(v, o):
 				continue
 			if o.cleared != null and o.cleared.in_lane == l:
+				_culprit = o
 				return false  # Committed to go.
 			var rem: float = l.length - o.s
 			if rem > 110.0:
@@ -1257,11 +1304,13 @@ func _junction_clear(c: TrafficGraph.Lane, v: TrafficVehicle) -> bool:
 			if o.speed < 0.5 and rem < 14.0:
 				continue  # Waiting at the line themselves.
 			if rem / maxf(o.speed, 0.1) < window:
+				_culprit = o
 				return false
 		# Anyone already in the junction from a priority lane.
 		for conn in l.next:
 			for o in conn.vehicles:
-				if o != v:
+				if o != v and not _ignoring(v, o):
+					_culprit = o
 					return false
 	return true
 
@@ -1270,29 +1319,82 @@ func _junction_clear(c: TrafficGraph.Lane, v: TrafficVehicle) -> bool:
 func _junction_free(c: TrafficGraph.Lane, v: TrafficVehicle) -> bool:
 	# Someone crawling through the same move: the junction is backed up.
 	for o in c.vehicles:
-		if o != v and o.speed < 2.0:
+		if o != v and o.speed < 2.0 and not _ignoring(v, o):
+			_culprit = o
 			return false
 	for other in c.conflicts:
 		for o in other.vehicles:
-			if o != v:
+			if o != v and not _ignoring(v, o):
+				_culprit = o
 				return false
 		# Just out of the junction but the tail is still in it.
 		for o in other.next[0].vehicles:
-			if o != v and o.prev_lane == other and o.s < o.length * 0.5 + 1.5:
+			if o != v and o.prev_lane == other and o.s < o.length * 0.5 + 1.5 and not _ignoring(v, o):
+				_culprit = o
 				return false
 		# Someone about to enter that crossing path has already committed.
 		for o in other.in_lane.vehicles:
-			if o != v and o.commits.has(other):
+			if o != v and o.commits.has(other) and not _ignoring(v, o):
+				_culprit = o
 				return false
 	# Room for all of us past the junction: a queue (or a car stopped with
 	# its hazards on) just past it would leave our tail across it.
 	var out: TrafficGraph.Lane = c.next[0]
 	for o in out.vehicles:
 		if o != v and o.s - o.length * 0.5 < v.length + 2.5 and o.speed < 2.0:
+			_culprit = o
 			return false
 	if not out.closed.is_empty() and out.closed[0] < v.length + 2.5:
 		return false
 	return true
+
+
+## Seconds a car cleared for a junction can sit short of it before it gives
+## up the slot and decides again.
+const COMMIT_STALE := 4.0
+
+
+## Going ahead of `o` to break a jam (see _break_jams).
+func _ignoring(v: TrafficVehicle, o: TrafficVehicle) -> bool:
+	return o == v.unjam and v.unjam_time > 0.0
+
+
+## Seconds everyone in a ring of cars waiting on each other must have been
+## stopped before one of them goes.
+const JAM_AFTER := 6.0
+
+## Cars that wait on each other in a ring (each giving way to, merging after
+## or stopped for the next) never move by themselves: short links between
+## close junctions make these. Find the rings and let one car go: the one
+## whose wait is softest (giving way before taking turns, before something
+## across its path; never through a car queued in front), lowest id first.
+func _break_jams() -> void:
+	for v in vehicles:
+		if v.wait_on == null or v.stopped_time < JAM_AFTER:
+			continue
+		var ring: Array = [v]
+		var o: TrafficVehicle = v.wait_on
+		while o != null and ring.size() < 8 and not ring.has(o):
+			if o.stopped_time < JAM_AFTER:
+				o = null
+				break
+			ring.append(o)
+			o = o.wait_on
+		if o != v:
+			continue  # Not a ring through this car (others in it find it).
+		var pick: TrafficVehicle = null
+		for c in ring:
+			if c.unjam_time > 0.0:
+				pick = null
+				break  # Already being broken.
+			if c.wait_rank >= 3:
+				continue
+			if pick == null or c.wait_rank < pick.wait_rank or (c.wait_rank == pick.wait_rank and c.id < pick.id):
+				pick = c
+		if pick != null:
+			pick.unjam = pick.wait_on
+			pick.unjam_time = 6.0
+			stats.jams += 1
 
 
 func _scan_obstacles(v: TrafficVehicle) -> void:
@@ -1339,6 +1441,8 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 		if is_vehicle:
 			# Two cars blocking each other: the lower id goes first.
 			if o.blocked_by == v and v.id < o.id:
+				continue
+			if _ignoring(v, o):
 				continue
 		var of: Vector3 = o.forward
 		var ol := TrafficGraph.left_of(of)
@@ -2190,6 +2294,9 @@ func _spawn_vehicle(type: StringName, lane: TrafficGraph.Lane, s: float, speed :
 	v.bunch = 0
 	v.bunch_side = 0.0
 	v.round_player = 0.0
+	v.wait_on = null
+	v.unjam = null
+	v.unjam_time = 0.0
 	v.trail.clear()
 	v.ride_roads = {}
 	v.lateral = 0.0
