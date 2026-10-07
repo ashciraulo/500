@@ -1658,21 +1658,20 @@ class TileBuilder:
                 bot = top - DECK_THICKNESS
                 ph = _parapet_heights(w, left, right, top, hf)
                 phl, phr = np.where(gl, 0.0, ph), np.where(gr, 0.0, ph)
-                joined_l, joined_r = gl, gr
                 # Deck edges and underside. A deck OSM doesn't call a bridge
                 # (a lifted slip road) is walled down to the ground where
                 # there's no room under it: a retaining wall, not a gap.
                 bl = br = bot
                 if w.group == "road" and not styles.is_bridge(w.tags):
-                    gl, gr = hf.sample(left[:, 0], left[:, 1]), hf.sample(right[:, 0], right[:, 1])
-                    bl = np.where(top - gl < LIFT_WALL_CLEAR, np.minimum(gl - 0.3, bot), bot)
-                    br = np.where(top - gr < LIFT_WALL_CLEAR, np.minimum(gr - 0.3, bot), bot)
+                    hl, hr = hf.sample(left[:, 0], left[:, 1]), hf.sample(right[:, 0], right[:, 1])
+                    bl = np.where(top - hl < LIFT_WALL_CLEAR, np.minimum(hl - 0.3, bot), bot)
+                    br = np.where(top - hr < LIFT_WALL_CLEAR, np.minimum(hr - 0.3, bot), bot)
                 walls(conc, left[::-1], bl[::-1], top[::-1] + phl[::-1], 2.0, 2.0, closed=False)
                 walls(conc, right, br, top + phr, 2.0, 2.0, closed=False)
                 ribbon(conc, rxy, bot, w.width + 0.6, 4.0, up=False)
                 if w.group == "road":
-                    _bevel(conc, rxy, left, top, hf, joined_l)
-                    _bevel(conc, rxy, right, top, hf, joined_r)
+                    _bevel(conc, rxy, left, top, hf, gl)
+                    _bevel(conc, rxy, right, top, hf, gr)
                 # Parapets (inner faces and tops) so cars can't drive off.
                 for k in _parapet_runs(phl, gl):
                     walls(conc, pl[k], top[k], top[k] + phl[k], 2.0, 2.0, closed=False)
