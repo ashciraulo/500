@@ -689,6 +689,10 @@ func _build_connectors(node: GNode) -> void:
 	for rin in node.roads:
 		for lin in rin.lanes_into(node):
 			lin.next.clear()
+			# The way on that's nearest straight ahead, for a lane the turn
+			# rules leave with nowhere to go.
+			var fallback: Array = []
+			var fallback_ang := INF
 			for rout in node.roads:
 				if rout == rin and deg > 1:
 					continue
@@ -698,18 +702,31 @@ func _build_connectors(node: GNode) -> void:
 				var d_in: Vector3 = lin.tangent(lin.length)
 				var d_out: Vector3 = outs[0].tangent(0.0)
 				var turn := Turn.STRAIGHT
+				var ang := atan2(d_out.dot(left_of(d_in)), d_out.dot(d_in))
 				if rout == rin:
 					turn = Turn.UTURN
 				elif deg >= 3:
-					var ang := atan2(d_out.dot(left_of(d_in)), d_out.dot(d_in))
 					if ang > 0.6:
 						turn = Turn.LEFT
 					elif ang < -0.6:
 						turn = Turn.RIGHT
+				if turn != Turn.UTURN and absf(ang) < fallback_ang:
+					fallback_ang = absf(ang)
+					fallback = [rout, outs, turn]
 				for lout in _target_lanes(lin, outs, turn, deg):
 					var c := _make_connector(lin, lout, node, turn, old.get([lin, lout]))
 					old.erase([lin, lout])
 					_assign_priority(c, node, rin, rout, majors)
+					lin.next.append(c)
+			if lin.next.is_empty() and not fallback.is_empty():
+				# No straight on and this lane isn't the turning one (a road
+				# that bends into a side street, a one-way that only goes one
+				# way): every lane may take the only way on, lined up from
+				# the kerb.
+				for lout in _target_lanes(lin, fallback[1], Turn.STRAIGHT, deg):
+					var c := _make_connector(lin, lout, node, fallback[2], old.get([lin, lout]))
+					old.erase([lin, lout])
+					_assign_priority(c, node, rin, fallback[0], majors)
 					lin.next.append(c)
 	# Moves that no longer exist: kept aside (a car may still be on one) and
 	# untangled with the rest in dispose().
