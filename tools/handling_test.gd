@@ -9,6 +9,41 @@ extends SceneTree
 ## Add car=<id> to drive another car, and report to only print the numbers.
 ## Exits with code 1 if any check fails.
 
+## The profile road sits this high over the ground, after a flat run-up from
+## the start to PROFILE_START (-Z), long enough to get up to speed.
+const PROFILE_Y := 5.0
+const PROFILE_START := -150.0
+## Pearson St, Churchlands, coming off Alumni Terrace (the map's road as it was
+## in October 2026): its height every half metre for 150 m, in cm. Downhill,
+## with humps every few metres, two of them 30 cm or more. It also had a lump
+## 70 cm high and 4 m long near (-5603, -2360) that throws anything at
+## speed; that's a fault in the map, smoothed out here.
+## Pearson St at 55-75: two of its humps lift a car off the road whatever
+## its suspension, so at most that many moments clean off it, this long in
+## all, and landing no harder than this change in rise speed (m/s). Before
+## the bump stops and road hug the Pop flipped at 55 and spun at 75.
+const HOPS_OK := 2
+const FLYING_OK := 0.8
+const JOLT_OK := 2.5
+const PEARSON_ST_CM: Array[int] = [
+	0, -1, -1, -2, -3, -4, -5, -5, -6, -8, -9, -11, -12, -12, -7, -5, -9, -13, -18, -22,
+	-25, -26, -27, -29, -30, -29, -28, -28, -27, -27, -27, -30, -32, -35, -38, -41, -41, -42, -45, -49,
+	-52, -56, -58, -60, -61, -63, -64, -63, -62, -61, -60, -60, -59, -61, -64, -67, -70, -73, -74, -75,
+	-78, -83, -88, -92, -94, -96, -98, -100, -101, -102, -100, -98, -96, -95, -93, -96, -100, -103, -107, -111,
+	-115, -118, -121, -122, -123, -123, -124, -124, -125, -126, -129, -131, -133, -133, -133, -132, -133, -136, -140, -144,
+	-149, -153, -157, -159, -161, -163, -165, -167, -169, -171, -173, -174, -176, -177, -178, -180, -178, -171, -168, -174,
+	-179, -184, -185, -186, -187, -187, -189, -191, -190, -188, -186, -184, -181, -184, -188, -192, -196, -200, -205, -208,
+	-210, -211, -211, -210, -209, -209, -208, -208, -209, -212, -215, -216, -215, -214, -214, -218, -222, -227, -232, -238,
+	-242, -243, -245, -243, -239, -236, -232, -229, -225, -224, -229, -233, -237, -241, -245, -244, -243, -249, -255, -260,
+	-260, -261, -261, -261, -263, -265, -266, -262, -258, -255, -251, -252, -258, -263, -268, -273, -277, -282, -284, -283,
+	-280, -277, -274, -270, -267, -265, -269, -272, -275, -278, -277, -274, -272, -276, -282, -289, -296, -303, -308, -309,
+	-310, -310, -303, -297, -290, -284, -277, -272, -278, -284, -290, -295, -301, -302, -299, -307, -317, -327, -327, -327,
+	-328, -328, -329, -329, -330, -331, -331, -332, -333, -334, -334, -335, -336, -336, -337, -338, -338, -339, -334, -329,
+	-325, -320, -315, -311, -312, -317, -321, -325, -326, -325, -323, -325, -333, -341, -348, -355, -359, -360, -360, -360,
+	-356, -350, -343, -337, -330, -324, -329, -335, -341, -346, -352, -358, -359, -363, -367, -365, -363, -362, -360, -358,
+	-356,
+]
+
 const CASES := [
 	{"name": "corner_40", "kind": "corner", "kmh": 40.0},
 	{"name": "corner_60", "kind": "corner", "kmh": 60.0},
@@ -20,6 +55,9 @@ const CASES := [
 	{"name": "bumps_60", "kind": "bumps", "kmh": 60.0},
 	{"name": "rough_60", "kind": "rough", "kmh": 60.0},
 	{"name": "rough_corner_50", "kind": "rough_corner", "kmh": 50.0},
+	{"name": "pearson_st_55", "kind": "profile", "kmh": 55.0},
+	{"name": "pearson_st_66", "kind": "profile", "kmh": 66.0},
+	{"name": "pearson_st_75", "kind": "profile", "kmh": 75.0},
 	{"name": "rolling_back", "kind": "rollback", "kmh": 0.0},
 	{"name": "rolling_back_manual", "kind": "rollback", "kmh": 0.0, "manual": true},
 	{"name": "stopped_reverse", "kind": "stopped", "kmh": 0.0},
@@ -34,6 +72,9 @@ var _phase_time := 0.0
 var _failures: Array[String] = []
 var _report := false
 var _m := {}  # measurements for this case
+var _flight := 0.0
+var _landed := -1.0
+var _land_vy := 0.0
 
 
 func _initialize() -> void:
@@ -70,7 +111,9 @@ func _build(c: Dictionary) -> void:
 	_phase = 0
 	_phase_time = 0.0
 	_m = {"max_lat_g": 0.0, "max_roll": 0.0, "max_pitch": 0.0, "max_yaw_rate": 0.0, "max_slip": 0.0,
-		"airborne": 0.0, "spun": false, "drift": 0.0}
+		"airborne": 0.0, "spun": false, "drift": 0.0, "flying": 0.0, "hops": 0, "jolt": 0.0}
+	_flight = 0.0
+	_landed = -1.0
 	_world = Node3D.new()
 	root.add_child(_world)
 	_box(Vector3(3000, 1, 3000), Vector3(0, -0.5, -1200))
@@ -81,9 +124,11 @@ func _build(c: Dictionary) -> void:
 			_bump_row()
 		"rough", "rough_corner":
 			_rough_ground()
+		"profile":
+			_profile_road(PEARSON_ST_CM)
 	_car = (load("res://scenes/vehicles/fiat_500_pop.tscn") as PackedScene).instantiate()
 	_car.player_controlled = false
-	_car.position = Vector3(0, 0.6, 0)
+	_car.position = Vector3(0, 0.6 + (PROFILE_Y if c.kind == "profile" else 0.0), 0)
 	_world.add_child(_car)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("car="):
@@ -115,8 +160,24 @@ func _step(c: Dictionary, delta: float) -> bool:
 		_m.max_pitch = maxf(_m.max_pitch, absf(rad_to_deg(asin(clampf(b.z.y, -1, 1)))))
 		if _car.grounded_wheels < 3:
 			_m.airborne += delta
+		# Clean off the road: how long, how often for more than a moment, and
+		# the jolt (change in rise speed) over the tenth of a second after landing.
+		if _car.grounded_wheels == 0:
+			_m.flying += delta
+			_flight += delta
+		elif _flight > 0.0:
+			if _flight > 0.12:
+				_m.hops += 1
+			_flight = 0.0
+			_landed = 0.0
+			_land_vy = v.y
+		if _landed >= 0.0:
+			_landed += delta
+			if _landed >= 0.1:
+				_m.jolt = maxf(_m.jolt, absf(v.y - _land_vy))
+				_landed = -1.0
 	match kind:
-		"corner", "swerve", "brake", "brake_corner", "lumpy", "bumps", "rough", "rough_corner":
+		"corner", "swerve", "brake", "brake_corner", "lumpy", "bumps", "rough", "rough_corner", "profile":
 			if _phase == 0:
 				_hold(float(c.kmh), speed)
 				_car.steer_input = 0.0
@@ -166,12 +227,13 @@ func _step(c: Dictionary, delta: float) -> bool:
 					if speed < 0.5 or _phase_time > 8.0:
 						_m.end_kmh = speed * 3.6
 						return true
-				"lumpy", "bumps", "rough":
+				"lumpy", "bumps", "rough", "profile":
 					_hold(float(c.kmh), speed)
 					_steer_straight()
 					var gone: float = (_car.global_position - _m.start).length()
 					_m.drift = maxf(_m.drift, absf(_car.global_position.x))
-					if gone > 200.0 or _phase_time > 20.0:
+					var past_end: bool = kind == "profile" and _car.global_position.z < PROFILE_START - PEARSON_ST_CM.size() * 0.5
+					if past_end or (kind != "profile" and gone > 200.0) or _phase_time > 20.0:
 						_m.end_kmh = speed * 3.6
 						return true
 		"rollback":
@@ -210,7 +272,7 @@ func _step(c: Dictionary, delta: float) -> bool:
 
 func _judge(c: Dictionary) -> void:
 	var line := "%-20s" % c.name
-	for key in ["end_kmh", "max_lat_g", "max_yaw_rate", "max_slip", "max_roll", "max_pitch", "airborne", "drift", "stop_m", "stop_s", "yaw_change", "end_speed", "end_gear"]:
+	for key in ["flying", "hops", "jolt", "end_kmh", "max_lat_g", "max_yaw_rate", "max_slip", "max_roll", "max_pitch", "airborne", "drift", "stop_m", "stop_s", "yaw_change", "end_speed", "end_gear"]:
 		if _m.has(key):
 			var val = _m[key]
 			line += "  %s=%s" % [key, ("%.2f" % val) if val is float else str(val)]
@@ -238,6 +300,14 @@ func _judge(c: Dictionary) -> void:
 			_check(not _m.spun, "%s: rough ground mid-corner doesn't spin it" % c.name)
 			_check(_m.max_slip < 25.0, "%s: no big slide on rough ground (%.0f deg)" % [c.name, _m.max_slip])
 			_check(_m.airborne < 0.5, "%s: wheels stay down (%.2f s light)" % [c.name, _m.airborne])
+		"profile":
+			_check(not _m.spun, "%s: humps don't spin it" % c.name)
+			_check(_m.drift < 1.5, "%s: stays in its lane (%.2f m)" % [c.name, _m.drift])
+			_check(_m.hops <= HOPS_OK, "%s: off the road for more than a moment only at the two big humps (%d times)" % [c.name, _m.hops])
+			_check(_m.max_pitch < 20.0, "%s: lands level, never nose or tail first (%.0f deg)" % [c.name, _m.max_pitch])
+			_check(_m.end_kmh > float(c.kmh) - 8.0, "%s: never hits the road hard enough to lose speed (%.0f km/h)" % [c.name, _m.end_kmh])
+			_check(_m.flying < FLYING_OK, "%s: little time clean off the road (%.2f s)" % [c.name, _m.flying])
+			_check(_m.jolt < JOLT_OK, "%s: lands softly (%.1f m/s jolt)" % [c.name, _m.jolt])
 		"lumpy", "bumps", "rough":
 			_check(not _m.spun, "%s: bumps don't spin it" % c.name)
 			_check(_m.drift < 1.5, "%s: stays in its lane over bumps (%.2f m)" % [c.name, _m.drift])
@@ -316,6 +386,29 @@ func _lumpy_road() -> void:
 	rbody.add_child(rcol)
 	rbody.position.y = 0.6
 	_world.add_child(rbody)
+
+
+## A real road's heights (cm, every half metre) after a flat run-up, 8 m wide.
+func _profile_road(cm: Array[int]) -> void:
+	var pts: Array[Vector2] = [Vector2(10.0, 0.0)]  # (z, height)
+	for i in cm.size():
+		pts.append(Vector2(PROFILE_START - i * 0.5, cm[i] * 0.01))
+	pts.append(Vector2(pts[-1].x - 40.0, pts[-1].y))
+	var faces := PackedVector3Array()
+	for i in pts.size() - 1:
+		var a := Vector3(-4, pts[i].y, pts[i].x)
+		var b := Vector3(4, pts[i].y, pts[i].x)
+		var c := Vector3(-4, pts[i + 1].y, pts[i + 1].x)
+		var d := Vector3(4, pts[i + 1].y, pts[i + 1].x)
+		faces.append_array([a, c, d, a, d, b])
+	var body := StaticBody3D.new()
+	var col := CollisionShape3D.new()
+	var shape := ConcavePolygonShape3D.new()
+	shape.set_faces(faces)
+	col.shape = shape
+	body.add_child(col)
+	body.position.y = PROFILE_Y
+	_world.add_child(body)
 
 
 ## Rough ground both ways: lumps a few centimetres high whose slope changes
