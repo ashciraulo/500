@@ -526,7 +526,9 @@ func _update_focus() -> void:
 			_player.collision_mask |= TRAFFIC_LAYER
 			if _player.has_signal(&"impact"):
 				_player.impact.connect(_on_player_impact)
-	if (_walker == null or not is_instance_valid(_walker)) and get_parent():
+	if not is_instance_valid(_walker):
+		_walker = null  # Freed (which also reads as null): don't hand it on.
+	if _walker == null and get_parent():
 		for n in get_parent().get_children():
 			# The on-foot player: a CharacterBody3D that knows whether it's in the car.
 			if n is CharacterBody3D and "in_car" in n:
