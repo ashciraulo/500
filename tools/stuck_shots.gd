@@ -5,7 +5,9 @@ extends SceneTree
 ##   xvfb-run godot --path . --script res://tools/stuck_shots.gd -- in=/tmp/stuck.json shots=/tmp/stuck [count=12] [min_area=2] [inside]
 ##
 ## With inside, the camera stands in the trap looking back at where you got
-## in (for tunnels and cuttings, which you can't see into from above).
+## in (for tunnels and cuttings, which you can't see into from above). With
+## list=rough it shows the sweep's uneven ground instead, from a few metres off
+## at head height.
 ## Takes the traps in the order the sweep listed them (nearest home first).
 
 var _main: Node
@@ -15,6 +17,7 @@ var _shots := "user://stuck_shots"
 var _count := 12
 var _min_area := 2.0
 var _inside := false
+var _list := "traps"
 var _at := 0
 var _t := 0.0
 var _started := false
@@ -38,9 +41,11 @@ func _process(delta: float) -> bool:
 				_min_area = float(arg.trim_prefix("min_area="))
 			elif arg == "inside":
 				_inside = true
+			elif arg.begins_with("list="):
+				_list = arg.trim_prefix("list=")
 		DirAccess.make_dir_recursive_absolute(_shots)
 		var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
-		for trap: Dictionary in data.traps:
+		for trap: Dictionary in data.get(_list, []):
 			if float(trap.area) >= _min_area and _traps.size() < _count:
 				_traps.append(trap)
 		_main = load("res://scenes/main.tscn").instantiate()
@@ -75,20 +80,23 @@ func _process(delta: float) -> bool:
 		var dev := _main.get_node_or_null("DevMode")
 		if dev:
 			dev.visible = false
-		var entry := _vec(trap.entry) if not (trap.entry as Array).is_empty() else at + Vector3(4, 0, 0)
+		var entry := _vec(trap.entry) if not (trap.get("entry", []) as Array).is_empty() else at + Vector3(4, 0, 0)
 		var away := Vector3(entry.x - at.x, 0.0, entry.z - at.z)
 		away = away.normalized() if away.length() > 0.1 else Vector3.BACK
 		# From where you'd walk in (open ground, by definition), a little up.
 		var eye := entry + away * 3.0 + Vector3.UP * 4.0
+		if _list != "traps":
+			eye = at + away * 6.0 + Vector3.UP * 2.0
 		if _inside:
 			eye = at + Vector3.UP * 1.62
 		_player.teleport(eye - Vector3.UP * 1.62, entry if _inside else at)
 		_mark(at, Color(0.9, 0.15, 0.1))
 		_mark(entry, Color(1.0, 0.8, 0.1))
 	if _t > 4.0:  # tiles stream in around the camera
-		var name := "%02d_%s_%dm2" % [_at + 1, trap.tile, roundi(float(trap.area))]
+		var name := "%02d_%s_%dm2" % [_at + 1, trap.tile, roundi(float(trap.area))] if _list == "traps" \
+			else "%02d_%s_%s_%s" % [_at + 1, trap.tile, String(trap.kind).replace(" ", "_"), str(trap.value)]
 		root.get_texture().get_image().save_png(_shots.path_join(name + ".png"))
-		print("saved %s  at %s  climb %.2f m" % [name, trap.at, float(trap.climb)])
+		print("saved %s  at %s" % [name, trap.at])
 		for m in _markers:
 			m.queue_free()
 		_markers.clear()
