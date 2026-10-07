@@ -905,6 +905,9 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 	# 2. Stop lines: red lights, closed level crossings, bus stops.
 	base = -v.s - v.length * 0.5
 	var stop_found := false
+	# Route index of the lane we're held on (a red, a bus stop), or -1: we
+	# can't claim a junction beyond it, so others mustn't give way to us.
+	var held_i := -1
 	for i in v.route.size():
 		var l: TrafficGraph.Lane = v.route[i]
 		if base > 90.0 or stop_found:
@@ -951,6 +954,7 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 					reason = TrafficVehicle.Reason.STOP_LINE
 					who = gate
 				stop_found = true
+				held_i = i
 				break
 		base += l.length
 
@@ -1007,6 +1011,12 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 			base += l.length
 			continue
 		if l.connector and i > 0:
+			if held_i >= 0 and held_i < i:
+				# Stopping at our own red short of it: no claim on it yet.
+				if v.commits.has(l):
+					v.commits = []
+					v.cleared = null
+				break
 			if not v.commits.has(l):
 				var d := base
 				var ready := true
@@ -1306,10 +1316,12 @@ func _junction_clear(c: TrafficGraph.Lane, v: TrafficVehicle) -> bool:
 			if rem / maxf(o.speed, 0.1) < window:
 				_culprit = o
 				return false
-		# Anyone already in the junction from a priority lane.
+		# Anyone already in the junction from a priority lane, unless they're
+		# stopped on a move that doesn't cross or join ours.
 		for conn in l.next:
+			var apart: bool = conn != c and not c.conflicts.has(conn) and conn.next[0] != c.next[0]
 			for o in conn.vehicles:
-				if o != v and not _ignoring(v, o):
+				if o != v and not _ignoring(v, o) and not (apart and o.speed < 0.5):
 					_culprit = o
 					return false
 	return true
