@@ -178,12 +178,22 @@ start swapping in your own recordings, regenerate only what you need.
   sounds as it does outside, but the radio stays near its in-car level and
   the rain and wind duck under it (`Audio.set_player_driving`, set by
   CarSounds).
-- **Engine level**: the recorded loops run from about -45 LUFS at idle to
-  -22 at the top. The player's engine is lifted up to
-  `EngineAudio.quiet_lift_db` (10 dB) at idle off the throttle, fading to
-  nothing at the redline or under full load, through an Amplify effect on
-  the Engine bus (`Audio.set_engine_lift`). Close to the car the players
-  sit at their `max_db` cap, so their own `volume_db` can't do it.
+- **Your car against the radio**: the engine loops run from about -45 LUFS
+  at idle to -22 at the top. A compressor on the Engine bus
+  (`Audio.ENGINE_COMP_*`) evens that out: the idle comes up over the rain,
+  and cruising at city speeds stays about 6 dB under the radio, in the car
+  and in the chase view. Close to the car the 3D players sit at their
+  `max_db` cap, so their own `volume_db` can't set the level; for the same
+  reason the tyre roar's level is its cap (`TyreAudio.ROLL_MAX_DB`), with
+  skids, kerbs and bumps louder. sound_check drives a straight road at
+  50 km/h with the radio on and fails if the engine or tyres come within
+  3 dB of the radio.
+- **Menu sounds** play on the UI bus, which sits at `Audio.UI_DB` (-14 dB,
+  the files are mastered hot) under the Effects slider. Buttons tick and
+  click once, through UiTheme. sound_check fails if opening the pause menu
+  peaks over -14 dB.
+- **Home**: indoors, rain on the windows (`WINDOW_RAIN`) is a soft patter,
+  quieter than the storm heard from the courtyard.
 - **`Audio.radio`** (`radio.gd`): Radio Cinquecento, Notte FM, My Music and
   (after midnight only) an unlisted station. The two built-in stations run
   like real broadcasts: each keeps its place while you listen elsewhere,

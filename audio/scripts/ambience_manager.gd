@@ -32,6 +32,8 @@ const BED_DB := -4.0
 ## radio and engine in the cabin mix.
 const ROOF_TRIM := 0.12
 const SCREEN_TRIM := 0.1
+## Rain on the windows indoors at home, at its loudest (a storm) about 0.2.
+const WINDOW_RAIN := 0.15
 ## The wet bed comes in above RAIN_WET_ON and goes again below RAIN_WET_OFF
 ## (hysteresis, so rain hovering around 0.25 doesn't flap between beds).
 const RAIN_WET_ON := 0.3
@@ -188,7 +190,8 @@ func _ready() -> void:
 	_layer("rain_screen", "weather/weather_rain_windscreen", "Cabin")
 	_layer("wind", "weather/weather_wind_bed", "Weather")
 	_layer("cicadas", "weather/weather_cicadas", "Ambience")
-	# Indoors at home: rain on the windows (on SFX, so the walls don't dull it).
+	# Indoors at home: rain on the windows (on SFX, so the walls don't dull it
+	# twice: the recording is already heard through them).
 	_layer("rain_windows", "home/home_rain_windows", "SFX")
 	call_deferred("_update_bed", true)
 
@@ -526,7 +529,9 @@ func _process(delta: float) -> void:
 	var out := 0.5 if inside else (0.4 if indoors else 1.0)
 	_set_layer("rain_light_out", light * out, delta)
 	_set_layer("rain_heavy_out", heavy * out, delta)
-	_set_layer("rain_windows", maxf(light, heavy * 1.4) * 0.5 * (1.0 if indoors else 0.0), delta)
+	# A soft patter: home is the quiet place, so even a storm stays under the
+	# storm outside (was 0.5, the loudest thing in the house).
+	_set_layer("rain_windows", maxf(light, heavy * 1.4) * WINDOW_RAIN * (1.0 if indoors else 0.0), delta)
 	var roof := 0.0 if fabric_roof else 1.0
 	_set_layer("rain_light_roof", light * roof * ROOF_TRIM * (1.0 if inside else 0.0), delta)
 	_set_layer("rain_heavy_roof", heavy * roof * ROOF_TRIM * (1.0 if inside else 0.0), delta)

@@ -412,7 +412,8 @@ func _update_pause() -> void:
 	var paused := get_tree().paused
 	if paused != _was_paused:
 		_was_paused = paused
-		Audio.ui("ui_menu_select" if paused else "ui_menu_back", -4.0)
+		# Soft: most screens that pause also pop a card that clicks (UiStyle.animate).
+		Audio.ui("ui_menu_select" if paused else "ui_menu_back", -12.0)
 
 
 func _update_panels() -> void:
@@ -431,17 +432,11 @@ func _update_panels() -> void:
 			_room_tone.stop()
 
 
-## Every button in the game clicks: focus moves tick, presses select.
+## (Buttons tick and click through UiTheme; sliders tick here when let go.)
 func _on_node_added(node: Node) -> void:
 	if node.has_signal("got_in") and node.has_signal("got_out") and not node.get("plays_car_sounds"):  # OnFoot
 		node.connect("got_in", _on_got_in)
 		node.connect("got_out", _on_got_out)
-	elif node is BaseButton:
-		var b := node as BaseButton
-		b.pressed.connect(func() -> void: Audio.ui("ui_menu_select", -6.0))
-		b.focus_entered.connect(func() -> void:
-			if b.is_visible_in_tree():
-				Audio.ui("ui_menu_move", -10.0))
 	elif node is Slider:
 		var s := node as Slider
 		s.drag_ended.connect(func(_changed) -> void: Audio.ui("ui_menu_move", -8.0))
