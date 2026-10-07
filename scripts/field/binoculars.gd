@@ -69,6 +69,17 @@ func is_open() -> bool:
 const PULL_OVER := "Pull over first: the binoculars need a stopped car."
 
 
+## The player is at the wheel of a car that's moving (not parked).
+func _driving() -> bool:
+	var car := get_tree().get_first_node_in_group(&"player_car") as CarController
+	if car == null or not car.player_controlled:
+		return false
+	var walker := car.get_parent().get_node_or_null(^"Player")
+	if walker and not walker.get("in_car"):
+		return false
+	return not (car.is_parked_for_viewing() if car.has_method("is_parked_for_viewing") else car.linear_velocity.length() <= 1.4)
+
+
 ## Why the binoculars can't come up right now ("" if they can).
 func blocked_reason() -> String:
 	var tree := get_tree()
@@ -223,7 +234,7 @@ func _input(event: InputEvent) -> void:
 	if state == State.CLOSED:
 		if event.is_action_pressed("binoculars") and not event.is_echo():
 			# On a pad, R3 is look-behind while the car's moving: say nothing.
-			if event is InputEventJoypadButton and blocked_reason() == PULL_OVER:
+			if event is InputEventJoypadButton and _driving():
 				return
 			if open():
 				get_viewport().set_input_as_handled()
