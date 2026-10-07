@@ -1,18 +1,22 @@
 extends SceneTree
 ## Finds where to stand at each fishing spot in data/field/fishing_spots.json
 ## and writes it back as `stand` [x, y, z] and `yaw` (facing the water):
-## on a pier deck, the end furthest out over the water; on the shore, the
-## nearest dry footing to the real place with open water in front.
+## on a pier deck, out on the end, in the middle of the deck and facing on
+## out along it over the water; on the shore, the nearest dry footing to the
+## real place with open water in front.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/field/place_spots.gd
 ##
 ## Rerun after a map rebuild. Spots it can't place (off the built map) are
 ## left without `stand` and don't appear in the game. A spot's `reach` (m)
-## overrides how far from `near` it may look; ONLY_SPOT=<substr> in the
+## overrides how far from `near` it may look, and a deck spot's `round` how
+## many of the 8 ways round its stand must be water (3; a boardwalk ending
+## at a sand strip has less); ONLY_SPOT=<substr> in the
 ## environment places just the matching spots.
 
 const PATH := "res://data/field/fishing_spots.json"
 const WAIT := 150
+const DECK_CLEAR := 1.0  # metres of deck round a jetty stand
 
 var _main: Node
 var _car: RigidBody3D
@@ -71,6 +75,7 @@ func _place(spot: Dictionary) -> void:
 	# The map's coast can sit a couple of hundred metres off the real beach.
 	var reach := 70.0 if deck else (320.0 if spot.water == "ocean" else 260.0)
 	reach = float(spot.get("reach", reach))
+	var round_min := float(spot.get("round", 3.0))
 	var step := 2.0 if deck else 4.0
 	var space := _car.get_world_3d().direct_space_state
 	var x := -reach
@@ -88,12 +93,18 @@ func _place(spot: Dictionary) -> void:
 			var surface := StringName(hit.collider.get_meta("surface", &""))
 			if (hit.collider as CollisionObject3D).collision_layer & 2:
 				continue  # a building
-			if deck and (surface != &"brick" or _water_round(hit.position) < 3.0):
+			if deck and (surface != &"brick" or _water_round(hit.position) < round_min):
 				continue
 			if not deck and (surface == &"asphalt" or _boats.water_at(hit.position, 0.0)):
 				continue
 			# The way with the most open water in front.
 			var face := _open_water(hit.position)
+			if deck:
+				# Mid-deck, a step from either edge, facing on out along it
+				# (Mends St's stand was on the edge, side-on to the deck).
+				if _deck_clear(hit.position) < DECK_CLEAR:
+					continue
+				face = _deck_out(hit.position)
 			if face.is_empty():
 				continue
 			var score: float = face.open * 4.0 - Vector2(x, z).length() * (0.05 if deck else 0.4) - hit.position.y * 2.0
@@ -113,10 +124,81 @@ func _place(spot: Dictionary) -> void:
 		print("%-22s  no footing near (%.0f, %.0f)" % [spot.id, near.x, near.z])
 		return
 	var s: Vector3 = best.stand
+	if deck:
+		s = _centre_on_deck(s, float(best.yaw))
 	spot.stand = [snappedf(s.x, 0.1), snappedf(s.y, 0.05), snappedf(s.z, 0.1)]
 	spot.yaw = snappedf(float(best.yaw), 0.01)
 	print("%-22s  stand (%.1f, %.2f, %.1f) yaw %.2f on %s, %.0f m from the mark" % [spot.id, s.x, s.y, s.z, best.yaw, best.surface,
 		Vector2(s.x - near.x, s.z - near.z).length()])
+
+
+## The stand moved to the middle of a narrow deck (the search grid is
+## coarser than one), and back from its end.
+func _centre_on_deck(p: Vector3, yaw: float) -> Vector3:
+	var ahead := Vector3(-sin(yaw), 0, -cos(yaw))
+	var side := Vector3(-ahead.z, 0, ahead.x)
+	var left := _deck_run(p, side, 10.0)
+	var right := _deck_run(p, -side, 10.0)
+	var q := p
+	if left + right < 6.0:
+		q += side * (left - right) / 2.0
+	var front := _deck_run(q, ahead, 10.0)
+	if front < 2.5:
+		q -= ahead * (2.5 - front)
+	var ray := PhysicsRayQueryParameters3D.create(q + Vector3.UP * 20.0, q + Vector3.DOWN * 20.0, 1 | 2)
+	ray.exclude = [_car.get_rid()]
+	var hit := _car.get_world_3d().direct_space_state.intersect_ray(ray)
+	return hit.position if not hit.is_empty() and _on_deck(hit.position) else p
+
+
+func _deck_run(p: Vector3, d: Vector3, most: float) -> float:
+	var r := 0.0
+	while r < most and _on_deck(p + d * (r + 0.1)):
+		r += 0.1
+	return r
+
+
+## How far from (p) the deck goes in every direction, at least: the stand's
+## clearance from the edge.
+func _deck_clear(p: Vector3) -> float:
+	var r := 0.25
+	while r < DECK_CLEAR + 0.01:
+		for i in 16:
+			var a := TAU * i / 16.0
+			if not _on_deck(p + Vector3(cos(a), 0, sin(a)) * r):
+				return r - 0.25
+		r += 0.25
+	return r
+
+
+## {yaw, open}: facing the way out along the deck from (p), away from its
+## longest run (back to the land), with the open water that way.
+func _deck_out(p: Vector3) -> Dictionary:
+	var back := 0.0
+	var most := -1.0
+	for i in 64:
+		var a := TAU * i / 64.0
+		var d := Vector3(-sin(a), 0, -cos(a))
+		var r := 1.0
+		while r < 120.0 and _on_deck(p + d * r):
+			r += 1.0
+		if r > most:
+			most = r
+			back = a
+	var yaw := wrapf(back + PI, -PI, PI)
+	var d := Vector3(-sin(yaw), 0, -cos(yaw))
+	var n := 0.0
+	for r: float in [4.0, 8.0, 14.0, 20.0, 30.0, 45.0, 60.0, 80.0]:
+		if _is_water(p + d * r):
+			n += 1.0 if r > 20.0 else 1.5
+	return {"yaw": yaw, "open": n} if n > 0.0 else {}
+
+
+func _on_deck(p: Vector3) -> bool:
+	var q := PhysicsRayQueryParameters3D.create(Vector3(p.x, 40.0, p.z), Vector3(p.x, -15.0, p.z), 1 | 2)
+	q.exclude = [_car.get_rid()]
+	var hit := _car.get_world_3d().direct_space_state.intersect_ray(q)
+	return not hit.is_empty() and hit.position.y >= 0.4 and StringName(hit.collider.get_meta("surface", &"")) == &"brick"
 
 
 ## {yaw, open}: the direction with the most water ahead, if there's open

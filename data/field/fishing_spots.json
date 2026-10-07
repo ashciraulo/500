@@ -16,11 +16,11 @@
 			],
 			"hint": "The South Perth ferry jetty. Bream round the pylons after dark.",
 			"stand": [
-				2,
-				4.8,
-				2730.4
+				1.3,
+				1.2,
+				2730.2
 			],
-			"yaw": 0
+			"yaw": -0.29
 		},
 		{
 			"id": "coode_st_jetty",
@@ -38,17 +38,18 @@
 			],
 			"hint": "The little jetty off Coode Street in South Perth. Crab nets in summer, whiting over the flats.",
 			"stand": [
-				1022.3,
-				4.75,
-				3154.5
+				1014.6,
+				1.3,
+				3143.3
 			],
-			"yaw": 0.98
+			"yaw": 1.28
 		},
 		{
 			"id": "point_fraser",
 			"name": "Point Fraser",
 			"water": "river",
 			"kind": "deck",
+			"round": 1,
 			"near": [
 				2304.1,
 				2115.2
@@ -60,11 +61,11 @@
 			],
 			"hint": "The boardwalk at Point Fraser, under the Causeway. Shallow, sandy, good for whiting and crabs.",
 			"stand": [
-				2270.1,
-				1.4,
-				2143.2
+				2298.1,
+				2.65,
+				2142.1
 			],
-			"yaw": 2.36
+			"yaw": -3.14
 		},
 		{
 			"id": "heirisson_island",
@@ -81,9 +82,9 @@
 			],
 			"hint": "The sandy edges of Heirisson Island, where the kangaroos are. Whiting and flathead on the flats.",
 			"stand": [
-				2543.9,
-				5.45,
-				2141.4
+				2567.9,
+				0.8,
+				2121.4
 			],
 			"yaw": 0
 		},
@@ -101,11 +102,11 @@
 			],
 			"hint": "The cove off East Perth, all snags and old timbers. Bream at night.",
 			"stand": [
-				2373.8,
-				1.3,
-				658.1
+				2317.8,
+				1.15,
+				666.1
 			],
-			"yaw": 1.96
+			"yaw": 4.12
 		},
 		{
 			"id": "east_perth_jetty",
@@ -121,11 +122,11 @@
 			],
 			"hint": "The old jetty past the Causeway in East Perth. Quiet, and the bream know the pylons.",
 			"stand": [
-				2671.6,
-				3.45,
-				436.2
+				2671.1,
+				1.9,
+				436.5
 			],
-			"yaw": 0.2
+			"yaw": -0.98
 		},
 		{
 			"id": "burswood_jetty",
@@ -142,11 +143,11 @@
 			],
 			"hint": "The jetty off the Burswood foreshore, by the snags along the bank. Bream after dark.",
 			"stand": [
-				3462.4,
-				1.95,
-				1516.7
+				3462.1,
+				1.2,
+				1517.9
 			],
-			"yaw": 0.59
+			"yaw": 1.96
 		},
 		{
 			"id": "maylands_foreshore",
@@ -162,11 +163,11 @@
 			],
 			"hint": "The Maylands bank by the old airfield, among the snags. A bream spot at dusk.",
 			"stand": [
-				3741.7,
-				1.5,
-				-190.3
+				3753.7,
+				0.35,
+				-182.3
 			],
-			"yaw": 2.16
+			"yaw": 1.96
 		},
 		{
 			"id": "garratt_rd_bridge",
@@ -199,11 +200,11 @@
 			],
 			"hint": "The Barrack Street Jetty at Elizabeth Quay, in the city. Mostly blowies. People say things turn up off the old Esplanade.",
 			"stand": [
-				320.7,
-				3.7,
-				1321.6
+				290.4,
+				5.05,
+				1306.3
 			],
-			"yaw": 1.18
+			"yaw": 1.77
 		},
 		{
 			"id": "canning_bridge",
@@ -222,11 +223,11 @@
 			],
 			"hint": "Canning Bridge, where the two rivers meet. Deep holes, crabs, and the odd mulloway after dark.",
 			"stand": [
-				-168.5,
-				1.7,
-				7124.5
+				-174.5,
+				2.6,
+				7107.3
 			],
-			"yaw": 0
+			"yaw": 0.29
 		},
 		{
 			"id": "claremont_jetty",
@@ -242,11 +243,11 @@
 			],
 			"hint": "The Claremont jetty on Freshwater Bay. Tailor in the evenings, herring and skippy by day.",
 			"stand": [
-				-7020.6,
+				-7050.8,
 				1.2,
-				4806.8
+				4868.8
 			],
-			"yaw": 1.57
+			"yaw": -3.04
 		},
 		{
 			"id": "freshwater_bay",
@@ -263,11 +264,11 @@
 			],
 			"hint": "The jetty in Freshwater Bay, Peppermint Grove. A crab net spot, and whiting off the sand.",
 			"stand": [
-				-7703.7,
+				-7704.2,
 				1.2,
-				5615
+				5615.1
 			],
-			"yaw": 0
+			"yaw": -1.28
 		},
 		{
 			"id": "mosman_bay",
@@ -284,11 +285,11 @@
 			],
 			"hint": "Mosman Bay, under the cliffs. Deep water close in: snapper and mulloway at night.",
 			"stand": [
-				-7615.8,
-				3.7,
-				6114
+				-7622.9,
+				2.15,
+				6109.1
 			],
-			"yaw": 2.16
+			"yaw": 0.69
 		},
 		{
 			"id": "point_walter",
@@ -305,11 +306,11 @@
 			],
 			"hint": "The jetty at Point Walter, by the sandbar. Whiting on the flats on a warm day, tailor at dusk.",
 			"stand": [
-				-6283.5,
-				2.15,
-				7186.2
+				-6283.7,
+				1.2,
+				7186.3
 			],
-			"yaw": 0
+			"yaw": 0.49
 		},
 		{
 			"id": "point_walter_sandbar",
@@ -328,8 +329,8 @@
 			"poi": "fishing_point_walter_sandbar",
 			"hint": "Out along the sandbar at Point Walter, knee deep at low tide. Whiting and flathead on the sand, and nobody else.",
 			"stand": [
-				-5928.6,
-				1.05,
+				-5924.6,
+				0.4,
 				7441.8
 			],
 			"yaw": 0
@@ -349,11 +350,11 @@
 			],
 			"hint": "The jetties off East Fremantle, by the rowing clubs. Crabs in summer, tailor at dusk.",
 			"stand": [
-				-8734.6,
+				-8752.4,
 				1.2,
-				10143.1
+				10157.2
 			],
-			"yaw": 0
+			"yaw": 2.75
 		},
 		{
 			"id": "fishing_boat_harbour",
@@ -370,11 +371,11 @@
 			],
 			"hint": "Fremantle's Fishing Boat Harbour. Squid under the lights at night.",
 			"stand": [
-				-10183.9,
-				1.2,
-				12684.2
+				-10184.1,
+				1.65,
+				12682.4
 			],
-			"yaw": 2.75
+			"yaw": -2.45
 		},
 		{
 			"id": "fremantle_harbour",
@@ -392,11 +393,11 @@
 			],
 			"hint": "The harbour walls in Fremantle. Squid under the lights, tarwhine and skippy, snapper after dark.",
 			"stand": [
-				-10686.9,
+				-10674.9,
 				1.2,
-				12645.3
+				12667.3
 			],
-			"yaw": 2.16
+			"yaw": -2.85
 		},
 		{
 			"id": "north_mole",
@@ -412,11 +413,11 @@
 			],
 			"hint": "The long North Mole at the river mouth, out past the port. Herring and skippy by day, tailor at the change of light.",
 			"stand": [
-				-11859.4,
-				0.15,
-				11703.8
+				-11843.4,
+				0.95,
+				11699.8
 			],
-			"yaw": 0.2
+			"yaw": 4.32
 		},
 		{
 			"id": "leighton_beach",
@@ -454,11 +455,11 @@
 			],
 			"hint": "The groyne at Cottesloe. Skippy and herring off the rocks, KGs over the sand.",
 			"stand": [
-				-9794,
-				1.6,
+				-9802,
+				1.65,
 				5660
 			],
-			"yaw": 0.59
+			"yaw": 5.89
 		},
 		{
 			"id": "city_beach_groyne",
@@ -496,11 +497,11 @@
 			],
 			"hint": "The point at Trigg, all reef and wash. Herring, skippy and the odd KG whiting.",
 			"stand": [
-				-9713.6,
+				-9737.6,
 				0.25,
-				-7757.9
+				-7777.9
 			],
-			"yaw": 0.2
+			"yaw": 0
 		},
 		{
 			"id": "trigg_island",
@@ -519,11 +520,11 @@
 			"poi": "fishing_trigg_island",
 			"hint": "The limestone rocks off Trigg, where the swell breaks. Skippy and herring in the wash, tailor at dusk.",
 			"stand": [
-				-9677.1,
+				-9729.1,
 				0.25,
-				-7856.6
+				-7776.6
 			],
-			"yaw": 0.98
+			"yaw": 0.39
 		}
 	]
 }

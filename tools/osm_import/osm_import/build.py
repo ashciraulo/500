@@ -46,8 +46,15 @@ HOME_RAMP = 30.0        # roads ease to the townhouse's ground over this distanc
 PIER_WIDTH = {"pier": 3.0, "breakwater": 6.0, "groyne": 5.0}  # metres, when OSM has no width
 PATH_TOUCH = 1.0        # a path's node this close to a jetty leads onto it
 LANDING = 3.0           # a jetty is level with the shore this far in from the water
-JETTY_PAD = 3.0         # ground this close to a jetty's shore end is level with its deck...
-JETTY_RAMP = 8.0        # ...and eases back to its own height over this
+JETTY_PAD = 7.5         # ground this close to a jetty's shore end is level with its deck (every
+                        # grid cell its edge crosses, or the ground drawn there leaves a ledge)...
+JETTY_RAMP = 8.0        # ...and eases back to its own height over at least this...
+SEAT_GRADE = 0.2        # ...and wide enough that the change in grade stays under this
+SEAT_REACH = 40.0       # (but never further out than this)
+JETTY_ABOVE = 1.2       # a jetty's deck over the water it stands in
+JETTY_GRADE = 1.0 / 8   # a jetty off a high bank ramps down to that at this grade...
+JETTY_DROP = 6.0        # ...from a bank up to this much higher (past that it's a cliff or a lookout: level)
+DECK_STEP = 1.0         # grid a ramped deck is draped on
 ROAD_OFFSET = 0.02      # road surface above terrain
 PATH_OFFSET = 0.04
 SIDEWALK_TOP = 0.16
@@ -75,7 +82,40 @@ CHUNK = 12            # segments per vectorised corridor step
 OVERLAP_BLEND = 6.0   # metres over which overlapping roads at different heights ease into each other
 DECK_THICKNESS = 1.1
 PARAPET_H = 0.9
+# A bridge's parapet stops where it would stand this far inside another
+# road's lane (a slip road off the deck), if that road is within JOIN_DROP
+# of the deck's height there (not passing under or over it).
+JOIN_MARGIN = 0.2
+JOIN_STEP = 1.0  # spacing of a deck's points where a road joins it
+CONTINUE_COS = float(np.cos(np.radians(20.0)))  # a way within this of straight on carries on
+# An at-grade road this much higher than another one whose asphalt it
+# overlaps (a slip road leaving a bridge over the freeway it then joins) is
+# carried on a deck there: one ground can't be under both. Their asphalt
+# counts as overlapping out to STACK_MARGIN past the kerbs.
+LIFT = 1.0
+STACK_MARGIN = 1.0
+# ... and carried on until the ground is within LIFT_LAND of it (at most LIFT_REACH further).
+LIFT_LAND = 0.15
+LIFT_REACH = 40.0
+# A road running off the built map (into a square with no tile) is closed
+# this far back from the edge by a row of concrete barriers, and traffic
+# turns before them: it read as a road going nowhere, and the car fell off
+# the end.
+EDGE_INSET = 8.0
+BARRIER_LEN = 2.0
+BARRIER_GAP = 0.15
+# A "New Jersey" barrier's cross-section: (across, up).
+JERSEY = ((-0.3, 0.0), (-0.28, 0.08), (-0.12, 0.3), (-0.1, 0.85), (0.1, 0.85), (0.12, 0.3), (0.28, 0.08), (0.3, 0.0))
+# Under a lifted stretch, its sides come down to the ground as walls where
+# there's less than this much room under the deck.
+LIFT_WALL_CLEAR = 3.0
+JOIN_DROP = 1.5
 PARAPET_LOW = 1.0  # a road bridge's parapets fade in between this and twice this over the ground
+LIGHT_BACK = 2.0   # street lights stand this far off the asphalt on a footpath...
+LIGHT_VERGE = 1.8  # ...or on a verge...
+LIGHT_CLEAR = 1.5  # ...and none closer than this to any asphalt
+BEVEL_MAX = 1.0    # a road bridge's side lower than this over the ground beside it slopes down to it...
+BEVEL_RUN = 4.0    # ...over this many metres per metre of height
 KERB_RADIUS = 1.5       # road gaps narrower than twice this close up; junction corners round off
 SLIVER = 0.4            # path pieces thinner than twice this are dropped
 
@@ -92,10 +132,36 @@ class LinearWay:
     bridge: bool
     tunnel: bool
     sidewalk: bool
+    # Per node: carried on a deck over another road (World._lift_stacked).
+    lift: np.ndarray | None = None
 
     @property
     def grade_separated(self) -> bool:
         return self.bridge or self.tunnel
+
+    def ground_runs(self):
+        """(xy, h) of each stretch that lies on the ground (all of an
+        unlifted at-grade way; none of a bridge or tunnel)."""
+        if self.grade_separated:
+            return []
+        if self.lift is None:
+            return [(self.xy, self.h)]
+        on = ~(self.lift[:-1] | self.lift[1:])
+        return [(self.xy[a:b + 1], self.h[a:b + 1]) for a, b in _runs(on)]
+
+    def pieces(self) -> list:
+        """The way as drawn: a lifted way splits into stretches on the
+        ground and stretches on decks (drawn as bridges)."""
+        if self.lift is None or self.grade_separated:
+            return [self]
+        lifted = self.lift[:-1] | self.lift[1:]
+        out = []
+        cuts = np.nonzero(lifted[1:] != lifted[:-1])[0] + 1
+        for a, b in zip(np.r_[0, cuts], np.r_[cuts, len(lifted)]):
+            k = slice(a, b + 1)
+            out.append(replace(self, xy=self.xy[k], h=self.h[k], nodes=self.nodes[k], lift=None,
+                               bridge=bool(lifted[a]), sidewalk=self.sidewalk and not lifted[a]))
+        return out
 
 
 @dataclass
@@ -104,6 +170,27 @@ class WaterBody:
     level: float
     big: bool
     name: str = ""
+
+
+@dataclass
+class Deck:
+    """A pier, groyne or platform deck, `top` where it leaves the land. A
+    jetty off a bank high over the water ramps down from its `landing` (the
+    deck over dry land, and where paths meet it) to `low` over the water."""
+    poly: object
+    kind: str
+    oid: int
+    top: float
+    bottom: float
+    low: float | None = None
+    landing: object = None
+
+    def heights(self, e, n) -> np.ndarray:
+        e, n = np.broadcast_arrays(np.asarray(e, dtype=np.float64), np.asarray(n, dtype=np.float64))
+        if self.landing is None or self.low is None or self.low >= self.top:
+            return np.full(e.shape, self.top)
+        d = shapely.distance(self.landing, shapely.points(e, n))
+        return np.maximum(self.low, self.top - JETTY_GRADE * d)
 
 
 # ---------------------------------------------------------------------------
@@ -120,7 +207,7 @@ def deck_heights(hf, poly, kind: str, water=None, level: float = RIVER_LEVEL) ->
     ring = np.asarray(poly.exterior.coords)
     gh = hf.sample(ring[:, 0], ring[:, 1])
     if kind in ("pier", "groyne"):
-        floor = level + (1.2 if kind == "pier" else 1.6)
+        floor = level + (JETTY_ABOVE if kind == "pier" else 1.6)
         bottom = min(float(np.min(gh)), level) - 1.0
         if kind == "groyne":
             return max(float(np.median(gh)) + 0.6, floor), bottom
@@ -229,6 +316,7 @@ class World:
             self.decks.append((LineString(np.c_[e, n]).buffer(width / 2, cap_style=2),
                                "pier" if d["kind"] == "pier" else "groyne", -(i + 1)))
         self.junctions = self._junction_nodes()
+        self._lift_stacked()
         self.doubled_paths = streets.doubled_footways(self.ways)
 
         self.water: list[WaterBody] = []
@@ -297,6 +385,7 @@ class World:
         self.poi_areas = [a for a in feats.areas if a.tags.get("natural") == "beach"
                           or a.tags.get("amenity") in ("fuel", "fast_food", "school") or a.tags.get("tourism") == "zoo"]
         self._sculpt_terrain()
+        self._land_lifts()
         self._land_footbridges()
         self.deck_parts = self._level_decks()
         print(f"  world prepared in {time.time() - t0:.1f}s: {len(self.ways)} ways, "
@@ -330,12 +419,14 @@ class World:
             t = s / max(s[-1], 1e-6)
             w.h = w.h + lift[0] * (1.0 - t) + lift[1] * t
 
-    def _level_decks(self) -> list[tuple[Polygon, str, int, float, float]]:
-        """Every deck polygon with its top and bottom: (polygon, kind, osm id, top, bottom).
+    def _level_decks(self) -> list[Deck]:
+        """Every deck polygon with its heights.
 
         Jetties that touch share one top, the highest of theirs, so the
         fingers off a walkway are level with it and a walkway is level with
-        the quay it leaves (and you can walk back up off any of them).
+        the quay it leaves (and you can walk back up off any of them). Off a
+        bank high over the water, they ramp down to JETTY_ABOVE over it (Mends
+        St's bank is 4.8 m up, the real jetty about a metre over the river).
         Groynes keep their own: a mole's rocks run along the water."""
         water = self.water_union
         shapely.prepare(water)
@@ -350,20 +441,41 @@ class World:
                 top, bottom = deck_heights(self.hf, p, kind, water, level)
                 parts.append([p, kind, oid, top, bottom, level])
         jetty = [k for k, d in enumerate(parts) if d[1] == "pier"]
-        # A path that leads onto a jetty from the land meets it at its own
-        # height: the deck comes up to it, or you step down onto the jetty
-        # and can't step back up (Mends St's footpath is 0.8 m over its bank).
-        on_land = [(w.xy, w.h) for w in self.ways if w.group in ("foot", "road") and not w.grade_separated]
-        if on_land and jetty:
-            xy = np.concatenate([a for a, _ in on_land])
-            hh = np.concatenate([b for _, b in on_land])
+        # A street or path that leads onto a jetty from the land meets it at
+        # its own height: the deck comes up (or down) to a street, or you step
+        # down onto the jetty and can't step back up, or a car meets a kerb.
+        # Footpaths only lift it: they are drawn on the ground (their profiles
+        # are the bare DEM's and can be metres off it), which comes to the
+        # deck anyway. Touching means the path's edge, not its middle line,
+        # within PATH_TOUCH.
+        touch = {k: np.zeros((0, 2)) for k in jetty}
+        legs = []
+        for w in self.ways:
+            if w.group not in ("foot", "road") or w.grade_separated or len(w.xy) < 2:
+                continue
+            xy, h = densify(w.xy, w.h, 2.0)
+            if w.group == "foot":
+                h = self.hf.sample(xy[:, 0], xy[:, 1])
+            half = w.width / 2 + (styles.SIDEWALK_WIDTH if w.sidewalk else 0.0)
+            legs.append((xy, h, np.full(len(xy), half + PATH_TOUCH), np.full(len(xy), w.group == "road")))
+        if legs and jetty:
+            xy, hh, rad, road = (np.concatenate(c) for c in zip(*legs))
             dry = ~shapely.contains_xy(water, xy[:, 0], xy[:, 1])
-            xy, hh = xy[dry], hh[dry]
-            pts = shapely.STRtree(shapely.points(xy))
+            xy, hh, rad, road = xy[dry], hh[dry], rad[dry], road[dry]
+            pts = shapely.points(xy)
+            tree = shapely.STRtree(pts)
             for k in jetty:
-                near = pts.query(parts[k][0], predicate="dwithin", distance=PATH_TOUCH)
-                if len(near):
-                    parts[k][3] = max(parts[k][3], float(np.max(hh[near])) - 0.05)
+                near = tree.query(parts[k][0], predicate="dwithin", distance=float(rad.max()) if len(rad) else 0.0)
+                near = near[shapely.distance(parts[k][0], pts[near]) <= rad[near]]
+                if not len(near):
+                    continue
+                streets = near[road[near]]
+                if len(streets):
+                    parts[k][3] = float(np.max(hh[streets])) - 0.05
+                foot = near[~road[near]]
+                if len(foot):
+                    parts[k][3] = max(parts[k][3], float(np.max(hh[foot])) - 0.05)
+                touch[k] = xy[near]
         tree = shapely.STRtree([parts[k][0] for k in jetty])
         group = list(range(len(jetty)))
 
@@ -376,45 +488,142 @@ class World:
         for a, k in enumerate(jetty):
             for b in tree.query(parts[k][0], predicate="dwithin", distance=0.5):
                 group[root(a)] = root(int(b))
-        top = {}
+        top, low, land = {}, {}, {}
         for a, k in enumerate(jetty):
-            top[root(a)] = max(top.get(root(a), -np.inf), parts[k][3])
-        for a, k in enumerate(jetty):
-            parts[k][3] = top[root(a)]
-        for d in parts:
-            if d[1] in ("pier", "groyne"):
-                self._seat_jetty(*d)
-        return [tuple(d[:5]) for d in parts]
+            p, r = parts[k][0], root(a)
+            top[r] = max(top.get(r, -np.inf), parts[k][3])
+            low[r] = max(low.get(r, -np.inf), parts[k][5] + JETTY_ABOVE)
+            land.setdefault(r, []).extend([p.difference(water) if not water.is_empty else p,
+                                           shapely.multipoints(touch[k]) if len(touch[k]) else Polygon()])
+        decks = []
+        at = {k: a for a, k in enumerate(jetty)}
+        for k, d in enumerate(parts):
+            deck = Deck(*d[:5])
+            if d[1] == "pier":
+                r = root(at[k])
+                deck.top = top[r]
+                landing = shapely.union_all(land[r])
+                if not landing.is_empty and 0.3 < top[r] - low[r] <= JETTY_DROP:
+                    deck.low, deck.landing = low[r], landing
+            decks.append(deck)
+        self._seat_jetties([d for d in decks if d.kind in ("pier", "groyne")])
+        return decks
 
-    def _seat_jetty(self, p, kind, oid, top, bottom, level):
-        """Ground meets a jetty where it leaves the shore, level with its
-        deck, so you walk on and off it instead of dropping down or climbing
-        up a wall. (Deepening the water round it, so a fall off the side put
-        you back on the bank, cut off more shallows than it rescued.)"""
+    def _seat_jetties(self, decks: list[Deck]):
+        """Ground meets jetties where they leave the shore, level with their
+        decks, so you walk on and off instead of dropping down or climbing up
+        a wall. (Deepening the water round them, so a fall off the side put
+        you back on the bank, cut off more shallows than it rescued.)
+
+        Within JETTY_PAD of a deck near the water the ground takes the deck's
+        height (where a ramp comes down beside a bank, the ramp's). Past that
+        the change eases out smoothly (a harmonic blend of it, the way a sheet
+        hangs, keeping the lie of the land under it): out to JETTY_RAMP or
+        further, so it stays under SEAT_GRADE, held at the streets round it
+        and left to run along the water's edge, with the river bed left as
+        it is. All jetties in one blend: one at a time, each blending to its
+        own deck, left towers, pits and steps where two met or where a blend
+        was cut off short."""
+        from scipy.sparse import coo_matrix, diags
+        from scipy.sparse.linalg import spsolve
         hf = self.hf
+        H = hf.H
         es, ns = hf.node_coords()
-        reach = JETTY_PAD + JETTY_RAMP
-        b = p.bounds
-        i0, i1 = np.searchsorted(es, [b[0] - reach, b[2] + reach])
-        j0, j1 = np.searchsorted(ns, [b[1] - reach, b[3] + reach])
-        if i1 <= i0 or j1 <= j0:
+        water = self.water_union
+        core = getattr(self, "road_core", np.zeros(H.shape, bool))
+        want = np.full(H.shape, np.nan)   # the pad: the height each node takes...
+        near = np.full(H.shape, np.inf)   # ...from its nearest deck
+        floor = np.full(H.shape, np.inf)  # river bed lower than this is left alone
+        reach = np.zeros(H.shape, bool)   # nodes the blend may move
+        clash = np.zeros(H.shape, bool)   # pad nodes two decks at different heights both claim
+        for deck in decks:
+            b = deck.poly.bounds
+            i0, i1 = np.searchsorted(es, [b[0] - JETTY_PAD, b[2] + JETTY_PAD])
+            j0, j1 = np.searchsorted(ns, [b[1] - JETTY_PAD, b[3] + JETTY_PAD])
+            if i1 <= i0 or j1 <= j0:
+                continue
+            E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
+            pts = shapely.points(E, N)
+            d = shapely.distance(deck.poly, pts)
+            # The deck's height at its nearest point (past the land end of a
+            # ramped one, its top, not the ramp carried on down).
+            at = shapely.get_coordinates(shapely.get_point(shapely.shortest_line(deck.poly, pts.ravel()), 0))
+            top = deck.heights(at[:, 0], at[:, 1]).reshape(E.shape) - 0.05
+            sub = H[j0:j1, i0:i1]
+            wet = shapely.contains_xy(water, E, N)
+            # Inside the water's outline the DEM can keep the bank standing
+            # higher than the deck (Mends St): that comes down to it too.
+            pad = (d < JETTY_PAD) & (~wet | (sub > top)) & ~core[j0:j1, i0:i1]
+            pad &= shapely.dwithin(water, pts, LANDING + JETTY_RAMP)
+            if not pad.any():
+                continue
+            mine = pad & (d < near[j0:j1, i0:i1])
+            nd, wd = near[j0:j1, i0:i1], want[j0:j1, i0:i1]
+            # A node two decks at different heights both reach: the nearer one
+            # (and where it's well clear of that one too, the ground between
+            # them just eases from one to the other, no step where they meet).
+            other = pad & ~mine & np.isfinite(wd)
+            mine2 = mine & np.isfinite(wd)
+            clash[j0:j1, i0:i1] |= (other & (np.abs(wd - top) > 0.25) & (nd > 1.0)) \
+                | (mine2 & (np.abs(wd - top) > 0.25) & (d > 1.0))
+            wd[mine] = top[mine]
+            nd[mine] = d[mine]
+            lowest = deck.low if deck.low is not None else deck.top
+            # Wide enough to keep the blend gentle.
+            run = min(max(JETTY_RAMP, float(np.abs(top[pad] - sub[pad]).max()) / SEAT_GRADE), SEAT_REACH)
+            r = JETTY_PAD + run
+            i0, i1 = np.searchsorted(es, [b[0] - r, b[2] + r])
+            j0, j1 = np.searchsorted(ns, [b[1] - r, b[3] + r])
+            E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
+            inside = shapely.dwithin(deck.poly, shapely.points(E, N), r)
+            reach[j0:j1, i0:i1] |= inside
+            fl = floor[j0:j1, i0:i1]
+            fl[inside] = np.minimum(fl[inside], lowest - 0.05)
+        pad = np.isfinite(want) & ~clash
+        if not pad.any():
             return
-        E, N = np.meshgrid(es[i0:i1], ns[j0:j1])
-        pts = shapely.points(E, N)
-        d = shapely.distance(p, pts)
-        wet = shapely.contains_xy(self.water_union, E, N)
-        sub = hf.H[j0:j1, i0:i1]
-        # Inside the water's outline the DEM can keep the bank standing higher
-        # than the deck (Mends St): that comes down to it too.
-        shore = (~wet | (sub > top)) & (d < reach) & shapely.dwithin(self.water_union, pts, LANDING + JETTY_RAMP)
-        shore &= ~self.road_core[j0:j1, i0:i1]
-        w = _smoothstep((reach - d) / JETTY_RAMP)
-        sub[shore] += w[shore] * (top - 0.05 - sub[shore])
-        hf.H[j0:j1, i0:i1] = sub
+        wet = np.zeros(H.shape, bool)
+        js, is_ = np.nonzero(reach)
+        wet[js, is_] = shapely.contains_xy(water, es[is_], ns[js])
+        bed = reach & wet & (H < floor) & ~pad          # left as it is, and not pulled on
+        free = reach & ~pad & ~core & ~bed
+        delta = np.where(pad, want - H, 0.0)
+        idx = -np.ones(H.shape, dtype=np.int64)
+        fj, fi = np.nonzero(free)
+        idx[fj, fi] = np.arange(len(fj))
+        n = len(fj)
+        if n:
+            rows, cols, vals = [], [], []
+            rhs = np.zeros(n)
+            diag = np.full(n, 1e-6)
+            nj, ni = H.shape
+            for dj, di in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                j2, i2 = fj + dj, fi + di
+                ok = (j2 >= 0) & (j2 < nj) & (i2 >= 0) & (i2 < ni)
+                j2c, i2c = np.clip(j2, 0, nj - 1), np.clip(i2, 0, ni - 1)
+                ok &= ~bed[j2c, i2c]
+                diag += ok
+                other = idx[j2c, i2c]
+                link = ok & (other >= 0)
+                rows.append(np.nonzero(link)[0])
+                cols.append(other[link])
+                vals.append(-np.ones(int(link.sum())))
+                fixed = ok & (other < 0)
+                rhs[fixed] += delta[j2c[fixed], i2c[fixed]]
+            A = coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))), shape=(n, n)).tocsr()
+            A = A + diags(diag, format="csr")
+            delta[fj, fi] = spsolve(A.tocsc(), rhs)
+        H += delta
 
     def deck_top(self, oid) -> float:
-        """The deck height of a jetty or platform (its largest piece)."""
-        return max((d for d in self.deck_parts if d[2] == oid), key=lambda d: d[0].area)[3]
+        """The deck height of a jetty or platform where it leaves the land (its largest piece)."""
+        return max((d for d in self.deck_parts if d.oid == oid), key=lambda d: d.poly.area).top
+
+    def deck_height(self, oid, e, n) -> float:
+        """The deck height of a jetty or platform at (e, n), on its piece nearest there."""
+        pt = Point(e, n)
+        d = min((d for d in self.deck_parts if d.oid == oid), key=lambda d: d.poly.distance(pt))
+        return float(d.heights(e, n))
 
     def _home_ground(self) -> float:
         """Ground height for the townhouse scene: the median DEM height under it."""
@@ -445,6 +654,100 @@ class World:
                     t = d / ramp
                     t = t * t * (3 - 2 * t)
                     hmap[int(nid)] = h0 + (hmap[int(nid)] - h0) * t
+
+    def _lift_stacked(self):
+        """Mark the nodes of at-grade roads that run over another at-grade
+        road a metre or more below them (`LinearWay.lift`). OSM often tags
+        only the main deck as a bridge: a slip road leaving it, or a ramp
+        climbing beside the freeway, is drawn on the ground, and one ground
+        fitted under both roads made a wall or a slope across the lower one.
+        Those stretches are drawn on decks instead and the ground keeps to
+        the lower road."""
+        from scipy.spatial import cKDTree
+        roads = [w for w in self.ways if w.group == "road" and not w.grade_separated and len(w.xy) > 1]
+        if len(roads) < 2:
+            return
+        pts, ph, half, owner = [], [], [], []
+        for i, w in enumerate(roads):
+            xy, h = densify(w.xy, w.h, 2.0)
+            pts.append(xy)
+            ph.append(h)
+            half.append(np.full(len(xy), w.width / 2))
+            owner.append(np.full(len(xy), i))
+        pts, ph, half, owner = (np.concatenate(v) for v in (pts, ph, half, owner))
+        tree = cKDTree(pts)
+        reach = float(half.max()) + STACK_MARGIN
+        for i, w in enumerate(roads):
+            lift = np.zeros(len(w.xy), dtype=bool)
+            for k, near in enumerate(tree.query_ball_point(w.xy, w.width / 2 + reach)):
+                if not near:
+                    continue
+                near = np.asarray(near)
+                near = near[owner[near] != i]
+                dh = w.h[k] - ph[near]
+                d = np.linalg.norm(pts[near] - w.xy[k], axis=1)
+                lift[k] = bool(((dh > LIFT) & (d < w.width / 2 + half[near] + STACK_MARGIN)).any())
+            if lift.any():
+                w.lift = lift
+
+    def edge_closures(self, map_tiles: set[str]) -> list[dict]:
+        """Where each road leaves the built map (`map_tiles`, tile names):
+        a closure EDGE_INSET back from the edge, on the map. Each is a dict
+        with the way's id, the distance `s` along it, the point `xy`, height
+        `h` and `out` (the way's direction there, pointing off the map), and
+        the road's `half` width out to its sidewalks."""
+        size = self.tile_size
+
+        def on(p):
+            return f"{int(np.floor(p[0] / size))}_{int(np.floor(p[1] / size))}" in map_tiles
+
+        out = []
+        for w in self.ways:
+            if w.group != "road" or len(w.xy) < 2:
+                continue
+            xy, h = densify(w.xy, w.h, 2.0)
+            s = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(xy, axis=0), axis=1))])
+            inside = np.array([on(p) for p in xy])
+            for k in np.nonzero(inside[:-1] != inside[1:])[0]:
+                sign = 1.0 if inside[k] else -1.0  # +1: going on along the way leaves the map
+                sb = (s[k] + s[k + 1]) / 2 - sign * EDGE_INSET
+                if not 0.0 <= sb <= s[-1]:
+                    continue
+                p = np.array([np.interp(sb, s, xy[:, 0]), np.interp(sb, s, xy[:, 1])])
+                if not on(p):
+                    continue
+                a, b = np.interp([sb - 1.0, sb + 1.0], s, xy[:, 0]), np.interp([sb - 1.0, sb + 1.0], s, xy[:, 1])
+                d = np.array([a[1] - a[0], b[1] - b[0]])
+                d = sign * d / max(float(np.linalg.norm(d)), 1e-9)
+                out.append({"way": w.id, "s": float(sb), "sign": sign, "xy": p, "h": float(np.interp(sb, s, h)),
+                            "out": d, "grade_separated": w.grade_separated,
+                            "half": w.width / 2 + (styles.SIDEWALK_WIDTH if w.sidewalk else 0.6)})
+        return out
+
+    def _land_lifts(self):
+        """A lifted stretch's deck carries on along its road until the ground
+        under the road has come up (or down) to meet it: where the stacked
+        roads part, the ground between them is still a blend of the two, and
+        a deck ending there left a step."""
+        hf = self.hf
+        for w in self.ways:
+            if w.lift is None:
+                continue
+            gap = np.abs(w.h - hf.sample(w.xy[:, 0], w.xy[:, 1])) > LIFT_LAND
+            s = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(w.xy, axis=0), axis=1))])
+            lift = w.lift.copy()
+            for a, b in _runs(w.lift):
+                # The deck ends at the nodes either side of the run; move each
+                # end on while the road there is off the ground.
+                k = a - 1
+                while k > 0 and gap[k] and s[a] - s[k] < LIFT_REACH:
+                    lift[k] = True
+                    k -= 1
+                k = b
+                while k < len(lift) - 1 and gap[k] and s[k] - s[b - 1] < LIFT_REACH:
+                    lift[k] = True
+                    k += 1
+            w.lift = lift
 
     def _junction_nodes(self) -> dict[int, int]:
         count: dict[int, int] = {}
@@ -626,7 +929,7 @@ class World:
         # (taken before riverbeds were dug, so keep the water as sculpted).
         H0 = hf.H.copy()
         ref = np.where(self.keep_dem, H0, H0 + self.built_soft * (self.bare.H - H0))
-        best, target, fall = self._road_corridors(HeightField(hf.e0, hf.n0, s, ref))
+        best, target, fall, best2, target2, fall2 = self._road_corridors(HeightField(hf.e0, hf.n0, s, ref))
         core = best <= CORE_MARGIN
         self.road_core = core
         # Roads at ground level seed the interpolated ground; ramps and
@@ -645,10 +948,23 @@ class World:
         # Under the roads: their own heights. Beside them: ease back to the
         # ground, over at least EDGE_BLEND metres (more for embankments).
         fall = np.maximum(fall, 2.0 * np.abs(target - ground) + 3.0)
+        fall2 = np.maximum(fall2, 2.0 * np.abs(target2 - ground) + 3.0)
         ramp = ~core & (best < CORE_MARGIN + fall)
         t = np.where(ramp, _smoothstep((best - CORE_MARGIN) / fall), 1.0)
         out = ground.copy()
         out[ramp] = target[ramp] + t[ramp] * (ground[ramp] - target[ramp])
+        # Between two roads (a median, the corner of a junction, a street
+        # beside an embankment) each one's side slope is weighed by how near
+        # it is, so the ground passes smoothly from one to the other instead
+        # of stepping where the nearer one changes over (0.4-0.9 m ridges
+        # beside Pearson St's carriageways).
+        two = ramp & np.isfinite(best2) & (best2 < CORE_MARGIN + fall2)
+        if two.any():
+            t2 = _smoothstep((best2[two] - CORE_MARGIN) / fall2[two])
+            out2 = target2[two] + t2 * (ground[two] - target2[two])
+            w1 = 1.0 / (best[two] - CORE_MARGIN + 0.5) ** 2
+            w2 = 1.0 / (best2[two] - CORE_MARGIN + 0.5) ** 2
+            out[two] = (w1 * out[two] + w2 * out2) / (w1 + w2)
         out[core] = target[core]
         hf.H[:] = out
 
@@ -656,7 +972,8 @@ class World:
         """For every grid node near a road or railway: how far it is outside
         the paved width of the nearest one (`best`, metres, <= 0 inside), the
         height of that road's centre line at the nearest point (`target`) and
-        how wide its side slopes are (`fall`)."""
+        how wide its side slopes are (`fall`); and the same for the next
+        nearest (`best2`, `target2`, `fall2`)."""
         hf = ref
         H = ref.H
         es, ns = hf.node_coords()
@@ -666,16 +983,20 @@ class World:
         best2 = np.full(H.shape, np.inf)
         target2 = np.zeros(H.shape)
         fall = np.full(H.shape, EDGE_BLEND)
-        for w in self.ways:
-            if w.group == "foot" or w.grade_separated or len(w.xy) < 2:
+        fall2 = np.full(H.shape, EDGE_BLEND)
+        owner = np.full(H.shape, -1)       # which run each of those is (a road's
+        owner2 = np.full(H.shape, -1)      # own next stretch isn't another road)
+        runs = [(w, xy, h) for w in self.ways if w.group != "foot" for xy, h in w.ground_runs()]
+        for ri, (w, wxy, wh) in enumerate(runs):
+            if len(wxy) < 2:
                 continue
             hw = w.width / 2 + (styles.SIDEWALK_WIDTH if w.sidewalk else 0.6)
-            dh_all = np.abs(w.h - hf.sample(w.xy[:, 0], w.xy[:, 1]))
-            for k0 in range(0, len(w.xy) - 1, CHUNK):
-                k1 = min(k0 + CHUNK, len(w.xy) - 1)
-                A = w.xy[k0:k1]
-                B = w.xy[k0 + 1:k1 + 1]
-                ha, hb = w.h[k0:k1], w.h[k0 + 1:k1 + 1]
+            dh_all = np.abs(wh - hf.sample(wxy[:, 0], wxy[:, 1]))
+            for k0 in range(0, len(wxy) - 1, CHUNK):
+                k1 = min(k0 + CHUNK, len(wxy) - 1)
+                A = wxy[k0:k1]
+                B = wxy[k0 + 1:k1 + 1]
+                ha, hb = wh[k0:k1], wh[k0 + 1:k1 + 1]
                 fl = max(EDGE_BLEND, 2.0 * float(dh_all[k0:k1 + 1].max()) + 3.0)
                 r = hw + CORE_MARGIN + fl
                 lo_e = min(A[:, 0].min(), B[:, 0].min()) - r
@@ -703,17 +1024,27 @@ class World:
                 st = target[j0:j1, i0:i1]
                 sb2 = best2[j0:j1, i0:i1]
                 st2 = target2[j0:j1, i0:i1]
+                sf, sf2 = fall[j0:j1, i0:i1], fall2[j0:j1, i0:i1]
+                so, so2 = owner[j0:j1, i0:i1], owner2[j0:j1, i0:i1]
                 upd = score < sb
-                second = ~upd & (score < sb2)
+                same = so == ri
+                second = ~upd & ~same & (score < sb2)
+                shift = upd & ~same
+                if shift.any():
+                    sb2[shift] = sb[shift]
+                    st2[shift] = st[shift]
+                    sf2[shift] = sf[shift]
+                    so2[shift] = so[shift]
                 if upd.any():
-                    sb2[upd] = sb[upd]
-                    st2[upd] = st[upd]
                     sb[upd] = score[upd]
                     st[upd] = hh[upd] - 0.02
-                    fall[j0:j1, i0:i1][upd] = fl
+                    sf[upd] = fl
+                    so[upd] = ri
                 if second.any():
                     sb2[second] = score[second]
                     st2[second] = hh[second] - 0.02
+                    sf2[second] = fl
+                    so2[second] = ri
         # Where two roads overlap (slip roads merging, a street passing an
         # embankment) and their heights differ, ease between them instead of
         # leaving a step where the nearer one takes over.
@@ -721,7 +1052,7 @@ class World:
         gap = np.where(both, best2 - np.minimum(best, CORE_MARGIN), OVERLAP_BLEND)
         w2 = np.where(both, 0.5 * (1.0 - _smoothstep(gap / OVERLAP_BLEND)), 0.0)
         target = target + w2 * (np.where(both, target2, target) - target)
-        return best, target, fall
+        return best, target, fall, best2, target2, fall2
 
     def _bare_earth(self) -> HeightField:
         """The DEM with building mounds taken out where there are buildings.
@@ -937,6 +1268,72 @@ def _parapet_heights(w, left, right, top, hf) -> np.ndarray:
     return PARAPET_H * np.clip((top - ground - PARAPET_LOW) / PARAPET_LOW, 0.0, 1.0)
 
 
+def _end_heading(w, k: int) -> np.ndarray:
+    """Unit direction of `w` leaving its end `k` (0 or -1), pointing out of it."""
+    d = w.xy[k] - w.xy[1 if k == 0 else -2]
+    return d / max(float(np.linalg.norm(d)), 1e-9)
+
+
+def _continues(w, o) -> bool:
+    """`o` carries straight on from an end of `w` (a bridge split into several
+    ways, or its approach): its lanes are `w`'s own, not a road joining."""
+    for k in (0, -1):
+        for m in (0, -1):
+            if int(w.nodes[k]) == int(o.nodes[m]) and len(o.xy) > 1 and \
+                    float(_end_heading(w, k) @ -_end_heading(o, m)) > CONTINUE_COS:
+                return True
+    return False
+
+
+def _parapet_runs(ph, gap) -> list[slice]:
+    """Index ranges of a parapet: each run where it stands, plus the point
+    either side where it comes up off the deck (but not into a gap left for
+    a joining road)."""
+    out = []
+    for a, b in _runs(ph > 0.0):
+        a = a - 1 if a > 0 and not gap[a - 1] else a
+        b = b + 1 if b < len(ph) and not gap[b] else b
+        if b - a >= 2:
+            out.append(slice(a, b))
+    return out
+
+
+def _bevel(surf, xy, edge, top, hf, joined=None):
+    """Where a road bridge leaves the street its deck's side stands a little
+    over the ground beside it: a ledge a car running wide snags on (William
+    St). Under BEVEL_MAX, the side slopes down to the ground instead, along
+    `edge` (one side of the deck, beside centre line `xy`), but not into the
+    lanes of a road it joins (`joined`)."""
+    out = edge - xy
+    out /= np.maximum(np.linalg.norm(out, axis=1, keepdims=True), 1e-9)
+    ledge = top - hf.sample(edge[:, 0], edge[:, 1])
+    run = BEVEL_RUN * np.clip(ledge, 0.0, BEVEL_MAX)
+    low = (ledge > 0.05) & (ledge < BEVEL_MAX)
+    if joined is not None:
+        low &= ~joined
+    for a, b in _runs(low):
+        k = slice(max(a - 1, 0), min(b + 1, len(xy)))  # down to nothing either end
+        e, o = edge[k], edge[k] + out[k] * run[k, None]
+        if len(e) < 2:
+            continue
+        ho = np.minimum(hf.sample(o[:, 0], o[:, 1]) + 0.02, top[k])
+        v = np.concatenate([np.column_stack([e, top[k]]), np.column_stack([o, ho])])
+        n = len(e)
+        i = np.arange(n - 1)
+        tris = np.concatenate([np.column_stack([i, i + 1, n + i + 1]), np.column_stack([i, n + i + 1, n + i])])
+        t = v[tris]
+        up = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])[:, 2]
+        tris[up < 0] = tris[up < 0][:, ::-1]
+        nrm = np.zeros_like(v)
+        t = v[tris]
+        fn = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])
+        for c in range(3):
+            np.add.at(nrm, tris[:, c], fn)
+        ln = np.linalg.norm(nrm, axis=1, keepdims=True)
+        nrm = np.where(ln > 1e-9, nrm / np.maximum(ln, 1e-9), [0.0, 0.0, 1.0])
+        surf.add(v, nrm, v[:, :2] / 2.0, tris)
+
+
 def _lid(surf, xy, roof, half: float, hf, spacing: float = 1.25):
     """The top of a tunnel's box: its roof, or just under the ground where
     the ground over it is higher. Where the ground is cut away over the roof
@@ -1116,7 +1513,7 @@ class TileBuilder:
         self.mb = MeshBuilder()
         self.instances: dict[str, list] = {}
         self.grid = CellGrid(world.hf, self.bounds)
-        self.ways = world.ways_near(self.bounds)
+        self.ways = [p for w in world.ways_near(self.bounds) for p in w.pieces()]
 
     # ---------------- main ----------------
     def build(self) -> dict:
@@ -1128,6 +1525,7 @@ class TileBuilder:
         self._markings()
         self._bridges()
         self._tunnels()
+        self._edge_barriers()
         self._rail()
         self._decks()
         self._buildings()
@@ -1364,28 +1762,48 @@ class TileBuilder:
                     deck_mat = "ballast"
                 else:
                     deck_mat = "path"
-                top = rh + 0.02
+                half = w.width / 2
+                # No parapet across a slip road leaving the deck, or across the
+                # deck it joins: each side stops where the other road's lane is
+                # (found on a finer spacing wherever there is one).
+                for step in (None, JOIN_STEP):
+                    if step:
+                        rxy, rh = densify(rxy, rh, step)
+                    top = rh + 0.02
+                    pl = offset_polyline(rxy, half - 0.3)
+                    pr = offset_polyline(rxy, -half + 0.3)
+                    gl, gr = self._joined_lane(w, pl, top), self._joined_lane(w, pr, top)
+                    if not (gl.any() or gr.any()):
+                        break
                 surf = self.mb.surface("bridges", deck_mat, "world")
                 ribbon(surf, rxy, top, w.width, textures.UV_SCALE.get(deck_mat, 4.0))
                 conc = self.mb.surface("bridges", "concrete", "world")
-                half = w.width / 2
                 left = offset_polyline(rxy, half)
                 right = offset_polyline(rxy, -half)
                 bot = top - DECK_THICKNESS
                 ph = _parapet_heights(w, left, right, top, hf)
-                # Deck edges and underside.
-                walls(conc, left[::-1], bot[::-1], top[::-1] + ph[::-1], 2.0, 2.0, closed=False)
-                walls(conc, right, bot, top + ph, 2.0, 2.0, closed=False)
+                phl, phr = np.where(gl, 0.0, ph), np.where(gr, 0.0, ph)
+                # Deck edges and underside. A deck OSM doesn't call a bridge
+                # (a lifted slip road) is walled down to the ground where
+                # there's no room under it: a retaining wall, not a gap.
+                bl = br = bot
+                if w.group == "road" and not styles.is_bridge(w.tags):
+                    hl, hr = hf.sample(left[:, 0], left[:, 1]), hf.sample(right[:, 0], right[:, 1])
+                    bl = np.where(top - hl < LIFT_WALL_CLEAR, np.minimum(hl - 0.3, bot), bot)
+                    br = np.where(top - hr < LIFT_WALL_CLEAR, np.minimum(hr - 0.3, bot), bot)
+                walls(conc, left[::-1], bl[::-1], top[::-1] + phl[::-1], 2.0, 2.0, closed=False)
+                walls(conc, right, br, top + phr, 2.0, 2.0, closed=False)
                 ribbon(conc, rxy, bot, w.width + 0.6, 4.0, up=False)
+                if w.group == "road":
+                    _bevel(conc, rxy, left, top, hf, gl)
+                    _bevel(conc, rxy, right, top, hf, gr)
                 # Parapets (inner faces and tops) so cars can't drive off.
-                pl = offset_polyline(rxy, half - 0.3)
-                pr = offset_polyline(rxy, -half + 0.3)
-                for a, b in _runs(ph > 0.0):
-                    k = slice(max(a - 1, 0), b + 1)  # from where they come up off the deck
-                    walls(conc, pl[k], top[k], top[k] + ph[k], 2.0, 2.0, closed=False)
-                    walls(conc, pr[k][::-1], top[k][::-1], top[k][::-1] + ph[k][::-1], 2.0, 2.0, closed=False)
-                    ribbon(conc, rxy[k], top[k] + ph[k], 0.3, 2.0, lateral=half - 0.15)
-                    ribbon(conc, rxy[k], top[k] + ph[k], 0.3, 2.0, lateral=-half + 0.15)
+                for k in _parapet_runs(phl, gl):
+                    walls(conc, pl[k], top[k], top[k] + phl[k], 2.0, 2.0, closed=False)
+                    ribbon(conc, rxy[k], top[k] + phl[k], 0.3, 2.0, lateral=half - 0.15)
+                for k in _parapet_runs(phr, gr):
+                    walls(conc, pr[k][::-1], top[k][::-1], top[k][::-1] + phr[k][::-1], 2.0, 2.0, closed=False)
+                    ribbon(conc, rxy[k], top[k] + phr[k], 0.3, 2.0, lateral=-half + 0.15)
                 # Piers every ~30 m where there's room underneath.
                 ps, ss = _resample(rxy, 30.0)
                 hh = np.interp(ss, np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(rxy, axis=0), axis=1))]), bot)
@@ -1395,6 +1813,46 @@ class TileBuilder:
                         d = ps[min(k + 1, len(ps) - 1)] - ps[k - 1]
                         yaw = math.atan2(d[1], d[0])
                         _box(conc, ps[k], g[k] - 1.5, hh[k], (1.4, min(w.width * 0.6, 6.0)), yaw)
+
+    def _joined_lane(self, w, pts, top) -> np.ndarray:
+        """Which of `pts` (a bridge's parapet line, at deck heights `top`) stand
+        in the lanes of another way of its network at about the same height: a
+        slip road branching off the deck, or the deck a ramp merges onto. Roads
+        passing under or over are far off in height and don't count."""
+        hit = np.zeros(len(pts), dtype=bool)
+        lo, hi = pts.min(axis=0) - 30.0, pts.max(axis=0) + 30.0
+        p = shapely.points(pts)
+        for o in self.ways:
+            if o is w or o.group != w.group or o.tunnel:
+                continue
+            if (o.xy.max(axis=0) < lo).any() or (o.xy.min(axis=0) > hi).any():
+                continue
+            if _continues(w, o):
+                continue
+            line = LineString(o.xy)
+            near = shapely.distance(p, line) < o.width / 2 - JOIN_MARGIN
+            if not near.any():
+                continue
+            s = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(o.xy, axis=0), axis=1))])
+            oh = np.interp(shapely.line_locate_point(line, p[near]), s, o.h)
+            near[near] = np.abs(oh - top[near]) < JOIN_DROP
+            hit |= near
+        return hit
+
+    def _edge_barriers(self):
+        """A row of concrete barriers across each road where it is closed at
+        the edge of the built map (World.edge_closures)."""
+        e0, n0, e1, n1 = self.bounds
+        surf = self.mb.surface("props", "concrete", "world")
+        here = [c for c in getattr(self.w, "closures", ()) if e0 <= c["xy"][0] < e1 and n0 <= c["xy"][1] < n1]
+        for c in _merge_closures(here):
+            across = np.array([-c["out"][1], c["out"][0]])
+            n = max(1, int(np.ceil(2 * c["half"] / (BARRIER_LEN + BARRIER_GAP))))
+            for k in range(n):
+                t = (k - (n - 1) / 2) * (BARRIER_LEN + BARRIER_GAP)
+                p = c["xy"] + across * t
+                base = c["h"] + ROAD_OFFSET if c["grade_separated"] else float(self.w.hf.sample(p[0], p[1]))
+                _jersey(surf, p, across, BARRIER_LEN, base)
 
     def _shallow_path(self, w) -> bool:
         """A footpath tunnel the terrain doesn't cover (a coarse DEM over a small hill,
@@ -1446,16 +1904,29 @@ class TileBuilder:
                     ribbon(steel, rxy, base + 0.16, 0.09, 1.0, lateral=lat)
 
     def _decks(self):
-        for p, kind, _, top, bottom in self.w.deck_parts:
+        for d in self.w.deck_parts:
+            p = d.poly
             c = p.representative_point()
             if not self.box.contains(c):
                 continue
             p = orient(p, 1.0)
-            surf = self.mb.surface("props", {"pier": "path", "groyne": "concrete"}.get(kind, "sidewalk"), "world")
-            flat_cap(surf, p, top, 3.0)
+            surf = self.mb.surface("props", {"pier": "path", "groyne": "concrete"}.get(d.kind, "sidewalk"), "world")
             side = self.mb.surface("props", "concrete", "world")
+            if d.landing is None:
+                flat_cap(surf, p, d.top, 3.0)
+                for r in [p.exterior, *p.interiors]:
+                    walls(side, np.asarray(r.coords), d.bottom, d.top, 2.0, 2.0)
+                continue
+            # A ramp: the cap draped on its own fine grid of deck heights.
+            b = p.bounds
+            es = np.arange(math.floor(b[0]) - 1.0, b[2] + 2.0, DECK_STEP)
+            ns = np.arange(math.floor(b[1]) - 1.0, b[3] + 2.0, DECK_STEP)
+            E, N = np.meshgrid(es, ns)
+            dhf = HeightField(es[0], ns[0], DECK_STEP, d.heights(E, N))
+            drape(surf, p, CellGrid(dhf, (es[0], ns[0], es[-1], ns[-1])), 0.0, 3.0)
             for r in [p.exterior, *p.interiors]:
-                walls(side, np.asarray(r.coords), bottom, top, 2.0, 2.0)
+                xy, _ = densify(np.asarray(r.coords), np.zeros(len(r.coords)), DECK_STEP)
+                walls(side, xy, d.bottom, d.heights(xy[:, 0], xy[:, 1]), 2.0, 2.0)
 
     # ---------------- buildings ----------------
     def _buildings(self):
@@ -1582,16 +2053,19 @@ class TileBuilder:
             xy, s = _resample(w.xy, 38.0)
             if len(xy) < 3:
                 continue
-            # Lights stand on the left verge (right for motorways) with the arm over the road.
+            # Lights stand on the left verge (right for motorways) with the arm
+            # over the road, at the back of the footpath where there is one.
             motorway = w.tags.get("highway") == "motorway"
-            side = w.width / 2 + 0.9
+            side = w.width / 2 + (LIGHT_BACK if w.sidewalk else LIGHT_VERGE)
             off = offset_polyline(xy, -side if motorway else side)
             d = np.gradient(xy, axis=0)
             for k in range(1, len(xy) - 1):
                 e, n = off[k]
                 if not (self.bounds[0] <= e < self.bounds[2] and self.bounds[1] <= n < self.bounds[3]):
                     continue
-                if self.road_area.contains(Point(e, n)):
+                # Clear of the asphalt, junction corners and other roads' too:
+                # a pole at the kerb stops a car that runs a wheel over it.
+                if self.road_area.distance(Point(e, n)) < LIGHT_CLEAR:
                     continue
                 if shapely.contains_xy(bld, e, n):
                     continue
@@ -1620,6 +2094,64 @@ class TileBuilder:
         inst = {k: np.array(v, dtype=np.float64) for k, v in self.instances.items()}
         return {"key": self.key, "origin": (e0, n0), "meshes": meshes, "instances": inst,
                 "hrange": (float(hmin), float(hmax))}
+
+
+def _merge_closures(closures) -> list[dict]:
+    """One row of barriers across the carriageways of a divided road where
+    they leave the map side by side, instead of overlapping rows."""
+    out = []
+    for c in sorted(closures, key=lambda c: -c["half"]):
+        for m in out:
+            across = np.array([-m["out"][1], m["out"][0]])
+            d = c["xy"] - m["xy"]
+            if abs(float(d @ m["out"])) < 3.0 and abs(float(d @ across)) < m["half"] + c["half"] and \
+                    abs(c["h"] - m["h"]) < 1.0 and c["grade_separated"] == m["grade_separated"]:
+                t = float(d @ across)
+                lo, hi = min(-m["half"], t - c["half"]), max(m["half"], t + c["half"])
+                m["xy"] = m["xy"] + across * (lo + hi) / 2
+                m["half"] = (hi - lo) / 2
+                break
+        else:
+            out.append(dict(c))
+    return out
+
+
+def _jersey(surf, center_xy, along, length: float, base: float):
+    """A concrete barrier block `length` long in the direction `along`,
+    standing on `base` (sunk a little so it sits on sloping ground)."""
+    side = np.array([along[1], -along[0]])
+    prof = np.array(JERSEY)
+    half = along * length / 2
+    ring = [(center_xy + side * a, base - 0.1 + z if z > 0 else base - 0.15) for a, z in prof]
+    v, nrm, uv, tris = [], [], [], []
+
+    mid = np.array([center_xy[0], center_xy[1], base + 0.35])
+
+    def quad(p):
+        p = np.asarray(p)
+        nv = np.cross(p[1] - p[0], p[2] - p[0])
+        nv = nv / max(float(np.linalg.norm(nv)), 1e-9)
+        if nv @ (p.mean(axis=0) - mid) < 0:  # face outwards
+            p, nv = p[::-1], -nv
+        i = len(v)
+        v.extend(p)
+        nrm.extend([nv] * len(p))
+        uv.extend([(q[0] + q[1], q[2]) for q in p / 2.0])
+        tris.extend([(i, i + 1, i + 2), (i, i + 2, i + 3)] if len(p) == 4 else
+                    [(i, i + k, i + k + 1) for k in range(1, len(p) - 1)])
+
+    def pt(k, end):
+        (xy, z) = ring[k]
+        q = xy + half * end
+        return (q[0], q[1], z)
+
+    m = len(ring)
+    for k in range(m):
+        k2 = (k + 1) % m
+        quad([pt(k, -1), pt(k, 1), pt(k2, 1), pt(k2, -1)])
+    quad([pt(k, 1) for k in range(m)])
+    quad([pt(k, -1) for k in reversed(range(m))])
+    surf.add(np.array(v), np.array(nrm), np.array(uv), np.array(tris, dtype=np.int64))
 
 
 def _box(surf, center_xy, bottom, top, size, yaw):
@@ -1727,6 +2259,7 @@ def build(cfg: dict, keys: list[TileKey], region_of: dict, out_dir: Path = TILES
         print(f"Index: {len(index.get('pois', []))} points of interest")
         return
     todo = [k for k in keys if k in set(only)] if only is not None else keys
+    world.closures = world.edge_closures(set(index["tiles"]) | {k.name for k in keys})
     net = TrafficNetwork(world)
     global _JOB
     _JOB = (world, net, out_dir, size, traffic_only)
@@ -1892,7 +2425,7 @@ def _write_placed(world: World, path: Path, inside_hf, region_of: dict, size: fl
             y = float(spec["y"])
         elif "deck" in spec:
             # On a jetty: the deck top MeshBuilder draws.
-            y = world.deck_top(spec["deck"])
+            y = world.deck_height(spec["deck"], e, n)
         else:
             y = float(world.hf.sample(e, n))
         fresh[spec["id"]] = {"id": spec["id"], "scene": spec["scene"],

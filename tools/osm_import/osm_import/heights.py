@@ -52,6 +52,10 @@ def way_group(tags) -> str | None:
     return None
 
 
+# Ways within this angle of a bridge's line run beside it, not under it.
+PARALLEL_COS = float(np.cos(np.radians(25.0)))
+
+
 def _keep_headroom(group: str, ways, index, xy, lo):
     """A way passing under a bridge of its own network stays low enough to
     clear it: the DEM often has the underpass dip, and smoothing would fill
@@ -61,11 +65,15 @@ def _keep_headroom(group: str, ways, index, xy, lo):
     head = np.full(len(xy), 1e9)
     under = []
     way_of = {}
+    heading = {}
     for wi, w in enumerate(ways):
         if not styles.is_bridge(w.tags) and not styles.is_tunnel(w.tags):
-            for n in w.nodes:
+            c = w.coords
+            for i, n in enumerate(w.nodes):
                 under.append(index[int(n)])
                 way_of.setdefault(index[int(n)], set()).add(wi)
+                t = c[min(i + 1, len(c) - 1)] - c[max(i - 1, 0)]
+                heading.setdefault(index[int(n)], []).append(t / max(np.linalg.norm(t), 1e-9))
     if not under:
         return head
     under = np.unique(np.array(under))
@@ -81,14 +89,21 @@ def _keep_headroom(group: str, ways, index, xy, lo):
         span = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(w.coords, axis=0), axis=1))])
         ends = np.array([w.coords[0], w.coords[-1]])
         k_idx = np.array([index[int(n)] for n in w.nodes])
-        # Ways joined to the span's ends are its approaches, not under it.
-        joined = node_ways.get(k_idx[0], set()) | node_ways.get(k_idx[-1], set())
+        # Ways joined to the span are its approaches or slip roads leaving
+        # it, not under it.
+        joined = set().union(*(node_ways.get(k, set()) for k in k_idx))
         for k in range(1, len(w.coords) - 1):
             if span[k] < half or span[-1] - span[k] < half:
                 continue
+            t = w.coords[k + 1] - w.coords[k - 1]
+            t = t / max(np.linalg.norm(t), 1e-9)
             for j in tree.query_ball_point(w.coords[k], half):
                 node = under[j]
                 if way_of[node] & joined or np.min(np.linalg.norm(ends - xy[node], axis=1)) < half:
+                    continue
+                # A way running alongside the deck (a slip road climbing
+                # beside the other carriageway) is beside it, not under it.
+                if all(abs(float(t @ u)) > PARALLEL_COS for u in heading[node]):
                     continue
                 head[node] = min(head[node], lo[k_idx[k]] - HEADROOM[group])
     return head
@@ -224,8 +239,11 @@ def _solve_group(group: str, ways, hf: HeightField, couple=(), tie=()) -> dict[i
             d = np.concatenate([d, np.full(len(ca), COUPLE_LENGTH)])
             eg = np.concatenate([eg, np.full(len(ca), GRADE[group])])
     base = hf.sample(xy[:, 0], xy[:, 1])
+    # Bounds spread along the roads themselves (and the ties), never across a
+    # couple: a slip road climbing beside the freeway must not be pulled down
+    # by the headroom the freeway keeps under a bridge, nor lift the freeway.
     adj: dict[int, dict[int, tuple]] = defaultdict(dict)
-    for i, j, dd, gg in zip(a.tolist(), b.tolist(), d.tolist(), eg.tolist()):
+    for i, j, dd, gg in zip(a[:n_own].tolist(), b[:n_own].tolist(), d[:n_own].tolist(), eg[:n_own].tolist()):
         adj[i][j] = adj[j][i] = (dd, gg)
 
     n = len(ids)
