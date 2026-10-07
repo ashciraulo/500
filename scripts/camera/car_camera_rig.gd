@@ -2,10 +2,12 @@ class_name CarCameraRig
 extends Node3D
 ## Follows a car with a lazy chase camera or sits in the driver's seat.
 ##
-## Chase: swings round behind the car with a little lag, pulls back and widens
-## the FOV with speed, and won't clip through walls. Interior: sits at the
-## car's `DriverSeat` marker, leans gently with g-forces and lets the player
-## look around with the mouse (when captured) or the right stick.
+## Chase: swings round behind the car with a little lag, pulls back, rises and
+## widens the FOV with speed, and won't clip through walls or into the ground.
+## Free-look orbits the car and keeps it in the middle of the view. Interior:
+## sits at the car's `DriverSeat` marker, leans gently with g-forces and lets
+## the player look around with the mouse (when captured) or the right stick.
+## Holding `look_behind` looks back down the road in either view.
 
 enum Mode { CHASE, INTERIOR }
 
@@ -24,6 +26,10 @@ enum Mode { CHASE, INTERIOR }
 @export var position_follow := 9.0
 @export var fov_slow := 68.0
 @export var fov_fast := 80.0
+## At full speed (~120 km/h) the camera sits this much higher and aims this
+## much further up the road, so the car doesn't hide what's coming.
+@export var speed_rise := 0.45
+@export var speed_look_ahead := 7.0
 
 @export_group("Interior")
 ## Narrower than a chase lens, so the windscreen fills more of the view.
@@ -36,6 +42,10 @@ enum Mode { CHASE, INTERIOR }
 ## Space kept between the eye and the roof lining above it.
 const HEAD_CLEARANCE := 0.06
 @export var stick_look_speed := 2.2
+## Looking back from inside: the eye moves back along the middle of the car,
+## as if turned round between the seats, so the back window fills the view
+## instead of the driver's own headrest.
+@export var rear_glass_inset := 1.0
 
 var _car: CarController
 var _camera: Camera3D
@@ -48,6 +58,11 @@ var _last_car_velocity := Vector3.ZERO
 var _ray_query := PhysicsRayQueryParameters3D.new()
 var _headroom_body: Node = null
 var _headroom := INF
+## Where the chase camera sits relative to the car. Smoothed in the car's
+## frame rather than the world's, so it doesn't trail metres behind at speed.
+var _offset := Vector3.ZERO
+var _has_offset := false
+var _behind := false
 
 
 func _ready() -> void:
@@ -76,6 +91,12 @@ func toggle_mode() -> void:
 		_car.is_player_inside = mode == Mode.INTERIOR
 	_look_yaw = 0.0
 	_look_pitch = 0.0
+	_has_offset = false
+
+
+## True while the player holds look-behind.
+func is_looking_behind() -> bool:
+	return _behind
 
 
 func _process(delta: float) -> void:
@@ -83,6 +104,10 @@ func _process(delta: float) -> void:
 		return
 	if Input.is_action_just_pressed("camera_toggle"):
 		toggle_mode()
+	var behind := Input.is_action_pressed("look_behind") and not get_tree().paused
+	if behind != _behind:
+		_behind = behind
+		_has_offset = false  # cut straight round, then straight back
 
 	var stick := Input.get_vector("look_left", "look_right", "look_up", "look_down")
 	if stick.length() > 0.1:
@@ -115,28 +140,54 @@ func _update_chase(delta: float) -> void:
 	# Smaller cars (the classics) get the camera lower and closer.
 	var fit := clampf(_car.body_size.y / CarController.POP_SIZE.y, 0.75, 1.2)
 	var distance := chase_distance * sqrt(fit) + speed_t * 1.0
-	var orbit := Basis(Vector3.UP, _yaw + _look_yaw) * Basis(Vector3.RIGHT, _look_pitch)
+	var yaw := _yaw + _look_yaw
+	var pitch := _look_pitch
+	if _behind:
+		# From in front of the car, looking back over it down the road.
+		yaw = car_yaw + PI
+		pitch = 0.0
+	var turn := Basis(Vector3.UP, yaw)
+	var orbit := turn * Basis(Vector3.RIGHT, pitch)
 	# Under a low roof (carport, car park), drop the camera and pull it in so
 	# it stays below the ceiling instead of filming the roof.
-	var height := chase_height * fit
+	var height := chase_height * fit + speed_t * speed_rise
 	_ray_query.from = car_pos + Vector3.UP * 0.9
-	_ray_query.to = car_pos + Vector3.UP * (chase_height + 0.8)
+	_ray_query.to = car_pos + Vector3.UP * (height + 0.8)
 	var ceiling := get_world_3d().direct_space_state.intersect_ray(_ray_query)
 	if not ceiling.is_empty():
-		height = clampf(ceiling.position.y - car_pos.y - 0.45, look_height, chase_height * fit)
+		height = clampf(ceiling.position.y - car_pos.y - 0.45, look_height, height)
 	var desired := car_pos + orbit * Vector3(0.0, height, distance)
-	var target := car_pos + Vector3.UP * look_height + (-_car.global_basis.z) * look_ahead
+	# Aim up the road the camera is looking along, through the car, so turning
+	# the view orbits the car instead of swinging it off the side of the screen.
+	var ahead := look_ahead + speed_t * speed_look_ahead
+	var target := car_pos + Vector3.UP * look_height + turn * Vector3(0.0, 0.0, -ahead)
 
-	# Keep the camera out of walls.
-	_ray_query.from = target
+	# On a steep slope the road behind can be higher than the car: lift the
+	# camera clear of it rather than letting the wall check pull it in low.
+	# (Starts under the low-roof margin above, so it never lands on a roof.)
+	_ray_query.from = desired + Vector3.UP * 0.3
+	_ray_query.to = desired - Vector3.UP * 1.0
+	var ground := get_world_3d().direct_space_state.intersect_ray(_ray_query)
+	if not ground.is_empty():
+		desired.y = maxf(desired.y, ground.position.y + 0.9)
+
+	# Keep the camera out of walls: check from above the car's roof, so the
+	# road itself never counts as a wall.
+	var pivot := car_pos + Vector3.UP * minf(height, look_height + 0.5)
+	_ray_query.from = pivot
 	_ray_query.to = desired
 	var hit := get_world_3d().direct_space_state.intersect_ray(_ray_query)
 	if not hit.is_empty():
-		desired = hit.position + (target - desired).normalized() * 0.3
+		desired = hit.position + (pivot - desired).normalized() * 0.3
 
-	global_position = global_position.lerp(desired, 1.0 - exp(-position_follow * delta))
-	if global_position.distance_to(desired) > 25.0:
-		global_position = desired  # Teleports/resets: don't swoop.
+	# Smooth in the car's frame: speed doesn't leave the camera behind.
+	var offset := desired - car_pos
+	if not _has_offset or _offset.distance_to(offset) > 25.0:
+		_offset = offset  # Teleports, resets and looking back: don't swoop.
+		_has_offset = true
+	else:
+		_offset = _offset.lerp(offset, 1.0 - exp(-position_follow * delta))
+	global_position = car_pos + _offset
 	_camera.global_position = global_position
 	if not global_position.is_equal_approx(target):
 		_camera.look_at(target, Vector3.UP)
@@ -165,9 +216,14 @@ func _update_interior(delta: float) -> void:
 	var eye := eye_offset
 	eye.y = minf(eye.y, _headroom_above(seat) - HEAD_CLEARANCE)
 	global_position = seat.global_position + seat_basis * (eye + _lean)
-	_camera.global_transform = Transform3D(
-		seat_basis * Basis(Vector3.UP, _look_yaw) * Basis(Vector3.RIGHT, _look_pitch + deg_to_rad(eye_pitch_deg)),
-		global_position)
+	var look := Basis(Vector3.UP, _look_yaw) * Basis(Vector3.RIGHT, _look_pitch + deg_to_rad(eye_pitch_deg))
+	var at := global_position
+	if _behind:
+		# Straight back through the rear glass, turned round between the seats.
+		look = Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, deg_to_rad(-4.0))
+		var local := _car.to_local(global_position)
+		at = _car.to_global(Vector3(0.0, local.y - 0.06, _car.body_size.z * 0.5 - rear_glass_inset))
+	_camera.global_transform = Transform3D(seat_basis * look, at)
 	_camera.fov = interior_fov
 
 
