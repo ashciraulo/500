@@ -104,6 +104,8 @@ var change_cooldown := 0.0
 
 var horn_time := 0.0
 var horn_cooldown := 0.0
+## Going round the player's stopped car (seconds left of trying).
+var round_player := 0.0
 var hazard_time := 0.0
 var flash_time := 0.0
 var indicator := 0
