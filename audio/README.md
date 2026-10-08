@@ -191,7 +191,9 @@ start swapping in your own recordings, regenerate only what you need.
   and cat's eyes stacking up at speed (kerbs and bumps still punch
   through). sound_check drives a straight road with the radio on (50 km/h
   in both views, 62 in the chase view) and fails if the engine or tyres
-  come within 4 dB of the radio.
+  come within 4 dB of the radio. Each run plays the same stretch of the
+  same song (at the song's usual level) and holds the frames to real time,
+  so every machine hears the same few seconds of radio and engine.
 - **Menu sounds** play on the UI bus, which sits at `Audio.UI_DB` (-14 dB,
   the files are mastered hot) under the Effects slider. Buttons tick and
   click once, through UiTheme. sound_check fails if opening the pause menu

@@ -63,6 +63,12 @@ const CAR_UNDER_RADIO_DB := 4.0
 ## The runs: view and speed (km/h). The chase view at 60+ is where the tyres
 ## used to creep up on the radio.
 const CRUISES := [["interior", 50.0], ["chase", 50.0], ["chase", 62.0]]
+## Where in the radio's song (the station's first listen, song 15) each
+## cruise starts (s). The part that is read sits at the song's usual level
+## on the Radio bus (-22.4 dB; the song's 6 s stretches read -22.1 to -24),
+## so the check is neither kinder nor harsher than a typical moment of a
+## song. Re-measure if the songs change.
+const RADIO_AT := 50.0
 ## The loudest a menu click may peak at (dB on the UI bus, at full volume;
 ## measured about -14, and -6.5 before the UI bus came down).
 const MENU_CLICK_MAX_DB := -12.0
@@ -469,6 +475,10 @@ func _check_radio_over_car(traffic: Node) -> void:
 		car.global_transform = Transform3D(Basis.looking_at(dir, Vector3.UP), a + Vector3.UP * 0.8)
 		car.linear_velocity = dir * kmh / 3.6
 		car.angular_velocity = Vector3.ZERO
+		# The same stretch of the same song every run, on every machine.
+		_audio.radio._on_air.erase("cinquecento")
+		_audio.radio._play_broadcast("cinquecento")
+		_audio.radio._player.play(RADIO_AT)
 		var levels: Dictionary = await _cruise(car, a, dir, kmh, 3.0)  # get settled
 		levels = await _cruise(car, a, dir, kmh, 6.0)
 		var wf := AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
@@ -490,14 +500,22 @@ func _check_radio_over_car(traffic: Node) -> void:
 
 ## Holds about `target` km/h along a straight line from `a` (throttle and a
 ## little steering, like a player) for `seconds`, returning each bus's mean
-## meter level (dB) and the mean speed ("kmh").
+## meter level (dB) and the mean speed ("kmh"). The frames are held to real
+## time: the sound plays in real time, and on CI frames would otherwise run
+## several times faster, so the reading would hear a second or so of the
+## song and the engine and swing by a few dB from run to run.
 func _cruise(car: RigidBody3D, a: Vector3, dir: Vector3, target: float, seconds: float) -> Dictionary:
 	var sums := {}
 	var kmh := 0.0
 	var n := 0
+	var start := _frame
+	var t0 := Time.get_ticks_usec()
 	var until := _frame + int(seconds * FPS)
 	while _frame < until:
 		await process_frame
+		var early := (_frame - start) * 1000000 / FPS - (Time.get_ticks_usec() - t0)
+		if early > 0:
+			OS.delay_usec(early)
 		var v := car.linear_velocity.length() * 3.6
 		Input.action_release("accelerate")
 		if v < target - 4.0:
@@ -522,11 +540,10 @@ func _cruise(car: RigidBody3D, a: Vector3, dir: Vector3, target: float, seconds:
 	return out
 
 
-## Each bus's level at loud moments over `seconds`: the 90th percentile of
-## its meter (dB, after its own fader).
-## Reads every bus for `seconds` of real time: the sound plays in real time
-## while frames run as fast as they can (on CI several times faster), so a
-## window counted in frames would hear only a second or two of the loops.
+## Each bus's level at loud moments over `seconds` of real time: the 90th
+## percentile of its meter (dB, after its own fader). The sound plays in real
+## time while frames run as fast as they can (on CI several times faster), so
+## a window counted in frames would hear only a second or two of the loops.
 func _bus_levels(seconds: float) -> Dictionary:
 	var readings := {}
 	var until := Time.get_ticks_msec() + int(seconds * 1000.0)
