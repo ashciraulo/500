@@ -50,6 +50,7 @@ const ALIASES := {
 	"field/flush": "traffic/traffic_wings_takeoff",
 	"field/reel": "field/reel_loop",
 	"field/splash": "field/splash_small",
+	"home/home_record_needle": "home/home_record_needle_drop",
 }
 
 var _index := {}            # "car/car_horn_modern_tap" -> "res://audio/car/car_horn_modern_tap.ogg"

@@ -13,6 +13,9 @@ at -24 LUFS; compressor, fuel flow, wash hose and brushes at -20 LUFS.
 | garage_spray_paint | no | Spray can shaken then sprayed | P3 | Mixing-ball clacks (5 shakes) then a 2 s pressurised hiss with a sputtery start |
 | garage_spray_gun | no | Spray gun laying a coat (respray, clear coat) | P3 | Trigger clicks, two long air-cap hiss passes sweeping past, the compressor kicking in under the second |
 | garage_masking_tape | no | Masking tape pulled, torn, smoothed down | P3 | Sticky crackle off the roll, the tear, a thumb along the panel |
+| garage_angle_grinder | no | Angle grinder cutting rust out | P3 | Motor whine spinning up, the disc biting steel (screech, sparks, pitch sagging under load), lifted off, spinning down |
+| garage_staple_gun | no | Upholstery staple gun, re-covering seats | P3 | Five 'pfft-tchak' shots, vinyl pulled taut between them |
+| garage_tarp_pull | no | The tarp pulled off a barn find | P3 | Heavy canvas dragged off in two heaves, flopping down, dust settling, tired springs creaking once |
 | garage_rack_fit | no | Roof rack fitted | P3 | Bars set down with a padded thunk, two clamp knobs ratcheted tight, a strap cinched with its cam buckle |
 | garage_part_fitted_01..03 | no | Part fitted: clunk + bolt tightened | P3 | Low metal thud with short ring, then steel ticks and a final click |
 | garage_fuel_nozzle_in | no | Petrol nozzle out of holster and into the filler | P3 | Holster knock, hose flop, filler-neck clank, trigger latch |
@@ -31,3 +34,11 @@ The spray shop is heard from the car's look: Audio.hooks watches its paint,
 livery and finish, and plays masking tape then the gun for a respray, tape
 then a rattle can for a livery, and the gun alone for a clear coat. A part in
 the roof slot plays garage_rack_fit instead of the impact wrench.
+
+Barn finds and restoration (the Classics autoload): finding a wreck plays
+garage_tarp_pull (the notice card plays music/mus_sting_barn_find), and each
+stage done at the home bench plays one sound of the work
+(`Audio.hooks.RESTORE_SOUNDS`): assess the ratchet, engine the classic twin
+starting (engine/classic/eng_classic_startup), brakes the impact wrench, body
+the angle grinder, paint the spray gun, interior the staple gun, trim a part
+fitted. A finished car's card plays music/mus_sting_restored.

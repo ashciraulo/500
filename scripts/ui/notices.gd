@@ -355,9 +355,11 @@ func _listen() -> void:
 	Classics.rumour_heard.connect(func(_car: String, _text: String) -> void:
 		post("Check Leads on your phone (Tab / X).", "classic", "", "New barn-find rumour"))
 	Classics.wreck_found.connect(func(car_id: String) -> void:
-		post("A %s. It's on the bench at home." % CarCatalogue.get_car(car_id).get("name", "classic"), "classic"))
+		post("A %s. It's on the bench at home." % CarCatalogue.get_car(car_id).get("name", "classic"), "classic",
+				"music/mus_sting_barn_find|ui/ui_badge_pickup", "", "Music"))
 	Classics.restored.connect(func(car_id: String, _finish: String) -> void:
-		post("The %s is finished. Take it out from the Cars tab at home." % CarCatalogue.get_car(car_id).get("name", "classic"), "classic", "", "Restored"))
+		post("The %s is finished. Take it out from the Cars tab at home." % CarCatalogue.get_car(car_id).get("name", "classic"), "classic",
+				"music/mus_sting_restored|ui/ui_badge_pickup", "Restored", "Music"))
 	Discoveries.discovered.connect(func(id: String) -> void:
 		if id.begins_with("spot/"):
 			var spot := get_tree().get_root().find_child("Photo_" + id.substr(5), true, false)

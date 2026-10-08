@@ -21,6 +21,18 @@ const TENSION_FROM := 0.7
 const TICK_SECONDS := 5
 ## Ignore events this long after a load, when saved state replays its signals.
 const QUIET_AFTER_LOAD_S := 1.5
+## The restoration stages' sounds ("The twin coughs into life" for the engine).
+const RESTORE_SOUNDS := {
+	"assess": "garage/garage_ratchet",
+	"engine": "engine/classic/eng_classic_startup",
+	"brakes": "garage/garage_impact_wrench",
+	"body": "garage/garage_angle_grinder",
+	"paint": "garage/garage_spray_gun",
+	"interior": "garage/garage_staple_gun",
+	"trim": "garage/garage_part_fitted",
+}
+## The vinyl's crackle sits well under the record (home stays quiet).
+const RECORD_CRACKLE_DB := -20.0
 
 var _car: Node
 var _jobs: Node
@@ -42,6 +54,8 @@ var _pois_loaded := false    # its points of interest handed to the place ambien
 var _home: Node
 var home_audio: Node         # home_audio.gd: the quiet lane, indoors, the fridge and clock
 var _zone_timer := 0.0
+var _record_speaker: AudioStreamPlayer3D  # the lounge record player's, once it's built
+var _record_crackle: AudioStreamPlayer3D  # the vinyl's surface noise under the record
 var _look_timer := 0.0
 
 
@@ -56,6 +70,10 @@ func _ready() -> void:
 		jobs.job_stage_changed.connect(_on_job_stage)
 		jobs.job_completed.connect(_on_job_completed)
 		jobs.job_abandoned.connect(_on_job_abandoned)
+	var classics := root.get_node_or_null("Classics")
+	if classics and classics.has_signal("stage_done"):
+		classics.wreck_found.connect(_on_wreck_found)
+		classics.stage_done.connect(_on_restore_stage)
 	var save := root.get_node_or_null("SaveGame")
 	if save and save.has_signal("loaded"):
 		save.loaded.connect(func(_p) -> void: _quiet_until = _now() + QUIET_AFTER_LOAD_S)
@@ -292,6 +310,24 @@ func _on_part_fitted(slot: StringName, _part) -> void:
 		Audio.play_at("garage/garage_part_fitted", pos, -2.0))
 
 
+## Barn finds: the tarp coming off the wreck (the notice plays the sting).
+func _on_wreck_found(_car_id: String) -> void:
+	if _loud():
+		Audio.play_2d("garage/garage_tarp_pull", "SFX", -4.0)
+
+
+## A restoration stage done at the home bench: one sound of the work.
+func _on_restore_stage(_car_id: String, stage: Dictionary) -> void:
+	var sound := restore_sound(String(stage.get("id", "")))
+	if sound != "" and _loud():
+		Audio.play_2d(sound, "SFX", -6.0)
+
+
+## What a restoration stage (data/cars/restoration.json ids) sounds like.
+static func restore_sound(stage_id: String) -> String:
+	return RESTORE_SOUNDS.get(stage_id, "garage/garage_part_fitted")
+
+
 ## Fuel going in and the car coming out clean are watched rather than
 ## signalled, so the servo, roadside assist and anything later all sound.
 func _update_car() -> void:
@@ -437,9 +473,36 @@ func _on_node_added(node: Node) -> void:
 	if node.has_signal("got_in") and node.has_signal("got_out") and not node.get("plays_car_sounds"):  # OnFoot
 		node.connect("got_in", _on_got_in)
 		node.connect("got_out", _on_got_out)
+	elif node.has_signal("playing_changed") and node.has_signal("record_added"):  # RecordCrate
+		node.connect("playing_changed", _on_record_changed)
+	elif node is AudioStreamPlayer3D and node.name == &"RecordSpeaker":
+		_record_speaker = node
 	elif node is Slider:
 		var s := node as Slider
 		s.drag_ended.connect(func(_changed) -> void: Audio.ui("ui_menu_move", -8.0))
+
+
+## The record player: surface crackle under the record while it plays, and
+## the needle lifting when it stops (the crate plays the needle drop).
+func _on_record_changed(id: String) -> void:
+	if _record_speaker == null or not is_instance_valid(_record_speaker):
+		return
+	if id != "":
+		if _record_crackle == null or not is_instance_valid(_record_crackle):
+			_record_crackle = AudioStreamPlayer3D.new()
+			_record_crackle.name = "RecordCrackle"
+			_record_crackle.bus = _record_speaker.bus
+			_record_crackle.unit_size = _record_speaker.unit_size
+			_record_crackle.max_distance = _record_speaker.max_distance
+			_record_crackle.volume_db = RECORD_CRACKLE_DB
+			_record_crackle.stream = Audio.stream("home/home_record_crackle", true)
+			_record_speaker.add_child(_record_crackle)
+		if not _record_crackle.playing and _record_crackle.stream:
+			_record_crackle.play()
+		return
+	if _record_crackle and is_instance_valid(_record_crackle):
+		_record_crackle.stop()
+	Audio.play_at("home/home_record_needle_lift", _record_speaker.global_position, -8.0)
 
 
 # ---------------------------------------------------------------------------
