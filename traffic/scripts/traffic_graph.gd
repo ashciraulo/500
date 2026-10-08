@@ -973,7 +973,7 @@ func _build_signals(touched: Array) -> void:
 					var group: int = controller.group_for(dir)
 					var gate := SignalGate.new(controller, group)
 					lane.signal_gate = gate
-					lane.add_stop(lane.length, gate)
+					lane.add_stop(lane.length - _stop_hold_back(lane, controller.nodes), gate)
 					controller.approaches.append({ "lane": lane, "group": group, "dir": dir, "road": road, "node": n })
 		for n in controller.nodes:
 			for c in n.connectors:
@@ -1002,6 +1002,62 @@ func _absorb_controller(into: SignalController, other: SignalController) -> void
 	other.nodes.clear()
 	other.approaches.clear()
 	signal_controllers.erase(other)
+
+
+## Furthest the stop line at a set of lights is moved back from the end of
+## its lane (metres).
+const MAX_HOLD_BACK := 6.0
+
+
+## How far short of the end of `lane` to wait at the lights at `nodes`, so a
+## car waiting there is clear of everyone else's way through: where a road
+## meets another at a shallow angle, the end of one lane can sit right
+## beside the other. 0 when the end is clear (or nothing nearby is).
+func _stop_hold_back(lane: Lane, nodes: Array) -> float:
+	# Bits of other paths near the junction: [points] lists.
+	var paths: Array = []
+	for n in nodes:
+		for road in n.roads:
+			if road == lane.road:
+				continue
+			for l in road.lanes:
+				var near_end: bool = l.to_node == n
+				var a: float = maxf(l.length - 16.0, 0.0) if near_end else 0.0
+				var b: float = l.length if near_end else minf(16.0, l.length)
+				paths.append([l, a, b])
+		for c in n.connectors:
+			if c.in_lane != lane:
+				paths.append([c, 0.0, c.length])
+	var back := 0.0
+	while back <= MAX_HOLD_BACK:
+		if _waiting_clear(lane, lane.length - back - 0.8, paths):
+			return back
+		back += 0.5
+	return 0.0
+
+
+## A car with its nose at `s` on `lane` keeps 0.3 m clear of a car on any
+## of `paths`.
+func _waiting_clear(lane: Lane, s: float, paths: Array) -> bool:
+	if s < 4.0:
+		return true
+	var f := lane.tangent(s)
+	f.y = 0.0
+	f = f.normalized()
+	var left := TrafficGraph.left_of(f)
+	var c := lane.point(s) - f * 2.25
+	for path in paths:
+		var l: Lane = path[0]
+		var t: float = path[1]
+		while t <= path[2]:
+			var q := l.point(t) - c
+			t += 1.0
+			if absf(q.y) > 3.0:
+				continue
+			# Their centre line within half a car (and a margin) of our body.
+			if absf(q.dot(f)) < 2.25 + 0.3 and absf(q.dot(left)) < 0.9 + 0.9 + 0.3:
+				return false
+	return true
 
 
 func _index_road(road: Road) -> void:

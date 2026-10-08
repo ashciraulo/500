@@ -9,6 +9,8 @@ extends SceneTree
 
 const FPS := 60
 ## A car stopped this long, not at a red light, is logged.
+## Bodies closer than this (metres) while moving count as a near miss.
+const NEAR_MISS_M := 0.5
 const LONG_STOP_S := 40
 ## [name, position, seconds to watch]
 const SPOTS := [
@@ -89,7 +91,7 @@ func _first_spot() -> int:
 func _go(i: int) -> void:
 	_spot = i
 	_frame = 0
-	_mark = { "max_vehicles": 0, "overlaps": 0, "head_on": 0, "pairs": {}, "stopped": {}, "red": _traffic.stats.red_runs,
+	_mark = { "max_vehicles": 0, "overlaps": 0, "head_on": 0, "pairs": {}, "near": {}, "stopped": {}, "red": _traffic.stats.red_runs,
 		"ms": 0.0, "ms_n": 0, "moving": 0, "samples": 0, "jams": _traffic.stats.jams }
 	var p: Vector3 = SPOTS[i][1]
 	if p == Vector3.INF:
@@ -123,6 +125,10 @@ func _watch() -> void:
 			_mark.stopped.erase(v)
 		elif not _mark.stopped.has(v):
 			_mark.stopped[v] = _frame
+		elif _frame - _mark.stopped[v] == LONG_STOP_S * FPS * 2 and v.reason == TrafficVehicle.Reason.STOP_LINE:
+			# Longer than any set of lights takes to come round again.
+			print("  at the line %ds: #%d %s on %s (held by %s) at %s" % [LONG_STOP_S * 2, v.id, v.type, _lane_name(v.route[0]),
+				_held_by(v), v.position.snapped(Vector3.ONE * 0.1)])
 		elif _frame - _mark.stopped[v] == LONG_STOP_S * FPS and v.reason != TrafficVehicle.Reason.STOP_LINE:
 			_mark.long_stops = _mark.get("long_stops", 0) + 1
 			print("  stopped %ds: #%d %s on %s (reason %d, held by %s) at %s" % [LONG_STOP_S, v.id, v.type, _lane_name(v.route[0]),
@@ -134,6 +140,17 @@ func _watch() -> void:
 				continue
 			var along := absf(rel.dot(v.forward))
 			var side := absf(rel.dot(TrafficGraph.left_of(v.forward)))
+			# Near miss: bodies within half a metre while one is moving
+			# (the overlap check below misses cars meeting at an angle).
+			if (v.speed > 1.0 or o.speed > 1.0) and _boxes_meet(v, o, NEAR_MISS_M * 0.5) and not (along < (v.length + o.length) * 0.35 and side < (v.width + o.width) * 0.35):
+				var nkey := "%d/%d" % [v.id, o.id]
+				if not _mark.near.has(nkey):
+					_mark.near[nkey] = true
+					var g := 0.0
+					while g < NEAR_MISS_M * 0.5 and not _boxes_meet(v, o, g):
+						g += 0.02
+					print("  near miss: %.2f m between #%d (%s, v%.1f r%d) and #%d (%s, v%.1f r%d) at %s, %.0f deg apart" % [g * 2.0, v.id, _lane_name(v.route[0]), v.speed, v.reason,
+						o.id, _lane_name(o.route[0]), o.speed, o.reason, v.position.snapped(Vector3.ONE * 0.1), rad_to_deg(acos(clampf(v.forward.dot(o.forward), -1.0, 1.0)))])
 			if along < (v.length + o.length) * 0.35 and side < (v.width + o.width) * 0.35:
 				var key := "%d/%d" % [v.id, o.id]
 				if not _mark.pairs.has(key):
@@ -151,6 +168,28 @@ func _watch() -> void:
 						for x in [v, o]:
 							print("    #%d %s lane %d s %.1f/%.1f speed %.1f life %.1f change_from %s reason %d fwd %s" % [x.id, x.type, x.route[0].id, x.s, x.route[0].length, x.speed, x.lifetime,
 								x.change_from.id if x.change_from else -1, x.reason, x.forward.snapped(Vector3.ONE * 0.01)])
+
+
+## Two cars' footprints (each grown by `grow` metres) touch: separating axis
+## test on the ground plane.
+func _boxes_meet(a, b, grow: float) -> bool:
+	var rel: Vector3 = b.position - a.position
+	if absf(rel.y) > 2.5:
+		return false
+	var axes: Array = [a.forward, TrafficGraph.left_of(a.forward), b.forward, TrafficGraph.left_of(b.forward)]
+	for ax in axes:
+		var n := Vector3(ax.x, 0.0, ax.z).normalized()
+		var ra := _half_extent(a, n) + grow
+		var rb := _half_extent(b, n) + grow
+		if absf(rel.dot(n)) > ra + rb:
+			return false
+	return true
+
+
+func _half_extent(x, n: Vector3) -> float:
+	var f := Vector3(x.forward.x, 0.0, x.forward.z).normalized()
+	var l := TrafficGraph.left_of(f)
+	return absf(f.dot(n)) * x.length * 0.5 + absf(l.dot(n)) * x.width * 0.5
 
 
 ## What a stopped car is waiting for, for the log.
@@ -177,13 +216,22 @@ func _held_by(v) -> String:
 			by_text += " [clear %s free %s merge %s room %s; signal %s; out %s: %s; conflicts: %s; yield_wait %.0f]" % [
 				_traffic._junction_clear(by, v), _traffic._junction_free(by, v), _traffic._merge_turn(by, v, d), _traffic._room_beyond(v, [by]),
 				("%d ctrl %d live %s phase %d t %.0f" % [by.in_lane.signal_gate.state(), by.in_lane.signal_gate.controller.get_instance_id(), _traffic.graph.signal_controllers.has(by.in_lane.signal_gate.controller), by.in_lane.signal_gate.controller.phase, by.in_lane.signal_gate.controller.timer]) if by.in_lane.signal_gate else "none", _lane_name(out), queue, conf, v.yield_wait]
+	elif by is TrafficGraph.SignalGate:
+		by_text = "lights group %d state %d phase %d t %.1f live %s, s %.1f/%.1f v%.1f stopped %.0fs" % [by.group, by.state(), by.controller.phase, by.controller.timer,
+			_traffic.graph.signal_controllers.has(by.controller), v.s, v.route[0].length, v.speed, v.stopped_time]
 	elif by != null:
 		by_text = str(by)
 	# Who's waiting on whom from here (see TrafficManager._break_jams).
 	var chain: Array = []
 	var w = v.wait_on
 	while w != null and chain.size() < 6:
-		chain.append("#%d r%d rank%d %.0fs v%.1f%s" % [w.id, w.reason, w.wait_rank, w.stopped_time, w.speed, " unjam" if w.unjam_time > 0.0 else ""])
+		var gate_text := ""
+		if w.blocked_by is TrafficGraph.SignalGate:
+			var ctl = w.blocked_by.controller
+			gate_text = " (lights group %d state %d phase %d t %.0f live %s at %s)" % [w.blocked_by.group, w.blocked_by.state(), ctl.phase, ctl.timer, _traffic.graph.signal_controllers.has(ctl), w.position.snapped(Vector3.ONE)]
+		elif w.blocked_by is TrafficGraph.Gate:
+			gate_text = " (%s at %s)" % [w.blocked_by.get_class() if not w.blocked_by.get_script() else w.blocked_by.get_script().get_global_name(), w.position.snapped(Vector3.ONE)]
+		chain.append("#%d r%d rank%d %.0fs v%.1f%s%s" % [w.id, w.reason, w.wait_rank, w.stopped_time, w.speed, " unjam" if w.unjam_time > 0.0 else "", gate_text])
 		if w == v:
 			break
 		w = w.wait_on
@@ -210,8 +258,8 @@ func _report(spot_name: String) -> void:
 		var by_text := _held_by(v)
 		print("  stuck: #%d %s on %s for %ds (reason %d, held by %s) at %s" % [v.id, v.type, _lane_name(v.route[0]),
 			(_frame - _mark.stopped[v]) / FPS, v.reason, by_text, v.position.snapped(Vector3.ONE * 0.1)])
-	print("  %s: %d cars max, %.0f%% moving, %d overlaps, %d red runs, %d stuck, %d long stops, %d jams broken, %.2f ms/frame, %d roads loaded" % [
-		spot_name, _mark.max_vehicles, moving * 100.0, _mark.overlaps, red, stuck, _mark.get("long_stops", 0), _traffic.stats.jams - _mark.jams, ms, _traffic.graph.roads.size()])
+	print("  %s: %d cars max, %.0f%% moving, %d overlaps, %d red runs, %d stuck, %d long stops, %d near misses, %d jams broken, %.2f ms/frame, %d roads loaded" % [
+		spot_name, _mark.max_vehicles, moving * 100.0, _mark.overlaps, red, stuck, _mark.get("long_stops", 0), _mark.near.size(), _traffic.stats.jams - _mark.jams, ms, _traffic.graph.roads.size()])
 	_totals.overlaps += _mark.overlaps
 	_totals.head_on = _totals.get("head_on", 0) + _mark.head_on
 	_totals.red_runs += red
