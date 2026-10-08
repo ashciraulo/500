@@ -56,6 +56,7 @@ var _overview: MapOverview
 var _home: Node3D
 var _settle_frames := 0  # physics frames until new colliders can be checked
 const VOID_FRAMES := 90   # physics frames (0.75 s) with no ground off the map before stepping in
+const SERVOS_PATH := "res://data/world/servos.json"
 var _void_frames := 0
 var _safe_timer := 0
 var _last_safe := Transform3D()
@@ -450,6 +451,26 @@ func _place_markers() -> void:
 			spot.color = Color(c[0], c[1], c[2])
 		spot.transform = _placed_transform(entry)
 		add_child(spot)
+	_place_servos()
+
+
+## Servos (data/world/servos.json, from tools/places/place_servos.py): some
+## of the real ones, spread out, each on open ground beside the real one.
+func _place_servos() -> void:
+	if not FileAccess.file_exists(SERVOS_PATH):
+		return
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(SERVOS_PATH))
+	if not data is Dictionary:
+		return
+	for entry: Dictionary in data.get("servos", []):
+		var servo := Servo.new()
+		servo.name = "Servo_" + str(entry.id)
+		servo.spot_id = entry.id
+		servo.display_name = entry.get("name", "Servo")
+		servo.open_end = int(entry.get("open_end", 1))
+		servo.ground = PackedFloat32Array(entry.get("ground", []))
+		servo.transform = _placed_transform(entry)
+		add_child(servo)
 
 
 # --- loading -----------------------------------------------------------------

@@ -33,7 +33,12 @@ static func gather(tree: SceneTree, mini := false) -> Array:
 		pins.append(_pin(Vector2(hp[0], hp[2]), "home", UiStyle.RED, "Home"))
 	for node in tree.get_nodes_in_group(&"workshop_spots"):
 		if node is Node3D and String(node.get("spot_id")) != "home_carport":
-			pins.append(_pin(_xz(node), "wrench", UiStyle.TEAL, String(node.get("display_name")) if node.get("display_name") else "Workshop"))
+			var label := String(node.get("display_name"))
+			# Servos (and the workshops that sell fuel) get the fuel pin.
+			if node.has_method("offers") and node.offers("fuel"):
+				pins.append(_pin(_xz(node), "fuel", UiStyle.SUN, label if label else "Servo"))
+			else:
+				pins.append(_pin(_xz(node), "wrench", UiStyle.TEAL, label if label else "Workshop"))
 	for node in tree.get_nodes_in_group(&"tackle_shops"):
 		pins.append(_pin(_xz(node), "fish", UiStyle.SUN, "Tackle and bait"))
 	for node in tree.get_nodes_in_group(&"photo_labs"):
@@ -42,8 +47,6 @@ static func gather(tree: SceneTree, mini := false) -> Array:
 		var kind := String(poi.get("kind", ""))
 		var at := _poi_at(poi)
 		match kind:
-			"servo":
-				pins.append(_pin(at, "fuel", UiStyle.SUN, "Servo, %s" % poi.suburb if poi.has("suburb") else "Servo"))
 			"quiet_spot":
 				if seen_spots.has(String(poi.id)):
 					pins.append(_pin(at, "quiet", UiStyle.TEAL, String(poi.get("name", "A quiet spot"))))
