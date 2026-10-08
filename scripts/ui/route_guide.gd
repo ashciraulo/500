@@ -179,8 +179,10 @@ func _search(from: Vector3, heading: Vector2) -> void:
 	_since_search = 0.0
 	_again = false
 	_lead_in = 0.0
+	# High priority: it's quick and the player's waiting on it, and low-priority
+	# work (warming the bird models) would otherwise hold it up for seconds.
 	_task = WorkerThreadPool.add_task(func() -> void:
-		_result = graph.find(from, heading, to), false, "Route")
+		_result = graph.find(from, heading, to), true, "Route")
 
 
 ## Picks up a search that's finished.

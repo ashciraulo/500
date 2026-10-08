@@ -19,6 +19,9 @@ const PLANS := {
 	"blowie": {"body": Vector3(0.14, 0.13, 0.32), "taper": 0.3, "tail": [0.14, 0.14, 0.0], "dorsal": [0.1, 0.05]},
 }
 
+## The 1979 fisheries dart tag (origin at the barb, the streamer along -Z).
+const TAG := "res://art/models/home/mystery/bream_tag.glb"
+
 static var _cache := {}
 
 
@@ -41,7 +44,24 @@ static func build(f: Dictionary) -> Node3D:
 	root.add_child(m)
 	if f.has("glow"):
 		_glow(root, m, Color(String(f.glow)))
+	if f.has("tag") and ResourceLoader.exists(TAG):
+		_hang_tag(root, f)
 	return root
+
+
+## The 1979 dart tag through the lower jaw, hanging down and back. The fish
+## is built a metre long and scaled to the catch, so the tag is scaled up to
+## come out its real 6.5 cm.
+static func _hang_tag(root: Node3D, f: Dictionary) -> void:
+	var r: Vector3 = PLANS.get(String(f.get("model", "")), PLANS["torpedo"]).body
+	var tag := (load(TAG) as PackedScene).instantiate() as Node3D
+	tag.name = "Tag"
+	var cm := float(Array(f.get("length", [30, 30]))[0])
+	tag.scale = Vector3.ONE * 100.0 / maxf(cm, 5.0)
+	tag.position = Vector3(0, -r.y * 0.3, -r.z * 0.9)
+	# Its streamer runs to -Z from the barb: down, swept a little back.
+	tag.rotation = Vector3(deg_to_rad(-110.0), 0, deg_to_rad(8.0))
+	root.add_child(tag)
 
 
 ## A cold light coming off it: a tint over the body and a little lamp inside.
@@ -84,7 +104,7 @@ static func _make(f: Dictionary) -> ArrayMesh:
 			_hubcap(part, back, belly, fin, mark)
 		var model:
 			_fish(part, PLANS.get(model, PLANS["torpedo"]), back, belly, fin, mark)
-			if f.has("tag"):
+			if f.has("tag") and not ResourceLoader.exists(TAG):
 				_tag(part, PLANS.get(model, PLANS["torpedo"]).body, String(f.tag))
 	return part.mesh()
 
