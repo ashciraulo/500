@@ -105,16 +105,23 @@ func _process(_delta: float) -> bool:
 				var view: Control = mini.get("_view") if mini else null
 				_check(view != null and (view.get("route") as PackedVector2Array).size() >= 2, "the minimap draws it")
 				_route_start = (guide.get("points") as PackedVector3Array)[0]
-				# Leave it: off down the road somewhere else.
+				# Leave it: off down a road somewhere else, well clear of the route
+				# (a long route can run right past the first spot tried).
 				var car: RigidBody3D = _main.get_node("LoFi/SubViewport/World/Car")
-				var off := _route_start + Vector3(250.0, 0.0, 250.0)
-				var hit: Array = _data.call("shared").get("routes").call("nearest", Vector2(off.x, off.z))
-				if not hit.is_empty():
-					var g: RefCounted = _data.call("shared").get("routes")
+				var route: PackedVector3Array = guide.get("points")
+				var g: RefCounted = _data.call("shared").get("routes")
+				for dir: Vector3 in [Vector3(1, 0, 1), Vector3(-1, 0, 1), Vector3(1, 0, -1), Vector3(-1, 0, -1)]:
+					var off := _route_start + dir * 250.0
+					var hit: Array = g.call("nearest", Vector2(off.x, off.z))
+					if hit.is_empty():
+						continue
 					var r: int = hit[0][0]
 					var p: Vector3 = TrafficGraph.point_at(g.get("road_pts")[r], g.get("road_cum")[r], float(hit[0][1]))
+					if Array(route).any(func(q: Vector3) -> bool: return Vector2(q.x - p.x, q.z - p.z).length() < 120.0):
+						continue
 					car.global_transform = Transform3D(Basis.IDENTITY, p + Vector3.UP)
 					car.linear_velocity = Vector3.ZERO
+					break
 				_next()
 		5:
 			if _frame >= FPS * 4:
