@@ -74,6 +74,14 @@ func _initialize() -> void:
 			root.get_node("Discoveries").discover("field/binoculars")
 			_field("Binoculars").open(), 60, func() -> void: _field("Binoculars").close()],
 		["photo_mode", func() -> void: _node("PhotoMode").open(), 30, func() -> void: _node("PhotoMode").close()],
+		["notice", func() -> void:
+			root.get_node("Notices").post("Jacob's Ladder. A good spot for a photo (P).", "photo", "", "Discovered"), 40, Callable()],
+		["map", func() -> void: _node("MapScreen").open(), 40, func() -> void: _node("MapScreen").toggle()],
+		["records", func() -> void: _places("Records").open_picker(), 20, func() -> void: _places("Records").close_picker()],
+		["decorate", func() -> void: _places("HomeFurniture").open_catalogue(), 20, Callable()],
+		["decorate_spot", func() -> void:
+			var spots: Dictionary = _places("HomeFurniture").get("spots")
+			_places("HomeFurniture").open_catalogue(spots.keys()[0]), 20, func() -> void: _places("HomeFurniture").close_catalogue()],
 		["title", _title, 60, Callable()],
 		["title_confirm", func() -> void:
 			_title_layer.get("_menu").visible = false
@@ -123,6 +131,10 @@ func _next() -> void:
 	_frames = 0
 	if _step < _steps.size():
 		(_steps[_step][1] as Callable).call()
+
+
+func _places(child: String) -> Node:
+	return _main.get_node("LoFi/SubViewport/World/GameplayPlaces/" + child)
 
 
 func _node(path: String) -> Node:

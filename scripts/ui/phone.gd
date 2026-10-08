@@ -173,24 +173,68 @@ func _refresh_jobs() -> void:
 	if Jobs.offers.is_empty():
 		_text(_jobs_list, "Nothing going right now. Check back later.", 15, UiStyle.INK_2)
 	for job in Jobs.offers:
-		var well := PanelContainer.new()
-		well.theme_type_variation = &"WellPanel"
-		_jobs_list.add_child(well)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
-		well.add_child(row)
-		var label := Label.new()
-		label.text = Jobs.describe(job)
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		var take := Button.new()
-		take.text = "Take it"
-		take.pressed.connect(func() -> void:
-			Jobs.accept(job)
-			toggle())
-		take.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(take)
+		_offer(job)
+
+
+## One job on offer: what it is in bold, where from and to, the details small,
+## and the pay by the button.
+func _offer(job: Dictionary) -> void:
+	var well := PanelContainer.new()
+	well.theme_type_variation = &"WellPanel"
+	_jobs_list.add_child(well)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	well.add_child(row)
+	var is_trial: bool = not job.get("lift", false) and job.get("type", "") != "delivery"
+	row.add_child(UiStyle.icon_rect("flag" if is_trial else ("pin" if job.get("lift", false) else "car"), 24, UiStyle.INK, UiStyle.TEAL))
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 0)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(text)
+	var title := ""
+	var route := ""
+	var details := PackedStringArray()
+	if is_trial:
+		title = String(job.title)
+		route = "For %s" % Jobs.CLASS_NAMES.get(job.get("class", "t0"), "any car")
+		details.append("%d checkpoints" % (job.route.size() - 1))
+		details.append("%.1f km" % float(job.km))
+		details.append("gold %s" % Jobs._clock(job.medal_times.gold))
+		var record: Dictionary = Jobs.trial_records.get(job.trial_id, {})
+		if record.has("best"):
+			details.append("your best %s" % Jobs._clock(record.best))
+	else:
+		var cargo := String(job.cargo).get_slice(",", 0)
+		title = ("Lift: %s" if job.get("lift", false) else "%s") % cargo
+		title = title.left(1).to_upper() + title.substr(1)
+		route = "%s  to  %s" % [_place(job.pickup), _place(job.dropoff)]
+		details.append("%.1f km" % float(job.km))
+		if job.get("fragile", false):
+			details.append("fragile")
+		var bonus := Jobs.weather_bonus()
+		if not job.get("lift", false) and bonus > 1.0:
+			details.append("+%d%% in this weather" % roundi((bonus - 1.0) * 100.0))
+	UiStyle.label(text, title).add_theme_font_override("font", UiStyle.BOLD_FONT)
+	UiStyle.label(text, route, "", 14, UiStyle.INK_2)
+	var line := "  ·  ".join(details)
+	UiStyle.label(text, line.left(1).to_upper() + line.substr(1), "NoteLabel", 13)
+	if not is_trial:
+		var pay := UiStyle.label(row, "$%s" % _number(int(job.pay)), "", 18)
+		pay.add_theme_font_override("font", UiStyle.BOLD_FONT)
+		pay.autowrap_mode = TextServer.AUTOWRAP_OFF
+		pay.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var take := Button.new()
+	take.text = "Take it"
+	take.pressed.connect(func() -> void:
+		Jobs.accept(job)
+		toggle())
+	take.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(take)
+
+
+func _place(id: String) -> String:
+	var s: Variant = Jobs.site(id)
+	return String(s.label()) if s else id
 
 
 func _refresh_progress() -> void:

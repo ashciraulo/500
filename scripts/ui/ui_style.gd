@@ -566,6 +566,16 @@ static func sound(sound_name: String, volume_db := -8.0) -> void:
 		audio.ui(sound_name, volume_db)
 
 
+## A scrolling list that is only as tall as what's in it, up to max_height,
+## so a short list doesn't leave a gap at the bottom of its card.
+static func fit_scroll(scroll: ScrollContainer, list: Control, max_height: float) -> void:
+	var fit := func() -> void:
+		if is_instance_valid(scroll) and is_instance_valid(list):
+			scroll.custom_minimum_size.y = minf(list.get_combined_minimum_size().y, max_height)
+	list.minimum_size_changed.connect(fit)
+	fit.call_deferred()
+
+
 ## A title bar for a card: icon, serif title, a subtitle under it, and a
 ## close button on the right. Returns [title Label, subtitle Label, close Button, row].
 static func header(parent: Node, title: String, icon_name := "", subtitle := "", close_text := "Close") -> Array:
