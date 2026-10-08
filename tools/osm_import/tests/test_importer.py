@@ -566,6 +566,38 @@ def test_slip_road_over_the_freeway_is_drawn_on_a_deck_with_no_parapet_across_it
     assert walls_plan.intersection(far).length > 24.0
 
 
+def test_bridge_ways_meeting_at_a_bend_leave_no_crack_outside_it():
+    import shapely
+    from shapely.geometry import Point
+    from types import SimpleNamespace as NS
+    from osm_import.build import LinearWay, TileBuilder
+    from osm_import.common import TileKey
+
+    hf = flat_field(0.0, size=1200.0)
+    tags = {"highway": "primary", "bridge": "yes"}
+    p = np.array([250.0, 250.0])
+    turn = np.radians(12.0)  # bearing right, so the crack was on the left
+    out = np.array([np.sin(turn), np.cos(turn)])
+    a = LinearWay(1, tags, "road", np.array([[250.0, 150.0], p]), np.full(2, 8.0), np.array([1, 2]),
+                  7.0, True, False, False)
+    b = LinearWay(2, tags, "road", np.array([p, p + out * 100.0]), np.full(2, 8.0), np.array([2, 3]),
+                  7.0, True, False, False)
+    world = NS(hf=hf, tile_size=500, ways=[a, b], ways_near=lambda bb: [a, b], doubled_paths=set(), home=None,
+               water=[], water_union=Polygon(), cover=[])
+    tb = TileBuilder(world, TileKey(0, 0))
+    tb._bridges()
+    v, _, _, idx = tb.mb.meshes["bridges"]["asphalt"].arrays()
+    deck = shapely.union_all([Polygon(t[:, :2]) for t in v[idx] if Polygon(t[:, :2]).area > 1e-6])
+    assert Point(p).buffer(3.4).difference(deck).area < 0.01
+    # The side wall and parapet carry on round the outside of the bend.
+    v, _, _, idx = tb.mb.meshes["bridges"]["concrete"].arrays()
+    up = [t for t in v[idx] if (t[:, 2] > 8.3).any()]
+    walls_plan = shapely.union_all([shapely.LineString(t[:, :2]).buffer(0.05) for t in up])
+    left = np.array([-np.cos(turn / 2), np.sin(turn / 2)])
+    across = shapely.LineString([p + left * 3.0, p + left * 3.8])
+    assert walls_plan.intersection(across).length > 0.15  # its outer face and the parapet's inner one
+
+
 def test_roads_running_off_the_built_map_are_closed_with_barriers():
     from types import SimpleNamespace as NS
     from osm_import.build import EDGE_INSET, LinearWay, TileBuilder, World
@@ -824,3 +856,65 @@ def test_no_slot_between_two_walled_decks_side_by_side():
     q = np.column_stack([np.arange(-60.0, 61.0, 1.0), np.full(121, 0.0)])
     assert (hf.sample(q[:, 0], q[:, 1]) >= 12.0 - LIFT_UNDER - 1e-6).all()
     assert (hf.H[np.abs(N) > 25.0] == 10.0).all()
+
+
+def test_wide_gap_between_two_walled_decks_comes_up_to_the_lower():
+    # Mounts Bay Road: a slip road walled 2 m over the grass and the road
+    # beside it half a metre up, 6.4 m of grass between their walls (wider
+    # than a ground node): the grass comes up level with the lower deck.
+    from types import SimpleNamespace as NS
+    from osm_import.build import LIFT_UNDER, World
+    xs = np.arange(-100.0, 101.0, 5.0)
+    a = _lw(1, {"highway": "trunk_link"}, "road", np.column_stack([xs, np.full(len(xs), -6.5)]), 9.2, 6.6)
+    b = _lw(2, {"highway": "primary"}, "road", np.column_stack([xs, np.full(len(xs), 6.5)]), 7.3, 6.6)
+    for w in (a, b):
+        w.lift = np.ones(len(xs), bool)
+    hf = flat_field(6.7, size=400.0)
+    World._cut_under_lifts(NS(ways=[a, b], hf=hf, road_core=np.zeros(hf.H.shape, bool)))
+    q = np.column_stack([np.arange(-60.0, 61.0, 1.0), np.full(121, 0.0)])
+    assert (np.abs(hf.sample(q[:, 0], q[:, 1]) - (7.3 - LIFT_UNDER)) < 1e-6).all()
+
+
+def test_slot_beside_a_walled_deck_comes_up_under_a_low_open_one():
+    # The Esplanade: a slip road 4 m over the ground, open underneath, beside
+    # a ramp walled 2 m over it. The slot between them ran in under the open
+    # deck; it comes up level with the walled one, leaving no room to stand
+    # under the other.
+    from types import SimpleNamespace as NS
+    from osm_import.build import DECK_THICKNESS, LIFT_UNDER, World
+    xs = np.arange(-100.0, 101.0, 5.0)
+    a = _lw(1, {"highway": "motorway_link"}, "road", np.column_stack([xs, np.full(len(xs), -3.5)]), 16.0, 4.5)
+    b = _lw(2, {"highway": "service"}, "road", np.column_stack([xs, np.full(len(xs), 3.5)]), 14.0, 5.0)
+    for w in (a, b):
+        w.lift = np.ones(len(xs), bool)
+    hf = flat_field(12.0, size=400.0)
+    World._cut_under_lifts(NS(ways=[a, b], hf=hf, road_core=np.zeros(hf.H.shape, bool)))
+    q = np.column_stack([np.arange(-60.0, 61.0, 1.0), np.full(121, -1.0)])
+    g = hf.sample(q[:, 0], q[:, 1])
+    assert (g >= 14.0 - LIFT_UNDER - 1e-6).all()
+    assert (g <= 16.0 - DECK_THICKNESS - 0.3 + 1e-6).all()
+    assert (16.0 - DECK_THICKNESS - g < 1.2).all()
+
+
+def test_rail_cutting_bank_has_barriers_along_its_top_but_not_across_a_road():
+    # Roe Street: the bank down into the rail yard starts behind the
+    # footpath. A row of barriers runs along its top, none where a road
+    # goes in, and none along a side where the ground stays level.
+    import shapely
+    from shapely.geometry.polygon import orient
+    from osm_import.build import _cutting_fence
+    hf = flat_field(18.0, size=400.0)
+    E, N = np.meshgrid(*hf.node_coords())
+    hf.H[:] = np.where(N > -5.0, 18.0, np.maximum(18.0 - (-5.0 - N) * 0.8, 10.0))
+    yard = orient(box(-60.0, -80.0, 60.0, 0.0), 1.0)
+    road = box(-4.0, -40.0, 4.0, 10.0)
+    blocks = _cutting_fence(np.asarray(yard.exterior.coords), hf, road)
+    xy = np.array([b[0] for b in blocks])
+    top = xy[np.abs(xy[:, 1] + 5.0) < 3.0]
+    assert len(top) > 40
+    assert (top[:, 1] > -5.6).all() and (top[:, 1] < -2.5).all()
+    assert not shapely.contains_xy(road, xy[:, 0], xy[:, 1]).any()
+    assert (xy[:, 1] > -10.0).all()  # not along the level floor's far sides
+    # Standing on the street's level, not on the slope below it.
+    assert all(b[2] >= 18.0 - 1e-6 for b in blocks if abs(b[0][1] + 5.0) < 3.0)
+    assert all(b[3] <= b[2] - 0.15 for b in blocks)
