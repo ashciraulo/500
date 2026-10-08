@@ -148,5 +148,45 @@
    -7535.94
   ],
   "yaw": -1.5708
+ },
+ {
+  "id": "bulwer_lockup",
+  "scene": "res://art/models/props/landmarks/lockup_garage.glb",
+  "p": [
+   1074.2,
+   18.0,
+   -414.7
+  ],
+  "yaw": -0.478
+ },
+ {
+  "id": "hensman_carport",
+  "scene": "res://art/models/props/landmarks/lane_carport.glb",
+  "p": [
+   -3213.5,
+   36.06,
+   748.0
+  ],
+  "yaw": 1.5708
+ },
+ {
+  "id": "kensington_shed",
+  "scene": "res://art/models/props/landmarks/kensington_shed.glb",
+  "p": [
+   2077.0,
+   12.29,
+   436.0
+  ],
+  "yaw": 0.0
+ },
+ {
+  "id": "cottesloe_surf_club",
+  "scene": "res://art/models/props/landmarks/trigg_surf_club.glb",
+  "p": [
+   -9676.0,
+   6.0,
+   5410.0
+  ],
+  "yaw": -1.5708
  }
 ]

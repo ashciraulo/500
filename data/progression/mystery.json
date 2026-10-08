@@ -1,5 +1,5 @@
 {
-	"_comment": "The main mystery (scripts/world/mystery.gd). After midnight the unlisted station on the radio reads out a place; drive there between midnight and half past three and something is waiting. Each clue needs the career tier `tier` (0-based) and comes at least `min_days` days after the last one. `spot` is a photo spot id from data/world/places.json, or \"lane_end\" for the far end of Little Shenton Lane. `broadcast` is what the voice says; `found` is shown when you pick it up; `cupboard` is the prop that turns up in the cupboard under the stairs the next morning (cassette, polaroid, ticket, map, keyring). The last clue is the shed key.",
+	"_comment": "The main mystery (scripts/world/mystery.gd). After midnight the unlisted station on the radio reads out a place; drive there between midnight and half past three and something is waiting. Each clue needs the career tier `tier` (0-based) and comes at least `min_days` days after the last one. `spot` is a photo spot id from data/world/places.json, or \"lane_end\" for the far end of Little Shenton Lane; `at` [x, y, z] is where the thing waits, on the kerb or footpath by that spot (without it, 3 m to the side of the photo spot). `broadcast` is what the voice says; `found` is shown when you pick it up; `cupboard` is the prop that turns up in the cupboard under the stairs the next morning (cassette, polaroid, ticket, map, keyring). The last clue is the shed key.",
 	"min_days": 2,
 	"clues": [
 		{
@@ -9,7 +9,12 @@
 			"broadcast": "\"...Fraser Avenue. The gums are white tonight. I left it on the kerb, under the third lamp...\"",
 			"found": "A cassette on the kerb, dry despite the dew. The label says NIGHT DRIVE 1 in neat capitals.",
 			"cupboard": "cassette",
-			"title": "the NIGHT DRIVE 1 tape"
+			"title": "the NIGHT DRIVE 1 tape",
+			"at": [
+				-911.87,
+				67.19,
+				926.78
+			]
 		},
 		{
 			"id": "polaroid",
@@ -18,7 +23,12 @@
 			"broadcast": "\"...Mounts Bay Road, under the scarp. Where the water's closest. Stop there a while...\"",
 			"found": "A Polaroid tucked into the railing. Little Shenton Lane at night, a round little car in your carport bay. The house lights are on.",
 			"cupboard": "polaroid",
-			"title": "the Polaroid of the lane"
+			"title": "the Polaroid of the lane",
+			"at": [
+				-752.04,
+				9.83,
+				1373.28
+			]
 		},
 		{
 			"id": "ticket",
@@ -27,7 +37,12 @@
 			"broadcast": "\"...The Esplanade. They ticketed me there once. March. Nineteen seventy-nine...\"",
 			"found": "A parking ticket, soft with age: 14 March 1979, Fiat 500, The Esplanade, 2:40 am. The plate has been scratched out.",
 			"cupboard": "ticket",
-			"title": "the 1979 parking ticket"
+			"title": "the 1979 parking ticket",
+			"at": [
+				285.59,
+				23.73,
+				1152.24
+			]
 		},
 		{
 			"id": "atlas_page",
@@ -36,7 +51,12 @@
 			"broadcast": "\"...Riverside Drive. The lights come up off the water if you wait. I marked them all...\"",
 			"found": "A page torn from a street directory. Pencil circles round Kings Park, the river, the end of Little Shenton Lane. Someone has written: they only show at night.",
 			"cupboard": "map",
-			"title": "the street directory page"
+			"title": "the street directory page",
+			"at": [
+				2170.3,
+				1.75,
+				1967.86
+			]
 		},
 		{
 			"id": "keyring",
@@ -45,7 +65,12 @@
 			"broadcast": "\"...Royal Street, East Perth. I kept the shed key separate. Somewhere safe. Somewhere I'd go back to...\"",
 			"found": "A keyring with a paper tag: 15 LSL, SHED. The ring is empty.",
 			"cupboard": "keyring",
-			"title": "the empty keyring"
+			"title": "the empty keyring",
+			"at": [
+				1870.91,
+				13.76,
+				724.7
+			]
 		},
 		{
 			"id": "tape_12",
@@ -54,7 +79,12 @@
 			"broadcast": "\"...Havelock Street. This is the last tape. If you're hearing it, you've been driving my roads...\"",
 			"found": "Another cassette: NIGHT DRIVE 12, LAST. The handwriting is shakier than the first.",
 			"cupboard": "cassette",
-			"title": "the NIGHT DRIVE 12 tape"
+			"title": "the NIGHT DRIVE 12 tape",
+			"at": [
+				-952.87,
+				53.09,
+				486.39
+			]
 		},
 		{
 			"id": "shed_key",

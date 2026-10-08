@@ -7828,22 +7828,22 @@
   {
    "id": "oxford_st",
    "position": [
-    -1145.9,
-    18.4,
-    -1054.85
+    -1195.5,
+    17.58,
+    -1000.0
    ],
-   "yaw": 1.5628,
+   "yaw": 3.1416,
    "name": "Oxford Street",
    "suburb": "Leederville"
   },
   {
    "id": "subiaco_markets",
    "position": [
-    -2900.87,
-    29.32,
-    202.66
+    -2882.3,
+    25.46,
+    -130.0
    ],
-   "yaw": 3.1355,
+   "yaw": 3.1416,
    "name": "Station Street Markets",
    "suburb": "Subiaco"
   },
@@ -7950,7 +7950,7 @@
     -135.43
    ],
    "yaw": -0.3632,
-   "name": "Newcastle St car yard",
+   "name": "Northbridge car yard",
    "kinds": [
     "dealer"
    ],

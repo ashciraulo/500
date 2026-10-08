@@ -64,6 +64,7 @@ func _ready() -> void:
 		var wreck := BarnFind.new()
 		wreck.car_id = p.car
 		wreck.hours = p.get("hours", [])
+		wreck.tarp = bool(p.get("tarp", false))
 		_add(wreck, p, "BarnFind_" + p.car)
 	for d: Dictionary in places.get("scenic_drives", []):
 		var drive := ScenicDrive.new()
