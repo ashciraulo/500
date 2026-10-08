@@ -39,7 +39,9 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
   hands each one to `add_network` the first time the tile loads.
 - **Points of interest**: `get_pois(kind := "")` lists places worth driving
   to, from `index.json` "pois": `lookout` (OSM viewpoints plus hand-picked
-  ones), `beach` (stop in its car park), `servo`, `drive_thru`, `quiet_spot`
+  ones), `beach` (stop in its car park), `servo` (every OSM fuel station; the
+  game builds a working servo at only some of them, spread out, from
+  `data/world/servos.json`: see `tools/places/place_servos.py`), `drive_thru`, `quiet_spot`
   (hand-picked places to park and watch the city), `fishing` (hand-picked
   jetties, groynes and foreshores; `at` is the jetty's far end or the water's
   edge), `birding` (reedbeds, lake edges and marshes; `at` is the habitat)
