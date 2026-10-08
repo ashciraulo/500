@@ -20,6 +20,8 @@ const PAGES := [
 	["wrong_grey_bird", "m_page_grey_bird"],
 ]
 const PAGE_DIR := "res://art/models/home/mystery/%s.glb"
+## The wall behind the hook, along the hook's Z (its board stands off it).
+const PAGE_WALL := -0.08
 ## Where each page goes, in the hook's space (+Z into the room, +Y up, +X
 ## along the coat-hook board toward the corner): two loose columns on the
 ## strip of wall above the board, between the slider and the corner.
@@ -84,7 +86,7 @@ func _update_pages() -> void:
 		var page := (load(path) as PackedScene).instantiate() as Node3D
 		page.name = "MPage_" + id
 		_hook.add_child(page)
-		page.position = PAGE_SPOTS[i] + Vector3(0, 0, 0.004 + i * 0.0015)
+		page.position = PAGE_SPOTS[i] + Vector3(0, 0, PAGE_WALL + 0.003 + i * 0.0015)
 		# Lying face up in the model: stand it on the wall, facing the room,
 		# a little crooked, and a pin through the top.
 		page.rotation = Vector3(PI * 0.5, 0, sin(i * 2.7) * 0.12)
