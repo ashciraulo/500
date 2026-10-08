@@ -393,6 +393,58 @@ def sting_race_win():
                           {"lead": 0.35, "keys": 0.3, "drums": 0.25, "bass": 0.04}, fade_out=1.4, length=5.5)
 
 
+def sting_barn_find():
+    """Finding a barn-find wreck: a dusty, wistful phrase. Nylon guitar and a
+    muted trumpet ask a question over a held minor chord, and the organ lets
+    the light in on a major seventh: something old, worth saving."""
+    s = _sting_song("mus_sting_barn_find", 306, bpm=84)
+    s.chords(0, ["Em9:2 Cmaj7:2", "Gmaj7"])
+    gtr = s.part("guitar", 24, "gtr", vol=100, pan=-0.3, ht=0.008, hv=4)
+    tp = s.part("mtrumpet", 59, "lead", vol=88, pan=0.15, ht=0.008, hv=3, expr=True)
+    org = s.part("organ", 16, "keys", vol=76, pan=0.25)
+    bas = s.part("bass", 32, "bass", vol=105)
+    dr = s.part("dr", 40, "drums", drum=True, vol=100)
+    gtr.chord(0, mc.voicing(mc.Chord("Em9"), 52, 71, 5), 1.9, 54, strum=0.09)
+    gtr.chord(2, mc.voicing(mc.Chord("Cmaj7"), 52, 71, 4), 1.9, 52, strum=0.09)
+    gtr.chord(4, mc.voicing(mc.Chord("Gmaj7"), 50, 71, 5), 4, 50, strum=0.12)
+    tp.melody(0, "r/.5 b4/.5 d5/.5 e5/1.5 d5/1 | b4/4", vel=70)
+    org.chord(2, mc.voicing(mc.Chord("Cmaj7"), 55, 72, 4), 1.9, 40)
+    org.chord(4, mc.voicing(mc.Chord("Gmaj7"), 55, 74, 4), 4, 48)
+    bas.melody(0, "e2/2 c2/2 | g1/4", vel=78, stacc=0.95)
+    dr.note(0, pt.BR_SWIRL, 2, 38)
+    dr.note(4, pt.BR_SWIRL, 3, 42)
+    return _sting_produce(s, {"lead": 0, "keys": -5, "gtr": -3, "bass": -6, "drums": -9},
+                          {"lead": 0.45, "keys": 0.35, "gtr": 0.25, "drums": 0.3, "bass": 0.05}, fade_out=1.8, length=7.0)
+
+
+def sting_restored():
+    """A classic restored: the barn-find phrase again, now in the major on
+    vibes and whistle over a brushed bossa, landing on a bright, full chord."""
+    s = _sting_song("mus_sting_restored", 307, bpm=112)
+    s.chords(0, ["Cmaj9:2 D13:2", "Gmaj9"])
+    vib = s.part("vibes", 11, "lead", vol=110, pan=-0.1, ht=0.005, hv=4)
+    whi = s.part("whistle", 78, "lead", vol=86, pan=0.15, ht=0.008, hv=3, expr=True)
+    gtr = s.part("guitar", 24, "gtr", vol=100, pan=-0.35)
+    org = s.part("organ", 16, "keys", vol=78, pan=0.25)
+    bas = s.part("bass", 32, "bass", vol=110)
+    dr = s.part("dr", 40, "drums", drum=True, vol=100)
+    mel = "r/.5 b4/.5 d5/.5 e5/1 f#5/1.5 | g5/1 a5/.5 b5/2.5"
+    vib.melody(0, mel, vel=82)
+    whi.melody(0, mel, vel=66, shift=12)
+    pt.bossa_guitar(gtr, s, 0, 1, vel=50)
+    gtr.chord(4, mc.voicing(mc.Chord("Gmaj9"), 50, 71, 5), 4, 52, strum=0.05)
+    org.chord(0, mc.voicing(mc.Chord("Cmaj9"), 55, 74, 4), 1.9, 46)
+    org.chord(2, mc.voicing(mc.Chord("D13"), 55, 74, 4), 1.9, 48)
+    org.chord(4, mc.voicing(mc.Chord("Gmaj9"), 55, 76, 5), 4, 54)
+    pt.bass_bossa(bas, s, 0, 1, vel=80)
+    bas.note(4, mc.midi("g1"), 4, 86)
+    pt.brush_bossa(dr, s, 0, 1, vel=54, clave=False)
+    dr.note(4, pt.KICK, 0.3, 64)
+    dr.note(4, pt.RIDE, 3, 56)
+    return _sting_produce(s, {"lead": 0, "keys": -3, "gtr": -4, "bass": -4, "drums": -5},
+                          {"lead": 0.35, "keys": 0.3, "gtr": 0.2, "drums": 0.2, "bass": 0.03}, fade_out=2.0, length=7.5)
+
+
 # --------------------------------------------------------------------------
 # Midnight theme: the main theme's intro + A, slowed to 80 %, warped and
 # partly reversed. 20 source bars -> 62.5 s seamless loop (76.8 BPM).

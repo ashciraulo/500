@@ -2972,6 +2972,93 @@ def place_tackle_shop():
     place_save("place_tackle_shop_loop", B.x)
 
 
+def pump_run(L, seed):
+    """A bowser filling a tank, mono: the pump motor's hum and whine coming
+    up to speed, fuel rushing through the hose, the litre counter ticking
+    over, and the nozzle clicking off when the tank is full."""
+    import gen_car as C
+    r = np.random.default_rng(seed)
+    n = secs(L)
+    t = S.t_axis(n)
+    up = np.clip(t / 0.6, 0, 1) * np.clip((L - 0.3 - t) / 0.15, 0, 1)
+    f = 148 * (0.85 + 0.15 * np.clip(t / 0.6, 0, 1))
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    motor = (np.tanh(1.8 * np.sin(ph)) * 0.5 + 0.2 * np.sin(3 * ph) + 0.08 * np.sin(2 * np.pi * 1180 * t)) * up
+    flow = S.bp(r.standard_normal(n), 300, 2500, 2) * up * (1 + 0.15 * S.smooth_noise(n, 3.0, seed + 1)) * 0.6
+    ticks = np.zeros(n)
+    k = secs(0.012)
+    tick = np.sin(2 * np.pi * 2600 * S.t_axis(k)) * np.exp(-S.t_axis(k) / 0.002)
+    for at in np.arange(0.7, L - 0.4, 1 / 9.0):
+        S.place(ticks, tick * r.uniform(0.6, 1.0), secs(at))
+    clunk = C.add(C.modal(0.15, [(900, 0.03, 0.6), (2200, 0.012, 0.3)], seed + 2), S.lp(C.burst(0.05, 0.008, seed + 3), 700))
+    y = motor * 0.5 + flow + ticks * 0.15
+    S.place(y, clunk[: n - secs(L - 0.32)] * 0.9, secs(L - 0.32))
+    return y
+
+
+def bug_zapper(seed):
+    """A bug zapper by the shop door catching something: a crackling arc,
+    sometimes two or three in a row."""
+    r = np.random.default_rng(seed)
+    y = np.zeros(secs(1.2))
+    for j in range(int(r.integers(1, 4))):
+        L = r.uniform(0.04, 0.25)
+        m = secs(L)
+        tm = S.t_axis(m)
+        arc = S.bp(r.standard_normal(m), 1500, 9000, 2) * (0.6 + 0.4 * np.sign(np.sin(2 * np.pi * 100 * tm)))
+        arc *= (r.random(m) > 0.35) * np.exp(-tm / (L * 0.6))
+        S.place(y, arc * r.uniform(0.6, 1.0), secs(j * r.uniform(0.2, 0.35)))
+    return y
+
+
+@builder("place_servo")
+def place_servo():
+    """A servo forecourt by day: the drinks fridges humming through the shop
+    door, a bowser filling now and then, cars on the street, a door shutting,
+    and the shop door's ding-dong."""
+    import gen_car as C
+    dur = 48
+    B = Bed(dur, 4001)
+    n = B.n
+    B.add(fridge_hum(n, 40011), -40)
+    B.add(S.circ_bp(S.brown(n, 40012), 60, 900, 1), -42)
+    for k, at in enumerate(B.times(2, 0.5)):
+        st = distant(pump_run(B.r.uniform(9.0, 13.0), 40100 + k), 0.35, B.r.uniform(-0.6, 0.6), 40110 + k, room=0.8)
+        B.put(st, at, -24)
+    for k, at in enumerate(B.times(3, 0.6)):
+        st = distant(car_pass(6.0, 40200 + k, speed=B.r.uniform(13, 17), dist=22.0), 0.5,
+                     B.r.uniform(-0.5, 0.5), 40210 + k)
+        B.put(st, at, -22)
+    door = C.door_close_modern(int(B.r.integers(3)), seed=40300)
+    B.put(distant(door, 0.45, 0.4, 40301, room=0.8), secs(21), -21)
+    import gen_garage as G
+    chime = G.servo_chime()
+    B.put(S.stereo(chime.mean(axis=1) if chime.ndim == 2 else chime), secs(37), -27)
+    place_save("place_servo_loop", B.x)
+
+
+@builder("place_servo_night")
+def place_servo_night():
+    """A servo after dark: the canopy's fluoros buzzing over an empty
+    forecourt, the fridges, the bug zapper by the door, one late fill, and
+    a car going past now and then."""
+    dur = 48
+    B = Bed(dur, 4501)
+    n = B.n
+    B.add(fluoro_buzz(n, 45011, tubes=3), -36)
+    B.add(fridge_hum(n, 45012), -42)
+    B.add(S.circ_bp(S.brown(n, 45013), 60, 700, 1), -46)
+    for k, at in enumerate(B.times(3, 0.7)):
+        B.put(distant(bug_zapper(45100 + k), 0.3, -0.5, 45110 + k, room=0.8), at, -25)
+    st = distant(pump_run(11.0, 45200), 0.4, 0.3, 45201, room=0.8)
+    B.put(st, secs(8), -31)
+    for k, at in enumerate(B.times(2, 0.5)):
+        st = distant(car_pass(6.0, 45300 + k, speed=B.r.uniform(15, 20), dist=24.0), 0.55,
+                     B.r.uniform(-0.5, 0.5), 45310 + k)
+        B.put(st, at, -28)
+    place_save("place_servo_night_loop", B.x)
+
+
 @builder("place_photo_lab")
 def place_photo_lab():
     """Inside the Lake Street photo lab: the minilab running (motor, the

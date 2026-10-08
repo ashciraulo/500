@@ -85,8 +85,15 @@ const HOME_RADIUS := 90.0
 ## MapStreamer.get_pois() by Audio.hooks), from nodes in the "poi" group with
 ## meta "poi_type" (and optionally "radius", metres), or from add_place().
 const PLACE_TYPES := ["beach", "surf", "lookout", "bush", "quay", "riverside", "carpark", "jetty", "groyne",
-		"tackle_shop", "photo_lab", "wrong_cockatoos"]
+		"tackle_shop", "photo_lab", "wrong_cockatoos", "servo"]
 const PLACE_RADIUS := 120.0
+## The servos you can fill up at (MapStreamer builds them from this file):
+## each one's forecourt is a "servo" place. The map's other servo POIs (the
+## real ones without a bay) stay empty car parks at night, unless one of
+## these stands within SERVO_NEAR of it.
+const SERVOS_PATH := "res://data/world/servos.json"
+const SERVO_RADIUS := 40.0
+const SERVO_NEAR := 250.0
 ## Full volume inside this fraction of the radius, falling away with
 ## distance past it and silent a little past the radius (PLACE_REACH).
 const PLACE_FULL := 0.35
@@ -205,8 +212,12 @@ func add_place(type: String, pos: Vector3, radius := PLACE_RADIUS, night_only :=
 ## The map's points of interest ({id, kind, suburb, p, at, ...}, from
 ## MapStreamer.get_pois()) as place layers: beaches, lookouts (Kings Park ones
 ## with the bush under the wind), the quay and the river by id, quiet spots
-## as car parks, servos and drive-throughs as car parks at night.
+## as car parks, fillable servos as servos, other servos and drive-throughs
+## as car parks at night.
 func add_map_pois(pois: Array) -> void:
+	var servos := servo_positions()
+	for at in servos:
+		add_place("servo", at, SERVO_RADIUS)
 	for poi in pois:
 		if not poi is Dictionary or not poi.has("at"):
 			continue
@@ -233,8 +244,25 @@ func add_map_pois(pois: Array) -> void:
 			add_place("photo_lab", at, 18.0)
 		if kind == "quiet_spot":
 			add_place("carpark", stop, 60.0)
+		elif kind == "servo" and servos.any(func(p: Vector3) -> bool: return p.distance_to(stop) < SERVO_NEAR):
+			pass  # a servo you can fill up at is next to it, with its own sound
 		elif kind == "servo" or kind == "drive_thru":
 			add_place("carpark", stop, 60.0, true)
+
+
+## Where the fillable servos' pump bays are (data/world/servos.json).
+static func servo_positions() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	if not FileAccess.file_exists(SERVOS_PATH):
+		return out
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(SERVOS_PATH))
+	if not data is Dictionary:
+		return out
+	for entry in data.get("servos", []):
+		var p: Array = entry.get("position", [])
+		if p.size() == 3:
+			out.append(Vector3(p[0], p[1], p[2]))
+	return out
 
 
 func clear_places() -> void:

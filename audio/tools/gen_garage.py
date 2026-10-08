@@ -477,10 +477,83 @@ def rack_fit():
     return fade(garage(mix(at + 1.0, parts), 0.6, 0.12), fout=0.05)
 
 
+def angle_grinder():
+    """Angle grinder cutting rust out of a floor pan: the motor's whine
+    spinning up, the disc biting into steel (a bright screech and the hiss
+    of sparks, the pitch sagging under load), lifted off, and spinning down."""
+    dur = 3.6
+    n = secs(dur)
+    t = t_axis(n)
+    r = rng(16300)
+    cut = np.clip((t - 0.7) / 0.08, 0, 1) * np.clip((2.7 - t) / 0.08, 0, 1)
+    spin = (1 - np.exp(-t / 0.18)) * np.where(t > 2.9, np.exp(-(t - 2.9) / 0.25), 1)
+    wobble = 1 + 0.02 * np.interp(t, np.linspace(0, dur, 40), r.uniform(-1, 1, 40))
+    f = 170 * spin * (1 - 0.09 * cut * wobble)
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    whine = sum(a * np.sin(h * ph) for h, a in ((1, 0.4), (2, 0.25), (3, 0.3), (6, 0.2), (11, 0.12)))
+    ph2 = 2 * np.pi * np.cumsum(f * 21) / SR
+    screech = (np.sin(ph2) * 0.4 + bp(noise(n, 16301), 2500, 8000) * 0.8) * cut * (0.8 + 0.2 * wobble)
+    sparks = bp(noise(n, 16302), 4000, 11000) * (rng(16303).random(n) < 0.15) * cut * 0.6
+    x = whine * 0.35 * np.minimum(1, t / 0.05) + screech * 0.6 + sparks
+    return fade(garage(x, 0.6, 0.12), fout=0.1)
+
+
+def staple_gun():
+    """Re-covering the seats: an upholstery staple gun, five quick shots
+    ('pfft-tchak') with the vinyl pulled taut between them."""
+    r = rng(16400)
+    parts = []
+    at = 0.05
+    for k in range(5):
+        air = bp(burst(0.06, 0.012, 16410 + k), 1500, 9000) * 0.5
+        clack = add(modal(0.05, [(r.uniform(2300, 2700), 0.008, 0.6), (r.uniform(4800, 5400), 0.004, 0.3)], 16420 + k),
+                    lp(burst(0.03, 0.004, 16430 + k), 1200) * 0.6)
+        parts += [(at, air, 0.7), (at + 0.01, clack, 1.0)]
+        if k in (1, 3):
+            m = secs(0.35)
+            tm = t_axis(m)
+            parts.append((at + 0.18, bp(noise(m, 16440 + k), 300, 3500) * 0.25 * np.sin(np.pi * tm / 0.35), 1.0))
+            at += 0.6
+        else:
+            at += r.uniform(0.25, 0.32)
+    return fade(garage(mix(at + 0.5, parts), 0.5, 0.1), fout=0.05)
+
+
+def tarp_pull():
+    """Pulling the tarp off a barn find: heavy old canvas dragged off the
+    roof in two heaves, flapping to the floor, then the dust settling and
+    the car's tired springs creaking once."""
+    r = rng(16500)
+    parts = []
+    for k, (at, L) in enumerate(((0.05, 0.7), (0.95, 0.9))):
+        m = secs(L)
+        tm = t_axis(m)
+        drag = bp(noise(m, 16510 + k), 150, 2500) * np.sin(np.pi * tm / L) ** 0.7 \
+            * (0.7 + 0.3 * np.sin(2 * np.pi * r.uniform(5, 8) * tm))
+        parts.append((at, drag, 1.0))
+    flap = add(lp(burst(0.25, 0.05, 16520), 500) * 1.2, bp(burst(0.15, 0.03, 16521), 600, 3000) * 0.4)
+    parts.append((1.9, flap, 1.0))
+    m = secs(1.8)
+    tm = t_axis(m)
+    dust = bp(noise(m, 16530), 2500, 9000) * 0.06 * np.exp(-tm / 0.7)
+    parts.append((2.0, dust, 1.0))
+    for k in range(6):
+        parts.append((2.1 + r.uniform(0, 1.2), steel_tick(16540 + k, 0.15, r.uniform(2500, 5000)), 1.0))
+    m = secs(0.6)
+    tm = t_axis(m)
+    f = 380 * (1 + 0.2 * np.sin(np.pi * tm / 0.6))
+    creak = np.sign(np.sin(2 * np.pi * np.cumsum(f) / SR)) * np.sin(np.pi * tm / 0.6) ** 2
+    parts.append((2.6, bp(creak, 300, 2500) * 0.25, 1.0))
+    return fade(garage(mix(3.5, parts), 0.7, 0.15), fout=0.1)
+
+
 NEW = {
     "garage_spray_gun": spray_gun,
     "garage_masking_tape": masking_tape,
     "garage_rack_fit": rack_fit,
+    "garage_angle_grinder": angle_grinder,
+    "garage_staple_gun": staple_gun,
+    "garage_tarp_pull": tarp_pull,
 }
 
 
