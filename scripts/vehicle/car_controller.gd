@@ -379,6 +379,9 @@ var _last_slide := 0.0  # sideways slip angle last step, rad (see step 6)
 var _cushions: Array[Vector3] = []  # the underside's lowest points; see step 7
 var _headlights_manual := false
 var _spawn_transform: Transform3D
+## Where teleport() is putting the car, applied in the next physics step.
+var _teleport_to: Transform3D
+var _teleporting := false
 var _ray_query := PhysicsRayQueryParameters3D.new()
 var _last_velocity := Vector3.ZERO
 
@@ -953,16 +956,32 @@ func reset_upright() -> void:
 	forward.y = 0.0
 	if forward.length() < 0.1:
 		forward = Vector3.FORWARD
-	global_transform = Transform3D(Basis.looking_at(forward.normalized(), Vector3.UP), global_position + Vector3.UP * 1.0)
-	linear_velocity = Vector3.ZERO
-	angular_velocity = Vector3.ZERO
+	teleport(Transform3D(Basis.looking_at(forward.normalized(), Vector3.UP), global_position + Vector3.UP * 1.0))
 
 
 func reset_to_spawn() -> void:
-	global_transform = _spawn_transform
+	teleport(_spawn_transform)
+	_begin_shift(1)
+
+
+## Moves the car to `t`, stopped. Safe from anywhere: a transform set while
+## input is being handled (a key, a menu button) can be put straight back by
+## the next physics step, so the physics step sets it again.
+func teleport(t: Transform3D) -> void:
+	global_transform = t
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
-	_begin_shift(1)
+	_teleport_to = t
+	_teleporting = true
+	sleeping = false
+
+
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	if _teleporting:
+		_teleporting = false
+		state.transform = _teleport_to
+		state.linear_velocity = Vector3.ZERO
+		state.angular_velocity = Vector3.ZERO
 
 
 ## Install a part in its slot (replacing whatever was there).
