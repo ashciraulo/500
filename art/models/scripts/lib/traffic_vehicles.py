@@ -431,7 +431,10 @@ def bus():
     M = _mats()
     L, W, H = 12.5, 2.5, 3.15
     yf, yr = L / 2, -L / 2
-    prof = [(yr, 0.3), (yf, 0.3), (yf, 2.95), (yf - 0.12, H), (yr + 0.12, H), (yr, 2.95)]
+    # the front rakes back a touch above the windscreen's foot, the roof
+    # edges are rounded off front and back
+    prof = [(yr, 0.3), (yf, 0.3), (yf, 1.0), (yf - 0.1, 2.75), (yf - 0.2, 3.02), (yf - 0.38, H),
+            (yr + 0.3, H), (yr + 0.08, 3.02), (yr, 2.8)]
     p = [_prism_yz(prof, -W / 2, W / 2, M["paint"])]
     # the window band down both sides, broken by the doors on the kerb side
     for sx in (-1, 1):
@@ -449,10 +452,25 @@ def bus():
         p.append(bx((-W / 2 - 0.016, yc - 0.56, 0.36), (-W / 2 - 0.004, yc - 0.01, 2.55), door))
         p.append(bx((-W / 2 - 0.016, yc + 0.01, 0.36), (-W / 2 - 0.004, yc + 0.56, 2.55), door))
     # the front: a deep windscreen, the destination panel above it, bumper
-    ws = [(-W / 2 + 0.06, yf + 0.012, 1.0), (W / 2 - 0.06, yf + 0.012, 1.0),
-          (W / 2 - 0.06, yf + 0.012, 2.5), (-W / 2 + 0.06, yf + 0.012, 2.5)]
+    # the windscreen follows the rake (y at height z on the front face)
+    def fy(z):
+        return yf - 0.1 * (z - 1.0) / 1.75 + 0.012
+    ws = [(-W / 2 + 0.06, fy(1.0), 1.0), (W / 2 - 0.06, fy(1.0), 1.0),
+          (W / 2 - 0.06, fy(2.5), 2.5), (-W / 2 + 0.06, fy(2.5), 2.5)]
     p.append(C.mesh_obj("windscreen", ws, [(0, 1, 2, 3)], M["glass"]))
-    p.append(bx((-0.012, yf, 1.0), (0.012, yf + 0.02, 2.5), M["black"]))
+    p.append(C.mesh_obj("pillar", [(-0.012, fy(1.0) + 0.003, 1.0), (0.012, fy(1.0) + 0.003, 1.0),
+                                   (0.012, fy(2.5) + 0.003, 2.5), (-0.012, fy(2.5) + 0.003, 2.5)],
+                        [(0, 1, 2, 3)], M["black"]))
+    # wipers parked along the foot of the screen
+    for x0 in (-1.0, 0.1):
+        p.append(bx((x0, yf + 0.016, 1.05), (x0 + 0.85, yf + 0.03, 1.08), M["black"]))
+    # the folding bike rack on the front, folded up (Perth buses carry one)
+    for sx in (-1, 1):
+        p.append(bx((sx * 0.55 - 0.03, yf + 0.06, 0.45), (sx * 0.55 + 0.03, yf + 0.12, 1.05), M["steel"]))
+    p.append(bx((-0.58, yf + 0.06, 1.0), (0.58, yf + 0.12, 1.05), M["steel"]))
+    p.append(bx((-0.58, yf + 0.06, 0.62), (0.58, yf + 0.12, 0.66), M["steel"]))
+    for x in (-0.3, 0.3):
+        p.append(bx((x - 0.04, yf + 0.12, 0.66), (x + 0.04, yf + 0.16, 1.0), M["black"]))
     p.append(bx((-W / 2 + 0.05, yf - 0.05, 0.3), (W / 2 - 0.05, yf + 0.06, 0.6), M["trim"]))
     p.append(bx((-W / 2 + 0.05, yf, 0.62), (W / 2 - 0.05, yf + 0.008, 0.8), M["livery"]))
     p.append(bx((-W / 2 + 0.05, yr - 0.06, 0.3), (W / 2 - 0.05, yr + 0.05, 0.6), M["trim"]))
@@ -465,12 +483,26 @@ def bus():
         p.append(bx((sx * W / 2 - 0.02, yf - 0.05, 2.4), (sx * (W / 2 + 0.25) + 0.02, yf + 0.25, 2.45), M["black"]))
         p.append(bx((sx * (W / 2 + 0.25) - 0.05, yf + 0.2, 1.95), (sx * (W / 2 + 0.25) + 0.05, yf + 0.3, 2.45),
                     M["black"]))
-    p.append(bx((-0.9, -1.0, H), (0.9, 2.2, H + 0.25), M["paint"]))
+    # the roof air-con pod with sloped ends, and a roof hatch
+    p.append(_prism_yz([(-1.0, H), (2.2, H), (2.0, H + 0.25), (-0.8, H + 0.25)], -0.9, 0.9, M["paint"]))
+    p.append(bx((-0.4, -3.6, H), (0.4, -2.9, H + 0.06), M["grey"]))
+    # engine louvres on the back corner, kerb and road side
+    for sx in (-1, 1):
+        x = sx * (W / 2 + 0.006)
+        for k in range(4):
+            z = 0.95 + k * 0.08
+            p.append(bx((x - 0.006, yr + 0.3, z), (x + 0.006, yr + 1.4, z + 0.035), M["black"]))
+    # wheels in proper arches
+    p = CV._arches(p, W / 2 - 0.3 - 0.06, (yf - 2.6, yr + 3.2), 0.5, M)
     p += _wheels(W, (yf - 2.6, yr + 3.2), 0.5, M, w=0.3)
     dest_mat = _m("Dest", "#1a1a12", 0.6, emit="#f2a020", emit_strength=0.4)
-    dest = [bx((-W / 2 + 0.25, yf - 0.01, 2.6), (W / 2 - 0.25, yf + 0.014, 2.9), dest_mat)]
+    # on the raked face above the windscreen: y of the face at height z
+    def face_y(z):
+        return yf - 0.1 * (z - 1.0) / 1.75 if z <= 2.75 else yf - 0.1 - 0.1 * (z - 2.75) / 0.27
+    dv = [(x, face_y(z) + 0.014, z) for z in (2.6, 2.9) for x in (-W / 2 + 0.25, W / 2 - 0.25)]
+    dest = [C.mesh_obj("dest", [dv[0], dv[1], dv[3], dv[2]], [(0, 1, 2, 3)], dest_mat)]
     lamps = _lamps(W, yf + 0.012, yr, 0.72, 0.9, M, inset=0.3, hw=(0.3, 0.14), tw=(0.16, 0.4))
-    return [("Bus", p, (0, 0, 0), None), ("Dest", dest, (0, yf, 2.75), None)] + lamps, {}
+    return [("Bus", p, (0, 0, 0), None), ("Dest", dest, (0, yf - 0.1, 2.75), None)] + lamps, {}
 
 
 # ------------------------------------------------------------------ train
@@ -530,12 +562,26 @@ def _railcar(cab):
         p.append(bx((x - 0.006, yr + 0.05, 1.35), (x + 0.006, y1, 1.6), M["livery"]))
         p.append(bx((x - 0.006, yr + 0.05, 3.0), (x + 0.006, y1, 3.08), M["livery"]))
     # bogies and the underframe boxes
+    # bogies: wheelsets on Perth's narrow gauge, side frames with axle
+    # boxes and springs outside them, a bolster across the middle
     for yb in (yr + 3.8, (yf - 4.2) if cab else yf - 3.8):
-        p.append(bx((-1.2, yb - 1.3, 0.25), (1.2, yb + 1.3, 0.7), M["black"]))
-        for yy in (yb - 0.95, yb + 0.95):
-            for sx in (-1, 1):
-                p.append(cyl(0.45, 0.12, (sx * 0.72, yy, 0.45), M["steel"], segs=10, axis="X"))
-    p.append(bx((-1.1, -4.5, 0.55), (1.1, 4.5, 0.75), M["grey"]))
+        p.append(bx((-0.75, yb - 0.25, 0.55), (0.75, yb + 0.25, 0.72), M["black"]))
+        for sx in (-1, 1):
+            xf = sx * 0.86
+            p.append(bx((xf - 0.07, yb - 1.35, 0.42), (xf + 0.07, yb + 1.35, 0.62), M["black"]))
+            p.append(bx((xf - 0.07, yb - 0.35, 0.3), (xf + 0.07, yb + 0.35, 0.42), M["black"]))
+            for yy in (yb - 0.95, yb + 0.95):
+                p.append(cyl(0.43, 0.1, (sx * 0.6, yy, 0.43), M["steel"], segs=12, axis="X"))
+                p.append(cyl(0.12, 0.16, (xf, yy, 0.43), M["grey"], segs=8, axis="X"))
+                p.append(cyl(0.07, 0.18, (xf, yy, 0.68), M["steel"], segs=6))
+    # equipment cases under the floor between the bogies
+    for y0, y1, x0, x1, col in ((-4.5, -2.2, -1.2, -0.2, "grey"), (-1.8, 0.4, -1.1, 1.1, "black"),
+                                (0.8, 3.2, 0.1, 1.2, "grey"), (3.5, 4.6, -1.2, -0.3, "black")):
+        p.append(bx((x0, y0, 0.45), (x1, y1, 0.75), M[col]))
+    # roof air-conditioning pods
+    for yc in ((yr + 5.0, yf - 7.5) if cab else (yr + 5.0, yf - 5.0)):
+        p.append(_prism_yz([(yc - 1.3, 3.8), (yc + 1.3, 3.8), (yc + 1.1, 4.05), (yc - 1.1, 4.05)], -0.7, 0.7,
+                           M["grey"]))
     if cab:
         # the pantograph on the roof behind the cab
         pg = yf - 5.0
