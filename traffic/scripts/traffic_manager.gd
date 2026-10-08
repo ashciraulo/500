@@ -430,7 +430,23 @@ func clear_all() -> void:
 	_warm = 2.0
 
 
-func _physics_process(delta: float) -> void:
+## Traffic steps on every other physics tick (60 Hz with the project's 120),
+## with the time of both: the player's car keeps the full rate, but nothing
+## here needs it, and stepping the whole city twice a frame cost more than
+## the frame had to spare.
+const STEP_EVERY := 2
+var _ticks_held := 0
+var _time_held := 0.0
+
+
+func _physics_process(tick: float) -> void:
+	_time_held += tick
+	_ticks_held += 1
+	if _ticks_held < STEP_EVERY:
+		return
+	var delta := _time_held
+	_ticks_held = 0
+	_time_held = 0.0
 	var t0 := Time.get_ticks_usec()
 	_time += delta
 	_process_networks()
