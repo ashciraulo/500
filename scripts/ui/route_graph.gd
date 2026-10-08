@@ -44,6 +44,10 @@ var road_lanes_back := PackedByteArray()
 ## Which way the road leaves each end (x/z, unit).
 var road_dir_a := PackedVector2Array()
 var road_dir_b := PackedVector2Array()
+## Each road's map id, name and kind (for finding out why a route went where).
+var road_ids := PackedStringArray()
+var road_names := PackedStringArray()
+var road_kinds := PackedStringArray()
 
 var _node_ids := {}  # map node id -> index
 var _keys := {}  # road ids already added (roads on two tiles come twice)
@@ -99,6 +103,9 @@ func _add(a: int, b: int, pts: PackedVector3Array, r: Dictionary) -> void:
 	road_lanes_back.append(clampi(int(r.get("lanes_back", 1)), 1, 8))
 	road_dir_a.append(_dir(pts, false))
 	road_dir_b.append(_dir(pts, true))
+	road_ids.append(String(r.get("id", "")))
+	road_names.append(String(r.get("name", "")))
+	road_kinds.append(String(r.get("kind", "")))
 	node_roads[a].append(index)
 	node_roads[b].append(index)
 	var cells := {}
@@ -148,7 +155,7 @@ static func _dir(pts: PackedVector3Array, from_end: bool) -> Vector2:
 ## when either end is nowhere near a road or there's no way through, else:
 ## {points: PackedVector3Array (down the middle of each road), lane:
 ## PackedVector3Array (down the middle of your side of it), length (m),
-## seconds (a rough driving time)}.
+## seconds (a rough driving time), ways: PackedInt32Array (road * 2 + way, in order)}.
 func find(from: Vector3, heading: Vector2, to: Vector3) -> Dictionary:
 	var starts := nearest(Vector2(from.x, from.z))
 	var goals := nearest(Vector2(to.x, to.z))
@@ -306,7 +313,10 @@ func _trace(found: int, n2: int, goal_list: Array, parent: PackedInt32Array, sta
 	if points.size() < 2:
 		return {}
 	var cum := TrafficGraph.cumulative(points)
-	return {points = points, lane = lane, length = cum[cum.size() - 1], seconds = seconds}
+	var ways := PackedInt32Array()
+	for p: Array in pieces:
+		ways.append(int(p[0]) * 2 + int(p[1]))
+	return {points = points, lane = lane, length = cum[cum.size() - 1], seconds = seconds, ways = ways}
 
 
 static func _join(into: PackedVector3Array, part: PackedVector3Array) -> void:
