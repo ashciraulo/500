@@ -168,6 +168,14 @@ func _watch() -> void:
 						for x in [v, o]:
 							print("    #%d %s lane %d s %.1f/%.1f speed %.1f life %.1f change_from %s reason %d fwd %s" % [x.id, x.type, x.route[0].id, x.s, x.route[0].length, x.speed, x.lifetime,
 								x.change_from.id if x.change_from else -1, x.reason, x.forward.snapped(Vector3.ONE * 0.01)])
+							if x.unjam_time > 0.0:
+								print("    #%d is going ahead of #%d to break a jam (%.1f s left)" % [x.id, x.unjam.id if x.unjam else -1, x.unjam_time])
+						var lv: TrafficGraph.Lane = v.route[0]
+						var lo: TrafficGraph.Lane = o.route[0]
+						if lv.connector or lo.connector:
+							print("    junction: degrees %s / %s, in each other's conflicts %s / %s, same node %s" % [
+								lv.node.degree() if lv.connector else "-", lo.node.degree() if lo.connector else "-",
+								lv.conflicts.has(lo), lo.conflicts.has(lv), lv.connector and lo.connector and lv.node == lo.node])
 
 
 ## Two cars' footprints (each grown by `grow` metres) touch: separating axis
