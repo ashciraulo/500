@@ -1,9 +1,10 @@
 extends SceneTree
 ## Headless check of the minimap and the full map on the real Perth map: the
 ## road data loads, the minimap knows the street you're in, M opens the full
-## map (and pauses), markers go down, save and load, and M closes it again.
-## Then suggested routes: one-ways kept to, a job's route on the minimap, a
-## new one after leaving it, and none with the setting off.
+## map (and pauses), the mouse zooms, drags and puts markers down, they save
+## and load, and M closes it again. Then suggested routes: one-ways kept to,
+## a job's route on the minimap, a new one after leaving it, and none with
+## the setting off.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/minimap_test.gd -- --no-save
 ##
@@ -76,8 +77,8 @@ func _process(_delta: float) -> bool:
 				_check(paused, "the game pauses under the map")
 				if screen:
 					var view: Control = screen.get("_view")
-					screen.call("_place_or_pick", view.size * 0.5)
-					_check((_pins.markers as Array).size() == 1, "a marker goes down")
+					_check_mouse(view)
+					_check((_pins.markers as Array).size() == 1, "a right-click puts a marker down")
 					var saved: Dictionary = screen.call("save_state")
 					_pins.call("remove_marker", 0)
 					screen.call("load_state", saved)
@@ -164,6 +165,43 @@ func _check_route_graph() -> void:
 		"one-ways only one way (%.0f m round, %.0f m straight back)" % [float(back.get("length", 0.0)), length * 0.6])
 	var fwd: Dictionary = g.call("find", b, Vector2(t.x, t.z), a)
 	_check(not fwd.is_empty() and absf(float(fwd.length) - length * 0.6) < 15.0, "and straight down it the right way (%.0f m)" % float(fwd.get("length", 0.0)))
+
+
+## The mouse on the full map, through the viewport like a real one: the
+## wheel zooms, a drag moves the map, a right-click puts a marker down.
+func _check_mouse(view: Control) -> void:
+	var to_screen := view.get_global_transform_with_canvas()
+	var mid := view.size * 0.5
+	var mpp: float = view.get("metres_per_px")
+	_mouse_button(MOUSE_BUTTON_WHEEL_UP, to_screen * mid, true)
+	_mouse_button(MOUSE_BUTTON_WHEEL_UP, to_screen * mid, false)
+	_check(float(view.get("metres_per_px")) < mpp * 0.9, "the wheel zooms in (%.2f -> %.2f m/px)" % [mpp, view.get("metres_per_px")])
+	mpp = view.get("metres_per_px")
+	_mouse_button(MOUSE_BUTTON_WHEEL_DOWN, to_screen * mid, true)
+	_mouse_button(MOUSE_BUTTON_WHEEL_DOWN, to_screen * mid, false)
+	_check(float(view.get("metres_per_px")) > mpp * 1.1, "the wheel zooms out")
+	var centre: Vector2 = view.get("centre")
+	mpp = view.get("metres_per_px")
+	_mouse_button(MOUSE_BUTTON_LEFT, to_screen * mid, true)
+	for i in 4:
+		var move := InputEventMouseMotion.new()
+		move.position = to_screen * (mid + Vector2(20.0 * (i + 1), 10.0 * (i + 1)))
+		move.relative = Vector2(20.0, 10.0)
+		move.button_mask = MOUSE_BUTTON_MASK_LEFT
+		root.push_input(move, true)
+	_mouse_button(MOUSE_BUTTON_LEFT, to_screen * (mid + Vector2(80.0, 40.0)), false)
+	var moved: Vector2 = centre - (view.get("centre") as Vector2)
+	_check(moved.distance_to(Vector2(80.0, 40.0) * mpp) < 1.0, "a drag moves the map (%.0f, %.0f m)" % [moved.x, moved.y])
+	_mouse_button(MOUSE_BUTTON_RIGHT, to_screen * (mid + Vector2(30.0, -20.0)), true)
+	_mouse_button(MOUSE_BUTTON_RIGHT, to_screen * (mid + Vector2(30.0, -20.0)), false)
+
+
+func _mouse_button(button: MouseButton, at: Vector2, pressed: bool) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = button
+	ev.position = at
+	ev.pressed = pressed
+	root.push_input(ev, true)
 
 
 func _take_job() -> void:

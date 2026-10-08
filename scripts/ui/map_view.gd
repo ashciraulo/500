@@ -57,9 +57,14 @@ var _overlay: Control
 var _icons := {}
 
 
+func _init() -> void:
+	# A default, set here so the full map's own (STOP, for drag, wheel and
+	# right-click) isn't undone when it's added.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
 func _ready() -> void:
 	clip_contents = true
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_world = Node2D.new()
 	_world.name = "World"
 	add_child(_world)
