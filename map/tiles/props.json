@@ -120,6 +120,16 @@
   "yaw": 2.7925
  },
  {
+  "id": "royal_st_roller_door",
+  "scene": "res://art/models/props/landmarks/royal_st_roller_door.glb",
+  "p": [
+   1686.0,
+   16.74,
+   663.8
+  ],
+  "yaw": -0.0105
+ },
+ {
   "id": "south_mole_lighthouse",
   "scene": "res://art/models/props/landmarks/mole_light_south.glb",
   "p": [
