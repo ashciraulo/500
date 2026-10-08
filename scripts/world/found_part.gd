@@ -82,9 +82,10 @@ func _process(delta: float) -> void:
 		take()
 
 
-## Sit on whatever's under it, once the map has loaded around it.
+## Sit on whatever's under it, once the map has loaded around it (from
+## under a shed roof: the tailpipe sits on the Kensington shed's bench).
 func _snap_to_ground() -> void:
-	var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 8.0, global_position + Vector3.DOWN * 12.0, 1)
+	var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 2.0, global_position + Vector3.DOWN * 12.0, 1)
 	if _car is CollisionObject3D:
 		query.exclude = [(_car as CollisionObject3D).get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)

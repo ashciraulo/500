@@ -206,11 +206,15 @@ func _check_waiting() -> void:
 		_pick_up(want)
 
 
-## Where a clue waits: a photo spot (a few metres to the side), or the lane end.
+## Where a clue waits: its `at` (the kerb by the photo spot), a photo spot (a
+## few metres to the side), or the lane end.
 func spot_position(id: String) -> Vector3:
 	var spot := String(clue(id).get("spot", ""))
 	if spot == "lane_end":
 		return lane_end()
+	var at: Variant = clue(id).get("at")
+	if at is Array and at.size() == 3:
+		return Vector3(at[0], at[1], at[2])
 	var places: Dictionary = get_parent().get("places") if get_parent() and get_parent().get("places") is Dictionary else {}
 	for p: Dictionary in places.get("photo_spots", []):
 		if p.id == spot:
