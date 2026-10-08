@@ -632,6 +632,52 @@ def test_one_row_of_barriers_across_both_halves_of_a_divided_road():
     assert np.allclose(rows[0]["xy"], [103.0, 492.0]) and np.isclose(rows[0]["half"], 8.1)
 
 
+def test_bridge_piers_stand_clear_of_the_lanes_under_it():
+    # A footbridge over the Graham Farmer Fwy had a pier in the westbound
+    # lanes: a car following the lane hit it and stuck.
+    from types import SimpleNamespace as NS
+    from osm_import.build import PIER_CLEAR, LinearWay, TileBuilder
+    from shapely.geometry import LineString, Point
+    hf = flat_field(0.0, size=400.0)
+    # The footbridge crosses the freeway square on, with a pier due at its middle (s = 30 m).
+    xs = np.linspace(-30.0, 30.0, 16)
+    bridge = LinearWay(1, {"highway": "footway", "bridge": "yes"}, "foot", np.stack([np.zeros(16), xs], axis=1),
+                       np.full(16, 7.0), np.arange(16), 3.0, True, False, False)
+    freeway = LinearWay(2, {"highway": "motorway"}, "road", np.array([[-200.0, 0.0], [200.0, 0.0]]),
+                        np.zeros(2), np.array([100, 101]), 14.0, False, False, False)
+    tb = NS(w=NS(hf=hf), ways=[bridge, freeway])
+    bot = bridge.h - 1.1
+    spots = TileBuilder._pier_spots(tb, bridge, bridge.xy, bot)
+    lane = LineString(freeway.xy)
+    assert spots, "the footbridge keeps its pier"
+    for p, yaw, foot, top in spots:
+        # The pier is 1.4 m along the deck: its near face clears the asphalt.
+        assert lane.distance(Point(p)) - 0.7 >= freeway.width / 2 + PIER_CLEAR - 1e-6
+        assert foot < 0.0 < top
+    # With no road under it, the pier stands where it's due.
+    tb.ways = [bridge]
+    (p, _, _, _), = TileBuilder._pier_spots(tb, bridge, bridge.xy, bot)
+    assert abs(p[1]) < 1e-6
+
+
+def test_roads_meeting_on_a_hill_are_not_stacked_at_the_junction():
+    # Fraser Avenue leaves Malcolm Street at a sharp angle where Malcolm Street
+    # drops steeply away. A few metres out Malcolm Street is a metre below it,
+    # by its own grade, not passing under it: Fraser Avenue was put on a deck
+    # with a 0.7 m side standing over Malcolm Street.
+    from types import SimpleNamespace as NS
+    from osm_import.build import LinearWay, World
+    s = np.arange(0.0, 60.0, 4.0)
+    a = np.radians(30.0)
+    malcolm = LinearWay(1, {"highway": "primary"}, "road", np.stack([s, np.zeros(len(s))], axis=1),
+                        66.3 - 0.25 * s, np.arange(len(s)) + 100, 6.6, False, False, False)
+    fraser = LinearWay(2, {"highway": "unclassified"}, "road", np.stack([s * np.cos(a), s * np.sin(a)], axis=1),
+                       np.full(len(s), 66.3), np.r_[100, np.arange(1, len(s)) + 200], 5.0, False, False, False)
+    world = NS(ways=[malcolm, fraser])
+    World._lift_stacked(world)
+    assert fraser.lift is None and malcolm.lift is None
+
+
 def test_a_lifted_deck_carries_on_until_the_ground_meets_it():
     from types import SimpleNamespace as NS
     from osm_import.build import LIFT_REACH, LinearWay, World
@@ -649,3 +695,132 @@ def test_a_lifted_deck_carries_on_until_the_ground_meets_it():
                   np.full(len(xs), 3.0), np.arange(1, 22), 4.5, False, False, False, lift=xs <= 20)
     World._land_lifts(NS(ways=[w], hf=flat_field(0.0)))
     assert np.array_equal(w.lift, xs < 20 + LIFT_REACH)
+
+
+def _lw(i, tags, group, xy, h, width, nodes=None):
+    from osm_import.build import LinearWay
+    xy = np.asarray(xy, dtype=float)
+    nodes = np.arange(len(xy)) + 1000 * i if nodes is None else nodes
+    return LinearWay(i, tags, group, xy, np.broadcast_to(np.asarray(h, float), (len(xy),)).copy(),
+                     nodes, width, False, False, False)
+
+
+def test_road_running_along_the_top_of_a_rail_cutting_stands_on_a_wall():
+    # A service road 6 m over the railway beside it (Milligan Street): no
+    # 5 m ground can slope that far between them, and its edge dropped 0.8 m
+    # in 3 m. It's walled instead; a street 1.2 m over another one 6 m past
+    # its kerb isn't (those streets have a slope between them).
+    from types import SimpleNamespace as NS
+    from osm_import.build import World
+    xs = np.arange(-100.0, 101.0, 5.0)
+    line = lambda y: np.column_stack([xs, np.full(len(xs), y)])
+    rail = _lw(1, {"railway": "rail"}, "rail", line(0.0), 9.8, 3.2)
+    lane = _lw(2, {"highway": "service"}, "road", line(6.6), 15.8, 5.0)
+    high = _lw(3, {"highway": "residential"}, "road", line(100.0), 11.2, 6.6)
+    low = _lw(4, {"highway": "residential"}, "road", line(100.0 + 6.6 + 6.0), 10.0, 6.6)
+    World._lift_stacked(NS(ways=[rail, lane, high, low]))
+    assert lane.lift is not None and lane.lift.all()
+    assert rail.lift is None and high.lift is None and low.lift is None
+
+
+def test_freeway_beside_the_railway_in_its_median_stands_on_a_wall():
+    from types import SimpleNamespace as NS
+    from osm_import.build import STACK_WIDE, World
+    xs = np.arange(-100.0, 101.0, 5.0)
+    line = lambda y: np.column_stack([xs, np.full(len(xs), y)])
+    rail = _lw(1, {"railway": "rail"}, "rail", line(0.0), 10.0, 3.2)
+    # Its lanes 2 m over the tracks, 8 m past the ballast; the far carriageway
+    # 2 m under them and too far off to matter.
+    near = _lw(2, {"highway": "motorway"}, "road", line(1.6 + 8.0 + 5.35), 12.0, 10.7)
+    far = _lw(3, {"highway": "motorway"}, "road", line(-(1.6 + STACK_WIDE + 5.35 + 1.0)), 8.0, 10.7)
+    World._lift_stacked(NS(ways=[rail, near, far]))
+    assert near.lift is not None and near.lift.all()
+    # The railway is higher than the far carriageway but not beside it.
+    assert rail.lift is None and far.lift is None
+
+
+def test_short_gaps_between_lifted_stretches_are_lifted_too():
+    from osm_import.build import LIFT_GAP, _close_gaps
+    xs = np.arange(0.0, 201.0, 5.0)
+    w = _lw(1, {"highway": "motorway"}, "road", np.column_stack([xs, np.zeros_like(xs)]), 0.0, 10.0)
+    lift = (xs < 50) | ((xs > 65) & (xs < 100)) | (xs > 100 + LIFT_GAP + 10)
+    out = _close_gaps(w, lift)
+    # 50 m to 65 m (25 m between the lifted nodes either side) closes; the
+    # gap after 100 m is longer and stays; nothing is lifted past the ends.
+    assert out[(xs >= 50) & (xs <= 65)].all()
+    assert not out[(xs >= 100) & (xs <= 100 + LIFT_GAP + 5)].any()
+    assert np.array_equal(out[xs > 140], lift[xs > 140])
+
+
+def test_ground_never_comes_up_through_a_lifted_deck():
+    # A freeway lifted over the railway beside it, in a cutting: the ground on
+    # its other side was fitted to the bank, higher than the deck.
+    from types import SimpleNamespace as NS
+    from osm_import.build import LIFT_UNDER, World
+    from osm_import.meshbuild import densify, offset_polyline
+    xs = np.arange(-100.0, 101.0, 5.0)
+    w = _lw(1, {"highway": "motorway"}, "road", np.column_stack([xs, np.zeros_like(xs)]), 12.0, 10.7)
+    w.lift = np.ones(len(xs), bool)
+    hf = flat_field(0.0, size=400.0)
+    es, ns = hf.node_coords()
+    N = np.broadcast_to(ns[:, None], hf.H.shape)
+    hf.H[:] = np.where(N > -5.0, 12.0 + 0.5 * np.maximum(N + 5.0, 0.0), 10.0)
+    core = np.zeros(hf.H.shape, bool)
+    core[np.abs(N - 30.0) < 4.0] = True  # a street up the bank keeps its ground
+    keep = hf.H[core].copy()
+    World._cut_under_lifts(NS(ways=[w], hf=hf, road_core=core))
+    xy, h = densify(w.xy, w.h, 2.0)
+    inner = slice(5, -5)
+    for o in np.linspace(-w.width / 2, w.width / 2, 7):
+        q = offset_polyline(xy, o)[inner]
+        assert (hf.sample(q[:, 0], q[:, 1]) <= h[inner] - LIFT_UNDER + 1e-6).all()
+    assert np.array_equal(hf.H[core], keep)
+    # A slip road beside it at its own height comes down no more than LIFT_UNDER
+    # (it had a 0.3 m step all along the deck's side).
+    hf.H[:] = np.where(np.abs(N - 9.0) < 3.0, 12.0, 10.0)
+    beside = np.abs(N - 9.0) < 3.0
+    World._cut_under_lifts(NS(ways=[w], hf=hf, road_core=beside))
+    assert hf.H[beside].min() >= 12.0 - LIFT_UNDER - 1e-6 and LIFT_UNDER <= 0.1
+    # Lower ground (the railway's side) is left alone.
+    assert (hf.H[N < -10.0] == 10.0).all()
+
+
+def test_no_room_to_stand_under_a_walled_deck():
+    # A ramp 2.5 m over flat ground is walled down to it on both sides; with
+    # 1.4 m under its slab you could stand in there (dropped in where the
+    # wall stops) and never get out. A deck 6 m up is open underneath.
+    from types import SimpleNamespace as NS
+    from osm_import.build import DECK_THICKNESS, LIFT_WALL_CLEAR, World
+    xs = np.arange(-100.0, 101.0, 5.0)
+    for top, walled in ((12.5, True), (16.0, False)):
+        w = _lw(1, {"highway": "motorway_link"}, "road", np.column_stack([xs, np.zeros_like(xs)]), top, 10.7)
+        w.lift = np.ones(len(xs), bool)
+        hf = flat_field(10.0, size=400.0)
+        es, ns = hf.node_coords()
+        E, N = np.meshgrid(es, ns)
+        World._cut_under_lifts(NS(ways=[w], hf=hf, road_core=np.zeros(hf.H.shape, bool)))
+        under = (np.abs(N) < w.width / 2) & (np.abs(E) < 80.0)
+        assert (top - 10.0 < LIFT_WALL_CLEAR) == walled
+        if walled:
+            assert (hf.H[under] >= top - DECK_THICKNESS - 1e-6).all()
+        else:
+            assert (hf.H[under] == 10.0).all()
+        assert (hf.H[np.abs(N) > w.width / 2 + 5.0] == 10.0).all()
+
+
+def test_no_slot_between_two_walled_decks_side_by_side():
+    # A ramp walled beside the freeway, 3 m of grass between their walls:
+    # the grass comes up level with them instead of being a slot to fall in.
+    from types import SimpleNamespace as NS
+    from osm_import.build import LIFT_UNDER, World
+    xs = np.arange(-100.0, 101.0, 5.0)
+    a = _lw(1, {"highway": "motorway"}, "road", np.column_stack([xs, np.full(len(xs), -7.0)]), 12.0, 11.0)
+    b = _lw(2, {"highway": "motorway_link"}, "road", np.column_stack([xs, np.full(len(xs), 5.5)]), 12.5, 8.0)
+    for w in (a, b):
+        w.lift = np.ones(len(xs), bool)
+    hf = flat_field(10.0, size=400.0)
+    E, N = np.meshgrid(*hf.node_coords())
+    World._cut_under_lifts(NS(ways=[a, b], hf=hf, road_core=np.zeros(hf.H.shape, bool)))
+    q = np.column_stack([np.arange(-60.0, 61.0, 1.0), np.full(121, 0.0)])
+    assert (hf.sample(q[:, 0], q[:, 1]) >= 12.0 - LIFT_UNDER - 1e-6).all()
+    assert (hf.H[np.abs(N) > 25.0] == 10.0).all()

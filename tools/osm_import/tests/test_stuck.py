@@ -112,12 +112,27 @@ def test_road_bridge_parapets_fade_out_where_the_deck_meets_the_street():
     xy = np.column_stack([np.linspace(0, 80, 21), np.zeros(21)])
     top = 10.0 + np.linspace(0.0, 4.0, 21)
     w = LinearWay(1, {"highway": "primary", "bridge": "yes"}, "road", xy, top, np.arange(21), 8.0, True, False, False)
-    ph = _parapet_heights(w, offset_polyline(xy, 4.0), offset_polyline(xy, -4.0), top, hf)
-    assert ph[0] == 0.0 and ph[-1] == PARAPET_H and (np.diff(ph) >= 0).all()
-    (a, b), = _runs(ph > 0.0)
-    assert ph[a - 1] == 0.0 and b == 21
+    for side in (4.0, -4.0):
+        ph = _parapet_heights(w, offset_polyline(xy, side), top, hf)
+        assert ph[0] == 0.0 and ph[-1] == PARAPET_H and (np.diff(ph) >= 0).all()
+        (a, b), = _runs(ph > 0.0)
+        assert ph[a - 1] == 0.0 and b == 21
     foot = LinearWay(2, {"highway": "footway", "bridge": "yes"}, "foot", xy, top, np.arange(21), 3.0, True, False, False)
-    assert (_parapet_heights(foot, xy, xy, top, hf) == PARAPET_H).all()
+    assert (_parapet_heights(foot, xy, top, hf) == PARAPET_H).all()
+
+
+def test_a_parapet_stands_over_the_drop_even_with_a_bank_on_the_other_side():
+    # A ramp 3 m up with the ground banked up to it on its left: its right
+    # side still drops 3 m, so it keeps its parapet there (it had none, and
+    # you walked off it into a walled-in slot).
+    from osm_import.build import PARAPET_H, _parapet_heights
+    from osm_import.meshbuild import offset_polyline
+    hf = field(lambda E, N: np.where(N > 0.0, 13.0, 10.0))
+    xy = np.column_stack([np.linspace(0, 80, 21), np.zeros(21)])
+    top = np.full(21, 13.0)
+    w = LinearWay(1, {"highway": "motorway_link"}, "road", xy, top, np.arange(21), 8.0, True, False, False)
+    assert (_parapet_heights(w, offset_polyline(xy, 6.0), top, hf) == 0.0).all()
+    assert (_parapet_heights(w, offset_polyline(xy, -6.0), top, hf) == PARAPET_H).all()
 
 
 def test_jetty_comes_up_to_the_street_that_leads_onto_it():
@@ -242,3 +257,33 @@ def test_jetties_side_by_side_blend_between_them():
     col = hf.sample(np.full(len(ys), 5.0), ys)
     was = np.where(ys > 0, 4.0, 1.5)
     assert np.abs(np.diff(col)).max() <= np.abs(np.diff(was)).max() + 0.1   # no step the bank didn't have
+
+
+def test_quay_along_the_bank_has_no_river_left_between_it_and_the_bank():
+    # Elizabeth Quay: a promenade deck 7.5 m up runs along the bank, 8 m out
+    # over the river. The river bed under its landward edge pulled the ground
+    # drawn between it and the bank down into a 1.5 m pit beside the deck.
+    river = box(-300, -300, 0, 300)
+    hf = field(lambda E, N: np.where(E < 0, -2.5, 7.5))
+    quay = box(-8.0, -60.0, 0.5, 60.0)
+    w = _world(hf, [(quay, "pier", 1)], [WaterBody(river, RIVER_LEVEL, True, "Swan River")])
+    d, = w._level_decks()
+    assert abs(d.top - 7.5) < 0.1 and d.low is None
+    ys = np.arange(-40.0, 40.0, 2.5)
+    for x in (-3.0, -0.5):  # under its landward edge, and between it and the bank
+        g = hf.sample(np.full(len(ys), x), ys)
+        assert (np.abs(g - (d.top - 0.05)) < 0.1).all(), np.round(g, 2)
+    # The river past its far edge is left as it was.
+    assert abs(hf.sample(-15.0, 0.0) - (-2.5)) < 1e-9
+
+
+def test_lone_corner_of_river_by_a_jetty_root_is_not_filled():
+    # Coode St: a jetty straight out from the bank. The river either side of
+    # where it leaves the bank isn't a quay's strip; it stays river.
+    river = box(-300, -300, 0, 300)
+    hf = field(lambda E, N: np.where(E < 0, -2.5, 3.0))
+    jetty = LineString([(4, 1), (-60, 1)]).buffer(1.5, cap_style=2)
+    w = _world(hf, [(jetty, "pier", 1)], [WaterBody(river, RIVER_LEVEL, True, "Swan River")])
+    w._level_decks()
+    for y in (-5.0, 5.0, 10.0):
+        assert hf.sample(-5.0, y) < 0.0
