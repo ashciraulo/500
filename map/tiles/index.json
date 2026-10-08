@@ -1,5 +1,355 @@
 {
  "tiles": {
+  "-8_-36": {
+   "i": -8,
+   "j": -36,
+   "file": "-8_-36.p5t",
+   "region": "bibra_lake",
+   "hmin": 18.72,
+   "hmax": 44.38,
+   "bytes": 104000,
+   "traffic": "-8_-36.p5r"
+  },
+  "-7_-36": {
+   "i": -7,
+   "j": -36,
+   "file": "-7_-36.p5t",
+   "region": "bibra_lake",
+   "hmin": 12.1,
+   "hmax": 43.31,
+   "bytes": 132071,
+   "traffic": "-7_-36.p5r"
+  },
+  "-6_-36": {
+   "i": -6,
+   "j": -36,
+   "file": "-6_-36.p5t",
+   "region": "bibra_lake",
+   "hmin": 13.63,
+   "hmax": 30.06,
+   "bytes": 253669,
+   "traffic": "-6_-36.p5r"
+  },
+  "-5_-36": {
+   "i": -5,
+   "j": -36,
+   "file": "-5_-36.p5t",
+   "region": "bibra_lake",
+   "hmin": 23.37,
+   "hmax": 42.64,
+   "bytes": 314717,
+   "traffic": "-5_-36.p5r"
+  },
+  "-4_-36": {
+   "i": -4,
+   "j": -36,
+   "file": "-4_-36.p5t",
+   "region": "bibra_lake",
+   "hmin": 22.51,
+   "hmax": 45.5,
+   "bytes": 252645,
+   "traffic": "-4_-36.p5r"
+  },
+  "-8_-35": {
+   "i": -8,
+   "j": -35,
+   "file": "-8_-35.p5t",
+   "region": "bibra_lake",
+   "hmin": 19.8,
+   "hmax": 55.73,
+   "bytes": 179553,
+   "traffic": "-8_-35.p5r"
+  },
+  "-7_-35": {
+   "i": -7,
+   "j": -35,
+   "file": "-7_-35.p5t",
+   "region": "bibra_lake",
+   "hmin": 12.1,
+   "hmax": 31.84,
+   "bytes": 204766,
+   "traffic": "-7_-35.p5r"
+  },
+  "-6_-35": {
+   "i": -6,
+   "j": -35,
+   "file": "-6_-35.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 26.47,
+   "bytes": 340272,
+   "traffic": "-6_-35.p5r"
+  },
+  "-5_-35": {
+   "i": -5,
+   "j": -35,
+   "file": "-5_-35.p5t",
+   "region": "bibra_lake",
+   "hmin": 10.58,
+   "hmax": 31.74,
+   "bytes": 239216,
+   "traffic": "-5_-35.p5r"
+  },
+  "-4_-35": {
+   "i": -4,
+   "j": -35,
+   "file": "-4_-35.p5t",
+   "region": "bibra_lake",
+   "hmin": 19.43,
+   "hmax": 36.08,
+   "bytes": 242209,
+   "traffic": "-4_-35.p5r"
+  },
+  "-8_-34": {
+   "i": -8,
+   "j": -34,
+   "file": "-8_-34.p5t",
+   "region": "bibra_lake",
+   "hmin": 29.7,
+   "hmax": 59.45,
+   "bytes": 269157,
+   "traffic": "-8_-34.p5r"
+  },
+  "-7_-34": {
+   "i": -7,
+   "j": -34,
+   "file": "-7_-34.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 44.4,
+   "bytes": 339698,
+   "traffic": "-7_-34.p5r"
+  },
+  "-6_-34": {
+   "i": -6,
+   "j": -34,
+   "file": "-6_-34.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 14.0,
+   "bytes": 19554,
+   "traffic": "-6_-34.p5r"
+  },
+  "-5_-34": {
+   "i": -5,
+   "j": -34,
+   "file": "-5_-34.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 25.93,
+   "bytes": 87223,
+   "traffic": "-5_-34.p5r"
+  },
+  "-4_-34": {
+   "i": -4,
+   "j": -34,
+   "file": "-4_-34.p5t",
+   "region": "bibra_lake",
+   "hmin": 16.03,
+   "hmax": 31.0,
+   "bytes": 220749,
+   "traffic": "-4_-34.p5r"
+  },
+  "-8_-33": {
+   "i": -8,
+   "j": -33,
+   "file": "-8_-33.p5t",
+   "region": "bibra_lake",
+   "hmin": 35.18,
+   "hmax": 50.21,
+   "bytes": 325390,
+   "traffic": "-8_-33.p5r"
+  },
+  "-7_-33": {
+   "i": -7,
+   "j": -33,
+   "file": "-7_-33.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 45.49,
+   "bytes": 308288,
+   "traffic": "-7_-33.p5r"
+  },
+  "-6_-33": {
+   "i": -6,
+   "j": -33,
+   "file": "-6_-33.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.18,
+   "hmax": 20.09,
+   "bytes": 26326,
+   "traffic": "-6_-33.p5r"
+  },
+  "-5_-33": {
+   "i": -5,
+   "j": -33,
+   "file": "-5_-33.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 30.86,
+   "bytes": 99918,
+   "traffic": "-5_-33.p5r"
+  },
+  "-4_-33": {
+   "i": -4,
+   "j": -33,
+   "file": "-4_-33.p5t",
+   "region": "bibra_lake",
+   "hmin": 16.5,
+   "hmax": 30.29,
+   "bytes": 209547,
+   "traffic": "-4_-33.p5r"
+  },
+  "-8_-32": {
+   "i": -8,
+   "j": -32,
+   "file": "-8_-32.p5t",
+   "region": "bibra_lake",
+   "hmin": 31.46,
+   "hmax": 45.22,
+   "bytes": 292570,
+   "traffic": "-8_-32.p5r"
+  },
+  "-7_-32": {
+   "i": -7,
+   "j": -32,
+   "file": "-7_-32.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 47.38,
+   "bytes": 279672,
+   "traffic": "-7_-32.p5r"
+  },
+  "-6_-32": {
+   "i": -6,
+   "j": -32,
+   "file": "-6_-32.p5t",
+   "region": "bibra_lake",
+   "hmin": 5.9,
+   "hmax": 26.03,
+   "bytes": 165049,
+   "traffic": "-6_-32.p5r"
+  },
+  "-5_-32": {
+   "i": -5,
+   "j": -32,
+   "file": "-5_-32.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 37.7,
+   "bytes": 222572,
+   "traffic": "-5_-32.p5r"
+  },
+  "-4_-32": {
+   "i": -4,
+   "j": -32,
+   "file": "-4_-32.p5t",
+   "region": "bibra_lake",
+   "hmin": 16.93,
+   "hmax": 34.07,
+   "bytes": 257493,
+   "traffic": "-4_-32.p5r"
+  },
+  "-8_-31": {
+   "i": -8,
+   "j": -31,
+   "file": "-8_-31.p5t",
+   "region": "bibra_lake",
+   "hmin": 37.44,
+   "hmax": 50.57,
+   "bytes": 259938,
+   "traffic": "-8_-31.p5r"
+  },
+  "-7_-31": {
+   "i": -7,
+   "j": -31,
+   "file": "-7_-31.p5t",
+   "region": "bibra_lake",
+   "hmin": 24.57,
+   "hmax": 49.32,
+   "bytes": 306327,
+   "traffic": "-7_-31.p5r"
+  },
+  "-6_-31": {
+   "i": -6,
+   "j": -31,
+   "file": "-6_-31.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 28.13,
+   "bytes": 233012,
+   "traffic": "-6_-31.p5r"
+  },
+  "-5_-31": {
+   "i": -5,
+   "j": -31,
+   "file": "-5_-31.p5t",
+   "region": "bibra_lake",
+   "hmin": 7.73,
+   "hmax": 28.53,
+   "bytes": 222007,
+   "traffic": "-5_-31.p5r"
+  },
+  "-4_-31": {
+   "i": -4,
+   "j": -31,
+   "file": "-4_-31.p5t",
+   "region": "bibra_lake",
+   "hmin": 18.02,
+   "hmax": 28.79,
+   "bytes": 235309,
+   "traffic": "-4_-31.p5r"
+  },
+  "-8_-30": {
+   "i": -8,
+   "j": -30,
+   "file": "-8_-30.p5t",
+   "region": "bibra_lake",
+   "hmin": 28.8,
+   "hmax": 56.54,
+   "bytes": 240600,
+   "traffic": "-8_-30.p5r"
+  },
+  "-7_-30": {
+   "i": -7,
+   "j": -30,
+   "file": "-7_-30.p5t",
+   "region": "bibra_lake",
+   "hmin": 10.73,
+   "hmax": 46.09,
+   "bytes": 359647,
+   "traffic": "-7_-30.p5r"
+  },
+  "-8_-29": {
+   "i": -8,
+   "j": -29,
+   "file": "-8_-29.p5t",
+   "region": "bibra_lake",
+   "hmin": 32.67,
+   "hmax": 68.99,
+   "bytes": 295702,
+   "traffic": "-8_-29.p5r"
+  },
+  "-7_-29": {
+   "i": -7,
+   "j": -29,
+   "file": "-7_-29.p5t",
+   "region": "bibra_lake",
+   "hmin": 13.73,
+   "hmax": 46.15,
+   "bytes": 304170,
+   "traffic": "-7_-29.p5r"
+  },
+  "-8_-28": {
+   "i": -8,
+   "j": -28,
+   "file": "-8_-28.p5t",
+   "region": "bibra_lake",
+   "hmin": 26.01,
+   "hmax": 53.63,
+   "bytes": 430872,
+   "traffic": "-8_-28.p5r"
+  },
   "-22_-27": {
    "i": -22,
    "j": -27,
@@ -49,6 +399,16 @@
    "hmax": 42.14,
    "bytes": 356055,
    "traffic": "-18_-27.p5r"
+  },
+  "-8_-27": {
+   "i": -8,
+   "j": -27,
+   "file": "-8_-27.p5t",
+   "region": "bibra_lake",
+   "hmin": 10.5,
+   "hmax": 51.69,
+   "bytes": 299306,
+   "traffic": "-8_-27.p5r"
   },
   "-25_-26": {
    "i": -25,
@@ -130,6 +490,16 @@
    "bytes": 430751,
    "traffic": "-18_-26.p5r"
   },
+  "-8_-26": {
+   "i": -8,
+   "j": -26,
+   "file": "-8_-26.p5t",
+   "region": "bibra_lake",
+   "hmin": 6.74,
+   "hmax": 28.89,
+   "bytes": 294476,
+   "traffic": "-8_-26.p5r"
+  },
   "-25_-25": {
    "i": -25,
    "j": -25,
@@ -209,6 +579,26 @@
    "hmax": 53.78,
    "bytes": 284901,
    "traffic": "-18_-25.p5r"
+  },
+  "-8_-25": {
+   "i": -8,
+   "j": -25,
+   "file": "-8_-25.p5t",
+   "region": "bibra_lake",
+   "hmin": 9.01,
+   "hmax": 42.31,
+   "bytes": 301827,
+   "traffic": "-8_-25.p5r"
+  },
+  "-7_-25": {
+   "i": -7,
+   "j": -25,
+   "file": "-7_-25.p5t",
+   "region": "bibra_lake",
+   "hmin": 12.09,
+   "hmax": 24.79,
+   "bytes": 306949,
+   "traffic": "-7_-25.p5r"
   },
   "-25_-24": {
    "i": -25,
@@ -300,6 +690,26 @@
    "bytes": 361538,
    "traffic": "-17_-24.p5r"
   },
+  "-8_-24": {
+   "i": -8,
+   "j": -24,
+   "file": "-8_-24.p5t",
+   "region": "bibra_lake",
+   "hmin": 21.63,
+   "hmax": 43.67,
+   "bytes": 332609,
+   "traffic": "-8_-24.p5r"
+  },
+  "-7_-24": {
+   "i": -7,
+   "j": -24,
+   "file": "-7_-24.p5t",
+   "region": "bibra_lake",
+   "hmin": 16.49,
+   "hmax": 27.5,
+   "bytes": 264539,
+   "traffic": "-7_-24.p5r"
+  },
   "-25_-23": {
    "i": -25,
    "j": -23,
@@ -389,6 +799,26 @@
    "hmax": 38.23,
    "bytes": 445967,
    "traffic": "-17_-23.p5r"
+  },
+  "-8_-23": {
+   "i": -8,
+   "j": -23,
+   "file": "-8_-23.p5t",
+   "region": "bibra_lake",
+   "hmin": 15.44,
+   "hmax": 38.69,
+   "bytes": 368763,
+   "traffic": "-8_-23.p5r"
+  },
+  "-7_-23": {
+   "i": -7,
+   "j": -23,
+   "file": "-7_-23.p5t",
+   "region": "bibra_lake",
+   "hmin": 15.36,
+   "hmax": 30.01,
+   "bytes": 327426,
+   "traffic": "-7_-23.p5r"
   },
   "1_-23": {
    "i": 1,
@@ -499,6 +929,26 @@
    "hmax": 47.88,
    "bytes": 346719,
    "traffic": "-16_-22.p5r"
+  },
+  "-8_-22": {
+   "i": -8,
+   "j": -22,
+   "file": "-8_-22.p5t",
+   "region": "bibra_lake",
+   "hmin": 5.73,
+   "hmax": 35.84,
+   "bytes": 283426,
+   "traffic": "-8_-22.p5r"
+  },
+  "-7_-22": {
+   "i": -7,
+   "j": -22,
+   "file": "-7_-22.p5t",
+   "region": "bibra_lake",
+   "hmin": 9.2,
+   "hmax": 32.1,
+   "bytes": 296613,
+   "traffic": "-7_-22.p5r"
   },
   "0_-22": {
    "i": 0,
@@ -7306,6 +7756,10 @@
    4972.4,
    6928.5
   ],
+  "Bibra Lake": [
+   -3342.5,
+   17000.9
+  ],
   "Bicton": [
    -6426.9,
    8933.9
@@ -7593,6 +8047,10 @@
   "North Fremantle": [
    -9345.8,
    9625.8
+  ],
+  "North Lake": [
+   -2087.4,
+   14929.2
   ],
   "North Perth": [
    263.4,
@@ -8746,6 +9204,24 @@
    "hidden": true
   },
   {
+   "id": "birding_bibra_lake_reeds",
+   "kind": "birding",
+   "name": "Bibra Lake reeds",
+   "p": [
+    -2535.58,
+    13.21,
+    15621.58
+   ],
+   "yaw": 0.0,
+   "at": [
+    -2535.58,
+    12.91,
+    15621.58
+   ],
+   "suburb": "Bibra Lake",
+   "hidden": true
+  },
+  {
    "id": "birding_burswood_lakes",
    "kind": "birding",
    "name": "Burswood Park lakes",
@@ -8905,6 +9381,24 @@
     -393.4
    ],
    "suburb": "Subiaco"
+  },
+  {
+   "id": "drive_thru_1063647855",
+   "kind": "drive_thru",
+   "name": "McDonald's",
+   "p": [
+    -3279.4,
+    18.82,
+    10986.93
+   ],
+   "yaw": 0.0268,
+   "at": [
+    -3279.4,
+    18.52,
+    10986.93
+   ],
+   "brand": "McDonald's",
+   "suburb": "Myaree"
   },
   {
    "id": "drive_thru_1248948568",
@@ -9103,6 +9597,42 @@
    ],
    "brand": "KFC",
    "suburb": "Subiaco"
+  },
+  {
+   "id": "drive_thru_702168722",
+   "kind": "drive_thru",
+   "name": "Red Rooster",
+   "p": [
+    -3503.6,
+    38.46,
+    16089.23
+   ],
+   "yaw": -1.5973,
+   "at": [
+    -3503.6,
+    38.16,
+    16089.23
+   ],
+   "brand": "Red Rooster",
+   "suburb": "Bibra Lake"
+  },
+  {
+   "id": "drive_thru_899353801",
+   "kind": "drive_thru",
+   "name": "Krispy Kreme",
+   "p": [
+    -3386.09,
+    16.32,
+    11041.74
+   ],
+   "yaw": 0.0233,
+   "at": [
+    -3386.09,
+    16.02,
+    11041.74
+   ],
+   "brand": "Krispy Kreme",
+   "suburb": "Myaree"
   },
   {
    "id": "drive_thru_920866275",
@@ -9871,6 +10401,23 @@
    "suburb": "Trigg"
   },
   {
+   "id": "lookout_bibra_lake",
+   "kind": "lookout",
+   "name": "Bibra Lake lookout",
+   "p": [
+    -3111.32,
+    13.25,
+    16030.92
+   ],
+   "yaw": -1.96,
+   "at": [
+    -2446.67,
+    7.73,
+    16303.52
+   ],
+   "suburb": "Bibra Lake"
+  },
+  {
    "id": "lookout_dryandra_lookout",
    "kind": "lookout",
    "name": "Dryandra Lookout",
@@ -10201,6 +10748,23 @@
    ],
    "brand": "BP",
    "suburb": "Applecross"
+  },
+  {
+   "id": "servo_12273587265",
+   "kind": "servo",
+   "name": "Servo",
+   "p": [
+    -2334.38,
+    26.36,
+    17997.31
+   ],
+   "yaw": 1.9465,
+   "at": [
+    -2334.38,
+    26.06,
+    17997.31
+   ],
+   "suburb": "Bibra Lake"
   },
   {
    "id": "servo_1236531306",
@@ -11168,6 +11732,41 @@
    "suburb": "Como"
   },
   {
+   "id": "servo_878489786",
+   "kind": "servo",
+   "name": "Servo",
+   "p": [
+    -3176.9,
+    20.02,
+    11063.74
+   ],
+   "yaw": -3.1386,
+   "at": [
+    -3176.9,
+    19.72,
+    11063.74
+   ],
+   "suburb": "Myaree"
+  },
+  {
+   "id": "servo_878489791",
+   "kind": "servo",
+   "name": "United",
+   "p": [
+    -3890.14,
+    21.96,
+    11106.38
+   ],
+   "yaw": -2.9421,
+   "at": [
+    -3890.14,
+    21.66,
+    11106.38
+   ],
+   "brand": "United",
+   "suburb": "Stocks Corner"
+  },
+  {
    "id": "servo_9236585991",
    "kind": "servo",
    "name": "Shell Coles Express Bicton",
@@ -11184,6 +11783,24 @@
    ],
    "brand": "Shell",
    "suburb": "Bicton"
+  },
+  {
+   "id": "servo_9932826381",
+   "kind": "servo",
+   "name": "7-Eleven",
+   "p": [
+    -3651.77,
+    30.12,
+    13437.37
+   ],
+   "yaw": -3.1039,
+   "at": [
+    -3651.77,
+    29.82,
+    13437.37
+   ],
+   "brand": "7-Eleven",
+   "suburb": "Kardinya"
   },
   {
    "id": "servo_9948985767",

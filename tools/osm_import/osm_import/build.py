@@ -47,6 +47,7 @@ PIER_WIDTH = {"pier": 3.0, "breakwater": 6.0, "groyne": 5.0}  # metres, when OSM
 PATH_TOUCH = 1.0        # a path's node this close to a jetty leads onto it
 LANDING = 3.0           # a jetty is level with the shore this far in from the water
 JETTY_PAD = 7.5         # ground this close to a jetty's shore end is level with its deck (every
+BOARDWALK_DECK = 0.5  # a boardwalk's deck over the reeds or the water under it
                         # grid cell its edge crosses, or the ground drawn there leaves a ledge)...
 JETTY_RAMP = 8.0        # ...and eases back to its own height over at least this...
 SEAT_GRADE = 0.2        # ...and wide enough that the change in grade stays under this
@@ -463,12 +464,31 @@ class World:
         self._sculpt_terrain()
         self._land_lifts()
         self._cut_under_lifts()
+        self._seat_boardwalks()
         self._land_footbridges()
         self.deck_parts = self._level_decks()
         print(f"  world prepared in {time.time() - t0:.1f}s: {len(self.ways)} ways, "
               f"{len(self.buildings)} buildings, {len(self.water)} water bodies")
 
     # -- preparation helpers --
+    def _seat_boardwalks(self):
+        """Boardwalks run just over the reeds and the water. Their profiles
+        come from the bare DEM, but the ground under them is fitted and the
+        lake beds sculpted afterwards, which left decks metres up on piers.
+        Each point sits BOARDWALK_DECK over the ground or the water under it,
+        whichever is higher."""
+        hf = self.hf
+        for w in self.ways:
+            if w.group != "foot" or w.tags.get("bridge") != "boardwalk" or len(w.xy) < 2:
+                continue
+            top = np.asarray(hf.sample(w.xy[:, 0], w.xy[:, 1]), dtype=float)
+            line = shapely.LineString(w.xy)
+            for wb in self.water:
+                if wb.geom.intersects(line):
+                    wet = shapely.contains_xy(wb.geom, w.xy[:, 0], w.xy[:, 1])
+                    top[wet] = np.maximum(top[wet], wb.level)
+            w.h = top + BOARDWALK_DECK
+
     def _land_footbridges(self):
         """Footbridges and boardwalks come up to meet the ground where they
         land. Their profiles are taken from the DEM before the ground is fitted

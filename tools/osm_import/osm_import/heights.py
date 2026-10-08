@@ -21,6 +21,7 @@ from .terrain import HeightField
 GRADE = {"road": 0.06, "rail": 0.03, "foot": 0.10}
 SERVICE_GRADE = 0.12
 BRIDGE_CLEARANCE = {"road": 6.0, "rail": 6.5, "foot": 5.5}
+BOARDWALK_CLEARANCE = 0.8  # a boardwalk runs just over the reeds and the water, not up on piers
 TUNNEL_DEPTH = {"road": 7.5, "rail": 9.0, "foot": 4.0}
 # Least ground over a tunnel's floor between its portals: the tunnel box
 # (build.TUNNEL_HEIGHT plus its roof) has to fit under the road on top, or the
@@ -255,7 +256,10 @@ def _solve_group(group: str, ways, hf: HeightField, couple=(), tie=()) -> dict[i
         k_idx = np.array([index[int(nid)] for nid in w.nodes])
         if styles.is_bridge(t):
             short = _way_length(w.coords) < 15.0
-            clr = 1.0 if short else BRIDGE_CLEARANCE[group] + 5.0 * max(0, lyr - 1)
+            if t.get("bridge") == "boardwalk":
+                clr = BOARDWALK_CLEARANCE
+            else:
+                clr = 1.0 if short else BRIDGE_CLEARANCE[group] + 5.0 * max(0, lyr - 1)
             # Clear the lowest ground anywhere under the span, not just at nodes.
             span_min = float(base[k_idx].min())
             under = np.linspace(0, 1, 9)
