@@ -1017,6 +1017,14 @@ func _drive(v: TrafficVehicle, dt: float) -> void:
 					v.commits = []
 					v.cleared = null
 				break
+			# Cleared to go, but the queue past it has backed up since: wait at
+			# the line rather than stop across the junction, if we still can.
+			if v.commits.has(l) and not lane.connector and base > 0.5 and v.speed * v.speed / (2.0 * base) < 3.0:
+				for c in v.commits:
+					if not _room_past(c, v):
+						v.commits = []
+						v.cleared = null
+						break
 			if not v.commits.has(l):
 				var d := base
 				var ready := true
@@ -1282,6 +1290,9 @@ func _merge_turn(c: TrafficGraph.Lane, v: TrafficVehicle, d: float) -> bool:
 				return false
 			if held:
 				continue
+			# Sat still a while for some other reason: not going first.
+			if o.speed < 0.3 and o.stopped_time > 3.0 and o.wait_on != v:
+				continue
 			# Compare distances to where the paths join (the moves can be
 			# very different lengths at a skewed junction).
 			var rem: float = other.in_lane.length - o.s - o.length * 0.5 + other.length
@@ -1349,15 +1360,33 @@ func _junction_free(c: TrafficGraph.Lane, v: TrafficVehicle) -> bool:
 			if o != v and o.commits.has(other) and not _ignoring(v, o):
 				_culprit = o
 				return false
-	# Room for all of us past the junction: a queue (or a car stopped with
-	# its hazards on) just past it would leave our tail across it.
-	var out: TrafficGraph.Lane = c.next[0]
-	for o in out.vehicles:
-		if o != v and o.s - o.length * 0.5 < v.length + 2.5 and o.speed < 2.0:
-			_culprit = o
+	return _room_past(c, v)
+
+
+## Room for all of us past the junction, with the usual gap to the car in
+## front: a queue (or a car stopped with its hazards on) just past it, or
+## a red light right after it, would leave us stopped across it.
+func _room_past(c: TrafficGraph.Lane, v: TrafficVehicle) -> bool:
+	var need := v.length + 3.2
+	var k := v.route.find(c)
+	var lanes: Array = v.route.slice(k + 1) if k >= 0 and k + 1 < v.route.size() else [c.next[0]]
+	var off := 0.0
+	for l in lanes:
+		if off >= need:
+			break
+		for o in l.vehicles:
+			if o != v and o.speed < 3.0 and off + o.s - o.length * 0.5 < need and not _ignoring(v, o):
+				_culprit = o
+				return false
+		if not l.closed.is_empty() and off + l.closed[0] < need:
 			return false
-	if not out.closed.is_empty() and out.closed[0] < v.length + 2.5:
-		return false
+		if l.connector and l.node.degree() != 2:
+			break  # Another junction: its own checks decide.
+		for st in l.stops:
+			var gate: TrafficGraph.Gate = st.gate
+			if not gate.buses_only() and gate.state() != TrafficGraph.Gate.GO and off + st.s < need:
+				return false
+		off += l.length
 	return true
 
 
@@ -1430,11 +1459,18 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 	if v.change_from:
 		drift = v.position - _route_point(v, v.s)
 		drift.y = 0.0
+	var prev := _route_point(v, start + d - 1.0)
 	while d <= look:
 		var p := _route_point(v, start + d)
-		samples.append([d, p + side])
+		# Which way we'd be facing with our nose here: our whole body, not
+		# just the nose, has to clear anything parked at an angle.
+		var f := p - prev
+		f.y = 0.0
+		f = f.normalized() if f.length_squared() > 0.0001 else v.forward
+		prev = p
+		samples.append([d, p + side, f])
 		if drift.length_squared() > 0.25:
-			samples.append([d, p + drift])
+			samples.append([d, p + drift, f])
 		d += 2.0
 	for o in candidates:
 		if o == v:
@@ -1459,10 +1495,15 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 		var of: Vector3 = o.forward
 		var ol := TrafficGraph.left_of(of)
 		var hl: float = o.length * 0.5 + 0.4
-		var hw: float = o.width * 0.5 + v.width * 0.5 + 0.25
+		var hw: float = o.width * 0.5 + 0.25
+		# Meeting at a shallow angle (a skewed merge, a car poking out of a
+		# side road): our corners swing out past the line our nose takes, so
+		# check our whole body. Square on, the junction rules keep us apart.
+		var skew := absf(of.dot(v.forward))
+		var whole := skew > 0.5 and skew < 0.985
 		for smp in samples:
 			var lp: Vector3 = smp[1] - o.position
-			if absf(lp.y) < 3.0 and absf(lp.dot(of)) < hl and absf(lp.dot(ol)) < hw:
+			if absf(lp.y) < 3.0 and (_footprint_hits(smp[1], smp[2], v, o.position, of, ol, hl, hw) if whole else absf(lp.dot(of)) < hl and absf(lp.dot(ol)) < hw + v.width * 0.5):
 				var gap: float = maxf(smp[0] - 1.0, 0.0)
 				if gap < v.obstacle_gap:
 					v.obstacle_gap = gap
@@ -1477,6 +1518,24 @@ func _scan_obstacles(v: TrafficVehicle) -> void:
 						v.obstacle_speed = o.forward.dot(v.forward) * o.speed
 						v.obstacle_reason = TrafficVehicle.Reason.OBSTACLE
 				break
+
+
+## Our footprint with the nose at `nose`, facing `f`, against a box at `c`
+## (half-length `hl` along `of`, half-width `hw` along `ol`): separating
+## axis test on the ground plane.
+func _footprint_hits(nose: Vector3, f: Vector3, v: TrafficVehicle, c: Vector3, of: Vector3, ol: Vector3, hl: float, hw: float) -> bool:
+	var fl := TrafficGraph.left_of(f)
+	var rel := c - (nose - f * (v.length * 0.5))
+	rel.y = 0.0
+	var ml := v.length * 0.5
+	var mw := v.width * 0.5
+	for ax in [of, ol, f, fl]:
+		var n: Vector3 = ax
+		var ra := absf(f.dot(n)) * ml + absf(fl.dot(n)) * mw
+		var rb := absf(of.dot(n)) * hl + absf(ol.dot(n)) * hw
+		if absf(rel.dot(n)) > ra + rb:
+			return false
+	return true
 
 
 func _advance(v: TrafficVehicle) -> void:
