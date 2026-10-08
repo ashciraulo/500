@@ -29,7 +29,7 @@ from .common import (CACHE_DIR, MAP_DIR, TILES_DIR, Projector, TileKey, load_con
 from .extract import extract
 from .overview import build_overview
 from .sea import sea_polygon
-from .heights import BOARDWALK_CLEARANCE, GRADE, compute_node_heights, densify_ways, way_group
+from .heights import compute_node_heights, densify_ways, way_group
 from .meshbuild import (CellGrid, MeshBuilder, Surface, densify, drape, flat_cap,
                         offset_polyline, polygons_of, ribbon, triangulate, walls)
 from .terrain import HeightField, build_heightfield
@@ -51,6 +51,7 @@ JETTY_PAD = 7.5         # ground this close to a jetty's shore end is level with
 JETTY_RAMP = 8.0        # ...and eases back to its own height over at least this...
 SEAT_GRADE = 0.2        # ...and wide enough that the change in grade stays under this
 SEAT_REACH = 40.0       # (but never further out than this)
+BOARDWALK_DECK = 0.5
 # River between a deck and the bank, where they're this close (deck distance
 # plus bank distance), is filled up to the deck, and so is river under a deck
 # next to ground at its height: a quay along the shore (Elizabeth Quay) kept
@@ -92,7 +93,6 @@ DEM_FAR = 45.0        # ...and has all of it from here
 BUILT_REACH = 20.0    # ground this close to a building is interpolated from the roads
 BUILT_SOFT = 15.0     # softening of the built-up edge (metres)
 BARE_WINDOW = 75.0    # building mounds narrower than this come out of the DEM among buildings
-FOOT_GRADE = GRADE["foot"]
 LONE_LANDMARK_SPAN = 30.0  # a landmark this narrow with no building near it doesn't count as built-up
 BARE_SOFT = 10.0
 FILL_SCALES = (12.0, 40.0, 120.0, 400.0)  # metres, finest first
@@ -467,12 +467,26 @@ class World:
         self._sculpt_terrain()
         self._land_lifts()
         self._cut_under_lifts()
+        self._seat_boardwalks()
         self._land_footbridges()
         self.deck_parts = self._level_decks()
         print(f"  world prepared in {time.time() - t0:.1f}s: {len(self.ways)} ways, "
               f"{len(self.buildings)} buildings, {len(self.water)} water bodies")
 
     # -- preparation helpers --
+    def _seat_boardwalks(self):
+        hf = self.hf
+        for w in self.ways:
+            if w.group != "foot" or w.tags.get("bridge") != "boardwalk" or len(w.xy) < 2:
+                continue
+            top = np.asarray(hf.sample(w.xy[:, 0], w.xy[:, 1]), dtype=float)
+            line = shapely.LineString(w.xy)
+            for wb in self.water:
+                if wb.geom.intersects(line):
+                    wet = shapely.contains_xy(wb.geom, w.xy[:, 0], w.xy[:, 1])
+                    top[wet] = np.maximum(top[wet], wb.level)
+            w.h = top + BOARDWALK_DECK
+
     def _land_footbridges(self):
         """Footbridges and boardwalks come up to meet the ground where they
         land. Their profiles are taken from the DEM before the ground is fitted
@@ -499,28 +513,6 @@ class World:
             s = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(w.xy, axis=0), axis=1))])
             t = s / max(s[-1], 1e-6)
             w.h = w.h + lift[0] * (1.0 - t) + lift[1] * t
-        # Boardwalks come down to just over the ground they cross. Their
-        # clearance is measured from the DEM, and the lake shores and swamps
-        # under them are sculpted lower than that, which left Herdsman and
-        # Tomato Lake's 2-4 m up in the air. Over water they keep clear of it.
-        # The ends stay where the paths meet them, and the deck eases down
-        # from them no steeper than a path.
-        for w in self.ways:
-            if w.group != "foot" or w.tags.get("bridge") != "boardwalk" or len(w.xy) < 2:
-                continue
-            floor = hf.sample(w.xy[:, 0], w.xy[:, 1])
-            pts = shapely.points(w.xy[:, 0], w.xy[:, 1])
-            for wb in self.water:
-                wet = shapely.contains(wb.geom, pts)
-                floor = np.where(wet, np.maximum(floor, wb.level), floor)
-            low = np.minimum(w.h, floor + BOARDWALK_CLEARANCE)
-            low[[0, -1]] = w.h[[0, -1]]
-            step = np.linalg.norm(np.diff(w.xy, axis=0), axis=1) * FOOT_GRADE
-            for k in range(1, len(low)):
-                low[k] = max(low[k], low[k - 1] - step[k - 1])
-            for k in range(len(low) - 2, -1, -1):
-                low[k] = max(low[k], low[k + 1] - step[k])
-            w.h = np.minimum(w.h, low)
 
     def _level_decks(self) -> list[Deck]:
         """Every deck polygon with its heights.

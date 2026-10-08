@@ -961,27 +961,24 @@ def test_a_lone_narrow_landmark_doesnt_make_the_ground_round_it_built_up():
     assert lone == {memorial.id}
 
 
-def test_boardwalk_comes_down_to_just_over_the_ground_it_crosses():
-    # Herdsman Lake: the boardwalk's clearance is measured from the DEM, and
+def test_boardwalk_sits_just_over_the_ground_or_water_it_crosses():
+    # Herdsman Lake: the boardwalk's clearance was measured from the DEM, and
     # the shore under it is sculpted lower, which left it metres up in the
-    # air. It comes down to just over the ground, over the water it keeps
-    # clear of the water, and its ends stay where the paths meet it.
+    # air on piers. It sits just over the final ground, and over the water
+    # just over the water.
     from dataclasses import replace
     from types import SimpleNamespace as NS
     from shapely.geometry import box as sbox
-    from osm_import.build import FOOT_GRADE, World
-    from osm_import.heights import BOARDWALK_CLEARANCE
+    from osm_import.build import BOARDWALK_DECK, World
     hf = flat_field(10.0, size=400.0)
     E, N = np.meshgrid(*hf.node_coords())
     hf.H[:] = np.where(np.abs(E) < 80.0, 6.0, 10.0)  # a hollow (the sculpted shore)
     xs = np.arange(-100.0, 101.0, 5.0)
     bw = replace(_lw(1, {"highway": "footway", "bridge": "boardwalk"}, "foot",
-                     np.column_stack([xs, np.zeros(len(xs))]), 10.8, 2.0), bridge=True)
+                     np.column_stack([xs, np.zeros(len(xs))]), 15.0, 2.0), bridge=True)
     pond = NS(geom=sbox(-20.0, -20.0, 20.0, 20.0), level=7.0)
-    World._land_footbridges(NS(ways=[bw], hf=hf, water=[pond]))
-    assert bw.h[0] == 10.8 and bw.h[-1] == 10.8
-    mid = (np.abs(xs) > 20.0) & (np.abs(xs) <= 40.0)
-    assert np.allclose(bw.h[mid], 6.0 + BOARDWALK_CLEARANCE)
-    assert np.allclose(bw.h[np.abs(xs) < 15.0], 7.0 + BOARDWALK_CLEARANCE)
-    assert (np.abs(np.diff(bw.h)) <= FOOT_GRADE * 5.0 + 1e-9).all()
-    assert (bw.h >= hf.sample(xs, np.zeros(len(xs))) + BOARDWALK_CLEARANCE - 1e-9).all()
+    World._seat_boardwalks(NS(ways=[bw], hf=hf, water=[pond]))
+    ground = hf.sample(xs, np.zeros(len(xs)))
+    dry = np.abs(xs) > 20.0
+    assert np.allclose(bw.h[dry], ground[dry] + BOARDWALK_DECK)
+    assert np.allclose(bw.h[np.abs(xs) < 20.0], 7.0 + BOARDWALK_DECK)
