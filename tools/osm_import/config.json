@@ -165,7 +165,9 @@
      "lat": -31.987439, "lon": 115.827582, "bearing": 120},
     {"id": "pelican_fence", "scene": "res://art/models/props/landmarks/pelican_fence.glb",
      "lat": -31.987656, "lon": 115.827582,
-     "run": {"to": [-31.987656, 115.826524], "step": 20, "axis": "x"}}
+     "run": {"to": [-31.987656, 115.826524], "step": 20, "axis": "x"}},
+    {"id": "royal_st_roller_door", "scene": "res://art/models/props/landmarks/royal_st_roller_door.glb",
+     "lat": -31.9519597, "lon": 115.8717521, "bearing": 180.6}
   ],
   "hand_decks": [
     {"name": "Cottesloe groyne", "kind": "groyne", "width": 8.0,
