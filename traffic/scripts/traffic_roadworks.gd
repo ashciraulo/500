@@ -82,6 +82,11 @@ func update(delta: float, focus: Vector3) -> void:
 		seen[lane.road] = true
 		var road := lane.road
 		var want := site_for(road, GameClock.day)
+		# A long road can reach into range while its site is still past the
+		# clean-up distance below, which would build the site and clear it
+		# again every second. Wait until the site itself is near.
+		if not want.is_empty() and _road_point(road, want).distance_to(focus) > radius + 150.0:
+			want = {}
 		var have: Dictionary = sites.get(road.key, {})
 		if have.get("pinned", false):
 			continue

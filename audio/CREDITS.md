@@ -55,7 +55,9 @@ their pedestrian tones (the New 500e's is original, not the real car's
 tune), the kerbside vans, taxis, trolley, hazards and ticket printer, the
 phone notification, every bird call in `audio/field/` except the lorikeet, black cockatoo,
 boobook and wagtail chatter cuts (above), the camera, binocular and journal
-sounds, and all the fishing sounds.
+sounds, all the fishing sounds, the servo forecourts (place_servo*), the
+restoration and barn-find sounds (garage_angle_grinder, garage_staple_gun,
+garage_tarp_pull) and the record player's needle lift.
 
 ## The cat and the midnight voices (`gen_home.py`, `gen_amb.py odd_`)
 

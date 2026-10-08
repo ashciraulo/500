@@ -285,6 +285,7 @@ func _add_placed_props(key: Vector2i, root: Node3D) -> void:
 		var p: Array = entry.p
 		node.position = Vector3(p[0], p[1], p[2]) - root.position
 		node.rotation.y = float(entry.yaw)
+		node.rotation.x = float(entry.get("pitch", 0.0))  # a run piece tilted down a sloping jetty
 		root.add_child(node)
 
 

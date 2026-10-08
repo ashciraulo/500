@@ -490,6 +490,21 @@ def needle_drop():
     return fade(x, fout=0.4)
 
 
+def needle_lift():
+    """Lifting the needle: the crackle the record was making cuts out under a
+    tiny stylus scuff, then the arm settles on its rest with a soft click."""
+    crack = vinyl_crackle(secs(0.5), 12010)
+    crack *= np.minimum(1, t_axis(len(crack)) / 0.05)
+    n = secs(0.06)
+    scuff = bp(noise(n, 12011), 1200, 7000) * np.exp(-t_axis(n) / 0.015) * 0.3
+    m = secs(0.12)
+    tm = t_axis(m)
+    rest = bp(noise(m, 12012), 1500, 5000) * np.exp(-tm / 0.006) * 0.35 \
+        + np.sin(2 * np.pi * 2300 * tm) * np.exp(-tm / 0.01) * 0.12
+    x = mix(1.3, [(0.0, crack, 1.0), (0.48, scuff, 1.0), (0.95, rest, 1.0)])
+    return fade(x, fin=0.05)
+
+
 def intercom_buzz():
     """Door intercom buzzer: a harsh electromagnetic 'bzzzt' (~100 Hz
     clapper hammering a plate) through a tiny speaker grille."""
@@ -757,7 +772,16 @@ def day_ends():
 # --------------------------------------------------------------------------
 
 
-def main():
+NEW = {
+    "home_record_needle_lift": needle_lift,
+}
+
+
+def main(argv=()):
+    if argv:
+        for name in argv:
+            save(f"{OUT}/{name}", NEW[name]())
+        return
     for v in range(5):
         save(f"{OUT}/home_step_timber_{v + 1:02d}", step_timber(v))
         save(f"{OUT}/home_step_carpet_{v + 1:02d}", step_carpet(v))
@@ -777,6 +801,7 @@ def main():
     for v in range(3):
         save(f"{OUT}/home_mug_down_{v + 1:02d}", mug_down(v))
     save(f"{OUT}/home_record_needle_drop", needle_drop())
+    save(f"{OUT}/home_record_needle_lift", needle_lift())
     save(f"{OUT}/home_record_crackle", record_crackle_loop(), norm="amb")
     save(f"{OUT}/home_record_runout", runout_groove_loop(), norm="amb")
     save(f"{OUT}/home_bed_get_in", bed_get_in())
@@ -803,4 +828,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

@@ -640,6 +640,8 @@ func _wander(b: Dictionary) -> void:
 const WRONG_RANGE := 300.0
 ## The frogmouth's pole, from the car's spot in the carport: [across, ahead].
 const HOME_POLE := Vector2(2.6, 7.5)
+## The boobook's dead marri stump (the nest lined with tape is in its hollow).
+const HOLLOW := "res://art/models/home/mystery/boobook_hollow.glb"
 
 var _photo_spots := {}
 
@@ -731,7 +733,33 @@ func spawn_wrong(sp: Dictionary, at: Vector3) -> Dictionary:
 				return {}
 		"tree":
 			var crowns := trees_near(at, 60.0)
-			if crowns.is_empty():
+			if String(sp.get("behaviour", "")) == "nest" and ResourceLoader.exists(HOLLOW):
+				var g := ground(at)
+				if g.is_empty():
+					return {}
+				var stump := (load(HOLLOW) as PackedScene).instantiate() as Node3D
+				stump.name = "Hollow"
+				stump.set_meta("hollow", true)
+				stump.position = g.pos
+				# The hollow (+Z) towards wherever you'll come from.
+				var you := player_position()
+				if you != Vector3.INF:
+					stump.rotation.y = atan2(you.x - g.pos.x, you.z - g.pos.z)
+				var trunk := StaticBody3D.new()
+				trunk.collision_mask = 0
+				var shape := CollisionShape3D.new()
+				var cyl := CylinderShape3D.new()
+				cyl.radius = 0.17
+				cyl.height = 1.6
+				shape.shape = cyl
+				shape.position = Vector3.UP * 0.8
+				trunk.add_child(shape)
+				stump.add_child(trunk)
+				props.append(stump)
+				var lip := stump.get_node_or_null(^"Bird") as Node3D
+				var perch: Vector3 = lip.position if lip else Vector3(0, 0.93, 0.23)
+				spots.append({"pos": g.pos + Basis(Vector3.UP, stump.rotation.y) * perch, "kind": "post"})
+			elif crowns.is_empty():
 				var g := ground(at)
 				if g.is_empty():
 					return {}
@@ -770,10 +798,15 @@ func spawn_wrong(sp: Dictionary, at: Vector3) -> Dictionary:
 				# Facing upstream: east, up the river.
 				b.node.rotation.y = -PI * 0.5
 			"nest":
-				var nest := _make_nest()
-				nest.position = b.node.position + Vector3(0, -0.08, 0)
-				add_child(nest)
-				props.append(nest)
+				var stump := find_hollow(s)
+				if stump:
+					# Facing out of the hollow, the tape behind it.
+					b.node.rotation.y = stump.rotation.y + PI
+				else:
+					var nest := _make_nest()
+					nest.position = b.node.position + Vector3(0, -0.08, 0)
+					add_child(nest)
+					props.append(nest)
 	if String(sp.get("behaviour", "")) == "lights":
 		var traffic := get_tree().get_first_node_in_group(&"traffic")
 		if traffic and traffic.has_signal("signals_changed"):
@@ -844,6 +877,14 @@ func _make_pole() -> Node3D:
 	holder.add_child(arm)
 	holder.set_meta("top", 7.2)
 	return holder
+
+
+## The boobook's stump for a sighting (null when it nests in a tree).
+func find_hollow(s: Dictionary) -> Node3D:
+	for prop: Node3D in s.get("props", []):
+		if is_instance_valid(prop) and prop.has_meta("hollow"):
+			return prop
+	return null
 
 
 ## A twiggy nest woven through with shiny brown cassette tape.

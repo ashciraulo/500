@@ -86,6 +86,7 @@ func _process(_delta: float) -> bool:
 			{name = "prop_pelican_club", wait = 300, cam = [Vector3(-2650, 14, 4368), Vector3(-2671, 3, 4413)], fog = 0.002},
 			{name = "prop_pelican_tip", wait = 300, cam = [Vector3(-2530, 35, 4565), Vector3(-2510, 1, 4615)], fog = 0.002},
 			{name = "prop_pelican_top", wait = 300, cam = [Vector3(-2560, 220, 4600), Vector3(-2560, 0, 4601)], fog = 0.001},
+			{name = "lm_state_war_memorial", wait = 300, cam = [Vector3(-1000, 75, 1700), Vector3(-876, 40, 1649)], fog = 0.002},
 			{name = "north_mole_rocks", wait = 300, cam = [Vector3(-11700, 30, 11700), Vector3(-11860, 2, 11760)], fog = 0.002},
 			{name = "trigg_point", wait = 300, cam = [Vector3(-9690, 8, -7760), Vector3(-9760, 0, -7760)], fog = 0.002},
 			{name = "night_aerial", wait = 240, hour = 22.0, cam = [Vector3(-100, 260, -450), Vector3(350, 20, 900)], fog = 0.0008},

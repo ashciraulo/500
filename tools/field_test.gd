@@ -247,11 +247,22 @@ func _process(_delta: float) -> bool:
 				_check(not _target.is_empty() and _target.birds.size() == 13, "thirteen of them (%d)" % (_target.birds.size() if not _target.is_empty() else 0))
 				if _target.is_empty():
 					return _finish()
+				# The boobook sits in the hollow of its dead marri stump.
+				var owl: Dictionary = _birds.spawn_wrong(_fj.bird("wrong_boobook"), at + Vector3(-18, 0, 0))
+				var stump: Node3D = _birds.find_hollow(owl) if not owl.is_empty() else null
+				_check(stump != null, "the boobook's taped hollow stands in the bush")
+				if stump:
+					var bird: Node3D = owl.birds[0].node
+					var lip: Vector3 = (stump.get_node("Bird") as Node3D).global_position
+					_check(bird.global_position.distance_to(lip) < 0.05, "the boobook on the lip of the hollow")
+					var out: Vector3 = stump.global_basis.z
+					_check((bird.global_basis * Vector3(0, 0, -1)).dot(out) > 0.95, "looking out of it")
 				_check(_bino.open(), "binoculars up at night")
 				_aim(_target.birds[0].node)
 			elif _frames > 60 and _frames < 600:
 				_aim(_target.birds[0].node)
-				if _fj.is_seen("wrong_cockatoos"):
+				# Thirteen close together: wait till the glasses have settled on one.
+				if _fj.is_seen("wrong_cockatoos") and _bino.is_identified():
 					_check(root.get_node("Discoveries").has("field/wrong_cockatoos"), "seeing one is a discovery")
 					_check(_fj.seen_count() == _seen_before and _fj.species_total() == 42, "they don't count as species (%d of %d)" % [_fj.seen_count(), _fj.species_total()])
 					_check(_target.birds.all(func(b: Dictionary) -> bool: return b.state == "perch"), "none of them flush")
@@ -259,11 +270,11 @@ func _process(_delta: float) -> bool:
 					_wait = 0
 					_frames = 600
 			elif _frames > 600 and _bino.state == 2 and _frames % 10 == 0:
-				_aim(_target.birds[0].node)
+				_aim(_bino.dial.node)  # whichever of the flock the shot is on
 				_bino.dial.needle = _bino.dial.arcs[0]
 				_bino._press()
 			elif _frames > 600 and _bino.state != 2:
-				_check(_fj.roll.size() == 2 and _fj.roll[1].wrong, "a photo of one on the roll")
+				_check(_fj.roll.size() == 2 and _fj.roll[1].wrong, "a photo of one on the roll (%s)" % _bino._message)
 				_shot("08_wrong_cockatoos")
 				_bino.close()
 				_field.journal.open()
@@ -305,7 +316,7 @@ func _process(_delta: float) -> bool:
 				_check(result.prints.size() == 2 and _fj.roll.is_empty(), "two prints developed, the roll is empty")
 				_check(root.get_node("Wallet").balance == _money + int(result.pay) and int(result.pay) > 0, "the prints pay ($%d)" % result.pay)
 				_check(result.prints[0].first, "first print of a species earns the bonus")
-				_check(result.prints[1].wrong and int(result.prints[1].pay) == 0, "the cockatoo print comes out blank")
+				_check(result.prints.size() == 2 and result.prints[1].wrong and int(result.prints[1].pay) == 0, "the cockatoo print comes out blank")
 			elif _frames == 130:
 				_shot("06_lab")
 				_field.lab_screen.close()
@@ -560,6 +571,16 @@ func _check_wrong_flathead(disc: Node) -> void:
 	var model: Node3D = load("res://scripts/field/fish_models.gd").build(f)
 	_check(model.find_child("Glow", true, false) is OmniLight3D, "it glows")
 	model.free()
+	var bream: Node3D = load("res://scripts/field/fish_models.gd").sized(_fj.fish_species("wrong_bream"), 31.0)
+	var tag := bream.find_child("Tag", true, false) as Node3D
+	_check(tag != null, "the tagged bream carries the 1979 dart tag")
+	if tag:
+		# A real dart tag is about 6.5 cm; it hangs down from the jaw.
+		var aabb: AABB = (tag.get_child(0) as MeshInstance3D).get_aabb()
+		var long: float = aabb.size.z * tag.scale.z * bream.scale.z
+		_check(long > 0.05 and long < 0.08, "at its real size (%.1f cm)" % (long * 100.0))
+		_check((tag.basis * Vector3(0, 0, -1)).y < -0.8, "hanging down from the jaw")
+	bream.free()
 	_check(_fishing.keep_blocked(_fj.fish_size(f, RandomNumberGenerator.new())) != "", "it can't be kept")
 	if not had:
 		disc._found.erase("mystery/atlas_page")
@@ -589,6 +610,24 @@ func _check_hubcap(disc: Node) -> void:
 		disc._found.erase(kept)
 		if cap:
 			cap.free()
+	# M.'s pages go up by the back door as you find each night bird.
+	var seen: Array = []
+	for row: Array in trophies.PAGES:
+		if _fj.entries.has(row[0]):
+			seen.append(row[0])
+	trophies._update_pages()
+	_check(trophies.pages().size() == seen.size(), "a page by the back door for each night bird found (%d)" % seen.size())
+	_fj.entries["wrong_swan"] = {"seen": 1, "where": "test"}
+	trophies._update_pages()
+	var page: Node3D = trophies.pages().get("wrong_swan")
+	_check(page != null, "finding the swan pins up its page")
+	if page:
+		var hook := page.get_parent() as Node3D
+		_check(page.global_basis.y.normalized().dot(hook.global_basis.z.normalized()) > 0.95, "facing into the room")
+	if not seen.has("wrong_swan"):
+		_fj.entries.erase("wrong_swan")
+		if page:
+			page.free()
 
 
 func get_root_home_door() -> Node3D:
