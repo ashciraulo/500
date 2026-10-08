@@ -72,12 +72,12 @@ func _process(delta: float) -> bool:
 				_dev.marks_path = "user://dev_marks_test.txt"
 				_dev.set_enabled(false)
 				_key(KEY_V)
-				_check(not _player.noclip, "dev keys do nothing while dev mode is off")
 				_key(KEY_F3)
 				_player.get_out()
 				_next()
 		1:
 			if _t > 2.0:
+				_check(not _player.noclip, "dev keys do nothing while dev mode is off (V before F3)")
 				_check(_dev.enabled and _dev.get_node("DevPanel").visible, "F3 turns dev mode on and shows its panel")
 				_check(not _player.in_car, "got out of the car")
 				# In the front garden by the front door, turned left toward next door's front yard.
@@ -122,12 +122,12 @@ func _process(delta: float) -> bool:
 				# Front garden, looking at the house, and fly through it.
 				_put(Vector3(2.7, -1.0, 0.1), Vector3(2.7, 4.0, 1.5))
 				_key(KEY_V)
-				_check(_player.noclip, "V: flying")
 				_mark = _player.global_position
 				Input.action_press("accelerate")
 				_next()
 		5:
 			if _t > 1.5 and _t - delta <= 1.5:
+				_check(_player.noclip, "V: flying")
 				Input.action_release("accelerate")
 				var through := _local(_player.global_position).y
 				_check(through > 8.0, "flying goes through the house walls (y %.1f)" % through)
@@ -140,11 +140,11 @@ func _process(delta: float) -> bool:
 			if _t > 3.3:
 				_shot("04_flying_over_home")
 				_key(KEY_V)
-				_check(not _player.noclip, "V again: back on your feet")
 				_key(KEY_1)
 				_next()
 		6:
 			if _t > 1.0:
+				_check(not _player.noclip, "V again: back on your feet")
 				var front: Vector3 = _home.spawn_transform(&"Spawn_Front").origin
 				_check(_player.global_position.distance_to(front) < 0.6 and _player.is_on_floor(), "1: home, at the front gate")
 				_shot("05_home")
@@ -229,12 +229,17 @@ func _process(delta: float) -> bool:
 					"1 in the car: back in the carport (from %.1f m away)" % _mark.distance_to(spawn))
 				_check(_note().contains("Back in the carport"), "and says so (%s)" % _note())
 				_shot("10_back_in_the_carport")
+				_mark = _car.global_position
 				_key(KEY_1)
-				_check(_note().contains("Already at the carport"), "1 again: says it's already at the carport (%s)" % _note())
+				_next()
+		15:
+			if _t > 1.0:
+				_check(_note().contains("Already at the carport") and _car.global_position.distance_to(_mark) < 0.5,
+					"1 again: says it's already at the carport (%s)" % _note())
 				_mark = _car.global_position
 				_key(KEY_U)
 				_next()
-		15:
+		16:
 			if _t > 1.5:
 				var moved := _car.global_position.distance_to(_mark)
 				_check(moved > 3.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95,
@@ -312,16 +317,19 @@ func _local(w: Vector3) -> Vector3:
 	return Vector3(p.x, -p.z, p.y)
 
 
+## Presses and lets go of a key the way a keyboard does: the events wait in
+## Input's buffer and the game handles them on the next frame, when moving the
+## car can be undone by the physics step (the bug PR #38 missed by flushing
+## the buffer straight away). So check what a key did a frame or more later.
 func _key(code: Key) -> void:
 	var ev := InputEventKey.new()
 	ev.keycode = code
+	ev.physical_keycode = code
 	ev.pressed = true
 	Input.parse_input_event(ev)
-	Input.flush_buffered_events()
 	var up := ev.duplicate() as InputEventKey
 	up.pressed = false
 	Input.parse_input_event(up)
-	Input.flush_buffered_events()
 
 
 func _shot(name: String) -> void:
