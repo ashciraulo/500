@@ -697,6 +697,31 @@ func wrong_place(sp: Dictionary) -> Vector3:
 	return _photo_spots.get(String(spot), Vector3.INF)
 
 
+## The nearest spot to `at` on open ground, a few metres clear of any road
+## or path, for something solid (the boobook's stump). `at` if there's none.
+func _off_paths(at: Vector3) -> Vector3:
+	for r: float in [0.0, 6.0, 12.0, 18.0, 24.0, 32.0, 40.0]:
+		var steps := 1 if r == 0.0 else 12
+		for i in steps:
+			var q := at + Vector3(cos(TAU * i / steps), 0, sin(TAU * i / steps)) * r
+			if _open_ground(q, 4.0):
+				return q
+	return at
+
+
+## Whether p and a ring `clear` metres round it are all natural ground.
+func _open_ground(p: Vector3, clear: float) -> bool:
+	if not is_inside_tree():
+		return false
+	var space := get_world_3d().direct_space_state
+	for k in 9:
+		var q := p if k == 0 else p + Vector3(cos(TAU * k / 8.0), 0, sin(TAU * k / 8.0)) * clear
+		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(q.x, 400.0, q.z), Vector3(q.x, -60.0, q.z), 1))
+		if hit.is_empty() or not String(hit.collider.name).begins_with("ground"):
+			return false
+	return true
+
+
 ## Put a wrong bird (or thirteen) at its place. Returns the sighting or {}.
 func spawn_wrong(sp: Dictionary, at: Vector3) -> Dictionary:
 	var spots := []
@@ -734,7 +759,7 @@ func spawn_wrong(sp: Dictionary, at: Vector3) -> Dictionary:
 		"tree":
 			var crowns := trees_near(at, 60.0)
 			if String(sp.get("behaviour", "")) == "nest" and ResourceLoader.exists(HOLLOW):
-				var g := ground(at)
+				var g := ground(_off_paths(at))
 				if g.is_empty():
 					return {}
 				var stump := (load(HOLLOW) as PackedScene).instantiate() as Node3D
