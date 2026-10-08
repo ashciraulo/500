@@ -153,11 +153,15 @@ func _check_route_graph() -> void:
 	_check(not r.is_empty() and float(r.length) > straight * 0.9 and float(r.length) < straight * 2.0,
 		"a way from home to Subiaco (%.0f m, %.0f m as the crow flies)" % [float(r.get("length", 0.0)), straight])
 	# Backwards along a long one-way: never straight down it the wrong way.
+	# The one nearest home, so new map tiles elsewhere don't change which is tried.
 	var oneway := -1
+	var nearest := INF
 	for i in int(g.call("road_count")):
 		if g.get("road_oneway")[i] == 1 and g.get("road_len")[i] > 150.0:
-			oneway = i
-			break
+			var d: float = (g.get("road_pts")[i][0] as Vector3).distance_to(home)
+			if d < nearest:
+				nearest = d
+				oneway = i
 	if oneway < 0:
 		_check(false, "a one-way to try")
 		return
