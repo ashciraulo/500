@@ -757,7 +757,7 @@
    "region": "canning_hwy",
    "hmin": 35.81,
    "hmax": 66.09,
-   "bytes": 438697,
+   "bytes": 438045,
    "traffic": "-12_-20.p5r"
   },
   "-11_-20": {
@@ -3137,7 +3137,7 @@
    "region": "first_slice",
    "hmin": -4.19,
    "hmax": 58.28,
-   "bytes": 253310,
+   "bytes": 253044,
    "traffic": "-3_-5.p5r"
   },
   "-2_-5": {
@@ -3557,7 +3557,7 @@
    "region": "first_slice",
    "hmin": -11.18,
    "hmax": 58.79,
-   "bytes": 770936,
+   "bytes": 771002,
    "traffic": "-1_-3.p5r"
   },
   "0_-3": {
@@ -3767,7 +3767,7 @@
    "region": "first_slice",
    "hmin": 12.18,
    "hmax": 199.85,
-   "bytes": 453318,
+   "bytes": 453699,
    "traffic": "-1_-2.p5r"
   },
   "0_-2": {
@@ -3787,7 +3787,7 @@
    "region": "first_slice",
    "hmin": 7.0,
    "hmax": 114.2,
-   "bytes": 682151,
+   "bytes": 682976,
    "traffic": "1_-2.p5r"
   },
   "2_-2": {
@@ -4017,7 +4017,7 @@
    "region": "first_slice",
    "hmin": 7.55,
    "hmax": 58.97,
-   "bytes": 737580,
+   "bytes": 738409,
    "traffic": "-1_-1.p5r"
   },
   "0_-1": {
@@ -4227,7 +4227,7 @@
    "region": "first_slice",
    "hmin": 15.46,
    "hmax": 103.77,
-   "bytes": 585506,
+   "bytes": 584878,
    "traffic": "-6_0.p5r"
   },
   "-5_0": {
@@ -4537,7 +4537,7 @@
    "region": "first_slice",
    "hmin": 18.62,
    "hmax": 49.12,
-   "bytes": 408391,
+   "bytes": 407977,
    "traffic": "-1_1.p5r"
   },
   "0_1": {
