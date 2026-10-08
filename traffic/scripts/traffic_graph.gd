@@ -1205,9 +1205,17 @@ func _add_footways(list: Array, cycle := false) -> void:
 		var other: PedEdge = pn.edges[0]
 		var best: PedNode = null
 		var best_d := 15.0
+		var home := Vector2i(roundi(pn.pos.x / 2.0), roundi(pn.pos.z / 2.0))
 		for x in range(-8, 9):
+			# Cells (2 m) further off than the best so far can't beat it.
+			var mx := maxf(absf(pn.pos.x - 2.0 * (home.x + x)) - 1.01, 0.0)
+			if mx >= best_d:
+				continue
 			for z in range(-8, 9):
-				for q in _ped_node_cells.get(Vector2i(roundi(pn.pos.x / 2.0) + x, roundi(pn.pos.z / 2.0) + z), []):
+				var mz := maxf(absf(pn.pos.z - 2.0 * (home.y + z)) - 1.01, 0.0)
+				if mx * mx + mz * mz >= best_d * best_d:
+					continue
+				for q in _ped_node_cells.get(home + Vector2i(x, z), []):
 					if q == pn or q == other.a or q == other.b:
 						continue
 					var d: float = q.pos.distance_to(pn.pos)
