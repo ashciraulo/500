@@ -141,6 +141,12 @@
       "description": "Kent Street Weir on the Canning River, out along Kent Street from Albany Highway",
       "bbox": [115.913, -32.026, 115.928, -32.016],
       "corridor": {"roads": ["Kent Street"], "buffer": 110, "bbox": [115.89, -32.03, 115.93, -31.98]}
+    },
+    "bibra_lake": {
+      "stage": 7,
+      "description": "Bibra Lake's wetland reserve in the southern suburbs, down North Lake Road from Leach Highway",
+      "bbox": [115.815, -32.104, 115.834, -32.082],
+      "corridor": {"roads": ["North Lake Road"], "buffer": 110, "bbox": [115.80, -32.085, 115.86, -32.035]}
     }
   },
   "placed_props": [
@@ -203,6 +209,8 @@
       {"id": "fishing_matilda_bay", "kind": "fishing", "name": "Matilda Bay", "suburb": "Crawley", "pier": 8075825},
       {"id": "fishing_canning_bridge", "kind": "fishing", "name": "Canning Bridge", "suburb": "Applecross", "lat": -32.0063, "lon": 115.8478, "look_at": [115.85, -32.006]},
       {"id": "fishing_garratt_road_bridge", "kind": "fishing", "name": "Garratt Road Bridge", "suburb": "Bayswater", "pier": 300110699},
+      {"id": "lookout_bibra_lake", "kind": "lookout", "name": "Bibra Lake lookout", "suburb": "Bibra Lake", "lat": -32.09054, "lon": 115.82096, "look_at": [115.828, -32.093], "snap": false},
+      {"id": "birding_bibra_lake_reeds", "kind": "birding", "name": "Bibra Lake reeds", "suburb": "Bibra Lake", "lat": -32.08685, "lon": 115.82706, "snap": false, "hidden": true},
       {"id": "fishing_point_walter_sandbar", "kind": "fishing", "name": "Point Walter sandbar", "suburb": "Bicton", "lat": -32.0129, "lon": 115.791, "snap": false, "hidden": true},
       {"id": "fishing_trigg_island", "kind": "fishing", "name": "Trigg Island rocks", "suburb": "Trigg", "lat": -31.87587, "lon": 115.75099, "hidden": true},
       {"id": "birding_floreat_lake", "kind": "birding", "name": "Floreat Lake", "suburb": "Floreat", "lat": -31.91624, "lon": 115.79987, "look_at": [115.79987, -31.91624], "hidden": true},
