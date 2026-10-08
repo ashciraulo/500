@@ -445,6 +445,7 @@ func add_data(data: Dictionary) -> int:
 
 	var dirty := {}
 	var added: Array = []
+	var fresh := {}  # lane sample cells this adds
 	for r in data.get("roads", []):
 		var road := _make_road(r)
 		if road == null:
@@ -488,7 +489,7 @@ func add_data(data: Dictionary) -> int:
 			_find_conflicts(node)
 		_build_signals(junctions.keys())
 		for road in added:
-			_index_road(road)
+			_index_road(road, fresh)
 			_build_footpaths(road)
 		for node in dirty.keys():
 			_link_footpaths(node)
@@ -501,10 +502,14 @@ func add_data(data: Dictionary) -> int:
 	for st in data.get("stations", []):
 		_add_station(_vec(st.p), str(st.get("name", "")))
 	if not added.is_empty() and not _pending_bus_stops.is_empty():
+		# Only stops near the new lanes can find one now.
 		var waiting := _pending_bus_stops
 		_pending_bus_stops = []
 		for p in waiting:
-			_add_bus_stop(p)
+			if _any_cell_near(fresh, p, BUS_STOP_REACH):
+				_add_bus_stop(p)
+			else:
+				_pending_bus_stops.append(p)
 	for bs in data.get("bus_stops", []):
 		_add_bus_stop(_vec(bs.p))
 	# Only new track, and track near new roads, can have new crossings.
@@ -937,8 +942,14 @@ func _build_signals(touched: Array) -> void:
 			center += n.pos
 		controller.center = center / controller.nodes.size()
 
+	# The lights at touched nodes, looked up rather than searched for: by the
+	# time the map is explored there are hundreds of sets of lights.
+	var redo := {}
+	for node in touched:
+		if node.signal_controller != null:
+			redo[node.signal_controller] = true
 	for controller in signal_controllers:
-		if not controller.nodes.any(func(n): return touched.has(n)):
+		if not redo.has(controller):
 			continue
 		# Main axis follows the highest ranked road, and gets the longer
 		# green. Once running, a bigger road arriving with a later tile
@@ -963,6 +974,7 @@ func _build_signals(touched: Array) -> void:
 		if not controller.running:
 			controller.timer = fposmod(controller.center.x * 0.37 + controller.center.z * 0.61, 20.0)
 			controller.running = true
+		var near: Array = []  # The junction's other paths, sampled when first needed.
 		for n in controller.nodes:
 			for road in n.roads:
 				var o: GNode = road.other(n)
@@ -973,7 +985,9 @@ func _build_signals(touched: Array) -> void:
 					var group: int = controller.group_for(dir)
 					var gate := SignalGate.new(controller, group)
 					lane.signal_gate = gate
-					lane.add_stop(lane.length - _stop_hold_back(lane, controller.nodes), gate)
+					if near.is_empty():
+						near = _junction_points(controller.nodes)
+					lane.add_stop(lane.length - _stop_hold_back(lane, near), gate)
 					controller.approaches.append({ "lane": lane, "group": group, "dir": dir, "road": road, "node": n })
 		for n in controller.nodes:
 			for c in n.connectors:
@@ -1009,36 +1023,62 @@ func _absorb_controller(into: SignalController, other: SignalController) -> void
 const MAX_HOLD_BACK := 6.0
 
 
-## How far short of the end of `lane` to wait at the lights at `nodes`, so a
-## car waiting there is clear of everyone else's way through: where a road
-## meets another at a shallow angle, the end of one lane can sit right
-## beside the other. 0 when the end is clear (or nothing nearby is).
-func _stop_hold_back(lane: Lane, nodes: Array) -> float:
-	# Bits of other paths near the junction: [points] lists.
-	var paths: Array = []
+## The bits of paths near the junction at `nodes`, as points every metre,
+## for _stop_hold_back: [road (or null), a connector's in_lane (or null),
+## points]. Sampled once for the whole set of lights, not once per approach
+## and place tried: adding a map tile redoes a lot of lights.
+func _junction_points(nodes: Array) -> Array:
+	var out: Array = []
 	for n in nodes:
 		for road in n.roads:
-			if road == lane.road:
-				continue
 			for l in road.lanes:
 				var near_end: bool = l.to_node == n
 				var a: float = maxf(l.length - 16.0, 0.0) if near_end else 0.0
 				var b: float = l.length if near_end else minf(16.0, l.length)
-				paths.append([l, a, b])
+				out.append([road, null, _sample(l, a, b)])
 		for c in n.connectors:
-			if c.in_lane != lane:
-				paths.append([c, 0.0, c.length])
+			out.append([null, c.in_lane, _sample(c, 0.0, c.length)])
+	return out
+
+
+static func _sample(l: Lane, a: float, b: float) -> PackedVector3Array:
+	var pts := PackedVector3Array()
+	var t := a
+	while t <= b:
+		pts.append(l.point(t))
+		t += 1.0
+	return pts
+
+
+## How far short of the end of `lane` to wait at the lights whose paths
+## `near` holds (from _junction_points), so a car waiting there is clear of
+## everyone else's way through: where a road meets another at a shallow
+## angle, the end of one lane can sit right beside the other. 0 when the end
+## is clear (or nothing nearby is).
+func _stop_hold_back(lane: Lane, near: Array) -> float:
+	# Only points near the end of the lane can be in the way: a waiting car's
+	# middle is at most MAX_HOLD_BACK + 3.05 m from it, and a point counts
+	# within 3.31 m of that.
+	var end := lane.point(lane.length)
+	var reach := MAX_HOLD_BACK + 3.05 + 3.35
+	var points: Array[Vector3] = []
+	for entry: Array in near:
+		if entry[0] == lane.road or (entry[0] == null and entry[1] == lane):
+			continue
+		for p: Vector3 in entry[2]:
+			if Vector2(p.x - end.x, p.z - end.z).length() <= reach:
+				points.append(p)
 	var back := 0.0
 	while back <= MAX_HOLD_BACK:
-		if _waiting_clear(lane, lane.length - back - 0.8, paths):
+		if _waiting_clear(lane, lane.length - back - 0.8, points):
 			return back
 		back += 0.5
 	return 0.0
 
 
-## A car with its nose at `s` on `lane` keeps 0.3 m clear of a car on any
-## of `paths`.
-func _waiting_clear(lane: Lane, s: float, paths: Array) -> bool:
+## A car with its nose at `s` on `lane` keeps 0.3 m clear of a car whose
+## centre line passes through any of `points`.
+func _waiting_clear(lane: Lane, s: float, points: Array[Vector3]) -> bool:
 	if s < 4.0:
 		return true
 	var f := lane.tangent(s)
@@ -1046,21 +1086,18 @@ func _waiting_clear(lane: Lane, s: float, paths: Array) -> bool:
 	f = f.normalized()
 	var left := TrafficGraph.left_of(f)
 	var c := lane.point(s) - f * 2.25
-	for path in paths:
-		var l: Lane = path[0]
-		var t: float = path[1]
-		while t <= path[2]:
-			var q := l.point(t) - c
-			t += 1.0
-			if absf(q.y) > 3.0:
-				continue
-			# Their centre line within half a car (and a margin) of our body.
-			if absf(q.dot(f)) < 2.25 + 0.3 and absf(q.dot(left)) < 0.9 + 0.9 + 0.3:
-				return false
+	for p in points:
+		var q := p - c
+		if absf(q.y) > 3.0:
+			continue
+		# Their centre line within half a car (and a margin) of our body.
+		if absf(q.dot(f)) < 2.25 + 0.3 and absf(q.dot(left)) < 0.9 + 0.9 + 0.3:
+			return false
 	return true
 
 
-func _index_road(road: Road) -> void:
+## Adds `road`'s lane samples to the lookup, and the cells they're in to `cells`.
+func _index_road(road: Road, cells := {}) -> void:
 	for lane in road.lanes:
 		var s := 6.0
 		while s < lane.length - 6.0:
@@ -1068,6 +1105,7 @@ func _index_road(road: Road) -> void:
 			if not _lane_cells.has(cell):
 				_lane_cells[cell] = []
 			_lane_cells[cell].append([lane, s])
+			cells[cell] = true
 			s += SAMPLE_STEP
 
 
@@ -1167,9 +1205,17 @@ func _add_footways(list: Array, cycle := false) -> void:
 		var other: PedEdge = pn.edges[0]
 		var best: PedNode = null
 		var best_d := 15.0
+		var home := Vector2i(roundi(pn.pos.x / 2.0), roundi(pn.pos.z / 2.0))
 		for x in range(-8, 9):
+			# Cells (2 m) further off than the best so far can't beat it.
+			var mx := maxf(absf(pn.pos.x - 2.0 * (home.x + x)) - 1.01, 0.0)
+			if mx >= best_d:
+				continue
 			for z in range(-8, 9):
-				for q in _ped_node_cells.get(Vector2i(roundi(pn.pos.x / 2.0) + x, roundi(pn.pos.z / 2.0) + z), []):
+				var mz := maxf(absf(pn.pos.z - 2.0 * (home.y + z)) - 1.01, 0.0)
+				if mx * mx + mz * mz >= best_d * best_d:
+					continue
+				for q in _ped_node_cells.get(home + Vector2i(x, z), []):
 					if q == pn or q == other.a or q == other.b:
 						continue
 					var d: float = q.pos.distance_to(pn.pos)
@@ -1379,11 +1425,14 @@ func _attach_station(edge: RailEdge, st: Dictionary) -> void:
 			edge.stations.append({ "s": s, "name": st.name })
 
 
+## How far from a bus stop its kerb lane is looked for.
+const BUS_STOP_REACH := 30.0
+
 func _add_bus_stop(p: Vector3) -> void:
 	var best: Lane
 	var best_s := 0.0
 	var best_d := 15.0
-	for entry in samples_near(p, 30.0):
+	for entry in samples_near(p, BUS_STOP_REACH):
 		var lane: Lane = entry[0]
 		if lane.k != lane.count - 1:
 			continue  # Buses pull in at the kerb.
@@ -1567,6 +1616,17 @@ func ped_cells() -> Dictionary:
 
 func rail_cells() -> Dictionary:
 	return _rail_cells
+
+
+## Whether any of `keys` is among the cells _cells_near would look in.
+func _any_cell_near(keys: Dictionary, p: Vector3, radius: float) -> bool:
+	var c0 := cell_of(p - Vector3(radius, 0, radius))
+	var c1 := cell_of(p + Vector3(radius, 0, radius))
+	for x in range(c0.x, c1.x + 1):
+		for z in range(c0.y, c1.y + 1):
+			if keys.has(Vector2i(x, z)):
+				return true
+	return false
 
 
 func _cells_near(cells: Dictionary, p: Vector3, radius: float) -> Array:

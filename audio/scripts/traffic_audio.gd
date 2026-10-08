@@ -208,8 +208,7 @@ func _process(delta: float) -> void:
 		return
 	_assign_timer -= delta
 	if _assign_timer <= 0.0:
-		_assign_timer = 0.25
-		_assign_voices()
+		_assign_timer = 0.25 if _assign_voices() else 0.05
 	for kind in _voices:
 		for voice in _voices[kind]:
 			if voice.v != null:
@@ -319,11 +318,15 @@ func _drive_steps() -> void:
 		voice.player.pitch_scale = clampf(float(speed if speed != null else 1.4) / 1.4, 0.6, 1.6)
 
 
-## Hand each kind's voices to the nearest vehicles of that kind.
-func _assign_voices() -> void:
+## Hand each kind's voices to the nearest vehicles of that kind. Starts one
+## engine a pass (starting its loops makes for a long frame); false while
+## more vehicles are waiting for a voice.
+func _assign_voices() -> bool:
 	var ear: Node3D = Audio.listener()
 	if ear == null:
-		return
+		return true
+	var starts := 1
+	var done := true
 	var here := ear.global_position
 	var near := {}
 	for kind in _voices:
@@ -356,6 +359,10 @@ func _assign_voices() -> void:
 					voice.engine.reparent(self, false)
 					voice.v = null
 				continue
+			if starts == 0:
+				done = false
+				continue
+			starts -= 1
 			var v = wanted.pop_front()
 			voice.v = v
 			var e: EngineAudio = voice.engine
@@ -366,6 +373,7 @@ func _assign_voices() -> void:
 			e.speed_kmh = v.speed * 3.6
 			e.rpm = _rpm_for(e, e.speed_kmh)
 			e.start_running()
+	return done
 
 
 func _drive_voice(voice: Dictionary, kind: StringName) -> void:
