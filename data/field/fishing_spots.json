@@ -173,17 +173,23 @@
 			"id": "garratt_rd_bridge",
 			"name": "Garratt Road bridge",
 			"water": "river",
-			"kind": "shore",
-			"reach": 120,
+			"kind": "deck",
 			"near": [
-				6230.3,
-				-2190.8
+				6045,
+				-1622
 			],
 			"tags": [
+				"jetty",
 				"snags",
 				"deep"
 			],
-			"hint": "Under the Garratt Road bridge, up past Bayswater. Deep water: the locals fish it at night for mulloway."
+			"hint": "The little jetty by the Garratt Road bridge, up past Bayswater. Deep water: the locals fish it at night for mulloway.",
+			"stand": [
+				6045.2,
+				3.85,
+				-1620
+			],
+			"yaw": -3.04
 		},
 		{
 			"id": "elizabeth_quay",

@@ -16,6 +16,9 @@ const SPOT_REACH := 60.0
 static var markers: Array = []
 ## Quiet spots (map POI ids) you've been to.
 static var seen_spots := {}
+## The marker you've asked for a route to (index in markers), -1 for none.
+## The job you're on comes first.
+static var route_marker := -1
 
 
 ## Everything to draw. `mini` leaves out what only clutters a small map, and
@@ -30,7 +33,12 @@ static func gather(tree: SceneTree, mini := false) -> Array:
 		pins.append(_pin(Vector2(hp[0], hp[2]), "home", UiStyle.RED, "Home"))
 	for node in tree.get_nodes_in_group(&"workshop_spots"):
 		if node is Node3D and String(node.get("spot_id")) != "home_carport":
-			pins.append(_pin(_xz(node), "wrench", UiStyle.TEAL, String(node.get("display_name")) if node.get("display_name") else "Workshop"))
+			var label := String(node.get("display_name"))
+			# Servos (and the workshops that sell fuel) get the fuel pin.
+			if node.has_method("offers") and node.offers("fuel"):
+				pins.append(_pin(_xz(node), "fuel", UiStyle.SUN, label if label else "Servo"))
+			else:
+				pins.append(_pin(_xz(node), "wrench", UiStyle.TEAL, label if label else "Workshop"))
 	for node in tree.get_nodes_in_group(&"tackle_shops"):
 		pins.append(_pin(_xz(node), "fish", UiStyle.SUN, "Tackle and bait"))
 	for node in tree.get_nodes_in_group(&"photo_labs"):
@@ -39,8 +47,6 @@ static func gather(tree: SceneTree, mini := false) -> Array:
 		var kind := String(poi.get("kind", ""))
 		var at := _poi_at(poi)
 		match kind:
-			"servo":
-				pins.append(_pin(at, "fuel", UiStyle.SUN, "Servo, %s" % poi.suburb if poi.has("suburb") else "Servo"))
 			"quiet_spot":
 				if seen_spots.has(String(poi.id)):
 					pins.append(_pin(at, "quiet", UiStyle.TEAL, String(poi.get("name", "A quiet spot"))))
@@ -173,6 +179,10 @@ static func add_marker(at: Vector2, name := "") -> int:
 static func remove_marker(i: int) -> void:
 	if i >= 0 and i < markers.size():
 		markers.remove_at(i)
+		if route_marker == i:
+			route_marker = -1
+		elif route_marker > i:
+			route_marker -= 1
 
 
 static func rename_marker(i: int, name: String) -> void:
@@ -203,13 +213,16 @@ static func save_state() -> Dictionary:
 	var out: Array = []
 	for m: Dictionary in markers:
 		out.append({x = m.at.x, z = m.at.y, name = m.name})
-	return {markers = out, spots = seen_spots.keys()}
+	return {markers = out, spots = seen_spots.keys(), route = route_marker}
 
 
 static func load_state(state: Dictionary) -> void:
 	markers.clear()
 	for m: Dictionary in state.get("markers", []):
 		markers.append({at = Vector2(float(m.get("x", 0.0)), float(m.get("z", 0.0))), name = String(m.get("name", "Marker"))})
+	route_marker = int(state.get("route", -1))
+	if route_marker >= markers.size():
+		route_marker = -1
 	seen_spots.clear()
 	for id: Variant in state.get("spots", []):
 		seen_spots[String(id)] = true

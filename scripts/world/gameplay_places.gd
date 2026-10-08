@@ -64,6 +64,7 @@ func _ready() -> void:
 		var wreck := BarnFind.new()
 		wreck.car_id = p.car
 		wreck.hours = p.get("hours", [])
+		wreck.tarp = bool(p.get("tarp", false))
 		_add(wreck, p, "BarnFind_" + p.car)
 	for d: Dictionary in places.get("scenic_drives", []):
 		var drive := ScenicDrive.new()
@@ -114,6 +115,7 @@ func _place_found_parts() -> void:
 		node.part_id = entry.part
 		node.name = "FoundPart_" + String(entry.part)
 		node.position = at + Vector3(o[0], o[1], o[2])
+		node.rotation.y = float(entry.get("yaw", 0.0))
 		add_child(node)
 
 

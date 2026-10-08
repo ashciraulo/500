@@ -1,7 +1,10 @@
 extends SceneTree
 ## Headless check of the minimap and the full map on the real Perth map: the
 ## road data loads, the minimap knows the street you're in, M opens the full
-## map (and pauses), markers go down, save and load, and M closes it again.
+## map (and pauses), the mouse zooms, drags and puts markers down, they save
+## and load, and M closes it again. Then suggested routes: one-ways kept to,
+## a job's route on the minimap, a new one after leaving it, and none with
+## the setting off.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/minimap_test.gd -- --no-save
 ##
@@ -14,6 +17,7 @@ var _failures: Array[String] = []
 var _step := 0
 var _frame := 0
 var _quitting := false
+var _route_start := Vector3.ZERO
 ## Loaded when used: these read autoloads, which a --script tool can't name.
 var _pins: GDScript
 var _data: GDScript
@@ -73,8 +77,8 @@ func _process(_delta: float) -> bool:
 				_check(paused, "the game pauses under the map")
 				if screen:
 					var view: Control = screen.get("_view")
-					screen.call("_place_or_pick", view.size * 0.5)
-					_check((_pins.markers as Array).size() == 1, "a marker goes down")
+					_check_mouse(view)
+					_check((_pins.markers as Array).size() == 1, "a right-click puts a marker down")
 					var saved: Dictionary = screen.call("save_state")
 					_pins.call("remove_marker", 0)
 					screen.call("load_state", saved)
@@ -86,8 +90,128 @@ func _process(_delta: float) -> bool:
 				var screen := _main.get_node_or_null("MapScreen")
 				_check(screen != null and not screen.call("is_open"), "M closes it again")
 				_check(not paused, "the game carries on")
+				_check_route_graph()
+				_take_job()
+				_next()
+		4:
+			# Suggested routes: the job's route comes in on its own.
+			var guide := root.get_tree().get_first_node_in_group(&"route_guide")
+			if _frame >= FPS * 2:
+				_check(guide != null, "a route guide on the HUD")
+				if guide == null:
+					return _finish()
+				_check(guide.call("has_route"), "a route to the job (%.0f m)" % float(guide.get("length")))
+				var mini := _main.find_child("Minimap", true, false)
+				var view: Control = mini.get("_view") if mini else null
+				_check(view != null and (view.get("route") as PackedVector2Array).size() >= 2, "the minimap draws it")
+				_route_start = (guide.get("points") as PackedVector3Array)[0]
+				# Leave it: off down the road somewhere else.
+				var car: RigidBody3D = _main.get_node("LoFi/SubViewport/World/Car")
+				var off := _route_start + Vector3(250.0, 0.0, 250.0)
+				var hit: Array = _data.call("shared").get("routes").call("nearest", Vector2(off.x, off.z))
+				if not hit.is_empty():
+					var g: RefCounted = _data.call("shared").get("routes")
+					var r: int = hit[0][0]
+					var p: Vector3 = TrafficGraph.point_at(g.get("road_pts")[r], g.get("road_cum")[r], float(hit[0][1]))
+					car.global_transform = Transform3D(Basis.IDENTITY, p + Vector3.UP)
+					car.linear_velocity = Vector3.ZERO
+				_next()
+		5:
+			if _frame >= FPS * 4:
+				var guide := root.get_tree().get_first_node_in_group(&"route_guide")
+				var pts: PackedVector3Array = guide.get("points")
+				_check(pts.size() >= 2 and pts[0].distance_to(_route_start) > 100.0, "a new route after leaving it")
+				root.get_node("Settings").set("route_guide", 0)
+				_next()
+		6:
+			if _frame >= 10:
+				var guide := root.get_tree().get_first_node_in_group(&"route_guide")
+				var mini := _main.find_child("Minimap", true, false)
+				_check(not guide.call("has_route"), "no route with it turned off")
+				_check((mini.get("_view").get("route") as PackedVector2Array).is_empty(), "nothing on the minimap")
+				root.get_node("Settings").set("route_guide", 2)
+				root.get_node("Jobs").call("abandon")
 				return _finish()
 	return false
+
+
+## The road network for routes: one-ways are kept to, and ways are found.
+func _check_route_graph() -> void:
+	var g: RefCounted = _data.call("shared").get("routes")
+	_check(int(g.call("road_count")) > 10000, "roads joined up for routes (%d)" % g.call("road_count"))
+	var home := Vector3(-1.37, 22.09, -0.73)
+	var subiaco := Vector3(-2900.87, 29.32, 202.66)
+	var r: Dictionary = g.call("find", home, Vector2.ZERO, subiaco)
+	var straight := home.distance_to(subiaco)
+	_check(not r.is_empty() and float(r.length) > straight * 0.9 and float(r.length) < straight * 2.0,
+		"a way from home to Subiaco (%.0f m, %.0f m as the crow flies)" % [float(r.get("length", 0.0)), straight])
+	# Backwards along a long one-way: never straight down it the wrong way.
+	var oneway := -1
+	for i in int(g.call("road_count")):
+		if g.get("road_oneway")[i] == 1 and g.get("road_len")[i] > 150.0:
+			oneway = i
+			break
+	if oneway < 0:
+		_check(false, "a one-way to try")
+		return
+	var pts: PackedVector3Array = g.get("road_pts")[oneway]
+	var cum: PackedFloat32Array = g.get("road_cum")[oneway]
+	var length: float = g.get("road_len")[oneway]
+	var a := TrafficGraph.point_at(pts, cum, length * 0.8)
+	var b := TrafficGraph.point_at(pts, cum, length * 0.2)
+	var t := TrafficGraph.tangent_at(pts, cum, length * 0.8)
+	var back: Dictionary = g.call("find", a, Vector2(t.x, t.z), b)
+	_check(back.is_empty() or float(back.length) > length * 0.6 + 20.0,
+		"one-ways only one way (%.0f m round, %.0f m straight back)" % [float(back.get("length", 0.0)), length * 0.6])
+	var fwd: Dictionary = g.call("find", b, Vector2(t.x, t.z), a)
+	_check(not fwd.is_empty() and absf(float(fwd.length) - length * 0.6) < 15.0, "and straight down it the right way (%.0f m)" % float(fwd.get("length", 0.0)))
+
+
+## The mouse on the full map, through the viewport like a real one: the
+## wheel zooms, a drag moves the map, a right-click puts a marker down.
+func _check_mouse(view: Control) -> void:
+	var to_screen := view.get_global_transform_with_canvas()
+	var mid := view.size * 0.5
+	var mpp: float = view.get("metres_per_px")
+	_mouse_button(MOUSE_BUTTON_WHEEL_UP, to_screen * mid, true)
+	_mouse_button(MOUSE_BUTTON_WHEEL_UP, to_screen * mid, false)
+	_check(float(view.get("metres_per_px")) < mpp * 0.9, "the wheel zooms in (%.2f -> %.2f m/px)" % [mpp, view.get("metres_per_px")])
+	mpp = view.get("metres_per_px")
+	_mouse_button(MOUSE_BUTTON_WHEEL_DOWN, to_screen * mid, true)
+	_mouse_button(MOUSE_BUTTON_WHEEL_DOWN, to_screen * mid, false)
+	_check(float(view.get("metres_per_px")) > mpp * 1.1, "the wheel zooms out")
+	var centre: Vector2 = view.get("centre")
+	mpp = view.get("metres_per_px")
+	_mouse_button(MOUSE_BUTTON_LEFT, to_screen * mid, true)
+	for i in 4:
+		var move := InputEventMouseMotion.new()
+		move.position = to_screen * (mid + Vector2(20.0 * (i + 1), 10.0 * (i + 1)))
+		move.relative = Vector2(20.0, 10.0)
+		move.button_mask = MOUSE_BUTTON_MASK_LEFT
+		root.push_input(move, true)
+	_mouse_button(MOUSE_BUTTON_LEFT, to_screen * (mid + Vector2(80.0, 40.0)), false)
+	var moved: Vector2 = centre - (view.get("centre") as Vector2)
+	_check(moved.distance_to(Vector2(80.0, 40.0) * mpp) < 1.0, "a drag moves the map (%.0f, %.0f m)" % [moved.x, moved.y])
+	_mouse_button(MOUSE_BUTTON_RIGHT, to_screen * (mid + Vector2(30.0, -20.0)), true)
+	_mouse_button(MOUSE_BUTTON_RIGHT, to_screen * (mid + Vector2(30.0, -20.0)), false)
+
+
+func _mouse_button(button: MouseButton, at: Vector2, pressed: bool) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = button
+	ev.position = at
+	ev.pressed = pressed
+	root.push_input(ev, true)
+
+
+func _take_job() -> void:
+	var jobs := root.get_node("Jobs")
+	jobs.call("refresh_offers")
+	for o: Dictionary in jobs.get("offers"):
+		if o.get("type", "") == "delivery":
+			jobs.call("accept", o)
+			return
+	_check(false, "a delivery on the job board")
 
 
 func _press(action: String) -> void:

@@ -21,8 +21,8 @@
     "job_sites": [
       {"id": "little_shenton_lane", "name": "Little Shenton Lane", "suburb": "Northbridge", "home": [2.7, 6.1]},
       {"id": "northbridge_piazza", "name": "Northbridge Piazza", "suburb": "Northbridge", "lat": -31.94814, "lon": 115.85662},
-      {"id": "oxford_st", "name": "Oxford Street", "suburb": "Leederville", "lat": -31.9365, "lon": 115.8418},
-      {"id": "subiaco_markets", "name": "Station Street Markets", "suburb": "Subiaco", "lat": -31.9478, "lon": 115.8235},
+      {"id": "oxford_st", "name": "Oxford Street", "suburb": "Leederville", "lat": -31.936956, "lon": 115.841276},
+      {"id": "subiaco_markets", "name": "Station Street Markets", "suburb": "Subiaco", "lat": -31.944799, "lon": 115.823434},
       {"id": "kings_park_lookout", "name": "Kings Park lookout", "suburb": "West Perth", "lat": -31.959117, "lon": 115.844293},
       {"id": "fremantle_markets", "name": "Fremantle Markets", "suburb": "Fremantle", "lat": -32.0569, "lon": 115.7489},
       {"id": "cottesloe_surf_club", "name": "Surf club car park", "suburb": "Cottesloe", "lat": -31.9945, "lon": 115.751},
@@ -34,7 +34,7 @@
     "badges": {"first_slice": 20, "leederville_subiaco": 7, "east_perth": 6, "victoria_park": 7, "stirling_hwy_fremantle": 7, "canning_hwy": 6, "coast_road": 7},
     "workshops": [
       {"id": "home_carport", "name": "Carport", "kinds": ["parts", "tuning", "cars", "restore"], "home": [1.3, -20.6]},
-      {"id": "scarborough_beach_rd_yard", "name": "Newcastle St car yard", "kinds": ["dealer"], "color": [0.55, 0.75, 1.0], "lat": -31.94455, "lon": 115.85020},
+      {"id": "scarborough_beach_rd_yard", "name": "Northbridge car yard", "kinds": ["dealer"], "color": [0.55, 0.75, 1.0], "lat": -31.94455, "lon": 115.85020},
       {"id": "spray_shop", "name": "West Perth Smash & Spray", "kinds": ["paint"], "color": [1.0, 0.6, 0.35], "lat": -31.941157, "lon": 115.847485},
       {"id": "fitzgerald_st_servo", "name": "Fitzgerald St servo", "kinds": ["fuel", "wash"], "color": [0.95, 0.85, 0.4], "lat": -31.9455595, "lon": 115.8523382, "heading_deg": 28, "snap": false}
     ]
@@ -165,7 +165,17 @@
      "lat": -31.987439, "lon": 115.827582, "bearing": 120},
     {"id": "pelican_fence", "scene": "res://art/models/props/landmarks/pelican_fence.glb",
      "lat": -31.987656, "lon": 115.827582,
-     "run": {"to": [-31.987656, 115.826524], "step": 20, "axis": "x"}}
+     "run": {"to": [-31.987656, 115.826524], "step": 20, "axis": "x"}},
+    {"id": "royal_st_roller_door", "scene": "res://art/models/props/landmarks/royal_st_roller_door.glb",
+     "lat": -31.9519597, "lon": 115.8717521, "bearing": 180.6},
+    {"id": "bulwer_lockup", "scene": "res://art/models/props/landmarks/lockup_garage.glb",
+     "lat": -31.9422342, "lon": 115.8652797, "bearing": 207.4},
+    {"id": "hensman_carport", "scene": "res://art/models/props/landmarks/lane_carport.glb",
+     "lat": -31.9527157, "lon": 115.8199285, "bearing": 90.0},
+    {"id": "kensington_shed", "scene": "res://art/models/props/landmarks/kensington_shed.glb",
+     "lat": -31.9499047, "lon": 115.8758873, "bearing": 180.0},
+    {"id": "cottesloe_surf_club", "scene": "res://art/models/props/landmarks/trigg_surf_club.glb",
+     "lat": -31.994722, "lon": 115.7515257, "bearing": 270.0}
   ],
   "hand_decks": [
     {"name": "Cottesloe groyne", "kind": "groyne", "width": 8.0,

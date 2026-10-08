@@ -29,6 +29,10 @@ var player_yaw := 0.0
 var pins: Array = []
 ## The pin under the cursor (index in pins), -1 for none: drawn bigger.
 var hot_pin := -1
+## The suggested route (world x/z, from where you are to the end), and the
+## straight bits it doesn't cover (pairs of world x/z), drawn dotted.
+var route := PackedVector2Array()
+var route_ends := PackedVector2Array()
 ## Suburb names (full map only).
 var show_suburbs := false
 ## A circle (the minimap) instead of the whole rect, for pins kept on the rim.
@@ -53,9 +57,14 @@ var _overlay: Control
 var _icons := {}
 
 
+func _init() -> void:
+	# A default, set here so the full map's own (STOP, for drag, wheel and
+	# right-click) isn't undone when it's added.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
 func _ready() -> void:
 	clip_contents = true
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_world = Node2D.new()
 	_world.name = "World"
 	add_child(_world)
@@ -151,6 +160,7 @@ func _draw_overlay() -> void:
 	if show_suburbs and data and data.is_loaded:
 		_draw_streets()
 		_draw_suburbs()
+	_draw_route()
 	var half := size * 0.5
 	var radius := minf(half.x, half.y) - rim_inset
 	# Places first, then targets and the player's markers on top.
@@ -180,6 +190,47 @@ func _draw_overlay() -> void:
 			_draw_pin(at, pin, i == hot_pin, on_rim)
 	if player != Vector2.INF:
 		_draw_player(to_screen(player))
+
+
+## The route: a red line with an ink edge along the roads, like a pen line
+## on a street directory, dotted where it leaves the roads.
+func _draw_route() -> void:
+	if route.size() < 2 and route_ends.is_empty():
+		return
+	var view := Rect2(Vector2.ZERO, size).grow(20.0)
+	var runs: Array[PackedVector2Array] = []
+	var line := PackedVector2Array()
+	# Only the stretches on screen (a long route runs off it), thinned to a
+	# point every couple of pixels.
+	var prev := to_screen(route[0]) if route.size() > 0 else Vector2.ZERO
+	for i in range(1, route.size()):
+		var at := to_screen(route[i])
+		if view.intersects(Rect2(prev, Vector2.ZERO).expand(at)):
+			if line.is_empty():
+				line.append(prev)
+			if at.distance_squared_to(line[line.size() - 1]) > 4.0 or i == route.size() - 1:
+				line.append(at)
+		elif not line.is_empty():
+			if line[line.size() - 1] != prev:
+				line.append(prev)
+			if line.size() >= 2:
+				runs.append(line)
+			line = PackedVector2Array()
+		prev = at
+	if line.size() >= 2:
+		runs.append(line)
+	for run in runs:
+		_overlay.draw_polyline(run, UiStyle.INK, 6.5, true)
+	for run in runs:
+		_overlay.draw_polyline(run, UiStyle.RED, 3.5, true)
+	for i in range(0, route_ends.size() - 1, 2):
+		var a := to_screen(route_ends[i])
+		var b := to_screen(route_ends[i + 1])
+		var n := int(a.distance_to(b) / 7.0)
+		for k in n + 1:
+			var p := a.lerp(b, float(k) / maxf(n, 1))
+			_overlay.draw_circle(p, 2.6, UiStyle.INK)
+			_overlay.draw_circle(p, 1.6, UiStyle.RED)
 
 
 func _draw_pin(at: Vector2, pin: Dictionary, hot: bool, on_rim: bool) -> void:

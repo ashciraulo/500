@@ -4,7 +4,8 @@ extends CanvasLayer
 ## city to look round. Drag or use the left stick to move, the wheel or the
 ## triggers to zoom. Right-click (or F / A at the crosshair) puts down a
 ## marker; your markers are listed on the side, where you can rename or
-## remove them, and the nearest one stays on the minimap's rim.
+## remove them, and the nearest one stays on the minimap's rim. "Go here"
+## asks for a suggested route to one (the job you're on comes first).
 ## The game pauses while it's open.
 
 const ZOOM_MIN := 0.6
@@ -17,6 +18,7 @@ const KEY := [
 	["home", "Home"], ["flag", "The job you're on"], ["note", "Job places"], ["wrench", "Workshop"],
 	["fish", "Tackle, fishing spots"], ["camera", "Photo lab"], ["fuel", "Servo"],
 	["bird", "Birds"], ["park", "Parking challenge"], ["quiet", "Quiet places"],
+	["route", "Suggested route"],
 ]
 
 var _root: Control
@@ -28,6 +30,7 @@ var _markers_box: VBoxContainer
 var _marker_group := ButtonGroup.new()
 var _name_edit: LineEdit
 var _remove: Button
+var _go: Button
 var _close: Button
 var _hint_row: HBoxContainer
 var _hint_pad := false
@@ -37,6 +40,7 @@ var _dragging := false
 var _drag_moved := 0.0
 var _zoom := ZOOM_OPEN
 var _cross: Control
+var _route_wait := 0.0
 
 
 func _ready() -> void:
@@ -97,6 +101,7 @@ func _set_open(open: bool) -> void:
 		_zoom = ZOOM_OPEN
 		_view.metres_per_px = _zoom
 		_view.pins = MapPins.gather(get_tree())
+		_show_route()
 		_selected = -1
 		_fill_markers()
 		_fill_hints()
@@ -130,6 +135,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventJoypadButton and event.pressed and (event as InputEventJoypadButton).button_index == JOY_BUTTON_X:
 		_remove_selected()
 		get_viewport().set_input_as_handled()
+	elif event is InputEventJoypadButton and event.pressed and (event as InputEventJoypadButton).button_index == JOY_BUTTON_Y:
+		_toggle_route()
+		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).physical_keycode == KEY_DELETE:
 		_remove_selected()
 		get_viewport().set_input_as_handled()
@@ -141,6 +149,9 @@ func _process(delta: float) -> void:
 	if _hint_pad != UiStyle.using_pad:
 		_fill_hints()
 		_cross.queue_redraw()
+	if _route_wait > 0.0:
+		_route_wait -= delta
+		_show_route()
 	# Keys and the left stick pan; triggers or Q/E zoom.
 	var move := Vector2.ZERO
 	if not _name_edit.has_focus():
@@ -244,6 +255,8 @@ func _select(i: int) -> void:
 	var has := i >= 0 and i < MapPins.markers.size()
 	_name_edit.editable = has
 	_remove.disabled = not has
+	_go.disabled = not has or Settings.route_guide == 0
+	_go.text = "Stop route" if has and MapPins.route_marker == i else "Go here"
 	_name_edit.text = String(MapPins.markers[i].name) if has else ""
 	_name_edit.placeholder_text = "Name the marker" if has else "Pick a marker"
 
@@ -289,6 +302,28 @@ func _remove_selected() -> void:
 	_selected = -1
 	_refresh_pins()
 	_fill_markers()
+
+
+## Go here / Stop route on the selected marker.
+func _toggle_route() -> void:
+	if _selected < 0 or _selected >= MapPins.markers.size() or Settings.route_guide == 0:
+		return
+	MapPins.route_marker = -1 if MapPins.route_marker == _selected else _selected
+	_select(_selected)
+	# The route is found while the map's open (the guide keeps going while
+	# the game's paused), and drawn when it comes in.
+	_route_wait = 3.0
+
+
+## The suggested route from where you are, if there is one.
+func _show_route() -> void:
+	var guide := RouteGuide.of(get_tree())
+	if guide and guide.has_route():
+		_view.route = guide.ahead()
+		_view.route_ends = guide.loose_ends()
+	else:
+		_view.route = PackedVector2Array()
+		_view.route_ends = PackedVector2Array()
 
 
 # --- building ----------------------------------------------------------------
@@ -376,6 +411,11 @@ func _build() -> void:
 	_remove.text = "Remove"
 	_remove.pressed.connect(_remove_selected)
 	edit_row.add_child(_remove)
+	_go = Button.new()
+	_go.text = "Go here"
+	_go.tooltip_text = "Show the way there on the maps"
+	_go.pressed.connect(_toggle_route)
+	side.add_child(_go)
 
 	UiStyle.section(side, "Key")
 	var grid := GridContainer.new()
@@ -401,6 +441,14 @@ func _key_icon(name: String) -> Texture2D:
 	var px := 22
 	var image := Image.create(px, px, false, Image.FORMAT_RGBA8)
 	var c := Vector2(px, px) * 0.5
+	if name == "route":
+		# A short stretch of the route line: red with an ink edge.
+		for y in px:
+			for x in px:
+				var d := absf(y + 0.5 - c.y - (x + 0.5 - c.x) * 0.35)
+				if x >= 2 and x < px - 2 and d <= 3.2:
+					image.set_pixel(x, y, UiStyle.RED if d <= 1.8 else UiStyle.INK)
+		return ImageTexture.create_from_image(image)
 	for y in px:
 		for x in px:
 			var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
@@ -421,7 +469,7 @@ func _fill_hints() -> void:
 	_hint_pad = UiStyle.using_pad
 	for c in _hint_row.get_children():
 		c.queue_free()
-	var hints := [["L stick", "Move"], ["RT / LT", "Zoom"], ["A", "Add a marker"], ["X", "Remove it"], ["B", "Close"]] if _hint_pad \
+	var hints := [["L stick", "Move"], ["RT / LT", "Zoom"], ["A", "Add a marker"], ["X", "Remove it"], ["Y", "Go there"], ["B", "Close"]] if _hint_pad \
 		else [["Drag", "Move"], ["Wheel", "Zoom"], ["Right-click", "Add a marker"], ["Del", "Remove it"], ["M", "Close"]]
 	for h: Array in hints:
 		_hint_row.add_child(UiStyle.keycap(String(h[0]), 12))

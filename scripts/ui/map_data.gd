@@ -8,7 +8,8 @@ extends RefCounted
 ## - every drivable road from the tiles' traffic data (.p5r), as four road
 ##   meshes (service lanes, streets, main roads, freeways), with the lanes and
 ##   car park aisles traffic doesn't drive (the optional "service_roads"),
-## - street names for "where am I", and suburb names from index.json.
+## - street names for "where am I", and suburb names from index.json,
+## - the roads joined up for suggested routes (routes, a RouteGraph).
 ##
 ## `MapData.shared()` starts loading on a worker thread the first time it's
 ## asked for; `loaded` fires (on the main thread) when it's ready.
@@ -64,6 +65,8 @@ var labels: Array = []
 var road_count := 0
 ## How many of those are lanes, aisles and tracks from service_roads.
 var lane_count := 0
+## The same roads joined up for finding the way (suggested routes).
+var routes := RouteGraph.new()
 
 var _task := -1
 var _arrays: Array = []  # per class: [verts, uvs, indices], filled on the worker
@@ -227,6 +230,7 @@ func _read_roads() -> void:
 				if seen.has(id):
 					continue
 				seen[id] = true
+			routes.add_road(road)
 			var kind := String(road.get("kind", "residential"))
 			var cls: int = ROAD_CLASS.get(kind, Road.STREET)
 			var pts := _xz(road.pts)

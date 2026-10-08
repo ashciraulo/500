@@ -3,6 +3,10 @@
   art/models/props/landmarks/mole_light_north.glb, mole_light_south.glb,
   herdsman_hide.glb, trigg_surf_club.glb
 
+plus the stage 6 river ones (lib/river_landmarks.py) and city dressing
+(lib/city_dressing.py: royal_st_roller_door, lockup_garage, lane_carport,
+kensington_shed .glb).
+
 Origin on the ground at the anchor, front toward -Y in Blender (Godot +Z).
 Each has a `<Name>_Col` static body (from `-colonly`) of plain boxes and
 empties for its sockets.
@@ -16,13 +20,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402,F401
 
+from lib import city_dressing as CD  # noqa: E402
 from lib import coast_landmarks as LM  # noqa: E402
 from lib import common as C  # noqa: E402
 from lib import furniture as F  # noqa: E402
 from lib import river_landmarks as RL  # noqa: E402
 
 OUT = "art/models/props/landmarks/"
-ALL = dict(LM.LANDMARKS, **RL.LANDMARKS)
+ALL = dict(LM.LANDMARKS, **RL.LANDMARKS, **CD.LANDMARKS)
 
 
 def build(name):
@@ -49,6 +54,10 @@ VIEWS = {   # camera, target, lens: front three-quarter and a closer look
     "pelican_lookout": [((-4, -7, 3), (0, 0, 0.6), 32), ((2.3, -0.3, 1.6), (1.55, -1.15, 1.5), 30)],
     "pelican_sailing_club": [((-18, -26, 9), (0, -2, 2.0), 32), ((14, -14, 3), (2, -5, 2.5), 32)],
     "trigg_surf_club": [((-26, -30, 10), (0, 0, 4.0), 32), ((22, -18, 5), (4, -6, 4.5), 32)],
+    "royal_st_roller_door": [((-5, -9, 2.5), (-0.6, 0, 1.8), 32), ((1.5, -3.5, 1.4), (0.3, 0, 1.2), 30)],
+    "lockup_garage": [((-6, -10, 3.5), (0, 0, 1.2), 30), ((1.2, -6, 1.5), (0, 0.5, 1.0), 28)],
+    "lane_carport": [((-6, -9, 3.5), (0, 0, 1.2), 30), ((5, 4, 2.5), (0, 0, 1.0), 30)],
+    "kensington_shed": [((-6, -10, 3.5), (0, 0, 1.2), 30), ((8, -2, 2.0), (0, -0.4, 1.4), 30)],
 }
 
 
