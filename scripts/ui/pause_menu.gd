@@ -17,6 +17,7 @@ var _time_label: Label
 var _freeze: CheckBox
 var _day_length: OptionButton
 var _gearbox: OptionButton
+var _route: OptionButton
 var _lofi: CheckBox
 var _strength: OptionButton
 var _softness: HSlider
@@ -225,6 +226,10 @@ func _build() -> void:
 	_gearbox = _option(right, "Gearbox", ["Manual", "Automatic"], func(i: int) -> void:
 		Settings.automatic_gearbox = i == 1
 		Settings.apply())
+	_route = _option(right, "Suggested route", ["Off", "Map only", "Map and road"], func(i: int) -> void:
+		Settings.route_guide = i
+		Settings.apply())
+	_route.tooltip_text = "The way to your job: on the map, or on the road ahead too"
 	_mouse = _slider(right, "Mouse look", 0.0005, 0.006, 0.0005, func(v: float) -> void:
 		Settings.mouse_sensitivity = v)
 
@@ -285,6 +290,7 @@ func _sync_from_settings() -> void:
 	_cozy.button_pressed = Settings.cozy_mode
 	_day_length.select(maxi(0, Settings.DAY_LENGTHS.find(Settings.day_length_minutes)))
 	_gearbox.select(1 if Settings.automatic_gearbox else 0)
+	_route.select(clampi(Settings.route_guide, 0, 2))
 	_mouse.value = Settings.mouse_sensitivity
 	_lofi.button_pressed = Settings.lofi_enabled
 	_fullscreen.button_pressed = Settings.fullscreen

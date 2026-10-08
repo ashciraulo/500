@@ -47,6 +47,9 @@ var volume_effects := 1.0
 ## the surroundings (the street, traffic and the weather).
 var volume_car := 1.0
 var volume_surroundings := 1.0
+## Suggested routes to where you're going: 0 off, 1 on the minimap and the
+## full map, 2 on the maps and as arrows on the road ahead.
+var route_guide := 2
 
 
 func _ready() -> void:
@@ -138,5 +141,5 @@ func _keys() -> PackedStringArray:
 		"vertex_snap_scale", "lofi_preset", "color_levels", "dither_strength", "affine_strength",
 		"softness", "show_help", "fullscreen", "ui_size", "cozy_mode",
 		"volume_master", "volume_music", "volume_radio", "volume_effects",
-		"volume_car", "volume_surroundings",
+		"volume_car", "volume_surroundings", "route_guide",
 	])

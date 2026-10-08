@@ -166,6 +166,10 @@ func _build_map() -> void:
 	_minimap.offset_bottom = -62
 	_minimap.offset_top = _minimap.offset_bottom - _minimap.custom_minimum_size.y
 	_root.add_child(_minimap)
+	# Suggested routes, which both maps draw (and the road, if it's set to).
+	var guide := RouteGuide.new()
+	guide.name = "RouteGuide"
+	get_parent().add_child.call_deferred(guide)
 	# The full map goes last in the scene so Esc reaches it before the pause menu.
 	_map_screen = MapScreen.new()
 	_map_screen.name = "MapScreen"

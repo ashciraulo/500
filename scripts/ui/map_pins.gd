@@ -16,6 +16,9 @@ const SPOT_REACH := 60.0
 static var markers: Array = []
 ## Quiet spots (map POI ids) you've been to.
 static var seen_spots := {}
+## The marker you've asked for a route to (index in markers), -1 for none.
+## The job you're on comes first.
+static var route_marker := -1
 
 
 ## Everything to draw. `mini` leaves out what only clutters a small map, and
@@ -173,6 +176,10 @@ static func add_marker(at: Vector2, name := "") -> int:
 static func remove_marker(i: int) -> void:
 	if i >= 0 and i < markers.size():
 		markers.remove_at(i)
+		if route_marker == i:
+			route_marker = -1
+		elif route_marker > i:
+			route_marker -= 1
 
 
 static func rename_marker(i: int, name: String) -> void:
@@ -203,13 +210,16 @@ static func save_state() -> Dictionary:
 	var out: Array = []
 	for m: Dictionary in markers:
 		out.append({x = m.at.x, z = m.at.y, name = m.name})
-	return {markers = out, spots = seen_spots.keys()}
+	return {markers = out, spots = seen_spots.keys(), route = route_marker}
 
 
 static func load_state(state: Dictionary) -> void:
 	markers.clear()
 	for m: Dictionary in state.get("markers", []):
 		markers.append({at = Vector2(float(m.get("x", 0.0)), float(m.get("z", 0.0))), name = String(m.get("name", "Marker"))})
+	route_marker = int(state.get("route", -1))
+	if route_marker >= markers.size():
+		route_marker = -1
 	seen_spots.clear()
 	for id: Variant in state.get("spots", []):
 		seen_spots[String(id)] = true
