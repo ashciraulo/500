@@ -62,6 +62,11 @@ SHORE_UP = 2.5      # this far up from the water's edge,
 SHORE_RUN = 2       # and along more than one ground point)
 SHORE_PIT = 1.5     # a river node this far under the ground on three sides of it comes up
 SHORE_PIT_MAX = 4.0  # (not a creek between high banks)
+# A jetty's edge over dry ground more than RAIL_DROP under it (too high to
+# step back up) has a rail RAIL_H high: off Fremantle's boardwalk you dropped
+# into a strip of dry river bed between it and the quay and couldn't get out.
+RAIL_DROP = 0.45
+RAIL_H = 0.9
 JETTY_ABOVE = 1.2       # a jetty's deck over the water it stands in
 JETTY_GRADE = 1.0 / 8   # a jetty off a high bank ramps down to that at this grade...
 JETTY_DROP = 6.0        # ...from a bank up to this much higher (past that it's a cliff or a lookout: level)
@@ -103,6 +108,10 @@ PARAPET_H = 0.9
 JOIN_MARGIN = 0.2
 JOIN_STEP = 1.0  # spacing of a deck's points where a road joins it
 CONTINUE_COS = float(np.cos(np.radians(20.0)))  # a way within this of straight on carries on
+# Two bridge ways meeting end to end at an angle of more than JOINT_MIN
+# degrees (and under JOINT_MAX) get the wedge outside the bend filled in.
+JOINT_MIN = 1.0
+JOINT_MAX = 150.0
 # An at-grade road this much higher than another road, or a railway, whose
 # asphalt (or ballast) it overlaps (a slip road leaving a bridge over the
 # freeway it then joins) is carried on a deck there: one ground can't be
@@ -135,6 +144,18 @@ LIFT_GAP = 30.0
 EDGE_INSET = 8.0
 BARRIER_LEN = 2.0
 BARRIER_GAP = 0.15
+# The bank down into a rail cutting (landuse=railway) has a row of barriers
+# along its top, where the ground falls more than CUT_DROP within CUT_REACH
+# past it, in runs of at least CUT_MIN: the car went off Roe St, over the
+# footpath and down the bank into the rail yard, and couldn't get out. The
+# top is the first point within CUT_SEARCH of the area's edge where the
+# ground falls more than CUT_STEEP over 3 m.
+CUT_DROP = 2.0
+CUT_REACH = 8.0
+CUT_SEARCH = 10.0
+CUT_STEEP = 1.0
+CUT_MIN = 3
+CUT_SHIFT = 3.0
 # A "New Jersey" barrier's cross-section: (across, up).
 JERSEY = ((-0.3, 0.0), (-0.28, 0.08), (-0.12, 0.3), (-0.1, 0.85), (0.1, 0.85), (0.12, 0.3), (0.28, 0.08), (0.3, 0.0))
 # The ground under a lifted stretch's deck is at least LIFT_UNDER below it
@@ -148,6 +169,15 @@ LIFT_END = 3  # (not within this many 2 m steps of its ends)
 # Under a lifted stretch, its sides come down to the ground as walls where
 # there's less than this much room under the deck.
 LIFT_WALL_CLEAR = 3.0
+# Ground between two lifted decks side by side, out to SLOT_REACH past the
+# edge of each, comes up level with the lower of them where one of them is
+# walled and the other walled or under SLOT_OPEN over the ground (Esplanade:
+# a slot beside a walled ramp ran in under the open end of the next deck;
+# Mounts Bay Rd: the gap between two walled decks was wider than a node).
+SLOT_REACH = 7.5
+SLOT_OPEN = 5.0
+SLOT_ENDS = 1  # (not at a deck's very ends, where it lands)
+SLOT_ALONG = 0.8  # (side by side: running the same way, give or take)
 JOIN_DROP = 1.5
 PARAPET_LOW = 1.0  # a road bridge's parapets fade in between this and twice this over the ground
 LIGHT_BACK = 2.0   # street lights stand this far off the asphalt on a footpath...
@@ -360,6 +390,7 @@ class World:
 
         self.water: list[WaterBody] = []
         self.cover: list[tuple[str, int, object]] = []
+        self.rail_land = []    # landuse=railway areas, for _cutting_guards
         self.buildings = []
         self.parts = []
         self.parking = []      # amenity=parking / parking_space areas, for traffic
@@ -377,6 +408,8 @@ class World:
                 # (Breakwater and groyne areas stay terrain: some carry roads, like North Mole.)
                 self.decks.append((a.geom, "pier" if t.get("man_made") == "pier" else "platform", a.id))
                 continue
+            if t.get("landuse") == "railway":
+                self.rail_land.append(a.geom)
             lc = styles.landcover(t)
             if lc is None:
                 continue
@@ -867,8 +900,16 @@ class World:
         H = hf.H
         es, ns = hf.node_coords()
         core = getattr(self, "road_core", np.zeros(H.shape, bool))
-        near = np.zeros(H.shape, np.int8)  # walled decks a node is at the edge of
+        near = np.zeros(H.shape, np.int8)  # walled or low decks a node is beside
+        wnear = np.zeros(H.shape, np.int8)  # (walled ones)
+        close = np.zeros(H.shape, np.int8)  # walled decks a node is at the very edge of
+        level0 = np.full(H.shape, np.inf, np.float32)  # and the lowest of them
         level = np.full(H.shape, np.inf, np.float32)  # and the lowest of them
+        roof = np.full(H.shape, np.inf, np.float32)  # under an open deck: room under it
+        way = np.zeros(H.shape + (2,), np.float32)  # which way the first of them is
+        run = np.zeros(H.shape + (2,), np.float32)  # and which way it runs
+        across = np.zeros(H.shape, bool)  # and another the other way: between them
+        under1 = np.zeros(H.shape, bool)  # (or one of them over it)
         for w in self.ways:
             if w.lift is None:
                 continue
@@ -902,20 +943,53 @@ class World:
                     t = np.gradient(xy, axis=0)
                     nrm = np.column_stack([-t[:, 1], t[:, 0]]) / np.maximum(
                         np.linalg.norm(t, axis=1), 1e-9)[:, None] * half
-                    edge = np.minimum(hf.sample(*(xy + nrm).T), hf.sample(*(xy - nrm).T))
+                    gl, gr = hf.sample(*(xy + nrm).T), hf.sample(*(xy - nrm).T)
+                    edge = np.minimum(gl, gr)
                     walled = (h - edge < LIFT_WALL_CLEAR)[k].reshape(E.shape)
                     under = h[k].reshape(E.shape) - DECK_THICKNESS
                     fill = inner & walled & (d < half) & ~core[j0:j1, i0:i1] & (sub < under)
                     sub[fill] = under[fill]
                     edge = inner & walled & (d < half + hf.step) & ~core[j0:j1, i0:i1]
-                    near[j0:j1, i0:i1] += edge
+                    close[j0:j1, i0:i1] += edge
+                    l0 = level0[j0:j1, i0:i1]
+                    l0[edge] = np.minimum(l0[edge], cap[edge])
+                    # (Each deck by its side facing the node.)
+                    to = (xy[k] - np.column_stack([E.ravel(), N.ravel()])).reshape(E.shape + (2,))
+                    left = (nrm[k].reshape(E.shape + (2,)) * to).sum(axis=-1) < 0
+                    clear = h[k].reshape(E.shape) - np.where(left, gl[k].reshape(E.shape), gr[k].reshape(E.shape))
+                    walled = clear < LIFT_WALL_CLEAR
+                    ends = (k >= SLOT_ENDS) & (k < len(xy) - SLOT_ENDS)
+                    side = (d < half + SLOT_REACH) & ~core[j0:j1, i0:i1] & (clear < SLOT_OPEN) & ends.reshape(E.shape)
+                    to /= np.maximum(np.linalg.norm(to, axis=-1), 1e-9)[..., None]
+                    wy = way[j0:j1, i0:i1]
+                    first = side & (near[j0:j1, i0:i1] == 0)
+                    over = d < half
+                    tk = (t[k] / np.maximum(np.linalg.norm(t[k], axis=1), 1e-9)[:, None]).reshape(E.shape + (2,))
+                    ru = run[j0:j1, i0:i1]
+                    along = np.abs((ru * tk).sum(axis=-1)) > SLOT_ALONG
+                    across[j0:j1, i0:i1] |= side & ~first & along & (((wy * to).sum(axis=-1) < -0.5) | over
+                                                                     | under1[j0:j1, i0:i1])
+                    wy[first] = to[first]
+                    ru[first] = tk[first]
+                    u1 = under1[j0:j1, i0:i1]
+                    u1[first] = over[first]
+                    near[j0:j1, i0:i1] += side
+                    wnear[j0:j1, i0:i1] += side & walled
                     lv = level[j0:j1, i0:i1]
-                    lv[edge] = np.minimum(lv[edge], cap[edge])
+                    top = h[k].reshape(E.shape) - LIFT_UNDER
+                    lv[side] = np.minimum(lv[side], top[side])
+                    rf = roof[j0:j1, i0:i1]
+                    op = side & ~walled & (d < half + 0.5)
+                    rf[op] = np.minimum(rf[op], under[op] - 0.3)
                 sub[cut] = cap[cut]
-        # Between two walled decks side by side (a dual carriageway, a ramp
-        # beside the freeway) the ground comes up level with them: the strip
-        # between their walls is a slot you'd drop into and never climb out of.
-        slot = (near >= 2) & (H < level)
+        # Between two decks side by side (a dual carriageway, a ramp beside the
+        # freeway), one of them walled, the ground comes up level with the
+        # lower: the strip between them is a slot you'd drop into and never
+        # climb out of (SLOT_REACH). Not into an open deck's underside.
+        slot = (close >= 2) & (H < level0)
+        H[slot] = level0[slot]
+        level = np.minimum(level, roof)
+        slot = across & (wnear >= 1) & (H < level) & (H > level - LIFT_WALL_CLEAR)
         H[slot] = level[slot]
 
     def _junction_nodes(self) -> dict[int, int]:
@@ -1423,6 +1497,68 @@ def _runs(mask):
     return list(zip(np.nonzero(d == 1)[0], np.nonzero(d == -1)[0]))
 
 
+def _cutting_fence(ring, hf, open_):
+    """(position, direction, base) of each barrier along the top of the bank
+    where the ground on the left of `ring` falls away (CUT_DROP), leaving out
+    any that would stand in `open_` (a road or path leading in)."""
+    step = BARRIER_LEN + BARRIER_GAP
+    xy, _s = _resample(ring, step)
+    if len(xy) > 1 and np.allclose(xy[0], xy[-1]):
+        xy = xy[:-1]
+    if len(xy) < CUT_MIN:
+        return []
+    t = np.gradient(xy, axis=0)
+    t /= np.maximum(np.linalg.norm(t, axis=1), 1e-9)[:, None]
+    inward = np.column_stack([-t[:, 1], t[:, 0]])
+
+    def ground(d):  # d: one distance per block
+        q = xy + inward * d[:, None]
+        return hf.sample(q[:, 0], q[:, 1])
+
+    ds = np.arange(0.0, CUT_SEARCH + 0.01, 0.5)
+    q = xy[:, None, :] + inward[:, None, :] * ds[None, :, None]
+    g = hf.sample(q[..., 0].ravel(), q[..., 1].ravel()).reshape(q.shape[:2])
+    steep = g[:, :-6] - g[:, 6:] > CUT_STEEP
+    top = np.where(steep.any(axis=1), ds[steep.argmax(axis=1)], np.nan)
+    # Steady the line: each block at the middle of its neighbours' tops.
+    pad = np.concatenate([top[-2:], top, top[:2]])
+    win = np.lib.stride_tricks.sliding_window_view(pad, 5)
+    have = ~np.isnan(win).all(axis=1)
+    mid = np.full(len(top), np.nan)
+    mid[have] = np.nanmedian(win[have], axis=1)
+    d = np.where(np.isnan(mid), 0.0, mid)
+    on = have & (ground(d) - ground(d + CUT_REACH) > CUT_DROP)
+    # Close gaps of a block or two between rows, so the car can't slip through.
+    for a, b in _runs(~on):
+        if 0 < a and b < len(on) and b - a <= 2:
+            on[a:b] = True
+    d = np.maximum(d - 0.5, 0.0)
+    # Off a street or path along the top, onto the bank past it (a gap there
+    # let the car through behind the row); left out only where none is near.
+    pos = xy + inward * d[:, None]
+    for _ in range(int(CUT_SHIFT / 0.5)):
+        inside = shapely.contains_xy(open_, pos[:, 0], pos[:, 1])
+        if not inside.any():
+            break
+        d = np.where(inside, d + 0.5, d)
+        pos = xy + inward * d[:, None]
+    on &= ~shapely.contains_xy(open_, pos[:, 0], pos[:, 1])
+    along = np.gradient(pos, axis=0)
+    along /= np.maximum(np.linalg.norm(along, axis=1), 1e-9)[:, None]
+    # Standing on the ground on its top side, its foot down to the bank's: a
+    # block based on the slope stood only 0.3 m over the street beside it.
+    # Where the ground climbs on behind it, its top is as high over the
+    # ground a metre back: lower, it was a step up off the slope, and over.
+    g = np.stack([hf.sample(q[:, 0], q[:, 1]) for q in
+                  (pos - inward, pos - inward * 0.7, pos - inward * 0.35, pos, pos + inward * 0.35)])
+    base, foot = g.max(axis=0), g.min(axis=0) - 0.15
+    out = []
+    for a, b in _runs(on):
+        if b - a >= CUT_MIN:
+            out.extend((pos[k], along[k], float(base[k]), float(foot[k])) for k in range(a, b))
+    return out
+
+
 def _resample(xy, step):
     seg = np.linalg.norm(np.diff(xy, axis=0), axis=1)
     s = np.concatenate([[0.0], np.cumsum(seg)])
@@ -1709,6 +1845,7 @@ class TileBuilder:
         self._bridges()
         self._tunnels()
         self._edge_barriers()
+        self._cutting_guards()
         self._rail()
         self._decks()
         self._buildings()
@@ -1993,6 +2130,70 @@ class TileBuilder:
                 # along the deck to the nearest spot clear of them, or left out.
                 for p, yaw, foot, top_k in self._pier_spots(w, rxy, bot):
                     _box(conc, p, foot, top_k, (1.4, min(w.width * 0.6, 6.0)), yaw)
+        self._deck_joints()
+
+    def _deck_joints(self):
+        """Where two bridge ways meet end to end at an angle (a deck split
+        into several ways at a bend), each is drawn square to its own end and
+        the outside of the bend was left open: a wedge-shaped crack through
+        the deck and its side wall, which the player fell through to the
+        ground under the deck (Mounts Bay Rd's slip road). The wedge gets
+        its deck, underside, side wall and parapet."""
+        hf = self.w.hf
+        e0, n0, e1, n1 = self.bounds
+        ends = {}
+        for w in self.ways:
+            if w.bridge and len(w.xy) > 1:
+                for k in (0, -1):
+                    ends.setdefault(int(w.nodes[k]), []).append((w, k))
+        ends = {n: v for n, v in ends.items() if len(v) == 2}
+        if not ends:
+            return
+        # Only where nothing else meets them (not a junction on the deck).
+        ids, counts = np.unique(np.concatenate([w.nodes for w in self.ways]), return_counts=True)
+        seen = dict(zip(ids.tolist(), counts.tolist()))
+        for nid, ((a, ka), (b, kb)) in ends.items():
+            if seen.get(nid, 0) != 2 or a.group != b.group:
+                continue
+            p = a.xy[ka]
+            if not (e0 <= p[0] < e1 and n0 <= p[1] < n1):
+                continue
+            ta, tb = _end_heading(a, ka), -_end_heading(b, kb)  # along a into the node, along b out of it
+            ang = math.degrees(math.acos(float(np.clip(ta @ tb, -1.0, 1.0))))
+            if not JOINT_MIN < ang < JOINT_MAX:
+                continue
+            side = -1.0 if ta[0] * tb[1] - ta[1] * tb[0] > 0 else 1.0  # outside the bend: right of a left turn
+            na, nb = np.array([-ta[1], ta[0]]) * side, np.array([-tb[1], tb[0]]) * side
+            ha, hb = a.width / 2, b.width / 2
+            top = (float(a.h[ka]) + float(b.h[kb])) / 2 + 0.02
+            bot = top - DECK_THICKNESS
+            mat = "asphalt" if a.group == "road" else "ballast" if a.group == "rail" else "path"
+            # Corners walked along the bend's outside the way the deck goes.
+            edge = np.array([p + na * ha, p + nb * hb])
+            under = np.array([p + na * (ha + 0.3), p + nb * (hb + 0.3)])
+            deck = orient(Polygon([p, *edge]), 1.0)
+            if deck.area < 0.01:
+                continue
+            flat_cap(self.mb.surface("bridges", mat, "world"), deck, top, textures.UV_SCALE.get(mat, 4.0))
+            conc = self.mb.surface("bridges", "concrete", "world")
+            flat_cap(conc, orient(Polygon([p, *under]), 1.0), bot, 4.0, down=True)
+            tops = np.full(2, top)
+            ph = np.minimum(_parapet_heights(a, edge, tops, hf), _parapet_heights(b, edge, tops, hf))
+            inner = np.array([p + na * (ha - 0.3), p + nb * (hb - 0.3)])
+            if self._joined_lane(a, inner, tops).any() or self._joined_lane(b, inner, tops).any():
+                ph[:] = 0.0
+            low = np.full(2, bot)
+            if a.group in ("road", "rail") and not styles.is_bridge(a.tags):
+                g = hf.sample(edge[:, 0], edge[:, 1])
+                low = np.where(top - g < LIFT_WALL_CLEAR, np.minimum(g - 0.3, bot), bot)
+            # walls() faces right of travel: out of the bend on the right
+            # side, so walk it backwards on the left.
+            fwd = slice(None) if side < 0 else slice(None, None, -1)
+            walls(conc, edge[fwd], low[fwd], (tops + ph)[fwd], 2.0, 2.0, closed=False)
+            if (ph > 0).all():
+                back = slice(None, None, -1) if side < 0 else slice(None)
+                walls(conc, inner[back], tops[back], (tops + ph)[back], 2.0, 2.0, closed=False)
+                flat_cap(conc, orient(Polygon([*edge, *inner[::-1]]), 1.0), top + float(ph.min()), 2.0)
 
     def _pier_spots(self, w, rxy, bot) -> list:
         """(xy, yaw, foot, top) of the piers under a bridge run `rxy` with deck
@@ -2087,6 +2288,24 @@ class TileBuilder:
                 base = c["h"] + ROAD_OFFSET if c["grade_separated"] else float(self.w.hf.sample(p[0], p[1]))
                 _jersey(surf, p, across, BARRIER_LEN, base)
 
+    def _cutting_guards(self):
+        """Barriers along the top of the bank into a rail cutting (CUT_DROP)."""
+        e0, n0, e1, n1 = self.bounds
+        near = [g for g in getattr(self.w, "rail_land", ()) if g.intersects(self.box.buffer(CUT_SEARCH))]
+        if not near:
+            return
+        surf = self.mb.surface("props", "concrete", "world")
+        open_ = shapely.union_all([self.road_area, self.sidewalk_area, self.path_area, self.rail_area,
+                                   self.w.water_union.intersection(self.box.buffer(20))])
+        shapely.prepare(open_)
+        for g in near:
+            for p in getattr(g, "geoms", [g]):
+                p = orient(p, 1.0)
+                for ring in (p.exterior, *p.interiors):
+                    for xy, along, base, foot in _cutting_fence(np.asarray(ring.coords)[:, :2], self.w.hf, open_):
+                        if e0 <= xy[0] < e1 and n0 <= xy[1] < n1:
+                            _jersey(surf, xy, along, BARRIER_LEN, base, foot)
+
     def _shallow_path(self, w) -> bool:
         """A footpath tunnel the terrain doesn't cover (a coarse DEM over a small hill,
         like Fremantle's Whaling Tunnel): left out, so it isn't a box sticking out."""
@@ -2145,6 +2364,8 @@ class TileBuilder:
             p = orient(p, 1.0)
             surf = self.mb.surface("props", {"pier": "path", "groyne": "concrete"}.get(d.kind, "sidewalk"), "world")
             side = self.mb.surface("props", "concrete", "world")
+            if d.kind == "pier":
+                self._deck_rails(d, p, side)
             if d.landing is None:
                 flat_cap(surf, p, d.top, 3.0)
                 for r in [p.exterior, *p.interiors]:
@@ -2160,6 +2381,36 @@ class TileBuilder:
             for r in [p.exterior, *p.interiors]:
                 xy, _ = densify(np.asarray(r.coords), np.zeros(len(r.coords)), DECK_STEP)
                 walls(side, xy, d.bottom, d.heights(xy[:, 0], xy[:, 1]), 2.0, 2.0)
+
+    def _deck_rails(self, d, p, surf):
+        """A rail along the edges of jetty `d` (its piece `p`, anticlockwise)
+        over dry ground it's too high to step back up from (RAIL_DROP), but
+        not where it meets another deck, a street or a path."""
+        hf = self.w.hf
+        level = min((wb.level for wb in self.w.water if wb.big and wb.geom.intersects(p)), default=RIVER_LEVEL)
+        others = [o.poly for o in self.w.deck_parts if o is not d and o.poly.distance(p) < 2.0]
+        open_ = shapely.union_all([getattr(self, a, Polygon()) for a in ("road_area", "sidewalk_area", "path_area")]
+                                  + others)
+        shapely.prepare(open_)
+        for r in [p.exterior, *p.interiors]:
+            xy, _ = densify(np.asarray(r.coords), np.zeros(len(r.coords)), DECK_STEP)
+            if len(xy) < 3:
+                continue
+            top = d.heights(xy[:, 0], xy[:, 1])
+            t = np.gradient(xy, axis=0)
+            t /= np.maximum(np.linalg.norm(t, axis=1), 1e-9)[:, None]
+            out = xy - np.column_stack([-t[:, 1], t[:, 0]]) * 0.2
+            g = hf.sample(out[:, 0], out[:, 1])
+            on = (top - g > RAIL_DROP) & (g > level + 0.2) & ~shapely.contains_xy(open_, out[:, 0], out[:, 1])
+            for a, b in _runs(on):
+                # (on to the next point either side, so it meets the corner
+                # or the deck beside it with no gap to step off through)
+                a, b = max(a - 1, 0), min(b + 1, len(xy))
+                seg, h = xy[a:b], top[a:b] + RAIL_H
+                walls(surf, seg, top[a:b], h, 2.0, 2.0, closed=False)
+                inner = offset_polyline(seg, 0.15)
+                walls(surf, inner[::-1], top[a:b][::-1], h[::-1], 2.0, 2.0, closed=False)
+                ribbon(surf, seg, h, 0.15, 2.0, lateral=0.075)
 
     # ---------------- buildings ----------------
     def _buildings(self):
@@ -2349,13 +2600,15 @@ def _merge_closures(closures) -> list[dict]:
     return out
 
 
-def _jersey(surf, center_xy, along, length: float, base: float):
+def _jersey(surf, center_xy, along, length: float, base: float, foot: float | None = None):
     """A concrete barrier block `length` long in the direction `along`,
-    standing on `base` (sunk a little so it sits on sloping ground)."""
+    standing on `base` (sunk a little so it sits on sloping ground), its
+    foot down to `foot` if that's lower."""
     side = np.array([along[1], -along[0]])
     prof = np.array(JERSEY)
     half = along * length / 2
-    ring = [(center_xy + side * a, base - 0.1 + z if z > 0 else base - 0.15) for a, z in prof]
+    low = base - 0.15 if foot is None else min(foot, base - 0.15)
+    ring = [(center_xy + side * a, base - 0.1 + z if z > 0 else low) for a, z in prof]
     v, nrm, uv, tris = [], [], [], []
 
     mid = np.array([center_xy[0], center_xy[1], base + 0.35])

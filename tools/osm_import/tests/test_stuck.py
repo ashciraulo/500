@@ -287,3 +287,26 @@ def test_lone_corner_of_river_by_a_jetty_root_is_not_filled():
     w._level_decks()
     for y in (-5.0, 5.0, 10.0):
         assert hf.sample(-5.0, y) < 0.0
+
+
+def test_jetty_has_a_rail_over_dry_river_bed_but_not_over_the_water():
+    # Fremantle's boardwalk: beside one finger the river bed was dry, 0.8 m
+    # under the deck, walled in by the quay; you dropped in and couldn't get
+    # back up. That side has a rail. Over the water, and along the quay it
+    # leaves (no drop), it doesn't.
+    from osm_import.build import RAIL_H, Deck, TileBuilder
+    from osm_import.meshbuild import MeshBuilder
+    river = box(-300, -300, 0, 300)
+    hf = field(lambda E, N: np.where(E >= 0, 2.0, np.where((N >= 0) & (E > -25), 1.2, -2.5)))
+    jetty = LineString([(2, 0), (-40, 0)]).buffer(2.0, cap_style=2)
+    w = _world(hf, [], [WaterBody(river, RIVER_LEVEL, True, "Swan River")])
+    w.deck_parts = [Deck(jetty, "pier", 1, 2.0, -3.5)]
+    tb = TileBuilder.__new__(TileBuilder)
+    tb.w, tb.box, tb.mb = w, box(-300, -300, 300, 300), MeshBuilder()
+    tb._decks()
+    v, _, _, _ = tb.mb.surface("props", "concrete", "world").arrays()
+    rail = v[v[:, 2] > 2.0 + RAIL_H / 2]
+    assert len(rail)
+    dry = rail[rail[:, 1] > 1.5]
+    assert dry[:, 0].min() < -20.0 and dry[:, 0].min() > -27.0 and dry[:, 0].max() < 0.5
+    assert (rail[rail[:, 1] < 1.5][:, 0] > -4.5).all()  # the other side: only over the bank's foot
