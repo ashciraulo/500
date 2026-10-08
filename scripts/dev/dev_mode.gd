@@ -57,6 +57,9 @@ var _note: Label
 var _note_timer := 0.0
 ## [Transform3D] where the car has been: on its wheels, facing the way it went.
 var _car_trail: Array[Transform3D] = []
+## Keys pressed since the last physics step, done in the next one: a car moved
+## while input is being handled can be put straight back by the physics step.
+var _queued: Array[Key] = []
 
 
 ## Dev mode exists in editor runs and debug exports, never in release builds.
@@ -84,23 +87,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not enabled or get_tree().paused:
 		return
-	var done := true
-	match key.keycode:
-		KEY_U:
-			unstuck()
-		KEY_V:
-			toggle_fly()
-		KEY_1:
-			go_home()
-		KEY_2:
-			go_to_car()
-		KEY_3:
-			bring_car()
-		KEY_X:
-			mark_spot()
-		_:
-			done = false
-	if done:
+	if key.keycode in [KEY_U, KEY_V, KEY_1, KEY_2, KEY_3, KEY_X]:
+		_queued.append(key.keycode)
 		get_viewport().set_input_as_handled()
 
 
@@ -117,6 +105,20 @@ func set_enabled(on: bool) -> void:
 func _physics_process(_delta: float) -> void:
 	if not _find():
 		return
+	while not _queued.is_empty():
+		match _queued.pop_front():
+			KEY_U:
+				unstuck()
+			KEY_V:
+				toggle_fly()
+			KEY_1:
+				go_home()
+			KEY_2:
+				go_to_car()
+			KEY_3:
+				bring_car()
+			KEY_X:
+				mark_spot()
 	_track_car()
 
 
@@ -136,7 +138,8 @@ func _process(delta: float) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Actions (also called by tools/dev_mode_test.gd)
+# Actions, done in the physics step (call them from _physics_process, or
+# press the keys)
 # ---------------------------------------------------------------------------
 
 func unstuck() -> void:
@@ -377,14 +380,16 @@ func _place_car(t: Transform3D) -> void:
 
 
 func _move_car(t: Transform3D) -> void:
-	_car.global_transform = t
-	_car.linear_velocity = Vector3.ZERO
-	_car.angular_velocity = Vector3.ZERO
-	_car.sleeping = false
+	_car.teleport(t)
 
 
-## A line in the Godot output for each move, for when a key seems to do nothing.
+## A line in the Godot output for each move, for when a key seems to do
+## nothing: where the car is a couple of physics steps after it was moved.
 func _log(key: String, from: Vector3, how: StringName) -> void:
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if not _find():
+		return
 	var to := _car.global_position
 	print("[dev] %s: car %s, (%.1f, %.1f, %.1f) -> (%.1f, %.1f, %.1f), %.1f m" % [key,
 		how if how != &"" else &"upright in place", from.x, from.y, from.z, to.x, to.y, to.z, from.distance_to(to)])
