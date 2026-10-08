@@ -9,10 +9,13 @@ extends CanvasLayer
 ## you are and the keys:
 ##
 ##   U  Unstuck: on foot, back up the last drop you couldn't climb (or back
-##      along the way you walked); in the car, back along the road, upright
+##      along the way you walked); in the car, back along the way you drove,
+##      upright (press again to go further back), or with no way back, onto
+##      the nearest road or open ground
 ##   V  Fly (on foot): W/S where you look, A/D sideways, E/Q (or Space) up
 ##      and down, Shift fast. Walls don't stop you.
 ##   1  Home: on foot, out the front gate; in the car, back to the carport
+##      (it says so if the car is already there)
 ##   2  To the car (on foot)
 ##   3  Car to me (on foot): the car is parked beside you
 ##   X  Mark this spot: its position goes on the clipboard and into
@@ -30,6 +33,15 @@ const CAR_TRAIL_STEP := 4.0
 const CAR_TRAIL_SIZE := 40
 ## Unstuck in the car goes at least this far back along the trail.
 const CAR_BACK := 8.0
+## With no trail to go back along, unstuck looks this far (m) for a road,
+## then for open level ground about as high as the car (not a roof), then for
+## a road further off, to put the car on.
+const ROAD_REACH := 30.0
+const ROAD_REACH_FAR := 160.0
+const OPEN_RINGS: Array[float] = [6.0, 9.0, 12.0, 16.0, 20.0, 25.0, 30.0, 40.0]
+const OPEN_RISE := 1.5
+## Home (1) in the car within this far (m) of the carport says it's already there.
+const AT_CARPORT := 4.0
 
 var enabled := false
 ## Where the on/off setting and marked spots go (tests point these elsewhere).
@@ -131,7 +143,14 @@ func unstuck() -> void:
 	if not _find():
 		return
 	if _player.in_car:
-		_say("Car moved back along the road." if _car_unstuck() else "Nowhere to put the car.")
+		var from := _car.global_position
+		var how := _car_unstuck()
+		_log("U", from, how)
+		match how:
+			&"trail": _say("Car moved back along the way you came.")
+			&"road": _say("Car moved onto the nearest road.")
+			&"open": _say("Car moved onto open ground nearby.")
+			_: _say("Nowhere open nearby: car put upright. Try 1 (carport).")
 	elif _player.noclip:
 		_say("Flying: press V to land first.")
 	else:
@@ -154,8 +173,12 @@ func go_home() -> void:
 	var map := _map()
 	var home := get_tree().get_first_node_in_group(&"home_base") as HomeBase
 	if _player.in_car:
-		_place_car(map.get_spawn_transform() if map else _car.global_transform)
-		_say("Back in the carport.")
+		var from := _car.global_position
+		var spot: Transform3D = map.get_spawn_transform() if map else _car.global_transform
+		_place_car(spot)
+		_log("1", from, &"carport")
+		_say("Already at the carport: car set straight." if from.distance_to(spot.origin) < AT_CARPORT
+			else "Back in the carport.")
 		return
 	if home == null:
 		_say("No home on this map.")
@@ -186,8 +209,10 @@ func bring_car() -> void:
 	# A few metres ahead, pointing the way you're looking.
 	for offset: Vector3 in [look * 4.5, look * 4.5 + side * 2.0, look * 4.5 - side * 2.0, -look * 4.5]:
 		var at := _ground(_player.global_position + offset + Vector3.UP * 1.5, 6.0)
-		if at != Vector3.INF and _car_fits(at):
+		if at != Vector3.INF and _car_fits(at, Basis(Vector3.UP, yaw)):
+			var from := _car.global_position
 			_place_car(Transform3D(Basis(Vector3.UP, yaw), at + Vector3.UP * 0.6))
+			_log("3", from, &"beside you")
 			# Turn round to it if it had to go beside or behind you.
 			_player.face(_car.global_position + Vector3.UP * 0.5)
 			_say("Car's here.")
@@ -249,45 +274,144 @@ func _track_car() -> void:
 		_car_trail.pop_front()
 
 
-func _car_unstuck() -> bool:
+## Gets the car out: back along the trail it drove (keeping the rest of the
+## trail, so pressing again goes further back), else onto the nearest road,
+## else onto open level ground nearby, else just upright where it is.
+## Returns which: &"trail", &"road", &"open" or &"" (upright in place).
+func _car_unstuck() -> StringName:
 	var here := _car.global_position
 	while not _car_trail.is_empty():
 		var t: Transform3D = _car_trail.pop_back()
 		if t.origin.distance_to(here) < CAR_BACK:
 			continue
 		var at := _ground(t.origin + Vector3.UP * 1.5, 4.0)
-		if at != Vector3.INF and _car_fits(at):
-			_place_car(Transform3D(t.basis, at + Vector3.UP * 0.6))
-			return true
-	# No trail (just spawned, or teleported): upright, a little higher.
+		if at != Vector3.INF and _car_fits(at, t.basis):
+			_move_car(Transform3D(t.basis, at + Vector3.UP * 0.6))
+			return &"trail"
+	var spot := _road_spot(here, ROAD_REACH)
+	if spot != Transform3D.IDENTITY:
+		_place_car(spot)
+		return &"road"
+	spot = _open_spot(here)
+	if spot != Transform3D.IDENTITY:
+		_place_car(spot)
+		return &"open"
+	spot = _road_spot(here, ROAD_REACH_FAR)
+	if spot != Transform3D.IDENTITY:
+		_place_car(spot)
+		return &"road"
 	_car.reset_upright()
-	return false
+	return &""
 
 
+## On the nearest road (the sat-nav's roads) where the car fits, in the left
+## lane facing the way the car was going, at least a car's length from where
+## it is now. IDENTITY if none within `reach`.
+func _road_spot(here: Vector3, reach: float) -> Transform3D:
+	var data := MapData.shared()
+	if not data.is_loaded:
+		return Transform3D.IDENTITY
+	var graph := data.routes
+	var heading := -_car.global_basis.z
+	var tries: Array = []  # [distance, point, tangent]
+	for near: Array in graph.nearest(Vector2(here.x, here.z)):
+		var r: int = near[0]
+		if near[2] > reach:
+			continue
+		var pts := graph.road_pts[r]
+		var cum := graph.road_cum[r]
+		for ds: float in [0.0, 6.0, -6.0, 12.0, -12.0, 20.0, -20.0, 30.0, -30.0]:
+			var s := clampf(float(near[1]) + ds, 0.0, graph.road_len[r])
+			var p := TrafficGraph.point_at(pts, cum, s)
+			var tangent := TrafficGraph.tangent_at(pts, cum, s)
+			tangent.y = 0.0
+			if tangent.length() < 0.1:
+				continue
+			tangent = tangent.normalized()
+			if graph.road_oneway[r] == 0 and tangent.dot(heading) < 0.0:
+				tangent = -tangent
+			if graph.road_oneway[r] == 0 or graph.road_lanes_fwd[r] > 1:
+				# Keep left, half a lane off the middle.
+				p += Vector3(tangent.z, 0.0, -tangent.x) * RouteGraph.LANE_WIDTH * 0.5
+			tries.append([Vector2(p.x - here.x, p.z - here.z).length(), p, tangent])
+	tries.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	for t: Array in tries:
+		if t[0] < 3.0:
+			continue
+		var p: Vector3 = t[1]
+		var at := _ground(Vector3(p.x, p.y + 2.5, p.z), 5.0)
+		var facing := Basis.looking_at(t[2], Vector3.UP)
+		if at != Vector3.INF and _car_fits(at, facing):
+			return Transform3D(facing, at + Vector3.UP * 0.6)
+	return Transform3D.IDENTITY
+
+
+## Open level ground near `here` (rings further and further out) where the
+## car fits, nearest first and as near its height as can be, and no more than
+## OPEN_RISE above or below it (so not a roof). IDENTITY if none.
+func _open_spot(here: Vector3) -> Transform3D:
+	var heading := -_car.global_basis.z
+	heading.y = 0.0
+	if heading.length() < 0.1:
+		heading = Vector3.FORWARD
+	var facing := Basis.looking_at(heading.normalized(), Vector3.UP)
+	for radius in OPEN_RINGS:
+		var best := Vector3.INF
+		for i in 16:
+			var angle := TAU * i / 16.0
+			var p := here + Vector3(sin(angle), 0.0, cos(angle)) * radius
+			var at := _ground(p + Vector3.UP * 8.0, 20.0, 0.9)
+			if at == Vector3.INF or absf(at.y - here.y) > OPEN_RISE or not _car_fits(at, facing):
+				continue
+			if best == Vector3.INF or absf(at.y - here.y) < absf(best.y - here.y):
+				best = at
+		if best != Vector3.INF:
+			return Transform3D(facing, best + Vector3.UP * 0.6)
+	return Transform3D.IDENTITY
+
+
+## Puts the car somewhere new: the trail behind it no longer leads there.
 func _place_car(t: Transform3D) -> void:
-	_car.global_transform = t
-	_car.linear_velocity = Vector3.ZERO
-	_car.angular_velocity = Vector3.ZERO
+	_move_car(t)
 	_car_trail.clear()
 
 
-## The first floor straight down from `from`, within `depth` metres.
-func _ground(from: Vector3, depth: float) -> Vector3:
-	var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * depth, 1 | 2)
+func _move_car(t: Transform3D) -> void:
+	_car.global_transform = t
+	_car.linear_velocity = Vector3.ZERO
+	_car.angular_velocity = Vector3.ZERO
+	_car.sleeping = false
+
+
+## A line in the Godot output for each move, for when a key seems to do nothing.
+func _log(key: String, from: Vector3, how: StringName) -> void:
+	var to := _car.global_position
+	print("[dev] %s: car %s, (%.1f, %.1f, %.1f) -> (%.1f, %.1f, %.1f), %.1f m" % [key,
+		how if how != &"" else &"upright in place", from.x, from.y, from.z, to.x, to.y, to.z, from.distance_to(to)])
+
+
+## The first floor straight down from `from`, within `depth` metres: not
+## under water, not on top of a car, and no steeper than `flat` allows.
+func _ground(from: Vector3, depth: float, flat := 0.8) -> Vector3:
+	var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * depth, 1 | 2 | MapTileLoader.LAYER_WATER)
 	q.exclude = [_car.get_rid(), _player.get_rid()]
 	var hit := _player.get_world_3d().direct_space_state.intersect_ray(q)
-	if hit.is_empty() or (hit.normal as Vector3).y < 0.8:
+	if hit.is_empty() or (hit.normal as Vector3).y < flat:
+		return Vector3.INF
+	var body := hit.collider as CollisionObject3D
+	if body == null or body is RigidBody3D or body is CharacterBody3D or body.collision_layer & MapTileLoader.LAYER_WATER:
 		return Vector3.INF
 	return hit.position
 
 
-## Room for a 500 standing on `ground` (nothing in a car-sized box above it).
-func _car_fits(ground: Vector3) -> bool:
+## Room for a 500 standing on `ground` facing `facing` (nothing in a
+## car-sized box above it).
+func _car_fits(ground: Vector3, facing := Basis()) -> bool:
 	var box := BoxShape3D.new()
 	box.size = Vector3(1.9, 1.3, 3.8)
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.shape = box
-	q.transform = Transform3D(Basis(), ground + Vector3.UP * 0.95)
+	q.transform = Transform3D(facing, ground + Vector3.UP * 0.95)
 	q.collision_mask = 1 | 2
 	q.exclude = [_car.get_rid(), _player.get_rid()]
 	return _player.get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
