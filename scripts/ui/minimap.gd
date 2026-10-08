@@ -4,7 +4,8 @@ extends Control
 ## turns with the player so the way they face is always up, a red N on the
 ## rim for north, nearby places, and the street and suburb they're in on a
 ## chip just below it. The job you're on and your nearest marker stay on the
-## rim when they're off the map. M (or Map on the phone) opens the full map.
+## rim when they're off the map, and the suggested route there is drawn on
+## it (RouteGuide). M (or Map on the phone) opens the full map.
 
 const DIAMETER := 184.0
 const RIM := 7.0
@@ -12,6 +13,8 @@ const RIM := 7.0
 const ZOOM_FOOT := 1.0
 const ZOOM_SLOW := 1.7
 const ZOOM_FAST := 3.4
+## How much of the route (m) is worth drawing on a map this small.
+const ROUTE_REACH := 900.0
 
 var _disc: Control
 var _view: MapView
@@ -101,6 +104,13 @@ func _process(delta: float) -> void:
 		_pins_timer = 1.0
 		MapPins.note_spots(p)
 		_view.pins = MapPins.gather(get_tree(), true)
+	var guide := RouteGuide.of(get_tree())
+	if guide and guide.has_route():
+		_view.route = guide.ahead(ROUTE_REACH)
+		_view.route_ends = guide.loose_ends()
+	elif not _view.route.is_empty() or not _view.route_ends.is_empty():
+		_view.route = PackedVector2Array()
+		_view.route_ends = PackedVector2Array()
 	_where_timer -= delta
 	if _where_timer <= 0.0:
 		_where_timer = 0.4
