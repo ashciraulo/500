@@ -126,6 +126,7 @@ func _on_shelf(part: CarPart, i: int) -> void:
 			holder.scale = Vector3.ONE * s
 			model.position = -Vector3(box.get_center().x, box.position.y, box.get_center().z)
 			holder.add_child(model)
+			PS1Model.apply(model)
 			_items.add_child(holder)
 			return
 		model.free()
@@ -148,6 +149,7 @@ func _lean_wheel(part: CarPart, i: int) -> void:
 	holder.add_child(spin)
 	model.position = -box.get_center()
 	spin.add_child(model)
+	PS1Model.apply(model)
 	_items.add_child(holder)
 
 
@@ -185,9 +187,10 @@ func _part_model(part: CarPart, suffix := "") -> Node3D:
 		return null
 	for path: String in [CarController.PART_MODEL_PATH % (part.visual + suffix), CarController.PART_MODEL_PATH % part.visual]:
 		if ResourceLoader.exists(path):
-			var model := (load(path) as PackedScene).instantiate() as Node3D
-			PS1Model.apply(model)
-			return model
+			# Not PS1-converted yet: a model too big for the shelf is freed
+			# outside the tree, and freeing converted materials that way
+			# leaves the renderer holding dead material ids.
+			return (load(path) as PackedScene).instantiate() as Node3D
 	return null
 
 

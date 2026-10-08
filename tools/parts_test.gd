@@ -208,6 +208,8 @@ func _found_parts() -> void:
 	for n in nodes:
 		if n.part_id == "roof_surf_rack":
 			node = n
+		elif n.part_id == "exhaust_abarth_classic":
+			_check(n.on_foot, "the tailpipe on the shed bench is only taken on foot")
 	_check(node != null, "the surf rack is somewhere")
 	if node == null:
 		return

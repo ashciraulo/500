@@ -3,7 +3,8 @@ extends Node3D
 ## A part you can't buy, sitting where data/world/found_parts.json says:
 ## a set of old wheels by a roller door, a surf rack behind the surf club.
 ## Stop next to it in the car, or walk up to it, and it's yours (discovery
-## "part/<id>"); fit it in any workshop that does parts.
+## "part/<id>"); fit it in any workshop that does parts. An `on_foot` part
+## (the tailpipe on a shed bench) is only taken by walking up to it.
 
 const DATA_PATH := "res://data/world/found_parts.json"
 const FIND_RADIUS := 7.0
@@ -11,6 +12,8 @@ const FIND_SPEED_KMH := 4.0
 const WALK_RADIUS := 2.2
 
 @export var part_id := ""
+## Only taken on foot, not by stopping the car near it.
+@export var on_foot := false
 
 var _visual: Node3D
 var _car: Node3D
@@ -73,13 +76,27 @@ func _process(delta: float) -> void:
 		_player = get_tree().root.find_child("Player", true, false)
 	if not _grounded and _car and _car.global_position.distance_to(global_position) < 150.0:
 		_snap_to_ground()
-	var on_foot: bool = _player != null and _player is Node3D and not _player.get("in_car")
-	if on_foot:
-		if (_player as Node3D).global_position.distance_to(global_position) < WALK_RADIUS:
+	var walking: bool = _player != null and _player is Node3D and not _player.get("in_car")
+	if walking:
+		if (_player as Node3D).global_position.distance_to(global_position) < WALK_RADIUS \
+				and _can_reach(_player as Node3D):
 			take()
-	elif _car and _car.global_position.distance_to(global_position) < FIND_RADIUS \
+	elif not on_foot and _car and _car.global_position.distance_to(global_position) < FIND_RADIUS \
 			and _car.linear_velocity.length() * 3.6 < FIND_SPEED_KMH:
 		take()
+
+
+## Nothing solid between your hands and it: no taking the tailpipe off the
+## bench through the shed wall from outside.
+func _can_reach(player: Node3D) -> bool:
+	var query := PhysicsRayQueryParameters3D.create(player.global_position + Vector3.UP * 0.9, global_position + Vector3.UP * 0.2, 1)
+	var skip: Array[RID] = []
+	if player is CollisionObject3D:
+		skip.append((player as CollisionObject3D).get_rid())
+	if _car is CollisionObject3D:
+		skip.append((_car as CollisionObject3D).get_rid())
+	query.exclude = skip
+	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 
 ## Sit on whatever's under it, once the map has loaded around it (from
