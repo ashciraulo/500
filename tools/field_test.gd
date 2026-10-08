@@ -261,7 +261,8 @@ func _process(_delta: float) -> bool:
 				_aim(_target.birds[0].node)
 			elif _frames > 60 and _frames < 600:
 				_aim(_target.birds[0].node)
-				if _fj.is_seen("wrong_cockatoos"):
+				# Thirteen close together: wait till the glasses have settled on one.
+				if _fj.is_seen("wrong_cockatoos") and _bino.is_identified():
 					_check(root.get_node("Discoveries").has("field/wrong_cockatoos"), "seeing one is a discovery")
 					_check(_fj.seen_count() == _seen_before and _fj.species_total() == 42, "they don't count as species (%d of %d)" % [_fj.seen_count(), _fj.species_total()])
 					_check(_target.birds.all(func(b: Dictionary) -> bool: return b.state == "perch"), "none of them flush")
@@ -269,11 +270,11 @@ func _process(_delta: float) -> bool:
 					_wait = 0
 					_frames = 600
 			elif _frames > 600 and _bino.state == 2 and _frames % 10 == 0:
-				_aim(_target.birds[0].node)
+				_aim(_bino.dial.node)  # whichever of the flock the shot is on
 				_bino.dial.needle = _bino.dial.arcs[0]
 				_bino._press()
 			elif _frames > 600 and _bino.state != 2:
-				_check(_fj.roll.size() == 2 and _fj.roll[1].wrong, "a photo of one on the roll")
+				_check(_fj.roll.size() == 2 and _fj.roll[1].wrong, "a photo of one on the roll (%s)" % _bino._message)
 				_shot("08_wrong_cockatoos")
 				_bino.close()
 				_field.journal.open()
@@ -315,7 +316,7 @@ func _process(_delta: float) -> bool:
 				_check(result.prints.size() == 2 and _fj.roll.is_empty(), "two prints developed, the roll is empty")
 				_check(root.get_node("Wallet").balance == _money + int(result.pay) and int(result.pay) > 0, "the prints pay ($%d)" % result.pay)
 				_check(result.prints[0].first, "first print of a species earns the bonus")
-				_check(result.prints[1].wrong and int(result.prints[1].pay) == 0, "the cockatoo print comes out blank")
+				_check(result.prints.size() == 2 and result.prints[1].wrong and int(result.prints[1].pay) == 0, "the cockatoo print comes out blank")
 			elif _frames == 130:
 				_shot("06_lab")
 				_field.lab_screen.close()
