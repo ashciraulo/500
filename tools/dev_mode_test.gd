@@ -80,10 +80,19 @@ func _process(delta: float) -> bool:
 				_check(not _player.noclip, "dev keys do nothing while dev mode is off (V before F3)")
 				_check(_dev.enabled and _dev.get_node("DevPanel").visible, "F3 turns dev mode on and shows its panel")
 				_check(not _player.in_car, "got out of the car")
+				_pause().open()
+				_next()
+		2:  # the panel keeps out of the way of the pause menu
+			if _t > 0.3 and _t - delta <= 0.3:
+				_check(not _dev.get_node("DevPanel").visible, "the dev panel hides while the pause menu is open")
+				_shot("00_pause_menu")
+				_pause().close()
+			if _t > 0.6:
+				_check(_dev.get_node("DevPanel").visible, "and comes back when it closes")
 				# In the front garden by the front door, turned left toward next door's front yard.
 				_put(Vector3(4.6, -1.2, 0.1), Vector3(9.0, -1.2, 1.0))
 				_next()
-		2:  # into the neighbour's yard, then back out the way you came
+		3:  # into the neighbour's yard, then back out the way you came
 			if _t > 0.5 and _t - delta <= 0.5:
 				Input.action_press("accelerate")
 			if _t > 3.0 and _t - delta <= 3.0:
@@ -99,7 +108,7 @@ func _process(delta: float) -> bool:
 				_make_platform()
 				_put(PLATFORM + Vector3(0, 0, PLATFORM_TOP + 0.05), PLATFORM + Vector3(0, -4.0, 1.5))
 				_next()
-		3:  # walk off a platform too high to step back onto
+		4:  # walk off a platform too high to step back onto
 			if _t > 0.5 and _t - delta <= 0.5:
 				_check(absf(_local(_player.global_position).z - PLATFORM_TOP) < 0.1, "standing on the test platform")
 				Input.action_press("accelerate")
@@ -113,7 +122,7 @@ func _process(delta: float) -> bool:
 				_shot("02_stuck_below_ledge")
 				_key(KEY_U)
 				_next()
-		4:
+		5:
 			if _t > 0.6:
 				var h := _local(_player.global_position).z
 				_check(absf(h - PLATFORM_TOP) < 0.1 and _player.is_on_floor(), "unstuck puts you back on top of the drop (%.2f)" % h)
@@ -125,7 +134,7 @@ func _process(delta: float) -> bool:
 				_mark = _player.global_position
 				Input.action_press("accelerate")
 				_next()
-		5:
+		6:
 			if _t > 1.5 and _t - delta <= 1.5:
 				_check(_player.noclip, "V: flying")
 				Input.action_release("accelerate")
@@ -142,7 +151,7 @@ func _process(delta: float) -> bool:
 				_key(KEY_V)
 				_key(KEY_1)
 				_next()
-		6:
+		7:
 			if _t > 1.0:
 				_check(not _player.noclip, "V again: back on your feet")
 				var front: Vector3 = _home.spawn_transform(&"Spawn_Front").origin
@@ -151,7 +160,7 @@ func _process(delta: float) -> bool:
 				_mark = _car.global_position
 				_key(KEY_3)  # facing the front door, the car parked out the back
 				_next()
-		7:
+		8:
 			if _t > 2.0:
 				var d := _car.global_position.distance_to(_player.global_position)
 				_check(d < 8.0 and _car.global_position.distance_to(_mark) > 5.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95,
@@ -162,13 +171,13 @@ func _process(delta: float) -> bool:
 				_shot("05b_car_at_the_front")
 				_key(KEY_2)
 				_next()
-		8:
+		9:
 			if _t > 1.0:
 				_check(_player.global_position.distance_to(_car.global_position) < 3.0 and _player.is_on_floor(), "2: beside the car")
 				_shot("06_at_the_car")
 				_put(Vector3(-6.0, -6.0, 0.0), Vector3(6.0, -6.0, 1.0))  # on the lane, looking along it
 				_next()
-		9:
+		10:
 			if _t > 0.5 and _t - delta <= 0.5:
 				_key(KEY_3)
 			if _t > 3.0:
@@ -177,7 +186,7 @@ func _process(delta: float) -> bool:
 				_shot("07_car_brought_over")
 				_player.get_in()
 				_next()
-		10:  # drive along the lane, then unstuck the car back along it
+		11:  # drive along the lane, then unstuck the car back along it
 			if _t > 2.5 and _t - delta <= 2.5:
 				_check(_player.in_car and _car.player_controlled, "back in the car")
 				Input.action_press("accelerate")
@@ -189,7 +198,7 @@ func _process(delta: float) -> bool:
 				_mark = _car.global_position
 				_key(KEY_U)
 				_next()
-		11:
+		12:
 			if _t > 1.5:
 				var back := _car.global_position.distance_to(_mark)
 				_check(back > 6.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95, "U in the car: back along the road, upright (%.1f m)" % back)
@@ -198,7 +207,7 @@ func _process(delta: float) -> bool:
 				_mark = _car.global_position
 				_key(KEY_U)
 				_next()
-		12:
+		13:
 			if _t > 1.5:
 				var back := _car.global_position.distance_to(_mark)
 				_check(back > 6.0 and _note().contains("back along"), "U again: further back along the road (%.1f m)" % back)
@@ -209,7 +218,7 @@ func _process(delta: float) -> bool:
 				_make_pen(_car.global_position)
 				_mark = _car.global_position
 				_next()
-		13:
+		14:
 			if _t > 1.0 and _t - delta <= 1.0:
 				_mark = _car.global_position
 				_key(KEY_U)
@@ -222,7 +231,7 @@ func _process(delta: float) -> bool:
 				_mark = _car.global_position
 				_key(KEY_1)
 				_next()
-		14:
+		15:
 			if _t > 1.5:
 				var spawn: Vector3 = _home.spawn_transform(&"Spawn_Car").origin
 				_check(_car.global_position.distance_to(spawn) < 1.5 and _mark.distance_to(spawn) > 5.0,
@@ -232,14 +241,14 @@ func _process(delta: float) -> bool:
 				_mark = _car.global_position
 				_key(KEY_1)
 				_next()
-		15:
+		16:
 			if _t > 1.0:
 				_check(_note().contains("Already at the carport") and _car.global_position.distance_to(_mark) < 0.5,
 					"1 again: says it's already at the carport (%s)" % _note())
 				_mark = _car.global_position
 				_key(KEY_U)
 				_next()
-		16:
+		17:
 			if _t > 1.5:
 				var moved := _car.global_position.distance_to(_mark)
 				_check(moved > 3.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95,
@@ -297,6 +306,10 @@ func _make_pen(at: Vector3) -> void:
 func _pen_holds() -> bool:
 	var p: Vector3 = _pen.to_local(_car.global_position)
 	return absf(p.x) < 2.2 and absf(p.z) < 2.7
+
+
+func _pause() -> CanvasLayer:
+	return _main.get_node("PauseMenu")
 
 
 func _note() -> String:

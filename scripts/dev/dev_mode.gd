@@ -126,6 +126,8 @@ func _process(delta: float) -> void:
 	_note_timer = maxf(_note_timer - delta, 0.0)
 	if _note_timer <= 0.0:
 		_note.text = ""
+	# Out of the way of the pause menu and title screen (it sits above them).
+	_panel.visible = enabled and not get_tree().paused and not TitleScreen.is_showing(get_tree())
 	if not enabled or not _find():
 		return
 	var p := _here()
