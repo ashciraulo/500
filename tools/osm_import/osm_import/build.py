@@ -2966,6 +2966,8 @@ def _expand_placed(specs: list, proj: Projector):
         for k in range(int(length // step + 1e-6)):
             one = {key: v for key, v in spec.items() if key != "run"}
             one.update(id=f"{spec['id']}_{k + 1}", bearing=round(bearing, 2))
+            if run.get("axis", "z") == "z":
+                one["_end"] = (ue * step, un * step)  # where the piece ends, to follow a sloping deck
             yield one, e + ue * step * k, n + un * step * k
 
 
@@ -2989,6 +2991,14 @@ def _write_placed(world: World, path: Path, inside_hf, region_of: dict, size: fl
         fresh[spec["id"]] = {"id": spec["id"], "scene": spec["scene"],
                              "p": [round(e, 2), round(y, 2), round(-n, 2)],
                              "yaw": round(math.pi - math.radians(spec["bearing"]), 4)}
+        if "deck" in spec and "_end" in spec:
+            # A run piece along a jetty that ramps to the water: tilt it (about
+            # its local X, Godot's convention) so its far end sits on the deck too.
+            de, dn = spec["_end"]
+            rise = world.deck_height(spec["deck"], e + de, n + dn) - y
+            pitch = -math.atan2(rise, math.hypot(de, dn))
+            if abs(pitch) > 1e-3:
+                fresh[spec["id"]]["pitch"] = round(pitch, 4)
     old = json.loads(path.read_text()) if path.exists() else []
     kept = [p for p in old if p["id"] not in fresh and
             f"{math.floor(p['p'][0] / size)}_{math.floor(-p['p'][2] / size)}" not in own]

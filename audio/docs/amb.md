@@ -109,6 +109,8 @@ recordings fetched by `python3 audio/tools/fetch_sources.py` into
 | place/place_surf_night_loop | yes (54 s) | The surf beaches after dark: the same breaks, slower, no gulls | P2 | beach_night (+ synth) |
 | place/place_tackle_shop_loop | yes (48 s) | Inside the Mends St bait and tackle shop: bait freezer, live-bait tank bubbling, ceiling fan, the station on a shelf radio, rod tips knocking, the till, the door bell | P2 | synth; radio plays mus_cinquecento_04 |
 | place/place_photo_lab_loop | yes (48 s) | Inside the Lake St photo lab: the minilab's motor, rollers and dryer fan, prints dropping into the tray, the chemistry pump, a beep, fluoros | P2 | synth |
+| place/place_servo_loop | yes (48 s) | A servo forecourt by day (the 25 you can fill up at, data/world/servos.json): drinks fridges through the shop door, a bowser filling with its litre counter ticking, cars on the street, a door shutting, the door's ding-dong | P2 | synth |
+| place/place_servo_night_loop | yes (48 s) | The servo after dark: the canopy's fluoros buzzing over an empty forecourt, the fridges, the bug zapper by the door, one late fill, a car going past | P2 | synth |
 | place/place_wrong_cockatoos_night_loop | yes (48 s) | Under the thirteen silent cockatoos in Kings Park at 3 am: feathers resettling, a bill click, branches taking their weight, no crickets, a low beating hum | P2 | synth |
 | amb_bird_raven_01..03 | no | Australian raven, the long mournful falling 'aah-aah-aaaah' | P1 | raven_db |
 | amb_bird_magpie_01..03 | no | Australian magpie warble/carol (01-02 Kings Park, 03 close suburban) | P1 | mag_kp2, mag_dl |

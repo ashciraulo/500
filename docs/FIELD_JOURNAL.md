@@ -159,16 +159,21 @@ with were on the hook by the back door, with an M scratched into them.
 - Thirteen black cockatoos in Kings Park at 3 am. Always thirteen.
 - An ibis standing in the middle of the Barrack Street crossing; the lights
   change when it lifts its head.
-- A boobook in Kings Park with brown magnetic tape woven into its nest.
+- A boobook in Kings Park, looking out of the hollow of a dead marri stump.
+  The nest inside is lined with brown cassette tape, and a scrap of a
+  NIGHT DRIVE label is caught on a twig.
 - Once the shed is open: a small grey bird on the shed roof that isn't in any
   field guide. Its page is already filled in, in your handwriting.
 
 The lab won't sell prints of these ("they've come out blank, love"), but they
-stay in the journal and the album. Fishing has two of its own, which can't
+stay in the journal and the album. Each one you find also puts M.'s torn-out
+page for it up on the wall by the back door, pinned in a loose column above
+the coat hooks where his binoculars hung (the grey bird's page is in your
+blue biro, with a blue pin). Fishing has two of its own, which can't
 be kept and whose pages in the Fish tab are M.'s:
 
-- A black bream with a 1979 fisheries tag in its jaw, at the Mends Street
-  jetty after midnight once the ticket's found.
+- A black bream with a yellow 1979 fisheries dart tag in its jaw, at the
+  Mends Street jetty after midnight once the ticket's found.
 - A big pale flathead with a cold green light coming off it, on the flats at
   Point Fraser between midnight and 3:30 am once the atlas page is found.
   Let it go and its light shows under the surface, drifting out and fading.

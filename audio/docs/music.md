@@ -46,6 +46,8 @@ All files are 48 kHz stereo OGG Vorbis (q6) at -16 LUFS integrated, with true pe
 | mus_sting_complete | no | Mission complete | 5.5 s | 96, D major | Vibraphone run, flute, organ, bass, ride |
 | mus_sting_failed | no | Mission failed | 6.5 s | 96, D minor | Muted trumpet, vibraphone, organ, bass |
 | mus_sting_tier_unlock | no | Tier unlocked | 7.5 s | 120, D major | Harp arpeggios, celesta, vibraphone, strings swell |
+| mus_sting_barn_find | no | Found a barn-find wreck | 7 s | 84, E minor to G | Nylon guitar and muted trumpet asking a question over Em9 and Cmaj7, the organ letting the light in on Gmaj7. Played by the barn find's notice card |
+| mus_sting_restored | no | A classic restored | 7.5 s | 112, G major | The barn-find phrase again in the major on vibes and whistle over a brushed bossa, landing on Gmaj9. Played by the restored car's notice card |
 | mus_sting_race_win | no | Beat the train | 5.5 s | 132, G major | Climbing vibraphone run and muted trumpet over a brushed train shuffle, two-note whistle call (high-low, like the crossing horn), crash on the last chord. `Audio.sting("race_win")` |
 | mus_sting_new_car | no | New car | 8 s | 120, D major | Main-theme motif on vibraphone and whistle, bossa band |
 | mus_field_journal | yes | Under the field journal screen (J) | 56 s | 68, G major | Nylon guitar arpeggios, vibraphone on the idents' motif (D B G D) slowed right down, warm pad, fretless bass; no drums |

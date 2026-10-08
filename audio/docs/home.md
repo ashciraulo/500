@@ -24,6 +24,7 @@ static, purr, rain on windows) at -24 LUFS; the clock loop peaks at -1 dBTP.
 | home_fridge_hum | yes | Fridge running as room tone (20 s) | P2 | 50 Hz mains motor hum harmonics with slow beating, condenser fan, quiet room |
 | home_clock_tick | yes | Mechanical wall clock, 1 tick/s (4 s) | P2 | Alternating tick/tock escapement clicks with wooden case ring |
 | home_kettle_boil | no | Electric kettle boiling to switch-off (~21 s) | P2 | Element ticks, rising 'singing' roar + cavitation crackle, rolling-boil bubble plops, switch snap at 19.2 s |
+| home_record_needle_lift | no | Lifting the needle (the record stopped) | P2 | Crackle cutting out under a stylus scuff, the arm settling on its rest |
 | home_record_needle_drop | no | Needle drop into the lead-in | P2 | Tonearm landing thump + stylus scrape, crackle fading in |
 | home_record_crackle | yes | Vinyl surface noise (7.2 s = 4 revs at 33 1/3) | P2 | Fine crackle, pops, groove hiss, once-per-revolution swish |
 | home_bed_get_in | no | Getting into bed (3 s) | P2 | Mattress thump, spring squeak (stick-slip), sheets drag, duvet settling |
@@ -60,3 +61,10 @@ instrument, so a second go is a different take. Made by `gen_studio.py`
 | home_studio_dove_strum_01..03 | no | The Gibson Dove strummed with a pick: three chords, down-down-up, the last one left ringing (8 s) |
 | home_studio_tele_01..03 | no | The Telecaster through the little practice amp, clean: chord stabs and a twangy lick, amp hum under it (9-10 s) |
 | home_studio_jbass_01..03 | no | A walking line on the Jazz Bass through the practice amp (6-7 s) |
+
+## The record player
+
+The record player (scripts/world/record_crate.gd) asks for home/home_record_needle,
+an alias of home_record_needle_drop. Audio.hooks adds home_record_crackle under
+the record while it plays (on the record's own Music bus, 20 dB down) and the
+needle lift when it stops.

@@ -50,6 +50,8 @@ TRACKS = {
     "mus_midnight_theme": lambda: {"mus_midnight_theme": (tm.midnight_theme(), True)},
     "mus_sting_new_car": lambda: {"mus_sting_new_car": (tm.sting_new_car(), False)},
     "mus_sting_race_win": lambda: {"mus_sting_race_win": (tm.sting_race_win(), False)},
+    "mus_sting_barn_find": lambda: {"mus_sting_barn_find": (tm.sting_barn_find(), False)},
+    "mus_sting_restored": lambda: {"mus_sting_restored": (tm.sting_restored(), False)},
 }
 
 
