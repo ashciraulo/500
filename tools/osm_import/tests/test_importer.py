@@ -896,6 +896,26 @@ def test_slot_beside_a_walled_deck_comes_up_under_a_low_open_one():
     assert (16.0 - DECK_THICKNESS - g < 1.2).all()
 
 
+def test_crevice_between_a_walled_deck_and_a_building_comes_up_level_with_the_deck():
+    # The Esplanade: a slip road walled 2.5 m over the ground runs 1.5 m
+    # from an office tower's wall. You dropped off the deck into the crevice
+    # between them and couldn't climb out; the ground there comes up level
+    # with the deck. A building further off keeps its ground.
+    from types import SimpleNamespace as NS
+    from shapely.geometry import box as sbox
+    from osm_import.build import LIFT_UNDER, World
+    xs = np.arange(-100.0, 101.0, 5.0)
+    a = _lw(1, {"highway": "service"}, "road", np.column_stack([xs, np.zeros(len(xs))]), 13.0, 5.0)
+    a.lift = np.ones(len(xs), bool)
+    hf = flat_field(10.5, size=400.0)
+    near = NS(geom=sbox(-30.0, 4.0, 30.0, 40.0))  # 1.5 m off the deck's edge
+    far = NS(geom=sbox(-30.0, -60.0, 30.0, -12.5))  # 10 m off the other edge
+    World._cut_under_lifts(NS(ways=[a], hf=hf, road_core=np.zeros(hf.H.shape, bool), buildings=[near, far]))
+    q = np.column_stack([np.arange(-20.0, 21.0, 1.0), np.full(41, 3.5)])
+    assert (np.abs(hf.sample(q[:, 0], q[:, 1]) - (13.0 - LIFT_UNDER)) < 1e-6).all()
+    assert (np.abs(hf.sample(q[:, 0], np.full(41, -12.5)) - 10.5) < 1e-6).all()
+
+
 def test_rail_cutting_bank_has_barriers_along_its_top_but_not_across_a_road():
     # Roe Street: the bank down into the rail yard starts behind the
     # footpath. A row of barriers runs along its top, none where a road

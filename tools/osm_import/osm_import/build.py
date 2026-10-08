@@ -169,6 +169,10 @@ LIFT_END = 3  # (not within this many 2 m steps of its ends)
 # Under a lifted stretch, its sides come down to the ground as walls where
 # there's less than this much room under the deck.
 LIFT_WALL_CLEAR = 3.0
+# A building closer than this to a lifted deck's side (one low over the
+# ground) has the ground between them come up level with the deck.
+LIFT_CREVICE = 3.0
+LIFT_CREVICE_DEPTH = 4.0  # (no deeper than this: a building down in a hollow keeps it)
 # Ground between two lifted decks side by side, out to SLOT_REACH past the
 # edge of each, comes up level with the lower of them where one of them is
 # walled and the other walled or under SLOT_OPEN over the ground (Esplanade:
@@ -906,6 +910,7 @@ class World:
         level0 = np.full(H.shape, np.inf, np.float32)  # and the lowest of them
         level = np.full(H.shape, np.inf, np.float32)  # and the lowest of them
         roof = np.full(H.shape, np.inf, np.float32)  # under an open deck: room under it
+        towers = shapely.STRtree([b.geom for b in self.buildings]) if getattr(self, "buildings", None) else None
         way = np.zeros(H.shape + (2,), np.float32)  # which way the first of them is
         run = np.zeros(H.shape + (2,), np.float32)  # and which way it runs
         across = np.zeros(H.shape, bool)  # and another the other way: between them
@@ -958,6 +963,22 @@ class World:
                     left = (nrm[k].reshape(E.shape + (2,)) * to).sum(axis=-1) < 0
                     clear = h[k].reshape(E.shape) - np.where(left, gl[k].reshape(E.shape), gr[k].reshape(E.shape))
                     walled = clear < LIFT_WALL_CLEAR
+                    # A building standing close beside a walled side leaves a
+                    # crevice you drop into off the deck and can't climb out
+                    # of (the Esplanade, by the office tower): the ground there,
+                    # and under the deck beside it, comes up level with the deck.
+                    level_k = h[k].reshape(E.shape) - LIFT_UNDER
+                    gap = inner & (clear < SLOT_OPEN) & (d < half + LIFT_CREVICE) & ~core[j0:j1, i0:i1] & (sub < level_k) \
+                        & (sub > level_k - LIFT_CREVICE_DEPTH)
+                    if gap.any() and towers is not None:
+                        # (Within LIFT_CREVICE of the deck's edge.)
+                        q = shapely.points(E[gap], N[gap])
+                        qi, bi = towers.query(q, predicate="dwithin", distance=hf.step)
+                        reach = (half + LIFT_CREVICE - d[gap])[qi]
+                        hit = np.zeros(len(q), bool)
+                        hit[qi[shapely.distance(q[qi], towers.geometries[bi]) <= reach]] = True
+                        gap[gap] = hit
+                        sub[gap] = level_k[gap]
                     ends = (k >= SLOT_ENDS) & (k < len(xy) - SLOT_ENDS)
                     side = (d < half + SLOT_REACH) & ~core[j0:j1, i0:i1] & (clear < SLOT_OPEN) & ends.reshape(E.shape)
                     to /= np.maximum(np.linalg.norm(to, axis=-1), 1e-9)[..., None]
