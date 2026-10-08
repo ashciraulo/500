@@ -7,7 +7,8 @@ extends SceneTree
 ##     --script res://tools/servo_screens.gd -- --no-save shots=/tmp/servos [ids=servo_1,servo_2] [only=approach,night]
 ##
 ## Without ids= it shoots every servo. The shots per servo are approach,
-## above, night, bay and map; only= picks some.
+## above, side, street (from both ways along the road), night, bay and map;
+## only= picks some.
 
 var _shots := "/tmp/servos"
 var _ids := PackedStringArray()
@@ -59,6 +60,15 @@ func _build_steps() -> void:
 		if _want("side"):
 			_steps.append([tag + "_3_side", func() -> void:
 				_free_camera(true, at + basis * Vector3(-12, 2.0, end * 4), at + basis * Vector3(3, 2.0, 0)), 30])
+		if _want("street"):
+			# From up the street, as traffic sees the price sign (it faces along the road).
+			var sign_at := at + basis * Vector3(5.8, 0, 5.8 * end)
+			var along := basis * Basis(Vector3.UP, float(entry.get("sign_yaw", 0.0))) * Vector3.RIGHT
+			for side in [1.0, -1.0]:
+				_steps.append([tag + ("_7_street" if side > 0.0 else "_8_street_back"), func() -> void:
+					_hour(11.0)
+					_teleport(out, car_yaw)  # the map streams in around the car
+					_free_camera(true, sign_at + along * 28.0 * side + Vector3.UP * 2.0, sign_at + Vector3.UP * 3.6), 200])
 		if _want("night"):
 			_steps.append([tag + "_4_night", func() -> void:
 				_hour(21.5)

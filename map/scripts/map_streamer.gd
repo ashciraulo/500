@@ -440,7 +440,10 @@ func _place_markers() -> void:
 		badge.badge_id = entry.id
 		badge.transform = _placed_transform(entry)
 		add_child(badge)
+	var servos := _servo_entries()
 	for entry: Dictionary in index.get("workshops", []):
+		if servos.any(func(s: Dictionary) -> bool: return s.id == entry.id):
+			continue  # A servo (the Fitzgerald St one): built below, its bay where this was.
 		var spot := WorkshopSpot.new()
 		spot.name = "Workshop_" + str(entry.id)
 		spot.spot_id = entry.id
@@ -451,23 +454,29 @@ func _place_markers() -> void:
 			spot.color = Color(c[0], c[1], c[2])
 		spot.transform = _placed_transform(entry)
 		add_child(spot)
-	_place_servos()
+	_place_servos(servos)
 
 
 ## Servos (data/world/servos.json, from tools/places/place_servos.py): some
-## of the real ones, spread out, each on open ground beside the real one.
-func _place_servos() -> void:
+## of the real ones, spread out, each on open ground beside the real one, and
+## the workshops that sell fuel.
+func _servo_entries() -> Array:
 	if not FileAccess.file_exists(SERVOS_PATH):
-		return
+		return []
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(SERVOS_PATH))
-	if not data is Dictionary:
-		return
-	for entry: Dictionary in data.get("servos", []):
+	return data.get("servos", []) if data is Dictionary else []
+
+
+func _place_servos(entries: Array) -> void:
+	for entry: Dictionary in entries:
 		var servo := Servo.new()
 		servo.name = "Servo_" + str(entry.id)
 		servo.spot_id = entry.id
 		servo.display_name = entry.get("name", "Servo")
 		servo.open_end = int(entry.get("open_end", 1))
+		servo.sign_yaw = float(entry.get("sign_yaw", 0.0))
+		if entry.has("kinds"):
+			servo.kinds = PackedStringArray(entry.kinds)
 		servo.ground = PackedFloat32Array(entry.get("ground", []))
 		servo.transform = _placed_transform(entry)
 		add_child(servo)
