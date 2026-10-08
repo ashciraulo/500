@@ -304,6 +304,7 @@ func open_picker() -> void:
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
+	UiStyle.fit_scroll(scroll, list, scroll.custom_minimum_size.y)
 	var group := ButtonGroup.new()
 	var first: Button
 	for r: Dictionary in records:

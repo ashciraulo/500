@@ -260,6 +260,7 @@ func open_catalogue(spot_id := "") -> void:
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
+	UiStyle.fit_scroll(scroll, list, scroll.custom_minimum_size.y)
 	var first: Button
 	if spot_id == "":
 		for id: String in open_spots():
