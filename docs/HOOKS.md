@@ -556,7 +556,9 @@ after a map rebuild).
 - Wrong fish (`"wrong": true` in fish.json, like the birds): a `spot`, an
   `after` discovery and `hours`; they bite at that spot only until caught,
   can't be kept, don't count (`FieldJournal.counts(f)`), and show M.'s `page`
-  in the Fish tab. `tag` gives the fish model a jaw tag in that colour;
+  in the Fish tab. `tag` gives the fish model a jaw tag: `bream_tag.glb`
+  (node `Tag`, 6.5 cm, hanging from the lower jaw), or a plain one in that
+  colour if the model's missing;
   `glow` a colour it glows (an overlay and an `OmniLight3D` "Glow"), and a
   fading patch of that light under the surface when it's let go; `release`
   replaces the line said when it's let go.
@@ -566,7 +568,12 @@ after a map rebuild).
   `bird_feeder.glb` goes on `Feeder_Spot` (discovery `field/feeder`) with
   garden birds you've seen (`HomeField.FEEDER_BIRDS`) on its perches by day.
   `FieldWorld.trophies` (`HomeTrophies`) hangs the kept hubcap on the outside
-  of `Shed_Door` once `fishing/fiat_hubcap` is discovered (`hubcap()`). The dash bird (10
+  of `Shed_Door` once `fishing/fiat_hubcap` is discovered (`hubcap()`), and
+  pins M.'s `m_page_<bird>.glb` pages above the coat hooks (children of
+  `Binoculars_Hook`, named `MPage_<wrong id>`, `pages()`) for each wrong bird
+  in the journal. The wrong boobook (`"behaviour": "nest"`) sits on the `Bird`
+  empty of `boobook_hollow.glb`, a stump `FieldBirds.find_hollow(sighting)`
+  returns, facing out of the hollow. The dash bird (10
   species) is the car's: `FieldJournal.seen_count()` and `species_seen`.
 - Quiet places (`FieldWorld.quiet`, `QuietPlaces`): habitats.json entries
   with `"hidden": true` and fishing_spots.json spots with `"hidden": true`
