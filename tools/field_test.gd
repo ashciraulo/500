@@ -247,6 +247,16 @@ func _process(_delta: float) -> bool:
 				_check(not _target.is_empty() and _target.birds.size() == 13, "thirteen of them (%d)" % (_target.birds.size() if not _target.is_empty() else 0))
 				if _target.is_empty():
 					return _finish()
+				# The boobook sits in the hollow of its dead marri stump.
+				var owl: Dictionary = _birds.spawn_wrong(_fj.bird("wrong_boobook"), at + Vector3(-18, 0, 0))
+				var stump: Node3D = _birds.find_hollow(owl) if not owl.is_empty() else null
+				_check(stump != null, "the boobook's taped hollow stands in the bush")
+				if stump:
+					var bird: Node3D = owl.birds[0].node
+					var lip: Vector3 = (stump.get_node("Bird") as Node3D).global_position
+					_check(bird.global_position.distance_to(lip) < 0.05, "the boobook on the lip of the hollow")
+					var out: Vector3 = stump.global_basis.z
+					_check((bird.global_basis * Vector3(0, 0, -1)).dot(out) > 0.95, "looking out of it")
 				_check(_bino.open(), "binoculars up at night")
 				_aim(_target.birds[0].node)
 			elif _frames > 60 and _frames < 600:
