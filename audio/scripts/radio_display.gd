@@ -14,6 +14,8 @@ var _tween: Tween
 
 func _ready() -> void:
 	layer = 50
+	# Keeps time while a menu has the game paused, and stays out of the menu's way.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_panel = PanelContainer.new()
 	_panel.theme_type_variation = &"LcdPanel"
 	# Sits just above the dash dial, like the head unit over the instruments.
@@ -47,6 +49,10 @@ func _ready() -> void:
 	var radio: Node = get_parent().radio
 	radio.station_changed.connect(_on_station)
 	radio.now_playing.connect(_on_track)
+
+
+func _process(_delta: float) -> void:
+	_panel.visible = not get_tree().paused
 
 
 func _label(size: int, color: Color) -> Label:

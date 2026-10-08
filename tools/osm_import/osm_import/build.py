@@ -47,11 +47,11 @@ PIER_WIDTH = {"pier": 3.0, "breakwater": 6.0, "groyne": 5.0}  # metres, when OSM
 PATH_TOUCH = 1.0        # a path's node this close to a jetty leads onto it
 LANDING = 3.0           # a jetty is level with the shore this far in from the water
 JETTY_PAD = 7.5         # ground this close to a jetty's shore end is level with its deck (every
+BOARDWALK_DECK = 0.5  # a boardwalk's deck over the reeds or the water under it
                         # grid cell its edge crosses, or the ground drawn there leaves a ledge)...
 JETTY_RAMP = 8.0        # ...and eases back to its own height over at least this...
 SEAT_GRADE = 0.2        # ...and wide enough that the change in grade stays under this
 SEAT_REACH = 40.0       # (but never further out than this)
-BOARDWALK_DECK = 0.5
 # River between a deck and the bank, where they're this close (deck distance
 # plus bank distance), is filled up to the deck, and so is river under a deck
 # next to ground at its height: a quay along the shore (Elizabeth Quay) kept
@@ -475,6 +475,11 @@ class World:
 
     # -- preparation helpers --
     def _seat_boardwalks(self):
+        """Boardwalks run just over the reeds and the water. Their profiles
+        come from the bare DEM, but the ground under them is fitted and the
+        lake beds sculpted afterwards, which left decks metres up on piers.
+        Each point sits BOARDWALK_DECK over the ground or the water under it,
+        whichever is higher."""
         hf = self.hf
         for w in self.ways:
             if w.group != "foot" or w.tags.get("bridge") != "boardwalk" or len(w.xy) < 2:

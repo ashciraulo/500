@@ -79,6 +79,12 @@ func apply() -> void:
 			window.mode = Window.MODE_FULLSCREEN
 		elif not fullscreen and window.mode == Window.MODE_FULLSCREEN:
 			window.mode = Window.MODE_WINDOWED
+		# In a window the desktop compositor already keeps frames tear-free,
+		# and vsync on top of it made a frame wait a whole extra refresh every
+		# few seconds. So a window gets a frame cap at the screen's rate instead.
+		var hz := DisplayServer.screen_get_refresh_rate(window.current_screen)
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if fullscreen else DisplayServer.VSYNC_DISABLED)
+		Engine.max_fps = 0 if fullscreen else (roundi(hz) if hz > 0.0 else 60)
 		window.content_scale_factor = float(UI_SIZES[clampi(ui_size, 0, UI_SIZES.size() - 1)][1])
 	RenderSettings.apply()
 	var car := get_tree().get_first_node_in_group(&"player_car") as CarController

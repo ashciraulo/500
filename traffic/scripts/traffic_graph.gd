@@ -698,6 +698,7 @@ func _build_connectors(node: GNode) -> void:
 			# rules leave with nowhere to go.
 			var fallback: Array = []
 			var fallback_ang := INF
+			var ways: Array = []  # [road, its lanes out, turn, angle]
 			for rout in node.roads:
 				if rout == rin and deg > 1:
 					continue
@@ -717,8 +718,21 @@ func _build_connectors(node: GNode) -> void:
 						turn = Turn.RIGHT
 				if turn != Turn.UTURN and absf(ang) < fallback_ang:
 					fallback_ang = absf(ang)
-					fallback = [rout, outs, turn]
-				for lout in _target_lanes(lin, outs, turn, deg):
+					fallback = [rout, outs, turn, ang]
+				ways.append([rout, outs, turn, ang])
+			for way in ways:
+				var rout: Road = way[0]
+				var outs: Array = way[1]
+				var turn: int = way[2]
+				var targets: Array
+				if turn == Turn.STRAIGHT and not fallback.is_empty() and rout != fallback[0]:
+					# A second way on, nearly straight too (a freeway exit, a
+					# fork): only the lanes on its side go that way, or cars
+					# would cut across the others to reach it.
+					targets = _fork_lanes(lin, outs, way[3] > fallback[3])
+				else:
+					targets = _target_lanes(lin, outs, turn, deg)
+				for lout in targets:
 					var c := _make_connector(lin, lout, node, turn, old.get([lin, lout]))
 					old.erase([lin, lout])
 					_assign_priority(c, node, rin, rout, majors)
@@ -736,6 +750,21 @@ func _build_connectors(node: GNode) -> void:
 	# Moves that no longer exist: kept aside (a car may still be on one) and
 	# untangled with the rest in dispose().
 	_dropped.append_array(old.values())
+
+
+## Lanes of `lin`'s road that may take a fork off the main way on: the kerb
+## lanes for one on the left, the centre lanes for one on the right, as many
+## as the fork has.
+func _fork_lanes(lin: Lane, outs: Array, on_left: bool) -> Array:
+	var n_in := lin.count
+	var n_out := outs.size()
+	var by_k := {}
+	for o in outs:
+		by_k[o.k] = o
+	if on_left:
+		var from_kerb := n_in - 1 - lin.k
+		return [by_k[n_out - 1 - from_kerb]] if from_kerb < n_out else []
+	return [by_k[lin.k]] if lin.k < n_out else []
 
 
 func _target_lanes(lin: Lane, outs: Array, turn: int, deg: int) -> Array:
