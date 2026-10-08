@@ -938,3 +938,50 @@ def test_rail_cutting_bank_has_barriers_along_its_top_but_not_across_a_road():
     # Standing on the street's level, not on the slope below it.
     assert all(b[2] >= 18.0 - 1e-6 for b in blocks if abs(b[0][1] + 5.0) < 3.0)
     assert all(b[3] <= b[2] - 0.15 for b in blocks)
+
+
+def test_a_lone_narrow_landmark_doesnt_make_the_ground_round_it_built_up():
+    # The State War Memorial stands alone on the Kings Park escarpment. As
+    # built-up ground it was interpolated from the roads, which pulled the
+    # hilltop 23 m down towards Mounts Bay Rd below. The Bell Tower has
+    # buildings beside it and stays built-up, and so does a landmark too
+    # wide for the bare earth to take its mound out.
+    from types import SimpleNamespace as NS
+    from shapely.geometry import box as sbox
+    from osm_import import landmarks
+    from osm_import.build import _lone_landmarks
+    ids = {lm.id: lm.osm[1] for lm in landmarks.CATALOGUE}
+    memorial = NS(id=ids["state_war_memorial"], geom=sbox(0.0, 0.0, 19.0, 19.0))
+    inside = NS(id=1, geom=sbox(8.0, 8.0, 11.0, 11.0))   # under the memorial's own model
+    far = NS(id=2, geom=sbox(100.0, 0.0, 130.0, 30.0))
+    bell = NS(id=ids["bell_tower"], geom=sbox(500.0, 0.0, 525.0, 25.0))
+    beside = NS(id=3, geom=sbox(530.0, 0.0, 560.0, 25.0))
+    stadium = NS(id=ids["optus_stadium"], geom=sbox(1000.0, 0.0, 1270.0, 230.0))
+    lone = _lone_landmarks([memorial, inside, far, bell, beside, stadium])
+    assert lone == {memorial.id}
+
+
+def test_boardwalk_comes_down_to_just_over_the_ground_it_crosses():
+    # Herdsman Lake: the boardwalk's clearance is measured from the DEM, and
+    # the shore under it is sculpted lower, which left it metres up in the
+    # air. It comes down to just over the ground, over the water it keeps
+    # clear of the water, and its ends stay where the paths meet it.
+    from dataclasses import replace
+    from types import SimpleNamespace as NS
+    from shapely.geometry import box as sbox
+    from osm_import.build import FOOT_GRADE, World
+    from osm_import.heights import BOARDWALK_CLEARANCE
+    hf = flat_field(10.0, size=400.0)
+    E, N = np.meshgrid(*hf.node_coords())
+    hf.H[:] = np.where(np.abs(E) < 80.0, 6.0, 10.0)  # a hollow (the sculpted shore)
+    xs = np.arange(-100.0, 101.0, 5.0)
+    bw = replace(_lw(1, {"highway": "footway", "bridge": "boardwalk"}, "foot",
+                     np.column_stack([xs, np.zeros(len(xs))]), 10.8, 2.0), bridge=True)
+    pond = NS(geom=sbox(-20.0, -20.0, 20.0, 20.0), level=7.0)
+    World._land_footbridges(NS(ways=[bw], hf=hf, water=[pond]))
+    assert bw.h[0] == 10.8 and bw.h[-1] == 10.8
+    mid = (np.abs(xs) > 20.0) & (np.abs(xs) <= 40.0)
+    assert np.allclose(bw.h[mid], 6.0 + BOARDWALK_CLEARANCE)
+    assert np.allclose(bw.h[np.abs(xs) < 15.0], 7.0 + BOARDWALK_CLEARANCE)
+    assert (np.abs(np.diff(bw.h)) <= FOOT_GRADE * 5.0 + 1e-9).all()
+    assert (bw.h >= hf.sample(xs, np.zeros(len(xs))) + BOARDWALK_CLEARANCE - 1e-9).all()
