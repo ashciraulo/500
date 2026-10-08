@@ -200,11 +200,11 @@
 			],
 			"hint": "The Barrack Street Jetty at Elizabeth Quay, in the city. Mostly blowies. People say things turn up off the old Esplanade.",
 			"stand": [
-				290.4,
+				281.6,
 				5.05,
-				1306.3
+				1303.8
 			],
-			"yaw": 1.77
+			"yaw": 1.37
 		},
 		{
 			"id": "canning_bridge",
