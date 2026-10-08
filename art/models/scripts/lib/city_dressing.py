@@ -100,13 +100,21 @@ def _tin(name, col):
     return _m(name, col, 0.7, 0.45)
 
 
-def _tin_walls(p, col, W, D, H_front, H_back, tin, rib, front_wall=False):
+def _tin_walls(p, col, W, D, H_front, H_back, tin, rib, front_wall=False, hole=None):
     """Corrugated side and back walls (ribbed outside) and a skillion roof
-    falling to the back; the front is left open unless front_wall."""
+    falling to the back; the front is left open unless front_wall. `hole`
+    (y0, y1, z0, z1) cuts an opening in the right-hand (+x) wall."""
     hw, hd = W / 2, D / 2
     t = 0.05
     p.append(bx((-hw - t, -hd, 0.0), (-hw, hd, H_back), tin))
-    p.append(bx((hw, -hd, 0.0), (hw + t, hd, H_back), tin))
+    if hole:
+        y0, y1, z0, z1 = hole
+        p.append(bx((hw, -hd, 0.0), (hw + t, y0, H_back), tin))
+        p.append(bx((hw, y1, 0.0), (hw + t, hd, H_back), tin))
+        p.append(bx((hw, y0, 0.0), (hw + t, y1, z0), tin))
+        p.append(bx((hw, y0, z1), (hw + t, y1, H_back), tin))
+    else:
+        p.append(bx((hw, -hd, 0.0), (hw + t, hd, H_back), tin))
     # The side walls rise to the roof line at the front.
     p.append(bx((-hw - t, -hd, H_back), (-hw, 0.0, H_front), tin))
     p.append(bx((hw, -hd, H_back), (hw + t, 0.0, H_front), tin))
@@ -118,7 +126,11 @@ def _tin_walls(p, col, W, D, H_front, H_back, tin, rib, front_wall=False):
     for sx in (-1, 1):
         y = -hd + 0.15
         while y < hd:
-            p.append(bx((sx * (hw + t) - 0.015, y - 0.025, 0.0), (sx * (hw + t) + 0.015, y + 0.025, H_back - 0.02), rib))
+            spans = [(0.0, H_back - 0.02)]
+            if hole and sx == 1 and hole[0] - 0.025 < y < hole[1] + 0.025:
+                spans = [(0.0, hole[2]), (hole[3], H_back - 0.02)]
+            for z0, z1 in spans:
+                p.append(bx((sx * (hw + t) - 0.015, y - 0.025, z0), (sx * (hw + t) + 0.015, y + 0.025, z1), rib))
             y += 0.3
     # Roof: two slabs stepping down front to back, overhanging all round.
     mid = (H_front + H_back) / 2
@@ -206,13 +218,16 @@ def kensington_shed():
     steel = _m("Steel", "#6c706e", 0.6, 0.5)
     floor = _m("Floor", "#77736b", 0.95)
     wood = _m("BenchWood", "#8a6a45", 0.9)
-    glass = _m("ShedGlass", "#3b4a52", 0.2, 0.3)
+    glass = _m("ShedGlass", "#9fb4ba", 0.1, 0.2, alpha=0.22)
     frame = _m("ShedFrame", "#d8d3c4", 0.8)
     rubber = _m("Tyre", "#1d1d1c", 0.95)
     W, D, HF, HB = 3.8, 6.6, 2.7, 2.45
     hw, hd = W / 2, D / 2
+    # Window in the right-hand wall, over the bench (centre y, z; size).
+    wy, wz, ww, wh = -0.4, 1.55, 1.4, 0.8
+    hole = (wy - ww / 2, wy + ww / 2, wz - wh / 2, wz + wh / 2)
     p = []
-    _tin_walls(p, None, W, D, HF, HB, tin, rib)
+    _tin_walls(p, None, W, D, HF, HB, tin, rib, hole=hole)
     p.append(bx((-hw, -hd, -0.1), (hw, hd, 0.02), floor))
     # Front: a fixed panel on the left, the sliding door pushed back over it,
     # leaving the right half open.
@@ -220,11 +235,9 @@ def kensington_shed():
     p.append(bx((-hw + 0.1, -hd - 0.12, 0.05), (0.2, -hd - 0.07, HF - 0.35), tin))
     p.append(bx((-hw - 0.05, -hd - 0.16, HF - 0.36), (hw + 0.05, -hd - 0.06, HF - 0.3), steel))
     p.append(bx((-hw + 0.1, -hd - 0.125, 0.05), (0.2, -hd - 0.115, 0.45), rust))
-    # Window in the right-hand wall: dirty glass in a cream frame, cut from
-    # the tin (the glass sits just proud on both faces).
-    wy, wz, ww, wh = -0.4, 1.55, 1.4, 0.8
-    for side in (hw + 0.055, hw - 0.005):
-        p.append(bx((side - 0.003, wy - ww / 2, wz - wh / 2), (side + 0.003, wy + ww / 2, wz + wh / 2), glass))
+    # The window: one pane of dusty, see-through glass in a cream frame, in
+    # the opening cut from the tin, so the bench and the car show through.
+    p.append(bx((hw + 0.022, wy - ww / 2, wz - wh / 2), (hw + 0.028, wy + ww / 2, wz + wh / 2), glass))
     p.append(bx((hw + 0.05, wy - ww / 2 - 0.06, wz - wh / 2 - 0.06), (hw + 0.08, wy + ww / 2 + 0.06, wz - wh / 2), frame))
     p.append(bx((hw + 0.05, wy - ww / 2 - 0.06, wz + wh / 2), (hw + 0.08, wy + ww / 2 + 0.06, wz + wh / 2 + 0.06), frame))
     for e in (-1, 1):
@@ -241,7 +254,11 @@ def kensington_shed():
     p.append(bx((hw - 0.5, 0.6, bt), (hw - 0.3, 0.8, bt + 0.12), steel))
     p.append(cyl(0.3, 0.18, (-hw + 0.55, hd - 0.25, 0.3), rubber, segs=10, axis="Y"))
     sockets = {"Bench": (hw - 0.3, -0.6, bt)}
-    col = [((-hw - 0.05, -hd, 0.0), (-hw, hd, HB)), ((hw, -hd, 0.0), (hw + 0.05, hd, HB)),
+    # The right-hand wall's collider leaves the window open, so a look (or
+    # a ray) through it reaches the bench and the car.
+    col = [((-hw - 0.05, -hd, 0.0), (-hw, hd, HB)),
+           ((hw, -hd, 0.0), (hw + 0.05, hole[0], HB)), ((hw, hole[1], 0.0), (hw + 0.05, hd, HB)),
+           ((hw, hole[0], 0.0), (hw + 0.05, hole[1], hole[2])), ((hw, hole[0], hole[3]), (hw + 0.05, hole[1], HB)),
            ((-hw - 0.05, hd - 0.05, 0.0), (hw + 0.05, hd, HB)),
            ((-hw - 0.05, -hd - 0.16, 0.0), (0.2, -hd, HF - 0.3)),
            ((hw - 0.6, -1.6, 0.0), (hw, 1.0, bt)),

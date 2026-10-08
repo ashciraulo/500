@@ -7,7 +7,8 @@ footpath. Each servo needs room for a pump bay under a canopy, on flat open
 ground you can drive onto from a road. This finds it:
 
     godot --headless --path . --script res://tools/places/dump_servo_ground.gd   # writes /tmp/servo_ground.json
-    python3 tools/places/place_servos.py [/tmp/servo_ground.json]
+    godot --headless --path . --script res://tools/places/dump_roads.gd            # writes /tmp/roads.json
+    python3 tools/places/place_servos.py [/tmp/servo_ground.json] [--roads=/tmp/roads.json] [--refresh]
 
 The servo's footprint (in its own frame, x across, z along the bay; see
 scripts/world/servo.gd) must be paving or ground (no road, footpath, building,
@@ -17,6 +18,11 @@ bay and the pump island, and joined to a road by ground a car can drive over
 paving over grass, close to the road. Then only servos at least SPACING apart
 are kept (real ones clump; the game needs one every so often), and only the
 kept ones get a pin.
+
+The price sign stands at the corner of the bay's open end and turns to face
+along the nearest road, so traffic either way reads it. Workshops that sell
+fuel (config.json "workshops", like the Fitzgerald St servo) get the same
+layout where they are, keeping their kinds.
 """
 import json
 import math
@@ -27,7 +33,13 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
-GROUND = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/servo_ground.json")
+ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
+GROUND = Path(ARGS[0] if ARGS else "/tmp/servo_ground.json")
+# --refresh: keep the servos already in servos.json where they are, and only
+# redo what's derived from the ground around them (the price sign's facing,
+# the workshops that sell fuel).
+REFRESH = "--refresh" in sys.argv
+ROADS = Path(next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--roads=")), "/tmp/roads.json"))
 OUT = ROOT / "data/world/servos.json"
 
 # Must match scripts/world/servo.gd.
@@ -67,6 +79,7 @@ def rect_points(xr, zr, step=0.5):
 
 
 FOOT = rect_points(FOOT_X, FOOT_Z)
+SIGN = (5.8, 5.8)        # the price sign, x and (times open_end) z
 SLAB_X = np.arange(FOOT_X[0], FOOT_X[1] + 1e-6, 1.0)
 SLAB_Z = np.arange(FOOT_Z[0], FOOT_Z[1] + 1e-6, 1.0)
 FLATP = rect_points(FLAT_X, FLAT_Z)
@@ -231,7 +244,133 @@ def place(s, others):
     return best
 
 
+def grids(s):
+    n = s["n"]
+    return (np.array(s["cls"], int).reshape(n, n), np.array(s["h"], float).reshape(n, n),
+            s["origin"][0], s["origin"][1], n)
+
+
+def ground_at(s, x, z, y, yaw):
+    """The slab heights (above y) for a servo at x/z turned yaw, from the dump."""
+    _, h, ox, oz, n = grids(s)
+    fx, fz = frame(yaw)
+    out = []
+    for lz in SLAB_Z:
+        for lx in SLAB_X:
+            wx, wz = np.array([x, z]) + lx * fx + lz * fz
+            r = min(max(int(round(wz - oz)), 0), n - 1)
+            c = min(max(int(round(wx - ox)), 0), n - 1)
+            out.append(round(float(h[r, c]) - y, 2))
+    return out
+
+
+def road_cells(s):
+    cls, _, ox, oz, n = grids(s)
+    rows, cols = np.nonzero(cls == C_ROAD)
+    return np.column_stack([ox + cols, oz + rows]).astype(float)
+
+
+_SEGS = None
+
+
+def road_segments():
+    """Every road's centre line as segments (x/z start, x/z end), from
+    tools/places/dump_roads.gd's /tmp/roads.json. Not motorways: a servo
+    never fronts one."""
+    global _SEGS
+    if _SEGS is None:
+        a, b = [], []
+        for r in json.loads(ROADS.read_text())["roads"]:
+            if r.get("kind", "").startswith("motorway"):
+                continue
+            pts = np.asarray(r["pts"], float)[:, [0, 2]]
+            if len(pts) > 1:
+                a.append(pts[:-1])
+                b.append(pts[1:])
+        _SEGS = (np.concatenate(a), np.concatenate(b))
+    return _SEGS
+
+
+def sign_yaw(s, e):
+    """Which way the price sign turns (about Y, in the servo's frame) so its
+    faces look along the road the servo fronts (the nearest one to the sign):
+    up and down the street."""
+    a, b = road_segments()
+    ux, uz = frame(e["yaw"])
+    at = np.array(e["position"][0::2]) + SIGN[0] * ux + SIGN[1] * e["open_end"] * uz
+    d = b - a
+    t = np.clip(((at - a) * d).sum(1) / np.maximum((d * d).sum(1), 1e-9), 0.0, 1.0)
+    k = int(np.argmin(np.hypot(*(a + d * t[:, None] - at).T)))
+    road = d[k] / max(np.hypot(*d[k]), 1e-9)
+    dx, dz = float(road @ ux), float(road @ uz)
+    # A node turned t about Y has its +x at (cos t, -sin t) in its parent.
+    t = math.atan2(-dz, dx)
+    # Either way round reads the same (it has two faces): keep it small.
+    if t > math.pi / 2:
+        t -= math.pi
+    elif t < -math.pi / 2:
+        t += math.pi
+    return round(t, 4)
+
+
+def workshop_servos(ground):
+    """Workshops that sell fuel, as servos where they stand."""
+    index = json.loads((ROOT / "map/tiles/index.json").read_text())
+    out = []
+    for w in index.get("workshops", []):
+        if "fuel" not in w.get("kinds", []) or "position" not in w:
+            continue
+        x, y, z = w["position"]
+        s = min(ground["servos"], key=lambda g: math.hypot(g["at"][0] - x, g["at"][2] - z))
+        if math.hypot(s["at"][0] - x, s["at"][2] - z) > 20.0:
+            print(f"  workshop {w['id']}: no ground dumped near it")
+            continue
+        yaw = float(w.get("yaw", 0.0))
+        # Open at the end nearer a road.
+        roads = road_cells(s)
+        ux, uz = frame(yaw)
+        ends = [np.hypot(*(roads - (np.array([x, z]) + end * 10.0 * uz)).T).min() for end in (1, -1)]
+        e = {"id": w["id"], "name": w.get("name", "Servo"), "suburb": "", "kinds": w["kinds"],
+             "position": [x, y, z], "yaw": round(yaw, 4), "open_end": 1 if ends[0] <= ends[1] else -1,
+             "ground": ground_at(s, x, z, y, yaw)}
+        e["sign_yaw"] = sign_yaw(s, e)
+        out.append(e)
+        print(f"  workshop {w['id']}: servo layout, sign turned {math.degrees(e['sign_yaw']):.0f} deg")
+    return out
+
+
+def write(out):
+    out.sort(key=lambda e: e["id"])
+    comment = ("Servos on the map: OpenStreetMap fuel stations at least "
+               f"{SPACING:.0f} m apart, each on open ground beside the real one, and the workshops "
+               "that sell fuel (tools/places/place_servos.py). position is the middle of the pump bay; "
+               "yaw turns scripts/world/servo.gd's frame; open_end is the end of the bay "
+               "you drive in at (+1: +z); sign_yaw turns the price sign to face along the street; "
+               "kinds (if there) is what the bay offers, else fuel; ground is the forecourt's height above "
+               "position on a 1 m grid over the footprint (x fastest).")
+    OUT.write_text('{"_comment": ' + json.dumps(comment) + ', "servos": [\n'
+                   + ",\n".join(json.dumps(e) for e in out) + "\n]}\n")
+
+
+def refresh():
+    ground = json.loads(GROUND.read_text())
+    dumps = {s["id"]: s for s in ground["servos"]}
+    out = []
+    for e in json.loads(OUT.read_text())["servos"]:
+        if "kinds" in e:
+            continue  # a workshop: redone below
+        e["sign_yaw"] = sign_yaw(dumps[e["id"]], e)
+        out.append(e)
+        print(f"  {e['id']} {e['name']}: sign turned {math.degrees(e['sign_yaw']):.0f} deg")
+    out += workshop_servos(ground)
+    write(out)
+    print(f"{len(out)} servos -> {OUT.relative_to(ROOT)}")
+
+
 def main():
+    if REFRESH:
+        refresh()
+        return
     ground = json.loads(GROUND.read_text())
     others, fuel = markers()
     placed, missed = [], []
@@ -262,15 +401,11 @@ def main():
                     "yaw": round(math.atan2(math.sin(yaw), math.cos(yaw)), 4), "open_end": open_end, "ground": slab})
         print(f"  KEEP {s['id']} {s['name']} ({suburb}): moved {math.hypot(x - s['at'][0], z - s['at'][2]):.0f} m, "
               f"{grass:.0%} grass, {d} m from a road, nearest other servo {near:.0f} m")
-    out.sort(key=lambda e: e["id"])
-    comment = ("Servos on the map: OpenStreetMap fuel stations at least "
-               f"{SPACING:.0f} m apart, each on open ground beside the real one "
-               "(tools/places/place_servos.py). position is the middle of the pump bay; "
-               "yaw turns scripts/world/servo.gd's frame; open_end is the end of the bay "
-               "you drive in at (+1: +z); ground is the forecourt's height above "
-               "position on a 1 m grid over the footprint (x fastest).")
-    OUT.write_text('{"_comment": ' + json.dumps(comment) + ', "servos": [\n'
-                   + ",\n".join(json.dumps(e) for e in out) + "\n]}\n")
+    dumps = {s["id"]: s for s in ground["servos"]}
+    for e in out:
+        e["sign_yaw"] = sign_yaw(dumps[e["id"]], e)
+    out += workshop_servos(ground)
+    write(out)
     print(f"{len(out)} servos kept of {len(placed)} that fit; {len(missed)} with nowhere that fits "
           f"-> {OUT.relative_to(ROOT)}")
 

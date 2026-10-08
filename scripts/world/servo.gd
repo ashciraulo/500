@@ -25,6 +25,10 @@ const DETAIL_RANGE := 350.0
 ## The end of the bay you drive in at: +1 the +z end, -1 the -z end. The
 ## price sign stands there, by the road.
 @export var open_end := 1
+## How the price sign turns about Y to face along the street (servos.json).
+@export var sign_yaw := 0.0
+## What the bay offers (a workshop servo also has the car wash).
+@export var kinds := PackedStringArray(["fuel"])
 ## The forecourt's height above this node on a 1 m grid over the footprint
 ## (GROUND_X by GROUND_Z points from GROUND_FROM, x fastest), from
 ## servos.json. Empty: flat.
@@ -45,7 +49,7 @@ func _ready() -> void:
 	spot.name = "Bay"
 	spot.spot_id = spot_id
 	spot.display_name = display_name
-	spot.kinds = PackedStringArray(["fuel"])
+	spot.kinds = kinds
 	spot.size = BAY
 	spot.color = Color(0.95, 0.85, 0.4)
 	# Lie the bay's lines on the slab: tilted with the ground under it.
@@ -103,24 +107,31 @@ func _build() -> void:
 		word.position = Vector3(roof_at.x, roof_at.y, roof_at.z + side * (ROOF.size.y * 0.5 + 0.05))
 		word.rotation.y = 0.0 if side > 0.0 else PI
 		add_child(word)
-	# The price sign, out by the road.
+	# The price sign, out by the road at the open end, turned to face up and
+	# down the street (sign_yaw) so traffic either way reads it.
 	var sign_z := SIGN.y * signf(open_end)
-	var foot := _ground_at(SIGN.x, sign_z) - 0.3
+	var sign := Node3D.new()
+	sign.name = "Sign"
+	sign.position = Vector3(SIGN.x, 0.0, sign_z)
+	sign.rotation.y = sign_yaw
+	add_child(sign)
+	# The post goes well into the ground, wherever it dips under the sign.
+	var foot := minf(_ground_at(SIGN.x, sign_z) - 0.6, _lowest() - 0.3)
 	var pole := 5.0 - foot
 	_box(Vector3(0.25, pole, 0.25), Vector3(SIGN.x, foot + pole * 0.5, sign_z), &"post", body)
-	var board_at := Vector3(SIGN.x, 4.1, sign_z)
-	_box(Vector3(0.3, 1.8, 1.4), board_at, &"band")
+	var board_at := Vector3(0.0, 4.1, 0.0)
+	_box(Vector3(0.3, 1.8, 1.4), board_at, &"band", null, sign)
 	for side in [-1.0, 1.0]:
 		var title := _label("SERVO", 40)
 		title.position = board_at + Vector3(side * 0.16, 0.5, 0)
 		title.rotation.y = side * PI * 0.5
-		add_child(title)
+		sign.add_child(title)
 		var price := _label("", 48)
 		price.name = "Price%d" % (1 if side > 0.0 else 0)
 		price.modulate = Color(1.0, 0.75, 0.3)
 		price.position = board_at + Vector3(side * 0.16, -0.25, 0)
 		price.rotation.y = side * PI * 0.5
-		add_child(price)
+		sign.add_child(price)
 	_update_price()
 	var clock := get_node_or_null(^"/root/GameClock")
 	if clock:
@@ -207,13 +218,14 @@ func _update_price() -> void:
 	if garage == null:
 		return
 	var text := "$%.2f" % float(garage.call("fuel_price"))
-	for n in ["Price0", "Price1"]:
+	for n in ["Sign/Price0", "Sign/Price1"]:
 		var label := get_node_or_null(NodePath(n)) as Label3D
 		if label:
 			label.text = text
 
 
-func _box(size: Vector3, at: Vector3, material: StringName, body: StaticBody3D = null) -> void:
+func _box(size: Vector3, at: Vector3, material: StringName, body: StaticBody3D = null,
+		parent: Node3D = null) -> void:
 	var mesh := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = size
@@ -223,7 +235,7 @@ func _box(size: Vector3, at: Vector3, material: StringName, body: StaticBody3D =
 	if size.length() < 3.0:
 		mesh.visibility_range_end = DETAIL_RANGE
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mesh)
+	(parent if parent else self).add_child(mesh)
 	if body:
 		var shape := CollisionShape3D.new()
 		var box_shape := BoxShape3D.new()

@@ -50,9 +50,10 @@ func _process(_delta: float) -> bool:
 			_check(badges >= 20, "badges are hidden around the map (%d)" % badges)
 			_check(spots.has("home_carport") and _flat(spots.home_carport.global_position).distance_to(_flat(_spawn.origin)) < 1.0,
 				"the car starts in the carport bay")
-			_check(spots.has("fitzgerald_st_servo") and spots.fitzgerald_st_servo.offers("fuel"), "the servo sells fuel")
-			# Servos round the map (data/world/servos.json): each a bay that sells
-			# fuel, and the map pins a fuel pin on every one and nowhere else.
+			_check(spots.has("fitzgerald_st_servo") and spots.fitzgerald_st_servo.offers("fuel")
+				and spots.fitzgerald_st_servo.offers("wash"), "the Fitzgerald St servo sells fuel and washes cars")
+			# Servos round the map (data/world/servos.json, Fitzgerald St's too):
+			# each a bay that sells fuel, and a fuel pin on every one and nowhere else.
 			var servos := _main.get_tree().get_nodes_in_group(&"servos")
 			var listed: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/world/servos.json")).servos
 			_check(servos.size() == listed.size() and servos.size() >= 15, "servos are placed round the map (%d)" % servos.size())
@@ -66,7 +67,9 @@ func _process(_delta: float) -> bool:
 			for pin: Dictionary in load("res://scripts/ui/map_pins.gd").gather(_main.get_tree()):
 				if pin.get("icon", "") == "fuel":
 					fuel_pins += 1
-			_check(fuel_pins == servos.size() + 1, "a fuel pin on each servo and the Fitzgerald St servo (%d)" % fuel_pins)
+			_check(fuel_pins == servos.size(), "a fuel pin on each servo, Fitzgerald St's too (%d)" % fuel_pins)
+			var fitz = _map.get_node_or_null(^"Servo_fitzgerald_st_servo")
+			_check(fitz != null and fitz.get_node_or_null(^"Sign") != null, "the Fitzgerald St servo has a canopy and a price sign")
 			var galup: Dictionary = {}
 			for lake: Dictionary in _map.get_lakes():
 				if lake.name == "Galup":
