@@ -1,7 +1,7 @@
 extends SceneTree
 ## Screenshots of suggested routes: the minimap and the full map with a job's
-## route on them, the arrows on the road ahead, and a new route after leaving
-## the old one.
+## route on them, the arrows on the road ahead, a new route after leaving
+## the old one, and the mouse on the full map (wheel, drag, right-click).
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
 ##     --script res://tools/route_screens.gd -- --no-save shots=/tmp/routes
@@ -63,6 +63,20 @@ func _initialize() -> void:
 			_zoom(5.0, Vector2(-450.0, 700.0)), 90, func() -> void: _screen().toggle()],
 		["11_pause_menu_setting", func() -> void: _main.get_node("PauseMenu").call("open"), 30,
 			func() -> void: _main.get_node("PauseMenu").call("close")],
+		# The mouse on the full map, sent through the window like a real one.
+		["12_mouse_map_open", func() -> void:
+			root.get_node("Jobs").call("abandon")
+			_pins.markers.clear()
+			_teleport(Vector3(-1.37, 22.09, -0.73), 1.08)
+			_screen().open()
+			_zoom(5.0, Vector2(-1.37, -0.73)), 30, Callable()],
+		["13_mouse_wheel_zoom", func() -> void:
+			for i in 3:
+				_click(MOUSE_BUTTON_WHEEL_UP, _view_mid() + Vector2(120.0, -60.0)), 20, Callable()],
+		["14_mouse_drag_pan", func() -> void: _drag(_view_mid(), Vector2(-260.0, 140.0)), 20, Callable()],
+		["15_mouse_right_click_marker", func() -> void:
+			_click(MOUSE_BUTTON_RIGHT, _view_mid() + Vector2(-90.0, 50.0)), 20,
+			func() -> void: _screen().toggle()],
 	]
 
 
@@ -87,6 +101,9 @@ func _process(_delta: float) -> bool:
 		root.get_texture().get_image().save_png(_shots.path_join(name + ".png"))
 		var g := _guide()
 		print("shot ", name, " car ", _car.global_position, " route ", g.length if g else -1.0, " m, along ", g.progress if g else -1.0)
+		if _screen().call("is_open"):
+			var view: Variant = _screen().get("_view")
+			print("  map at ", view.centre, ", %.2f m/px, %d markers" % [view.metres_per_px, _pins.markers.size()])
 		var teardown: Callable = _steps[_step][3]
 		if teardown.is_valid():
 			teardown.call()
@@ -140,6 +157,39 @@ func _zoom(mpp: float, at: Vector2) -> void:
 	_screen().set("_zoom", mpp)
 	view.metres_per_px = mpp
 	view.centre = at
+
+
+## The middle of the full map, in window pixels.
+func _view_mid() -> Vector2:
+	var view: Control = _screen().get("_view")
+	return view.get_global_transform_with_canvas() * (view.size * 0.5)
+
+
+func _click(button: MouseButton, at: Vector2) -> void:
+	for pressed: bool in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = button
+		ev.position = at
+		ev.pressed = pressed
+		root.push_input(ev, true)
+
+
+func _drag(from: Vector2, by: Vector2) -> void:
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.position = from
+	down.pressed = true
+	root.push_input(down, true)
+	for i in 10:
+		var move := InputEventMouseMotion.new()
+		move.position = from + by * (i + 1) / 10.0
+		move.relative = by / 10.0
+		move.button_mask = MOUSE_BUTTON_MASK_LEFT
+		root.push_input(move, true)
+	var up := down.duplicate() as InputEventMouseButton
+	up.position = from + by
+	up.pressed = false
+	root.push_input(up, true)
 
 
 func _set_time(hours: float) -> void:
