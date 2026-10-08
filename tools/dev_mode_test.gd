@@ -6,7 +6,10 @@ extends SceneTree
 ## Out of the car, it walks off a platform too high to step back onto and
 ## checks unstuck puts you back on top; flies through the house; jumps home,
 ## to the car and brings the car over; drives, then unstucks the car back
-## along the road and sends it home; and marks a spot. It also walks from
+## along the road (and again, further back), boxes it in with no trail and unstucks it out of the box,
+## sends it home from there, presses home again in the carport and unstucks
+## it from the carport (each time checking the car really moved); and marks
+## a spot. It also walks from
 ## Little Shenton Lane into the neighbour's front yard and back, and says
 ## whether that got stuck (a report, not a check: the map tiles decide it).
 ##
@@ -32,6 +35,7 @@ var _stage := 0
 var _t := 0.0
 var _shots := ""
 var _platform: StaticBody3D
+var _pen: StaticBody3D
 var _mark := Vector3.ZERO
 
 
@@ -189,17 +193,57 @@ func _process(delta: float) -> bool:
 			if _t > 1.5:
 				var back := _car.global_position.distance_to(_mark)
 				_check(back > 6.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95, "U in the car: back along the road, upright (%.1f m)" % back)
+				_check(_note().contains("back along"), "and says so (%s)" % _note())
 				_shot("08_car_unstuck")
-				_key(KEY_1)
+				_mark = _car.global_position
+				_key(KEY_U)
 				_next()
 		12:
 			if _t > 1.5:
+				var back := _car.global_position.distance_to(_mark)
+				_check(back > 6.0 and _note().contains("back along"), "U again: further back along the road (%.1f m)" % back)
+				_shot("08b_car_unstuck_again")
+				# Boxed in where it is, with no trail to go back along (just
+				# teleported, or the trail all used up): U has to find open ground.
+				_dev._car_trail.clear()
+				_make_pen(_car.global_position)
+				_mark = _car.global_position
+				_next()
+		13:
+			if _t > 1.0 and _t - delta <= 1.0:
+				_mark = _car.global_position
+				_key(KEY_U)
+			if _t > 2.5:
+				var moved := _car.global_position.distance_to(_mark)
+				_check(moved > 3.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95 and _pen_holds() == false,
+					"U boxed in with no trail: out of the box, upright (%.1f m, %s)" % [moved, _note()])
+				_shot("09_car_out_of_the_pen")
+				_pen.queue_free()
+				_mark = _car.global_position
+				_key(KEY_1)
+				_next()
+		14:
+			if _t > 1.5:
 				var spawn: Vector3 = _home.spawn_transform(&"Spawn_Car").origin
-				_check(_car.global_position.distance_to(spawn) < 1.5, "1 in the car: back in the carport")
+				_check(_car.global_position.distance_to(spawn) < 1.5 and _mark.distance_to(spawn) > 5.0,
+					"1 in the car: back in the carport (from %.1f m away)" % _mark.distance_to(spawn))
+				_check(_note().contains("Back in the carport"), "and says so (%s)" % _note())
+				_shot("10_back_in_the_carport")
+				_key(KEY_1)
+				_check(_note().contains("Already at the carport"), "1 again: says it's already at the carport (%s)" % _note())
+				_mark = _car.global_position
+				_key(KEY_U)
+				_next()
+		15:
+			if _t > 1.5:
+				var moved := _car.global_position.distance_to(_mark)
+				_check(moved > 3.0 and _car.global_basis.y.dot(Vector3.UP) > 0.95,
+					"U in the carport (no trail): the car still goes somewhere open (%.1f m, %s)" % [moved, _note()])
+				_shot("11_unstuck_from_the_carport")
 				var line: String = _dev.mark_spot()
 				_check(line.contains("tile 0_") or line.contains("tile -1_"), "X: marks the spot (%s)" % line)
 				_check(FileAccess.file_exists(_dev.marks_path), "marked spots go in a file")
-				_shot("09_panel_in_car")
+				_shot("12_panel_in_car")
 				return _finish()
 	return false
 
@@ -220,6 +264,38 @@ func _make_platform() -> void:
 	_platform.add_child(mesh)
 	_home.add_child(_platform)
 	_platform.global_position = _world(PLATFORM + Vector3(0, 0, PLATFORM_TOP * 0.5))
+
+
+## Four walls 3 m high round the car, too close to drive out of.
+func _make_pen(at: Vector3) -> void:
+	_pen = StaticBody3D.new()
+	_pen.collision_layer = 1
+	for side: Array in [[Vector3(0, 0, 2.6), Vector3(4.6, 3.0, 0.3)], [Vector3(0, 0, -2.6), Vector3(4.6, 3.0, 0.3)],
+			[Vector3(2.15, 0, 0), Vector3(0.3, 3.0, 5.5)], [Vector3(-2.15, 0, 0), Vector3(0.3, 3.0, 5.5)]]:
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = side[1]
+		shape.shape = box
+		shape.position = side[0] + Vector3.UP * 1.0
+		_pen.add_child(shape)
+		var mesh := MeshInstance3D.new()
+		var cube := BoxMesh.new()
+		cube.size = box.size
+		mesh.mesh = cube
+		mesh.position = shape.position
+		_pen.add_child(mesh)
+	_home.add_child(_pen)
+	_pen.global_transform = Transform3D(Basis(Vector3.UP, _car.global_rotation.y), at)
+
+
+## Whether the car is still inside the pen.
+func _pen_holds() -> bool:
+	var p: Vector3 = _pen.to_local(_car.global_position)
+	return absf(p.x) < 2.2 and absf(p.z) < 2.7
+
+
+func _note() -> String:
+	return String(_dev._note.text)
 
 
 func _put(feet: Vector3, look: Vector3) -> void:
