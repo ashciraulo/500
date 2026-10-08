@@ -263,14 +263,24 @@ func _track(p: Vector3, heading: Vector2, driving: bool, car: CarController, del
 		_off_time = 0.0
 		_wrong_time = 0.0
 		return
-	# Not on the route yet (just pulled out of a lane the roads don't cover).
+	# Not on the route yet (just pulled out of a lane the roads don't cover):
+	# leave room to get to it, but only as much as they've needed so far, so
+	# heading off the other way still counts as leaving it.
+	_lead_in = minf(_lead_in, best_d)
 	var reach := OFF_ROUTE if progress > 1.0 else maxf(OFF_ROUTE, _lead_in + 12.0)
 	_off_time = _off_time + delta if best_d > reach else 0.0
 	var wrong := false
-	if car and absf(car.speed_kmh()) > 10.0 and best_d < OFF_ROUTE:
-		var t := TrafficGraph.tangent_at(points, _cum, progress)
-		wrong = Vector2(t.x, t.z).dot(heading) < -0.5 and car.speed_kmh() > 0.0
-	_wrong_time = _wrong_time + delta if wrong else 0.0
+	if car and car.speed_kmh() > 10.0 and best_d < reach:
+		if progress < 1.0 and best_d > 6.0:
+			# Short of the route's start: driving away from it is the wrong
+			# way, whichever way the route sets off from there.
+			var to_start := (Vector2(points[0].x, points[0].z) - at).normalized()
+			wrong = to_start.dot(heading) < -0.3
+		else:
+			var t := TrafficGraph.tangent_at(points, _cum, progress)
+			wrong = Vector2(t.x, t.z).dot(heading) < -0.5
+	# A wobble (the wheel, a bump, slowing for a turn) doesn't start it over.
+	_wrong_time = _wrong_time + delta if wrong else maxf(_wrong_time - delta * 2.0, 0.0)
 	if (_off_time > OFF_TIME or _wrong_time > WRONG_WAY_TIME) and _since_search > MIN_GAP:
 		_off_time = 0.0
 		_wrong_time = 0.0
