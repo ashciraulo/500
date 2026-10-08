@@ -560,6 +560,16 @@ func _check_wrong_flathead(disc: Node) -> void:
 	var model: Node3D = load("res://scripts/field/fish_models.gd").build(f)
 	_check(model.find_child("Glow", true, false) is OmniLight3D, "it glows")
 	model.free()
+	var bream: Node3D = load("res://scripts/field/fish_models.gd").sized(_fj.fish_species("wrong_bream"), 31.0)
+	var tag := bream.find_child("Tag", true, false) as Node3D
+	_check(tag != null, "the tagged bream carries the 1979 dart tag")
+	if tag:
+		# A real dart tag is about 6.5 cm; it hangs down from the jaw.
+		var aabb: AABB = (tag.get_child(0) as MeshInstance3D).get_aabb()
+		var long: float = aabb.size.z * tag.scale.z * bream.scale.z
+		_check(long > 0.05 and long < 0.08, "at its real size (%.1f cm)" % (long * 100.0))
+		_check((tag.basis * Vector3(0, 0, -1)).y < -0.8, "hanging down from the jaw")
+	bream.free()
 	_check(_fishing.keep_blocked(_fj.fish_size(f, RandomNumberGenerator.new())) != "", "it can't be kept")
 	if not had:
 		disc._found.erase("mystery/atlas_page")
@@ -589,6 +599,24 @@ func _check_hubcap(disc: Node) -> void:
 		disc._found.erase(kept)
 		if cap:
 			cap.free()
+	# M.'s pages go up by the back door as you find each night bird.
+	var seen: Array = []
+	for row: Array in trophies.PAGES:
+		if _fj.entries.has(row[0]):
+			seen.append(row[0])
+	trophies._update_pages()
+	_check(trophies.pages().size() == seen.size(), "a page by the back door for each night bird found (%d)" % seen.size())
+	_fj.entries["wrong_swan"] = {"seen": 1, "where": "test"}
+	trophies._update_pages()
+	var page: Node3D = trophies.pages().get("wrong_swan")
+	_check(page != null, "finding the swan pins up its page")
+	if page:
+		var hook := page.get_parent() as Node3D
+		_check(page.global_basis.y.normalized().dot(hook.global_basis.z.normalized()) > 0.95, "facing into the room")
+	if not seen.has("wrong_swan"):
+		_fj.entries.erase("wrong_swan")
+		if page:
+			page.free()
 
 
 func get_root_home_door() -> Node3D:
