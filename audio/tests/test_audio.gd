@@ -309,6 +309,24 @@ func _test_ambience(audio: Node) -> void:
 	_ear = Vector3(0, 0, -5000)
 	amb.update_places(_ear)
 	check(amb.place_level("carpark", _ear) > 0.9, "servo -> empty car park at night")
+	# The servos you can fill up at have their own forecourt; the map's POI
+	# for the real servo beside one doesn't add an empty car park as well.
+	amb.clear_places()
+	var fitz := Vector3(-149.44, 16.1, -46.03)  # data/world/servos.json: fitzgerald_st_servo
+	check(amb.servo_positions().has(fitz), "fillable servos read from servos.json")
+	amb.add_map_pois([{"id": "servo_fitz", "kind": "servo", "suburb": "North Perth", "p": fitz + Vector3(30, 0, 0),
+			"at": fitz + Vector3(30, 0, 0)}])
+	_ear = fitz + Vector3(10, 0, 0)
+	amb.update_places(_ear)
+	check(amb.place_level("servo", _ear) > 0.5 and amb.place_level("carpark", _ear) == 0.0,
+			"fillable servo -> servo forecourt at night, no car park")
+	amb.set_time_of_day(12.0)
+	amb.update_places(fitz)
+	check(amb.place_level("servo", fitz) > 0.9 and amb.place_sound("servo") == "amb/place/place_servo_loop",
+			"servo forecourt by day")
+	amb.update_places(fitz + Vector3(80, 0, 0))
+	check(amb.place_level("servo", fitz + Vector3(80, 0, 0)) == 0.0, "a servo is quiet from across the street")
+	check(audio.has("amb/place/place_servo_night_loop"), "servo at night")
 	amb.clear_places()
 	amb.update_places(Vector3.ZERO)
 	amb.set_time_of_day(12.0)
@@ -762,3 +780,14 @@ func _test_field(audio: Node) -> void:
 	for type in ["groyne", "tackle_shop", "photo_lab", "wrong_cockatoos"]:
 		check(audio.ambience.PLACE_TYPES.has(type) and audio.ambience.place_sound(type) != "", "place ambience " + type)
 	check(audio.has("amb/place/place_groyne_night_loop"), "groyne at night")
+	# Barn finds and restoration
+	for n in ["music/mus_sting_barn_find", "music/mus_sting_restored", "garage/garage_tarp_pull"]:
+		check(audio.has(n), "barn find sound " + n)
+	var stages: Array = JSON.parse_string(FileAccess.get_file_as_string("res://data/cars/restoration.json")).stages
+	for stage: Dictionary in stages:
+		var sound: String = audio.hooks.restore_sound(stage.id)
+		check(audio.has(sound), "restoration stage %s -> %s" % [stage.id, sound])
+	check(audio.hooks.restore_sound("engine") == "engine/classic/eng_classic_startup", "the twin coughs into life")
+	# The record player
+	check(audio.has("home/home_record_needle") and audio.has("home/home_record_needle_lift")
+			and audio.stream("home/home_record_crackle", true) != null, "record needle, lift and crackle")
