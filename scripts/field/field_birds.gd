@@ -37,6 +37,7 @@ var _twig_cache := {}  # crown mesh -> its outer points
 func _ready() -> void:
 	add_to_group(&"field_bird_spawner")
 	_rng.randomize()
+	BirdModels.warm(Array(FieldJournal.bird_order).map(func(id: String) -> Dictionary: return FieldJournal.bird(id)))
 
 
 func _process(delta: float) -> void:
@@ -120,6 +121,8 @@ func _try_spawn(focus: Vector3) -> void:
 	if options.is_empty():
 		return
 	var species := _pick(options)
+	if not BirdModels.is_built(species.id):
+		return  # Still being built off the main thread: another time.
 	# Don't double up a species already showing nearby.
 	for s: Dictionary in sightings:
 		if s.id == species.id and s.centre.distance_to(focus) < SPAWN_FAR:
@@ -651,7 +654,8 @@ func _try_wrong(focus: Vector3) -> void:
 	var hour := _hour()
 	for id: String in FieldJournal.bird_order:
 		var sp := FieldJournal.bird(id)
-		if not wrong_ready(sp, hour) or sightings.any(func(s: Dictionary) -> bool: return s.id == id):
+		if not wrong_ready(sp, hour) or sightings.any(func(s: Dictionary) -> bool: return s.id == id) \
+				or not BirdModels.is_built(id):
 			continue
 		var at := wrong_place(sp)
 		if at == Vector3.INF:

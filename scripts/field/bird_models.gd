@@ -131,21 +131,66 @@ const SCALES := ["neck", "bill", "tail", "crest", "head", "body", "leg", "wing",
 
 static var _cache := {}
 static var _materials := {}
+## Guards the two caches: warm() fills them from a worker thread.
+static var _lock := Mutex.new()
+static var _warm_task := -1
 
 
 ## Let go of the cached meshes and materials (on quit: static vars outlive
 ## the renderer otherwise).
 static func clear_cache() -> void:
+	finish_warming()
 	_cache.clear()
 	_materials.clear()
+
+
+## Builds these species' meshes on a worker thread. A species takes a long
+## frame to build (up to a tenth of a second), so the spawner warms them all
+## up front and leaves a species alone until it's built (see is_built).
+static func warm(species_list: Array) -> void:
+	if _warm_task != -1:
+		return
+	_warm_task = WorkerThreadPool.add_task(func() -> void:
+		for species: Dictionary in species_list:
+			var id := String(species.get("id", "bird"))
+			_lock.lock()
+			var built := _cache.has(id)
+			_lock.unlock()
+			if not built:
+				var made := _make(species)
+				_lock.lock()
+				if not _cache.has(id):
+					_cache[id] = made
+				_lock.unlock(), false, "bird models")
+
+
+## Whether `id`'s meshes are ready, so build() won't stall the frame. Also
+## true once warming is over, whatever it built.
+static func is_built(id: String) -> bool:
+	_lock.lock()
+	var built := _cache.has(id)
+	_lock.unlock()
+	return built or (_warm_task != -1 and WorkerThreadPool.is_task_completed(_warm_task))
+
+
+## Waits for warm() to finish, if it's running.
+static func finish_warming() -> void:
+	if _warm_task != -1:
+		WorkerThreadPool.wait_for_task_completion(_warm_task)
+		_warm_task = -1
 
 
 ## A bird for this species entry (from FieldJournal.bird(id)).
 static func build(species: Dictionary) -> Node3D:
 	var id := String(species.get("id", "bird"))
-	if not _cache.has(id):
-		_cache[id] = _make(species)
-	var made: Dictionary = _cache[id]
+	_lock.lock()
+	var made: Dictionary = _cache.get(id, {})
+	_lock.unlock()
+	if made.is_empty():
+		made = _make(species)
+		_lock.lock()
+		_cache[id] = made
+		_lock.unlock()
 	var root := Node3D.new()
 	root.name = id.to_pascal_case()
 	var trunk := _instance(made.trunk, "Trunk", made.trunk_at)
@@ -1247,12 +1292,22 @@ static func _moved(geo: Array, offset: Vector3) -> Array:
 
 
 static func _mat(hex: String) -> Material:
-	if not _materials.has(hex):
-		if hex.begins_with("glow:"):
-			_materials[hex] = PS1Material.glowing(Color.html(hex.trim_prefix("glow:")), 1.2)
-		else:
-			_materials[hex] = PS1Material.make(Color.html(hex), 0.6)
-	return _materials[hex]
+	_lock.lock()
+	var material: Material = _materials.get(hex)
+	_lock.unlock()
+	if material:
+		return material
+	if hex.begins_with("glow:"):
+		material = PS1Material.glowing(Color.html(hex.trim_prefix("glow:")), 1.2)
+	else:
+		material = PS1Material.make(Color.html(hex), 0.6)
+	_lock.lock()
+	if _materials.has(hex):
+		material = _materials[hex]  # Made on the other thread meanwhile.
+	else:
+		_materials[hex] = material
+	_lock.unlock()
+	return material
 
 
 ## One mesh, a surface per colour, gathered from many pieces.
