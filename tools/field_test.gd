@@ -393,6 +393,8 @@ func _process(_delta: float) -> bool:
 				_check(_fj.is_caught("black_bream") and _fj.fish_weighed >= 1 and _fj.has_crab_net, "the catches survive a save and load")
 				_check(root.get_node("Progression").get_stat("fish_species") >= 1.0, "the career counts fish species")
 				_check_hubcap(root.get_node("Discoveries"))
+				_check_flicker()
+				_check_nights()
 				return _finish()
 	return false
 
@@ -587,6 +589,174 @@ func _check_wrong_flathead(disc: Node) -> void:
 
 
 ## The kept hubcap goes up on the shed door at home.
+## The late city's birds that flicker (BirdFlicker), level by level. A stand-in
+## A stand-in LateCity counts the warbles and shimmers and says how strong the
+## late city is; the story's own is swapped out meanwhile, then checked at the end.
+func _check_flicker() -> void:
+	var fl: Node = _field.flicker
+	var real: Node = root.get_node_or_null("LateCity")
+	var real_at := real.get_index() if real else -1
+	if real:
+		root.remove_child(real)
+	var gs := GDScript.new()
+	gs.source_code = "extends Node\nvar presence := 0.0\nvar warbles := 0\nfunc flicker_level() -> int: return 0\nfunc presence_at(_p: Vector3) -> float: return presence\nfunc play_flicker(_p: Vector3) -> void: warbles += 1\nfunc add_shimmer(n: Node3D, amount := 1.0) -> void: n.set_meta(\"shimmer\", amount)\nfunc remove_shimmer(n: Node3D) -> void: n.remove_meta(\"shimmer\")\n"
+	gs.reload()
+	var lc := Node.new()
+	lc.set_script(gs)
+	lc.name = "LateCity"
+	root.add_child(lc)
+	_birds.clear()
+	var clock: Node = root.get_node("GameClock")
+	clock.set_time(2.0)
+	var magpie: Dictionary = _birds.spawn_wrong(_fj.bird("wrong_magpie"), _car.global_position + Vector3(14, 0, 6))
+	var frog: Dictionary = _birds.spawn_wrong(_fj.bird("wrong_frogmouth"), _car.global_position + Vector3(-14, 0, 6))
+	_check(not magpie.is_empty() and not frog.is_empty(), "a wrong magpie and frogmouth to watch")
+	if magpie.is_empty() or frog.is_empty():
+		return
+	var mb: Dictionary = magpie.birds[0]
+	var mag: Node3D = mb.node
+	var fro: Node3D = frog.birds[0].node
+	# Runs the flicker for `secs`; returns [magpie blinked, frogmouth blinked].
+	var run := func(secs: float) -> Array:
+		var seen := [false, false]
+		for i in int(secs * 20.0):
+			fl._process(0.05)
+			seen[0] = seen[0] or not mag.visible
+			seen[1] = seen[1] or not fro.visible
+		return seen
+	fl.level_override = 0
+	var r: Array = run.call(25.0)
+	_check(not r[0] and not r[1], "act 1: nothing flickers")
+	fl.level_override = 1
+	r = run.call(25.0)
+	_check(not r[0] and not r[1], "act 2: nothing flickers with the glasses down")
+	_bino.state = _bino.State.LOOKING
+	r = run.call(25.0)
+	_check(r[1] and not r[0], "act 2: the frogmouth flickers through the binoculars, the magpie doesn't")
+	_check(fro.has_meta("shimmer"), "and the frogmouth shimmers while the glasses are up")
+	_bino.state = _bino.State.CLOSED
+	fl._process(0.05)
+	_check(not fro.has_meta("shimmer"), "the shimmer goes when they're down")
+	# Act 3: every wrong bird, any way you look, and it comes back nearby.
+	fl.level_override = 2
+	var before: Vector3 = mag.position
+	var warbles: int = lc.get("warbles")
+	var gone := 0.0
+	var shimmered := false
+	for i in 400:
+		fl._process(0.05)
+		if not mag.visible:
+			gone += 0.05
+			shimmered = shimmered or mag.has_meta("shimmer")
+		elif gone > 0.0:
+			break
+	_check(gone > 0.0 and gone <= 0.65, "act 3: the wrong magpie blinks out for a moment (%.2f s)" % gone)
+	_check(mag.visible and mag.position.distance_to(before) <= 1.01, "and comes back within a metre (%.2f m)" % mag.position.distance_to(before))
+	_check(shimmered and int(lc.get("warbles")) > warbles, "with the shimmer and the warble")
+	for i in 40:
+		fl._process(0.05)
+		if mag.visible and not mb.get("blink", 0.0) > 0.0 and mb.get("glow", 0.0) <= 0.0:
+			break
+	_check(not mag.has_meta("shimmer"), "the shimmer fades after")
+	# The focus dial jumps when its bird blinks, and the shot carries on.
+	_bino.state = _bino.State.FOCUS
+	_bino.dial = {"node": mag, "needle": 1.0, "time": 9.0, "flash": 0.0, "flash_good": true}
+	mag.set_meta("flicker", true)
+	_bino._update_dial(0.016)
+	_check(_bino.state == _bino.State.FOCUS and absf(angle_difference(float(_bino.dial.needle), 1.0)) > 1.0, "a blink makes the focus dial jump, and the shot goes on")
+	mag.set_meta("flicker", false)
+	_bino.dial = {}
+	_bino.state = _bino.State.CLOSED
+	# Act 4: ordinary birds too, only where the late city is strong.
+	var plain := {"state": "perch", "node": mag, "sighting": {"id": "galah"}}
+	lc.set("presence", 1.0)
+	_check(fl.can_flicker(plain, 3, false) and not fl.can_flicker(plain, 2, false), "act 4: ordinary birds flicker where the late city is strong")
+	lc.set("presence", 0.0)
+	_check(not fl.can_flicker(plain, 3, false), "but not elsewhere")
+	# Act 5: the thirteen beside the car on Fraser Avenue.
+	_birds.clear()
+	fl.level_override = 4
+	_check(fl.start_alongside(), "act 5: the thirteen lift off beside the car")
+	var flock: Dictionary = {}
+	for s2: Dictionary in _birds.sightings:
+		if s2.id == "wrong_cockatoos":
+			flock = s2
+	_check(not flock.is_empty() and flock.birds.size() == 13, "thirteen of them (%d)" % (flock.birds.size() if not flock.is_empty() else 0))
+	if not flock.is_empty():
+		var all_out := false
+		for i in 120:
+			fl._process(0.05)
+			all_out = all_out or flock.birds.all(func(b: Dictionary) -> bool: return not b.node.visible)
+		var near: bool = flock.birds.all(func(b: Dictionary) -> bool: return b.node.global_position.distance_to(_car.global_position) < 25.0)
+		_check(near, "keeping pace beside the car")
+		_check(all_out, "flickering in step")
+		fl._along.time = 0.0
+		fl._process(0.05)
+		_check(not fl.alongside() and flock.birds.all(func(b: Dictionary) -> bool: return b.state == "fly" and b.node.visible), "then they peel off")
+	_birds.clear()
+	root.remove_child(lc)
+	lc.free()
+	if real == null:
+		fl.level_override = -1
+		return
+	root.add_child(real)
+	root.move_child(real, real_at)
+	# With the story's own LateCity: a blink puts the tape shimmer on the bird.
+	fl.level_override = 2
+	var m2: Dictionary = _birds.spawn_wrong(_fj.bird("wrong_magpie"), _car.global_position + Vector3(14, 0, 6))
+	if not m2.is_empty():
+		var b2: Dictionary = m2.birds[0]
+		var overlaid := func() -> bool:
+			return b2.node.find_children("*", "GeometryInstance3D", true, false).any(func(g: GeometryInstance3D) -> bool: return g.material_overlay != null)
+		fl.blink(b2)
+		var on: bool = overlaid.call()
+		for i in 60:
+			fl._process(0.05)
+		_check(on and b2.node.visible and not overlaid.call(), "the story's LateCity shimmers a blink and lifts it after")
+	fl.level_override = -1
+	_birds.clear()
+
+
+## The journal's Nights bookmark: hidden until the late city logs a night,
+## then the nights newest first, each with its text.
+func _check_nights() -> void:
+	var j: Node = _field.journal
+	var story: Node = root.get_node_or_null("Story")
+	var stub := story == null
+	if stub:
+		var gs := GDScript.new()
+		gs.source_code = "extends Node\nsignal night_logged(entry: Dictionary)\nvar nights: Array[Dictionary] = []\nfunc log_night(id: StringName, text: String) -> void:\n\tvar e := {\"id\": id, \"text\": text, \"day\": nights.size() + 3, \"time\": 2.5}\n\tnights.append(e)\n\tnight_logged.emit(e)\n"
+		gs.reload()
+		story = Node.new()
+		story.set_script(gs)
+		story.name = "Story"
+		root.add_child(story)
+	j.open()
+	j._tab = "nights"
+	j.refresh()
+	if Array(story.get("nights")).is_empty():
+		_check(not j._tab_buttons["nights"].visible and j._tab == "birds", "no Nights bookmark before the late city's written anything")
+	story.call("log_night", &"test_empty_road", "The road went on and nothing else did.")
+	story.call("log_night", &"test_other_house", "The kitchen was 1979.")
+	j._tab = "nights"
+	j._selected = ""
+	j.refresh()
+	var buttons: Array = j._list.get_children().filter(func(n: Node) -> bool: return n is Button)
+	var texts: Array = j._page.get_children().filter(func(n: Node) -> bool: return n is Label).map(func(l: Label) -> String: return l.text)
+	_check(j._tab_buttons["nights"].visible and j._tab == "nights", "the Nights bookmark turns up")
+	_check(buttons.size() >= 2 and j._selected == "night:test_other_house" and texts.has("The kitchen was 1979."), "newest night first, in its own words")
+	_shot("12_journal_nights")
+	j.close()
+	if stub:
+		root.remove_child(story)
+		story.free()
+	else:
+		var list: Array = story.get("nights")
+		for i in range(list.size() - 1, -1, -1):
+			if String(list[i].id).begins_with("test_"):
+				list.remove_at(i)
+
+
 func _check_hubcap(disc: Node) -> void:
 	var trophies: Node = _field.trophies
 	var kept := "fishing/fiat_hubcap"
@@ -712,7 +882,7 @@ func _teleport(p: Vector3, yaw: float) -> void:
 ## birds you won't see anywhere else.
 func _check_quiet_places(disc: Node) -> void:
 	var quiet: Array = _fj.quiet_places()
-	_check(quiet.size() == 9 and quiet.all(func(h: Dictionary) -> bool: return not disc.has(_fj.place_key(h))), "nine quiet places, none found yet (%d)" % quiet.size())
+	_check(quiet.size() == 10 and quiet.all(func(h: Dictionary) -> bool: return not disc.has(_fj.place_key(h))), "ten quiet places, none found yet (%d)" % quiet.size())
 	var reeds: Dictionary = _fj.habitat("quiet_herdsman_reedbeds")
 	var at: Vector3 = _fj.habitat_centre(reeds)
 	_check(_fj.place_name(at) != reeds.name, "an unfound quiet place has no name (%s)" % _fj.place_name(at))

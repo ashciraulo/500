@@ -352,6 +352,21 @@
 			]
 		},
 		{
+			"id": "quiet_bibra_lake_reeds",
+			"name": "Bibra Lake reeds",
+			"lat": -32.08685,
+			"lon": 115.82706,
+			"radius": 140,
+			"tags": [
+				"lake",
+				"reeds"
+			],
+			"hidden": true,
+			"poi": "birding_bibra_lake_reeds",
+			"x": -2535.6,
+			"z": 15621.6
+		},
+		{
 			"id": "quiet_burswood_lakes",
 			"name": "Burswood Park lakes",
 			"lat": -31.9587,

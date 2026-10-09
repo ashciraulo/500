@@ -447,7 +447,21 @@ func _add_arc() -> void:
 
 
 func _update_dial(delta: float) -> void:
-	if not is_instance_valid(dial.get("node")) or not (dial.node as Node3D).visible:
+	if not is_instance_valid(dial.get("node")):
+		_end_shot(0, "It's gone.")
+		return
+	if (dial.node as Node3D).get_meta("flicker", false):
+		# It blinked out (BirdFlicker): the lens hunts and the needle jumps.
+		if not dial.get("blinked", false):
+			dial.blinked = true
+			dial.needle = wrapf(dial.needle + _rng.randf_range(1.2, 2.6) * (1.0 if _rng.randf() < 0.5 else -1.0), 0.0, TAU)
+			dial.flash = 1.0
+			dial.flash_good = false
+			_sound_2d("field/focus_miss")
+		dial.time -= delta
+		return
+	dial.blinked = false
+	if not (dial.node as Node3D).visible:
 		_end_shot(0, "It's gone.")
 		return
 	dial.needle = wrapf(dial.needle + dial.dir * dial.speed * delta, 0.0, TAU)
