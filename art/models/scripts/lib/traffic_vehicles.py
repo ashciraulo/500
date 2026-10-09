@@ -564,6 +564,7 @@ def _railcar(cab):
     # bogies and the underframe boxes
     # bogies: wheelsets on Perth's narrow gauge, side frames with axle
     # boxes and springs outside them, a bolster across the middle
+    wheel = _m("TV_WheelSteel", "#3b3a38", 0.55, 0.4)      # dark, rusty-brown steel, not the shiny trim
     for yb in (yr + 3.8, (yf - 4.2) if cab else yf - 3.8):
         p.append(bx((-0.75, yb - 0.25, 0.55), (0.75, yb + 0.25, 0.72), M["black"]))
         for sx in (-1, 1):
@@ -571,7 +572,7 @@ def _railcar(cab):
             p.append(bx((xf - 0.07, yb - 1.35, 0.42), (xf + 0.07, yb + 1.35, 0.62), M["black"]))
             p.append(bx((xf - 0.07, yb - 0.35, 0.3), (xf + 0.07, yb + 0.35, 0.42), M["black"]))
             for yy in (yb - 0.95, yb + 0.95):
-                p.append(cyl(0.43, 0.1, (sx * 0.6, yy, 0.43), M["steel"], segs=12, axis="X"))
+                p.append(cyl(0.43, 0.1, (sx * 0.6, yy, 0.43), wheel, segs=12, axis="X"))
                 p.append(cyl(0.12, 0.16, (xf, yy, 0.43), M["grey"], segs=8, axis="X"))
                 p.append(cyl(0.07, 0.18, (xf, yy, 0.68), M["steel"], segs=6))
     # equipment cases under the floor between the bogies
