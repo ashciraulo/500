@@ -384,6 +384,7 @@ var _air_time := 0.0  # since the last wheel touched the road
 var _last_slide := 0.0  # sideways slip angle last step, rad (see step 6)
 var _cushions: Array[Vector3] = []  # the underside's lowest points; see step 7
 var _headlights_manual := false
+var _walker: Node = null
 var _spawn_transform: Transform3D
 ## Where teleport() is putting the car, applied in the next physics step.
 var _teleport_to: Transform3D
@@ -679,8 +680,13 @@ func _process(delta: float) -> void:
 	var brake_lights := get_node_or_null("BrakeLights")
 	if brake_lights:
 		brake_lights.visible = brake > 0.05
+	# Parked with the driver out: the lights go off (and any switch on by
+	# hand is forgotten), so a car left in the carport doesn't light the house.
+	var parked := _driver_out()
+	if parked:
+		_headlights_manual = false
 	if not _headlights_manual:
-		var want := GameClock.daylight() < 0.45 or Weather.rain > 0.6
+		var want := not parked and (GameClock.daylight() < 0.45 or Weather.rain > 0.6)
 		if want != headlights_on:
 			headlights_on = want
 			_update_lights()
@@ -797,6 +803,15 @@ func set_transmission(mode: Transmission) -> void:
 
 func toggle_transmission() -> void:
 	set_transmission(Transmission.MANUAL if transmission == Transmission.AUTOMATIC else Transmission.AUTOMATIC)
+
+
+## True when the player has got out and walked off (OnFoot isn't in this car).
+func _driver_out() -> bool:
+	if _walker == null or not is_instance_valid(_walker):
+		_walker = get_tree().get_first_node_in_group(&"player_on_foot") if is_inside_tree() else null
+		if _walker == null:
+			return false
+	return not _walker.in_car and _walker.get(&"_car") == self
 
 
 func toggle_headlights() -> void:
@@ -1954,9 +1969,12 @@ func _update_lights() -> void:
 	var lights := get_node_or_null("Headlights")
 	if lights:
 		lights.visible = headlights_on or flashing
+		for lamp in lights.find_children("*", "Light3D", true, false):
+			_keep_out_of_rooms(lamp)
 	for lamp in find_children("*", "SpotLight3D", true, false):
 		if lamp.is_in_group(&"car_spotlights"):
 			lamp.visible = headlights_on
+			_keep_out_of_rooms(lamp)
 	var body := get_node_or_null("Body")
 	var fog_part := body.get_node_or_null(^"Part_lights") if body else null
 	if fog_part and fog_part.has_meta("fog_lens"):
@@ -1964,6 +1982,12 @@ func _update_lights() -> void:
 		lens.set_shader_parameter("emission_color", FOG_GLOW)
 		lens.set_shader_parameter("emission_energy", 1.1 if headlights_on else 0.0)
 	headlights_changed.emit(headlights_on)
+
+
+## Lights have no shadows, so without this they'd shine through the
+## townhouse walls onto everything inside (HomeBase marks it).
+static func _keep_out_of_rooms(lamp: Light3D) -> void:
+	lamp.light_cull_mask &= ~(HomeBase.INDOOR_LAYER | OtherHouse.LAYER_1979)
 
 
 func _on_body_entered(_body: Node) -> void:

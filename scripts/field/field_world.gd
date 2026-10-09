@@ -6,7 +6,7 @@ extends Node3D
 ## the feeder at home, the quiet places you find by wandering, and the screens
 ## (binoculars, the journal, the lab and tackle counters, the fishing view),
 ## which sit on the main scene at window resolution rather than inside the
-## lo-fi viewport.
+## lo-fi viewport. And the photograph someone takes from your back seat.
 
 ## The photo lab on Lake Street, Northbridge: [x, z, yaw] of the kerbside bay.
 const LAB := [346.3, 78.1, -0.49]
@@ -27,6 +27,7 @@ var home: HomeField
 var trophies: HomeTrophies
 var quiet: QuietPlaces
 var flicker: BirdFlicker
+var back_seat: BackSeatPhoto
 
 var _ui: Array[Node] = []
 
@@ -77,6 +78,10 @@ func _ready() -> void:
 	flicker.name = "BirdFlicker"
 	flicker.setup(birds, binoculars)
 	add_child(flicker)
+	back_seat = BackSeatPhoto.new()
+	back_seat.name = "BackSeatPhoto"
+	add_child(back_seat)
+	lab_screen.back_seat_photo = back_seat
 	for node: Node in [binoculars, journal, lab_screen, tackle_screen, fishing_screen]:
 		host.add_child.call_deferred(node)
 		_ui.append(node)

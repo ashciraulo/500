@@ -114,6 +114,10 @@ const BUYER_NOTES := {
 const CITY_OF_LIGHT := &"city_of_light"
 const LIGHTS_OUT := &"lights_out"
 const FADE_DAYS := 7.0
+## The photograph (docs/STORY.md, section 10): the story sets this flag, the
+## shutter goes off in the back seat (BackSeatPhoto), and the next roll comes
+## back with one extra frame for Ros to keep, or you.
+const BACK_SEAT_FLAG := &"photo_back_seat"
 
 var birds := {}
 var bird_order: PackedStringArray = []
@@ -139,6 +143,9 @@ var buyer_owed := 0
 var buyer_day := -1
 var buyer_note := ""
 var money_from_buyer := 0
+## The back-seat photograph: {} until it's taken, then {file, day, time};
+## `print` once the lab's printed it, `to` (&"ros" or &"home") once it's given.
+var back_seat := {}
 
 var fish := {}
 var fish_order: PackedStringArray = []
@@ -448,6 +455,9 @@ func develop() -> Dictionary:
 			blanks.append({"species": id, "stars": int(frame.stars), "file": frame.file, "day": GameClock.day})
 		prints.append({"species": id, "name": bird(id).get("name", id), "stars": frame.stars, "pay": pay,
 			"wrong": frame.get("wrong", false), "blank": blank, "first": first and pay > 0, "file": frame.file})
+	var extra := _print_back_seat()
+	if not extra.is_empty():
+		prints.append(extra)
 	var fee := DEVELOP_PRICE if not roll.is_empty() else 0
 	var net := total - fee
 	if net > 0:
@@ -459,6 +469,62 @@ func develop() -> Dictionary:
 	film_changed.emit(film_left(), roll_size())
 	roll_developed.emit(prints, net)
 	return {"prints": prints, "pay": net, "fee": fee, "gross": total}
+
+
+# --- the photograph ---------------------------------------------------------------------
+
+func _story_flag(id: StringName) -> bool:
+	var story := _story()
+	return story != null and bool(story.call("flag", id))
+
+
+## The story wants the back-seat photograph and it hasn't been taken.
+func back_seat_due() -> bool:
+	return back_seat.is_empty() and _story_flag(BACK_SEAT_FLAG)
+
+
+## BackSeatPhoto took it: `file` is the raw frame ("" headless).
+func took_back_seat(file: String) -> void:
+	if back_seat.is_empty():
+		back_seat = {"file": file, "day": GameClock.day, "time": GameClock.time_string()}
+
+
+## The extra print on the roll the lab's developing, or {}.
+func _print_back_seat() -> Dictionary:
+	if back_seat.is_empty() or back_seat.has("print"):
+		return {}
+	var file := String(back_seat.file)
+	var out := ""
+	if file != "" and FileAccess.file_exists(file):
+		var raw := Image.load_from_file(file)
+		if raw and not raw.is_empty():
+			out = file.replace("_raw.png", ".png")
+			BackSeatPhoto.print_look(raw, int(back_seat.day)).save_png(out)
+	back_seat["print"] = out
+	return {"species": "", "extra": "back_seat", "name": "One more frame", "stars": 0, "pay": 0,
+		"wrong": false, "blank": false, "first": false, "file": out}
+
+
+## The back-seat print is waiting on the counter for you to say where it goes.
+func back_seat_waiting() -> bool:
+	return back_seat.has("print") and not back_seat.has("to")
+
+
+## Ros keeps the back-seat print (`&"ros"`) or you take it home (`&"home"`,
+## into the album). Sets the story's flag photo_back_seat_ros or _home.
+func give_back_seat(to: StringName) -> void:
+	if not back_seat_waiting():
+		return
+	back_seat["to"] = String(to)
+	var story := _story()
+	if to == &"home":
+		var file := String(back_seat.print)
+		if file != "" and Activities.photos.all(func(e: Dictionary) -> bool: return e.get("file") != file):
+			Activities.photos.append({"file": file, "day": int(back_seat.day), "time": String(back_seat.time), "spot": ""})
+	if story:
+		story.call("set_flag", StringName("photo_back_seat_" + String(to)))
+		story.call("log_night", &"photo_back_seat", "A frame on the roll I never took: me at the wheel, from the back seat. "
+			+ ("Ros kept it." if to == &"ros" else "It's in the album."))
 
 
 # --- the late city: blank prints, Ros and the buyer ---------------------------------------
@@ -866,6 +932,7 @@ func save_state() -> Dictionary:
 		"prints_sold": prints_sold, "money_from_prints": money_from_prints,
 		"blanks": blanks, "guide": guide, "buyer_prints": buyer_prints, "buyer_owed": buyer_owed,
 		"buyer_day": buyer_day, "buyer_note": buyer_note, "money_from_buyer": money_from_buyer,
+		"back_seat": back_seat,
 		"catches": catches, "esky": esky, "rod": rod, "esky_level": esky_level, "crab_net": has_crab_net,
 		"ice_until": ice_until, "fish_weighed": fish_weighed, "money_from_fish": money_from_fish, "crab_nets": crab_nets}
 
@@ -886,6 +953,7 @@ func load_state(data: Dictionary) -> void:
 	buyer_day = int(data.get("buyer_day", -1))
 	buyer_note = String(data.get("buyer_note", ""))
 	money_from_buyer = int(data.get("money_from_buyer", 0))
+	back_seat = data.get("back_seat", {})
 	catches = data.get("catches", {})
 	esky = data.get("esky", [])
 	rod = int(data.get("rod", 0))

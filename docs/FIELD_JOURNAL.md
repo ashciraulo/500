@@ -201,6 +201,12 @@ journal, their pages say you saw them "sort of", and whether Ros or the
 buyer has the print. City of Light leaves them ordinary birds; Lights Out
 fades their pages to blank over a week.
 
+**The photograph.** Some time in act 3, driving along, a shutter clicks
+behind you. Nobody's there. The next roll comes back with one frame you
+didn't take: you at the wheel, from the back seat, the date stamp in the
+corner reading '79 7 11. Ros says she'll keep it, if you like; or it goes
+home in the album.
+
 ## Progression, lightly
 
 Selling prints and weighing in fish earns money, so it's an alternative to
