@@ -1747,7 +1747,7 @@
    "region": "kent_st_weir",
    "hmin": -3.94,
    "hmax": 17.36,
-   "bytes": 228313,
+   "bytes": 230421,
    "traffic": "12_-17.p5r"
   },
   "13_-17": {
@@ -1817,7 +1817,7 @@
    "region": "point_walter",
    "hmin": -2.5,
    "hmax": 27.7,
-   "bytes": 143363,
+   "bytes": 148076,
    "traffic": "-11_-16.p5r"
   },
   "-4_-16": {
@@ -3777,7 +3777,7 @@
    "region": "first_slice",
    "hmin": 50.38,
    "hmax": 71.0,
-   "bytes": 274504,
+   "bytes": 308841,
    "traffic": "-4_-4.p5r"
   },
   "-3_-4": {
@@ -4287,7 +4287,7 @@
    "region": "east_perth",
    "hmin": -4.0,
    "hmax": 45.59,
-   "bytes": 430525,
+   "bytes": 443903,
    "traffic": "6_-2.p5r"
   },
   "7_-2": {
@@ -4357,7 +4357,7 @@
    "region": "bold_park",
    "hmin": 3.91,
    "hmax": 26.59,
-   "bytes": 263760,
+   "bytes": 271322,
    "traffic": "-13_-1.p5r"
   },
   "-11_-1": {
@@ -4537,7 +4537,7 @@
    "region": "east_perth",
    "hmin": -1.96,
    "hmax": 14.91,
-   "bytes": 373384,
+   "bytes": 380721,
    "traffic": "6_-1.p5r"
   },
   "7_-1": {
@@ -4547,7 +4547,7 @@
    "region": "east_perth",
    "hmin": -2.5,
    "hmax": 23.94,
-   "bytes": 384850,
+   "bytes": 384918,
    "traffic": "7_-1.p5r"
   },
   "-19_0": {
@@ -4617,7 +4617,7 @@
    "region": "bold_park",
    "hmin": 3.91,
    "hmax": 24.03,
-   "bytes": 361744,
+   "bytes": 378825,
    "traffic": "-13_0.p5r"
   },
   "-11_0": {
@@ -5107,7 +5107,7 @@
    "region": "bayswater_riverside",
    "hmin": -3.5,
    "hmax": 24.14,
-   "bytes": 514439,
+   "bytes": 518901,
    "traffic": "12_1.p5r"
   },
   "13_1": {
@@ -5127,7 +5127,7 @@
    "region": "coast_road",
    "hmin": -5.8,
    "hmax": 19.88,
-   "bytes": 246875,
+   "bytes": 259194,
    "traffic": "-19_2.p5r"
   },
   "-18_2": {
@@ -5697,7 +5697,7 @@
    "region": "bayswater_riverside",
    "hmin": -3.5,
    "hmax": 17.68,
-   "bytes": 277035,
+   "bytes": 285530,
    "traffic": "12_3.p5r"
   },
   "13_3": {
@@ -7147,7 +7147,7 @@
    "region": "guildford",
    "hmin": -2.5,
    "hmax": 28.26,
-   "bytes": 285245,
+   "bytes": 286152,
    "traffic": "19_10.p5r"
   },
   "20_10": {
@@ -8298,11 +8298,11 @@
   {
    "id": "subiaco_markets",
    "position": [
-    -2882.33,
-    25.43,
-    -129.95
+    -2882.3,
+    25.46,
+    -130.0
    ],
-   "yaw": 0.0046,
+   "yaw": 3.1416,
    "name": "Station Street Markets",
    "suburb": "Subiaco"
   },
@@ -8365,7 +8365,7 @@
    "id": "scarborough_beach",
    "position": [
     -9216.32,
-    14.89,
+    14.9,
     -5782.77
    ],
    "yaw": 0.2878,
@@ -11091,13 +11091,13 @@
    "name": "Shell",
    "p": [
     -3647.01,
-    11.47,
+    11.4,
     10378.84
    ],
    "yaw": -1.5664,
    "at": [
     -3647.01,
-    11.17,
+    11.1,
     10378.84
    ],
    "brand": "Shell",

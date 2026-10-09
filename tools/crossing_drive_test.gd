@@ -8,7 +8,7 @@ extends SceneTree
 ##   now carries on into the stage 7 tiles: no end-of-map barriers left.
 ## - Each road that crosses a boardwalk (tools/boardwalk_crossings.json, made
 ##   from OSM): the boardwalk crosses flush, no deck or rails across the lanes.
-## Each run starts on the road one side and steers along it to the other.
+## Each run starts on the road one side and steers along it to the other. Add only=<text> to run the crossings whose name has it.
 ## Exits with code 1 if the car doesn't get there.
 
 ## [name, from, to] (y is found on the ground).
@@ -32,6 +32,7 @@ var _failures: Array[String] = []
 var _k := -1
 var _phase := 0
 var _t := 0.0
+var _wait_from := 0  # (ms: tiles load on worker threads in real time)
 var _quitting := false
 var _crossings: Array = CROSSINGS.duplicate()
 
@@ -39,6 +40,9 @@ var _crossings: Array = CROSSINGS.duplicate()
 func _initialize() -> void:
 	for c: Array in JSON.parse_string(FileAccess.get_file_as_string("res://tools/boardwalk_crossings.json")):
 		_crossings.append([c[0], Vector3(c[1][0], 0, c[1][1]), Vector3(c[2][0], 0, c[2][1])])
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("only="):
+			_crossings = _crossings.filter(func(c: Array) -> bool: return arg.trim_prefix("only=") in c[0])
 
 
 func _process(delta: float) -> bool:
@@ -65,8 +69,8 @@ func _process(delta: float) -> bool:
 				_car.teleport(t)
 				_phase = 1
 				_t = 0.0
-			elif _t > 30.0:
-				_fail("%s: tiles didn't load" % c[0])
+			elif Time.get_ticks_msec() - _wait_from > 120000:
+				_fail("%s: tiles didn't load (%s %s, %s %s)" % [c[0], _map.tile_at(from), _map.has_collision_at(from), _map.tile_at(to), _map.has_collision_at(to)])
 		1:  # Settle.
 			if _t > 1.0:
 				_phase = 2
@@ -104,12 +108,17 @@ func _next_crossing() -> void:
 	_k += 1
 	_phase = 0
 	_t = 0.0
+	_wait_from = Time.get_ticks_msec()
 	if _k >= _crossings.size():
 		_finish()
 		return
 	var from: Vector3 = _crossings[_k][1]
+	# Held just over the highest ground of its tile: the map puts back a car
+	# with no ground in reach under it.
+	var key: Vector2i = _map.tile_at(from)
+	var top := float(_map.index.tiles.get("%d_%d" % [key.x, key.y], {}).get("hmax", 40.0))
 	_car.freeze = true
-	_car.global_position = Vector3(from.x, 60.0, from.z)
+	_car.global_position = Vector3(from.x, top + 3.0, from.z)
 
 
 func _ground(p: Vector3) -> float:
