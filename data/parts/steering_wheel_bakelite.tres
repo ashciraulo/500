@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"steering_wheel_bakelite"
+display_name = "Cream bakelite wheel"
+description = "A big thin cream wheel with chrome spokes, from the back of the Guildford antique shop. Slow, easy steering."
+slot = &"steering_wheel"
+visual = "wheel_bakelite"
+found_only = true

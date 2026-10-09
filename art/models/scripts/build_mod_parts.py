@@ -19,6 +19,7 @@ art/models/cars/parts/, plus custom number plates:
                        the albedo of the car's RoofFabric material.
 
     python3.11 art/models/scripts/build_mod_parts.py [--render out/prefix]
+    python3.11 art/models/scripts/build_mod_parts.py --plates old_black   (just those plates)
 """
 import os
 import sys
@@ -56,6 +57,8 @@ CUSTOM_PLATES = [
     ("birdo", "BIRDO", (0.08, 0.08, 0.09), (0.95, 0.95, 0.93)),
     ("slow", "SLOW 1", (0.82, 0.66, 0.24), (0.08, 0.08, 0.09)),
     ("bream", "BREAM", (0.95, 0.95, 0.93), (0.12, 0.26, 0.52)),
+    # a found part: an old black-and-white sixties plate, made-up number
+    ("old_black", "UFB-064", (0.93, 0.92, 0.88), (0.07, 0.07, 0.08)),
 ]
 
 
@@ -115,7 +118,10 @@ def export(builder, name):
 
 def plates():
     os.makedirs(PLATES, exist_ok=True)
+    only = sys.argv[sys.argv.index("--plates") + 1].split(",") if "--plates" in sys.argv else None
     for pid, text, ink, bg in CUSTOM_PLATES:
+        if only and pid not in only:
+            continue
         img = TX.plate(text, name="plate_" + pid, ink=ink, bg=bg)
         img.filepath_raw = os.path.abspath(PLATES + "plate_%s.png" % pid)
         img.file_format = "PNG"
@@ -135,6 +141,9 @@ def roofs():
 
 
 def main():
+    if "--plates" in sys.argv:
+        plates()
+        return
     export(foglamps, "foglamps_yellow.glb")
     export(sump, "sump_finned.glb")
     plates()

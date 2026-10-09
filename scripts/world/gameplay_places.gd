@@ -166,6 +166,13 @@ func _place_ref(ref: String) -> Vector3:
 			for site in get_tree().get_nodes_in_group(&"job_sites"):
 				if site.get("site_id") == id:
 					return (site as Node3D).global_position
+		"poi":
+			# A beach, fishing spot or landmark from the map (index.json "pois").
+			for streamer in get_tree().get_nodes_in_group(&"perth_map"):
+				if streamer.has_method("get_pois"):
+					for poi: Dictionary in streamer.get_pois():
+						if poi.get("id") == id:
+							return poi.p
 	return Vector3.INF
 
 
