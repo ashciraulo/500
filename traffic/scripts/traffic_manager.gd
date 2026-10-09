@@ -443,6 +443,7 @@ func _physics_process(tick: float) -> void:
 	_time_held += tick
 	_ticks_held += 1
 	if _ticks_held < STEP_EVERY:
+		_coast(tick)
 		return
 	var delta := _time_held
 	_ticks_held = 0
@@ -488,6 +489,23 @@ func _physics_process(tick: float) -> void:
 	paths.update(delta, focus_position())
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	step_ms = lerpf(step_ms, ms, 0.05)
+
+
+## On the tick between steps, cars and trains carry on at their speed, so they
+## move every frame: a frame that got one tick used to leave them standing
+## still, and the next one jumped them double. The next step places them
+## exactly again.
+func _coast(tick: float) -> void:
+	for v: TrafficVehicle in vehicles:
+		if absf(v.speed) > 0.01:
+			var t := v.body.global_transform
+			v.body.global_transform = Transform3D(t.basis, t.origin - t.basis.z * (v.speed * tick))
+	for train: TrafficTrain in trains:
+		if train.speed > 0.01:
+			var front := train.front
+			train.front += train.speed * tick
+			_place_train(train)
+			train.front = front
 
 
 # --- Focus, player and camera -------------------------------------------------
