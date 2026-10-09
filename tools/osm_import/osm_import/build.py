@@ -94,6 +94,11 @@ SHORE_REACH = 60.0    # ...out to this far from the water
 SEED_TOLERANCE = 1.5  # roads further than this from the DEM (ramps, cuttings) don't shape the ground
 DEM_NEAR = 10.0       # open ground starts to take the DEM this far from a road...
 DEM_FAR = 45.0        # ...and has all of it from here
+PLATFORM_ABOVE = 1.0   # platform deck over the tracks' centreline height
+PLATFORM_REACH = 8.0   # tracks this close to a platform set its height
+PLATFORM_SINK = 0.4    # ground under a platform stays this far below its deck
+PLATFORM_SINK_PAD = 5.5  # (a grid cell and a bit: the ground between grid points is interpolated)
+CANOPY_CLEAR = 5.0     # a station roof's underside over its highest platform
 STATION_REACH = 100.0  # tracks this close to a station platform are held level with each other
 TRACK_TIE = 15.0       # side by side: tracks this close (either side of an island platform)
 BUILT_REACH = 20.0    # ground this close to a building is interpolated from the roads
@@ -265,9 +270,16 @@ class Deck:
     bottom: float
     low: float | None = None
     landing: object = None
+    # A platform follows the tracks beside it, which can slope: its height
+    # is `slope` = (e0, n0, ue, un, h0, grade, s0, s1), h0 + grade * s along
+    # the axis (ue, un) from (e0, n0), with s held to [s0, s1].
+    slope: tuple | None = None
 
     def heights(self, e, n) -> np.ndarray:
         e, n = np.broadcast_arrays(np.asarray(e, dtype=np.float64), np.asarray(n, dtype=np.float64))
+        if self.slope is not None:
+            e0, n0, ue, un, h0, grade, s0, s1 = self.slope
+            return h0 + grade * np.clip((e - e0) * ue + (n - n0) * un, s0, s1)
         if self.landing is None or self.low is None or self.low >= self.top:
             return np.full(e.shape, self.top)
         d = shapely.distance(self.landing, shapely.points(e, n))
@@ -506,6 +518,7 @@ class World:
         self._seat_boardwalks()
         self._land_footbridges()
         self.deck_parts = self._level_decks()
+        self._canopy_levels(cfg.get("canopies", {}))
         print(f"  world prepared in {time.time() - t0:.1f}s: {len(self.ways)} ways, "
               f"{len(self.buildings)} buildings, {len(self.water)} water bodies")
 
@@ -641,9 +654,88 @@ class World:
                 landing = shapely.union_all(land[r])
                 if not landing.is_empty and 0.3 < top[r] - low[r] <= JETTY_DROP:
                     deck.low, deck.landing = low[r], landing
+            elif d[1] == "platform":
+                self._slope_platform(deck)
             decks.append(deck)
         self._seat_jetties([d for d in decks if d.kind in ("pier", "groyne")])
+        self._sink_under_platforms([d for d in decks if d.kind == "platform"])
         return decks
+
+    def _slope_platform(self, deck: Deck):
+        """A platform stands PLATFORM_ABOVE over the tracks beside it, sloping
+        with them along its length. Level at the ground's median, Perth's
+        long platforms (the tracks fall 5 m along them, down to the City
+        Link tunnel) were 1.5 m under the ground at one end and 2 m over the
+        rails at the other."""
+        p = deck.poly
+        pts = []
+        for w in self.ways:
+            if w.group != "rail" or w.tunnel or w.bridge or len(w.xy) < 2:
+                continue
+            if shapely.LineString(w.xy).distance(p) > PLATFORM_REACH:
+                continue
+            xy, h = densify(w.xy, w.h, 2.0)
+            near = shapely.dwithin(p, shapely.points(xy), PLATFORM_REACH)
+            pts.extend(np.column_stack([xy[near], h[near]]).tolist())
+        if len(pts) < 4:
+            return
+        pts = np.asarray(pts)
+        r = np.asarray(p.minimum_rotated_rectangle.exterior.coords)[:4]
+        sides = [r[1] - r[0], r[2] - r[1]]
+        u = max(sides, key=np.linalg.norm)
+        u = u / max(np.linalg.norm(u), 1e-9)
+        o = np.asarray(p.centroid.coords[0])
+        s_rail = (pts[:, :2] - o) @ u
+        if np.ptp(s_rail) < 5.0:
+            return
+        grade, h0 = np.polyfit(s_rail, pts[:, 2], 1)
+        ring = np.asarray(p.exterior.coords)
+        s_ring = (ring - o) @ u
+        deck.slope = (float(o[0]), float(o[1]), float(u[0]), float(u[1]), float(h0) + PLATFORM_ABOVE,
+                      float(grade), float(s_ring.min()), float(s_ring.max()))
+        deck.top = float(np.max(deck.heights(ring[:, 0], ring[:, 1])))
+        deck.bottom = min(deck.bottom, float(np.min(deck.heights(ring[:, 0], ring[:, 1]))) - 1.5)
+
+    def _sink_under_platforms(self, decks: list[Deck]):
+        """Keep the ground under a platform below its deck (between the
+        tracks it was fitted up to the surface model's roof mound)."""
+        hf = self.hf
+        nj, ni = hf.H.shape
+        for d in decks:
+            g = d.poly.buffer(PLATFORM_SINK_PAD)
+            b = g.bounds
+            i0, i1 = max(int((b[0] - hf.e0) / hf.step), 0), min(int((b[2] - hf.e0) / hf.step) + 2, ni)
+            j0, j1 = max(int((b[1] - hf.n0) / hf.step), 0), min(int((b[3] - hf.n0) / hf.step) + 2, nj)
+            if i0 >= i1 or j0 >= j1:
+                continue
+            E, N = np.meshgrid(hf.e0 + hf.step * np.arange(i0, i1), hf.n0 + hf.step * np.arange(j0, j1))
+            inside = shapely.contains_xy(g, E, N)
+            # Round the edge, not under the roads and tracks beside it.
+            core = getattr(self, "road_core", None)
+            if core is not None and core.shape == hf.H.shape:
+                inside &= shapely.contains_xy(d.poly, E, N) | ~core[j0:j1, i0:i1]
+            cap = d.heights(E, N) - PLATFORM_SINK
+            win = hf.H[j0:j1, i0:i1]
+            win[inside] = np.minimum(win[inside], cap[inside])
+
+    def _canopy_levels(self, canopies: dict):
+        """A canopy's roof goes `under` metres over the platforms beneath it
+        (and at least CANOPY_CLEAR over the highest), not over the ground
+        round its edge, which is the top of the cutting the station sits in."""
+        for b in self.buildings:
+            c = canopies.get(str(b.id))
+            if not c:
+                continue
+            tops = []
+            for d in self.deck_parts:
+                if d.kind == "platform" and d.poly.intersects(b.geom):
+                    ring = np.asarray(d.poly.exterior.coords)
+                    tops.append(d.heights(ring[:, 0], ring[:, 1]))
+            if not tops:
+                continue
+            tops = np.concatenate(tops)
+            base = max(float(np.median(tops)) + c["under"], float(np.max(tops)) + CANOPY_CLEAR)
+            b.tags = dict(b.tags, _canopy_base=f"{base:.2f}", _canopy_top=f"{base + c['depth']:.2f}")
 
     def _seat_jetties(self, decks: list[Deck]):
         """Ground meets jetties where they leave the shore, level with their
@@ -2556,12 +2648,12 @@ class TileBuilder:
             side = self.mb.surface("props", "concrete", "world")
             if d.kind == "pier":
                 self._deck_rails(d, p, side)
-            if d.landing is None:
+            if d.landing is None and d.slope is None:
                 flat_cap(surf, p, d.top, 3.0)
                 for r in [p.exterior, *p.interiors]:
                     walls(side, np.asarray(r.coords), d.bottom, d.top, 2.0, 2.0)
                 continue
-            # A ramp: the cap draped on its own fine grid of deck heights.
+            # A ramp (or a sloping platform): the cap draped on its own fine grid of deck heights.
             b = p.bounds
             es = np.arange(math.floor(b[0]) - 1.0, b[2] + 2.0, DECK_STEP)
             ns = np.arange(math.floor(b[1]) - 1.0, b[3] + 2.0, DECK_STEP)
@@ -2624,6 +2716,9 @@ class TileBuilder:
         ground = float(np.max(gh))
         base = float(np.min(gh)) - 0.4 if minh <= 0 else ground + minh
         top = ground + height
+        if "_canopy_base" in t:  # a roof over platforms (World._canopy_levels)
+            base, top = float(t["_canopy_base"]), float(t["_canopy_top"])
+            ground = base
         mrr = p.minimum_rotated_rectangle
         rect_ratio = area / max(mrr.area, 1e-6)
         roof = styles.roof_kind(t, area, height, rect_ratio)
