@@ -123,6 +123,7 @@ func _car(at: Vector3) -> void:
 	if not ResourceLoader.exists(CAR):
 		return
 	var model := (load(CAR) as PackedScene).instantiate() as Node3D
+	add_wheels(model)
 	PS1Model.apply(model)
 	add_child(model)
 	model.position = at
@@ -135,6 +136,22 @@ func _car(at: Vector3) -> void:
 				var keep := (m as ShaderMaterial).duplicate() as ShaderMaterial
 				keep.set_shader_parameter("late_keep", true)
 				g.set_surface_override_material(i, keep)
+
+
+## A parked car body has no wheels of its own (the car rig fits them): put
+## its style's wheels on its `Hub_FL`... empties.
+static func add_wheels(model: Node3D) -> void:
+	var style := ""
+	for node in model.get_children():
+		if node.name.begins_with("WheelStyle_"):
+			style = String(node.name).trim_prefix("WheelStyle_")
+	for hub_name: String in ["Hub_FL", "Hub_FR", "Hub_RL", "Hub_RR"]:
+		var hub := model.find_child(hub_name, true, false) as Node3D
+		var path := "res://art/models/cars/parts/wheel_%s_%s.glb" % [style, "l" if hub_name.ends_with("L") else "r"]
+		if hub == null or style == "" or not ResourceLoader.exists(path):
+			continue
+		var wheel := (load(path) as PackedScene).instantiate() as Node3D
+		hub.add_child(wheel)
 
 
 func _box(size: Vector3, at: Vector3, colour: Color, glow := 0.0, parent: Node3D = null) -> MeshInstance3D:

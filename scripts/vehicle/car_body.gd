@@ -90,7 +90,7 @@ func _process(_delta: float) -> void:
 	if not _swings.is_empty():
 		_swing_trinkets(car, _delta)
 	var braking := _brake_lights != null and _brake_lights.visible
-	_glow("LampHead", Color(1.0, 0.95, 0.82), head_glow if car.headlights_on else 0.0)
+	_glow("LampHead", Color(1.0, 0.95, 0.82), head_glow * (CarController.FLASH_BOOST if car.flashing else 1.0) if car.headlights_on or car.flashing else 0.0)
 	var tail := (brake_glow if braking else 0.0) + (tail_glow if car.headlights_on else 0.0)
 	_glow("LampTail", Color(1.0, 0.1, 0.06), tail)
 

@@ -57,6 +57,11 @@ func _ready() -> void:
 	var people := StoryPeople.new()
 	people.name = "StoryPeople"
 	add_child(people)
+	# More of the late city (story batch 3): at home, on the road, on the radio.
+	for event: Node in [LookingOut.new(), StoppedClock.new(), RepeatStreet.new(),
+			MinimapPassenger.new(), LookoutSignal.new(), StationVoice.new()]:
+		event.name = event.get_script().get_global_name()
+		add_child(event)
 	# The empty road hides the rest of the world, this node with it, so it
 	# lives beside it rather than under it.
 	var road := EmptyRoad.new()

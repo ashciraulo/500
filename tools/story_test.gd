@@ -17,6 +17,10 @@ extends SceneTree
 ##     twenty-to-three check (choice 1), the thirteen (choice 2), the endings,
 ##     the act cards, the midnight station's finds as a challenge stat, and
 ##     that things can't be used through a wall.
+##   - Batch 3: the headlight flash, the stopped clock, the minimap passenger,
+##     the lookouts answering, the station knowing where you are, the repeat
+##     street, looking out of the window (1979, then nothing), and the house
+##     through the door in act 3 (abandoned, with the tape on the stairs).
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/story_test.gd -- --no-save
 ##
@@ -198,7 +202,33 @@ func _process(_delta: float) -> bool:
 				var d: float = _player.global_position.distance_to(switch.interact_point())
 				_check(_player._nearest_thing() != switch, "nor through the wall from the porch with the door shut (%.1f m away)" % d)
 				_next()
-		4:
+		4:  # Batch 3: the events that come later in the story.
+			if _frames == 1:
+				_later_events(story, late, clock)
+				_player.call("get_out")
+			elif _frames == 150:
+				# Act 3: through the door, the house is empty and sheeted.
+				story.act_override = 3
+				clock.set_time(1.0)
+				_put_player(_home.spawn_transform(&"Spawn_Front").origin + Vector3.UP * 0.1)
+			elif _frames == 170:
+				_other.force = true
+				_home.toggle_door(&"Door_Front")
+				_check(_other.is_active() and _other.form == &"abandoned", "act 3: through the door the house is abandoned ('%s')" % _other.form)
+				_check(_home.find_child("HouseAbandoned", false, false) != null, "the sheets and leaves are in")
+				_check(_other.interact_hint() == "Pick up the cassette", "the tape on the stairs can be picked up ('%s')" % _other.interact_hint())
+				_other.interact()
+				_check(story.has_night(&"stairs_tape") and root.get_node("Discoveries").has("mystery/stairs_tape"),
+					"picking it up is a clue and a night")
+				_check(_other.interact_hint() == "", "and it's only there once")
+			elif _frames == 180:
+				_home.toggle_door(&"Door_Front")
+			elif _frames == 230:
+				_check(not _other.is_active() and _home.find_child("HouseAbandoned", false, false) == null, "door shut: your house again")
+				_other.force = false
+				story.act_override = 0
+				_next()
+		5:
 			return _finish()
 	return false
 
@@ -287,6 +317,100 @@ func _people(story: Node, clock: Node) -> void:
 			if c.stat == "clues_found":
 				story_challenges += 1
 	_check(story_challenges == 5, "one story challenge in each tier (%d)" % story_challenges)
+
+
+## The events of batch 3 that can be checked in one go: the headlight
+## flash, the stopped clock, the minimap passenger, the lookouts answering,
+## the station knowing where you are, the repeat street finding a street,
+## and looking out of the window.
+func _later_events(story: Node, late: Node, clock: Node) -> void:
+	var events := {}
+	for n in ["StoppedClock", "RepeatStreet", "MinimapPassenger", "LookoutSignal", "StationVoice", "LookingOut"]:
+		events[n] = _main.find_child(n, true, false)
+		_check(events[n] != null, "%s is in the world" % n)
+	clock.set_time(1.0)
+	# Inside, so opening the front door doesn't start the other house.
+	_put_player(_home.to_global(_H79.at(Vector3(1.0, 1.5, 0.2))))
+	# The headlight flash: on, brighter, then back as it was.
+	var flashed := [false]
+	var on_flash := func() -> void: flashed[0] = true
+	_car.lights_flashed.connect(on_flash)
+	var lights := _car.get_node_or_null("Headlights") as Node3D
+	var was_on: bool = _car.headlights_on
+	_car.flash_lights(true)
+	_check(_car.flashing and flashed[0] and lights != null and lights.visible, "K flashes the headlights")
+	_car.flash_lights(false)
+	_check(not _car.flashing and lights.visible == was_on, "and lets them go")
+	_car.lights_flashed.disconnect(on_flash)
+	# The stopped clock: the dash and the phone say 02:40 while it runs.
+	var sc: Node = events.StoppedClock
+	sc.force = true
+	_check(sc.begin(), "the stopped clock can start")
+	_check(clock.shown_time_string() == "02:40" and clock.time_string() != "02:40", "the clocks say 02:40 (%s)" % clock.shown_time_string())
+	sc._let_go()
+	sc.force = false
+	_check(clock.shown_time_string() == clock.time_string() and not late.active(), "and then the right time again")
+	_check(story.has_night(&"stopped_clock"), "the stopped clock is in the Nights log")
+	# The minimap passenger: a second arrow a way behind along the way you came.
+	var mp: Node = events.MinimapPassenger
+	var trail := PackedVector3Array()
+	for i in 120:
+		trail.append(_car.global_position + Vector3(0, 0, 2.0 * (120 - i)))
+	mp._trail = trail
+	mp.force = true
+	_check(mp.begin(), "the minimap passenger can start")
+	mp._gap = mp.FOLLOW
+	mp._place()
+	var shown: Vector2 = mp.shown
+	var behind := shown.distance_to(Vector2(_car.global_position.x, _car.global_position.z)) if shown != Vector2.INF else -1.0
+	_check(absf(behind - mp.FOLLOW) < 3.0, "the second arrow is %.0f m behind (%.0f)" % [mp.FOLLOW, behind])
+	mp.finish()
+	mp.force = false
+	_check(mp.shown == Vector2.INF and mp.alpha == 0.0 and not late.active(), "and it's gone when it's over")
+	# The lookouts: three flashes, and the lights answer; the first leaves a card.
+	var ls: Node = events.LookoutSignal
+	ls.force = true
+	ls._here = ls.LOOKOUTS[0]
+	_check(ls.begin(), "a lookout can answer")
+	_check(ls._lights != null and ls._lights.get_child_count() == 2, "two lights out on the water")
+	ls._answer_done()
+	ls.force = false
+	_check(ls.answered.has("fraser") and story.has_night(&"lookout_fraser") and root.get_node("Discoveries").has(ls.CLUE),
+		"it's in the Nights log, and the card is a clue")
+	_check(story.flag(&"photo_back_seat"), "and the photograph from the back seat is due (the bird thread's lab)")
+	_check(ls._lights == null and not late.active(), "and the lights go")
+	# The station knows where you are.
+	story.act_override = 3
+	var line: String = events.StationVoice.here_line()
+	_check(line != "", "the voice on the midnight station says where you are ('%s')" % line)
+	story.act_override = 0
+	# The repeat street needs a long straight street: there's one near home.
+	var g := MapData.shared().routes
+	var found := {}
+	for r in g.road_pts.size():
+		if not g.road_kinds[r] in events.RepeatStreet.KINDS or g.road_names[r] == "" or g.road_pts[r][0].distance_to(_home.global_position) > 1500.0:
+			continue
+		var t := TrafficGraph.tangent_at(g.road_pts[r], g.road_cum[r], 1.0)
+		found = events.RepeatStreet.street_ahead(g.road_pts[r][0], Vector2(t.x, t.z))
+		if not found.is_empty():
+			break
+	_check(not found.is_empty(), "the repeat street finds a street near home (%s)" % found.get("name", "none"))
+	# Looking out: the lane in 1979, then nothing; opening a door lets it go.
+	var lo: Node = events.LookingOut
+	lo.force = true
+	_check(lo.begin(&"1979"), "looking out can start")
+	_check(lo.form == &"1979" and _home.find_child("Lane1979", false, false) != null and (lo._glass as Array).size() > 0,
+		"the lane is 1979, and the glass is clear (%d panes)" % (lo._glass as Array).size())
+	var glass: Array = (lo._glass as Array)[0]
+	_home.toggle_door(&"Door_Front")
+	_check(lo.form == &"" and not late.active(), "opening the front door lets it go")
+	_check((glass[0] as MeshInstance3D).get_surface_override_material(glass[1]) == glass[2], "and the glass is as it was")
+	_home.toggle_door(&"Door_Front")
+	_check(lo.begin(&"nothing"), "and nothing, from act 4")
+	_check(lo._lit.size() > 0, "the house is kept lit (%d surfaces)" % lo._lit.size())
+	lo.let_go()
+	lo.force = false
+	_check(lo._void == 0.0 and lo.form == &"" and not late.active(), "letting go brings the world back")
 
 
 ## Each run: drive up to ~1.2 km before May Drive's end, start the road,
