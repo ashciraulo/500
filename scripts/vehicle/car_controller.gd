@@ -829,6 +829,7 @@ func flash_lights(on: bool) -> void:
 	if lights:
 		lights.visible = headlights_on or on
 		for lamp: Light3D in lights.find_children("*", "Light3D", true, false):
+			_keep_out_of_rooms(lamp)
 			if on:
 				lamp.set_meta(&"before_flash", lamp.light_energy)
 				lamp.light_energy *= FLASH_BOOST

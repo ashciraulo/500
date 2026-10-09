@@ -29,7 +29,7 @@ const LASTS := 360.0
 ## across the lane, its nose towards +x; a Valiant outside number 17; the tin
 ## bins at the gates; the lamp.
 const CAR_AT := Vector3(2.2, -7.9, 0.0)
-const VALIANT_AT := Vector3(8.4, -5.4, 0.0)
+const VALIANT_AT := Vector3(9.4, -5.6, 0.0)
 const BINS_AT := [Vector3(-0.2, -3.6, 0.0), Vector3(1.9, -3.6, 0.0), Vector3(6.4, -3.6, 0.0), Vector3(-4.0, -3.6, 0.0)]
 const LAMP_AT := Vector3(4.2, -9.6, 0.0)
 ## In 1979 the lane has sodium lamps all along it, across the way, and one
