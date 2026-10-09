@@ -982,3 +982,30 @@ def test_boardwalk_sits_just_over_the_ground_or_water_it_crosses():
     dry = np.abs(xs) > 20.0
     assert np.allclose(bw.h[dry], ground[dry] + BOARDWALK_DECK)
     assert np.allclose(bw.h[np.abs(xs) < 20.0], 7.0 + BOARDWALK_DECK)
+
+
+def test_war_memorial_stop_is_the_car_park_above_it():
+    # The memorial stands on the escarpment's brow, 15 m below Wadjuk
+    # Carpark where you park for it. Other landmarks keep the usual 8 m
+    # climb, so they'd take the lower car park further off.
+    from types import SimpleNamespace as NS
+    from shapely.geometry import box as sbox
+    from osm_import import landmarks, pois
+    hf = flat_field(55.0, size=1000.0)
+    E, N = np.meshgrid(*hf.node_coords())
+    hf.H[:] = np.where(N > 150.0, 70.0, np.where(N < -250.0, 61.0, 55.0))
+    lot = {"amenity": "parking", "parking": "surface"}
+    above = NS(tags=lot, geom=sbox(-30.0, 160.0, 30.0, 200.0))   # 15 m up, 160 m off
+    below = NS(tags=lot, geom=sbox(-30.0, -330.0, 30.0, -290.0))  # 6 m up, 290 m off
+
+    def stop(lm_id):
+        cat = next(lm for lm in landmarks.CATALOGUE if lm.id == lm_id)
+        lm = landmarks.Landmark(cat.id, cat.name, cat.kind, cat.osm, cat.suburb,
+                                geom=sbox(-10.0, -10.0, 10.0, 10.0), params=dict(cat.params))
+        world = NS(hf=hf, parking=[above, below], poi_areas=[], poi_nodes=[], decks=[], ways=[],
+                   water=[], named=[], landmarks=[lm])
+        out = pois.build(world, {}, None, 500.0, {"-1_-1", "-1_0", "0_-1", "0_0"}, lambda e, n: True)
+        return next(p for p in out if p["id"] == f"landmark_{lm_id}")["p"]
+
+    assert stop("state_war_memorial")[2] < -150.0   # (Godot z = -n: up at Wadjuk)
+    assert stop("bell_tower")[2] > 250.0

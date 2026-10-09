@@ -90,19 +90,19 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
         entry.update({k: v for k, v in extra.items() if v})
         out[pid] = entry
 
-    def park_near(e, n, radius):
-        """A car park or road near (e, n) at about its height."""
+    def park_near(e, n, radius, climb=MAX_CLIMB):
+        """A car park or road near (e, n) at about its height (within `climb`)."""
         h0 = max(float(hf.sample(e, n)), 1.0)  # a feature over the water is at the shore's height
 
         def level(pe, pn):
-            return abs(float(hf.sample(pe, pn)) - h0) < MAX_CLIMB
+            return abs(float(hf.sample(pe, pn)) - h0) < climb
 
         lot = lots.near(e, n, radius, level)
         if lot:
             return lot, None
         near = [w for w in world.ways if w.group == "road"
                 and np.min(np.hypot(w.xy[:, 0] - e, w.xy[:, 1] - n)) < radius + 300
-                and np.min(np.abs(w.h - h0)) < MAX_CLIMB]
+                and np.min(np.abs(w.h - h0)) < climb]
         snap = places.snap_to_road(near, e, n, radius)
         if snap and level(snap[0], snap[1]):
             return (snap[0], snap[1]), snap[2]
@@ -204,7 +204,7 @@ def build(world, cfg, proj, size: float, built_tiles: set, inside_hf) -> list[di
     # Landmarks.
     for lm in world.landmarks:
         e, n = lm.center
-        park, yaw = park_near(e, n, 300.0)
+        park, yaw = park_near(e, n, 300.0, lm.params.get("climb", MAX_CLIMB))
         if park is None:
             continue
         add(f"landmark_{lm.id}", "landmark", lm.name, (e, n), park, None, suburb=lm.suburb)
