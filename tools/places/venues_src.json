@@ -984,6 +984,190 @@
     "room": "#e8e0d0",
     "light": "#fff0d0"
    }
+  },
+  {
+   "id": "pettigrews",
+   "osm": "a150404573",
+   "lat": -31.9441094,
+   "lon": 115.8543931,
+   "name": "Pettigrew's Dispensary",
+   "kind": "cafe",
+   "street": "Aberdeen St",
+   "width": 6.0,
+   "hours": [
+    [
+     6.75,
+     15
+    ]
+   ],
+   "look": {
+    "wall": "#e6d8b8",
+    "wall2": "#2f4a3a",
+    "trim": "#2a2a26",
+    "front": "arched",
+    "door": "centre",
+    "cornice": true,
+    "sign": {
+     "text": "PETTIGREW'S DISPENSARY",
+     "font": "serif",
+     "style": "letters",
+     "ink": "#2f4a3a"
+    },
+    "awning": {
+     "type": "none"
+    },
+    "seating": {
+     "type": "bistro",
+     "rows": 1,
+     "chair": "#2f4a3a",
+     "table": "#e6e2d8"
+    },
+    "aframe": true,
+    "board": [
+     "COFFEE",
+     "CAKES",
+     "TEA"
+    ],
+    "lamps": true,
+    "interior": "cafe",
+    "room": "#d2bf9c"
+   }
+  },
+  {
+   "id": "bottega_lago",
+   "osm": "n5318091230",
+   "lat": -31.9464402,
+   "lon": 115.8579198,
+   "name": "Bottega Lago",
+   "kind": "cafe",
+   "street": "Lake St",
+   "width": 8.0,
+   "hours": [
+    [
+     7.5,
+     17.5
+    ]
+   ],
+   "look": {
+    "wall": "#efe8da",
+    "wall2": "#2a6a3a",
+    "trim": "#1f1f1f",
+    "door": "left",
+    "sign": {
+     "text": "BOTTEGA LAGO",
+     "font": "serif",
+     "style": "painted",
+     "ink": "#f4efe2",
+     "board": "#b8282a"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#2a6a3a",
+     "stripe": "#f2eee4"
+    },
+    "seating": {
+     "type": "bistro",
+     "rows": 1,
+     "chair": "#1c1c1c",
+     "table": "#efece6"
+    },
+    "aframe": true,
+    "board": [
+     "CAFFE",
+     "PANINI",
+     "DELI"
+    ],
+    "interior": "cafe",
+    "room": "#c8a878"
+   }
+  },
+  {
+   "id": "spoke_and_shot",
+   "osm": "a150024671",
+   "lat": -31.942052,
+   "lon": 115.8632529,
+   "name": "Spoke & Shot",
+   "kind": "cafe",
+   "street": "William St",
+   "width": 5.0,
+   "hours": [
+    [
+     7,
+     15
+    ]
+   ],
+   "look": {
+    "wall": "#f2f0ea",
+    "wall2": "#1c1c1c",
+    "trim": "#1c1c1c",
+    "front": "glass",
+    "door": "right",
+    "sign": {
+     "text": "SPOKE & SHOT",
+     "font": "sans",
+     "style": "letters",
+     "ink": "#1c1c1c"
+    },
+    "awning": {
+     "type": "none"
+    },
+    "seating": {
+     "type": "bench",
+     "rows": 1,
+     "table": "#7a5236"
+    },
+    "aframe": true,
+    "board": [
+     "COFFEE",
+     "JAFFLE",
+     "BIKES"
+    ],
+    "interior": "cafe",
+    "room": "#e8e4dc"
+   }
+  },
+  {
+   "id": "goliath_coffee",
+   "osm": "n11076313677",
+   "lat": -31.9486987,
+   "lon": 115.857779,
+   "name": "Goliath Coffee",
+   "kind": "cafe",
+   "street": "Nicks Lane",
+   "width": 3.0,
+   "hours": [
+    [
+     7,
+     14
+    ]
+   ],
+   "lane": true,
+   "look": {
+    "wall": "#2c2c2e",
+    "wall2": "#2c2c2e",
+    "trim": "#111111",
+    "door": "left",
+    "sign": {
+     "text": "GOLIATH",
+     "font": "sans",
+     "style": "painted",
+     "ink": "#f2f2ee",
+     "board": "#161616"
+    },
+    "awning": {
+     "type": "none"
+    },
+    "seating": {
+     "type": "none"
+    },
+    "aframe": true,
+    "board": [
+     "COFFEE",
+     "BAGELS"
+    ],
+    "interior": "cafe",
+    "room": "#cdb898"
+   }
   }
  ]
 }

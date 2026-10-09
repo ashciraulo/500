@@ -36,6 +36,7 @@ FIT = 0.22            # how far the fit-out stands out from the building's wall
 GLASS = 0.09          # the painted room, this far out from the wall
 HEAD = 2.75           # top of the doors and windows
 PX = 32               # room card pixels per metre
+UV_PAVE = 2.4         # the footpath texture repeats this often (the map's sidewalk UV scale)
 FONTS = {
     "serif": "ui/fonts/DMSerifDisplay-Regular.ttf",
     "sans": "ui/fonts/Jost-SemiBold.ttf",
@@ -686,13 +687,17 @@ def build(entry, look_in):
     # footpath, so the sign goes on a taller band above it where the wall
     # allows (the old pubs' names are up on the parapet anyway)
     lift = {"box": 0.36, "verandah": 0.67, "lace": 0.67}.get(aw_type, 0.14 if aw_type == "canvas" else 0.0)
-    raise_top = {"box": 0.36, "verandah": 0.9, "lace": 0.9}.get(aw_type, 0.0)
+    raise_top = {"box": 0.36, "verandah": 1.9, "lace": 1.9}.get(aw_type, 0.0)
     # never lower than the shopfront: on a low building it stands up past
     # the roof as a parapet, as plenty of Northbridge's single-storey shops do
     # (a box awning's sign band always gets its extra height, parapet or not)
     floor_top = look.get("height", 3.55) + (raise_top if aw_type == "box" else 0.0)
     top = max(floor_top, min(look.get("height", 3.55) + raise_top, wall_top - 0.1))
     head = min(HEAD, top - 0.45)
+    if aw_type in ("verandah", "lace"):
+        # from across the street the verandah's roof hides the wall for about
+        # a metre over it: go clear of that where the wall is tall enough
+        lift = max(lift, min(1.3, top - head - 0.8))
     pil = 0.28 if W > 3.5 else 0.18
     base_lo = g.low(-hw, hw, 0.0, 0.5) - 0.15
     front = look.get("front", "windows")
@@ -799,6 +804,7 @@ def build(entry, look_in):
         vd = min(aw.get("depth", 3.2), reach)
         post_lines = _verandah(p, col, M, aw, entry, look, g, hw, head, top, vd, poles, vid)
         awd = vd
+    _apron(p, entry, g)
     # outside: tables, umbrellas, barriers, planters, the board
     seat = look.get("seating", {"type": "none"})
     blocked = [(o[1], o[2]) for o in poles] + [(x, d) for x, d in post_lines]
@@ -820,6 +826,48 @@ def build(entry, look_in):
             p += _aframe(M, dx, dd, g, look.get("board", ["COFFEE", "TODAY"]), seed)
     sockets = {"Door": ((door_x[0] if door_x else 0.0), -0.8, 0.0)}
     return p, sockets, col
+
+
+def _apron(p, entry, g):
+    """Pave the strip of urban verge some tiles leave between the wall and
+    the footpath (venues.json's `pave`, how far out each ground column is
+    still unpaved) with the footpath's own paving, just above the ground, so
+    the tables stand on a forecourt not grass."""
+    pave = entry.get("pave")
+    if not pave:
+        return
+    x0 = float(entry["ground_x"][0])
+    img = bpy.data.images.load(os.path.join(C.REPO, "map/textures/sidewalk.png"), check_existing=True)
+    img.pack()
+    mat = C.mat("VN_Pave", "#ffffff", rough=0.95, image=img)
+    verts, faces, uvs = [], [], []
+    for c in range(len(pave) - 1):
+        d1 = max(pave[c], pave[c + 1])
+        if d1 <= 0.0:
+            continue
+        xa, xb = x0 + c * 0.5, x0 + (c + 1) * 0.5
+        ds = _steps(0.0, d1, 0.5)
+        base = len(verts)
+        for d in ds:
+            for x in (xa, xb):
+                verts.append((x, -d, g(x, d) + 0.025))
+                uvs.append((x / UV_PAVE, d / UV_PAVE))
+        for i in range(len(ds) - 1):
+            a = base + 2 * i
+            faces.append((a, a + 2, a + 3, a + 1))
+    if not faces:
+        return
+    o = C.mesh_obj("apron", verts, faces, mat)
+    uv = o.data.uv_layers.new(name="UVMap")
+    for poly in o.data.polygons:
+        for li in poly.loop_indices:
+            uv.data[li].uv = uvs[o.data.loops[li].vertex_index]
+    o.data.update()
+    for poly in o.data.polygons:
+        if poly.normal.z < 0:
+            o.data.flip_normals()
+        break
+    p.append(o)
 
 
 def _sign(p, M, sign, entry, look, W, head, top, vid):
@@ -873,7 +921,9 @@ def _blade(p, M, blade, W, head, top, vid):
     p.append(bx((x - 0.03, -FIT - 0.3, z0 + h * 0.15), (x + 0.03, -FIT, z0 + h * 0.2), M["black"]))
     p.append(bx((x - 0.03, -FIT - 0.3, z0 + h * 0.8), (x + 0.03, -FIT, z0 + h * 0.85), M["black"]))
     p.append(bx((x - 0.06, -FIT - 0.3 - out, z0), (x + 0.06, -FIT - 0.3, z0 + h), bm))
+    # a lightbox's letters are film on the lit panel: they glow their own colour
     ink = (C.mat("VN_Neon_blade_" + vid, col, rough=0.3, emit=col, emit_strength=1.0) if style == "neon"
+           else C.mat("VN_Glow_bladeink_" + vid, col, rough=0.6, emit=col, emit_strength=1.0) if style == "lightbox"
            else _m("BladeInk_" + vid, col, 0.6))
     text = blade.get("text", "BAR")
     vertical = "\n".join(text) if blade.get("vertical", len(text) <= 5) else text
@@ -885,7 +935,9 @@ def _blade(p, M, blade, W, head, top, vid):
         me = o.data
         for v in me.vertices:
             vx, vy, vz = v.co
-            v.co = (x + side * 0.07, -FIT - 0.3 - out / 2 + (vx if side > 0 else -vx),
+            # well clear of the panel (0.06 each side), or the wobbling
+            # low-res vertices let the panel through the letters
+            v.co = (x + side * 0.1, -FIT - 0.3 - out / 2 + (vx if side > 0 else -vx),
                     z0 + h / 2 + vz)
         me.update()
         _face_x(o, side)
