@@ -355,7 +355,10 @@ func _listen() -> void:
 	Classics.rumour_heard.connect(func(_car: String, _text: String) -> void:
 		post("Check Leads on your phone (Tab / X).", "classic", "", "New barn-find rumour"))
 	Classics.wreck_found.connect(func(car_id: String) -> void:
-		post("A %s. It's on the bench at home." % CarCatalogue.get_car(car_id).get("name", "classic"), "classic",
+		var car_name := String(CarCatalogue.get_car(car_id).get("name", "classic"))
+		# "An Abarth 595 SS", "A Nuova 500" ("A 500 F" reads "a five hundred").
+		var article := "An" if car_name.left(1).to_lower() in ["a", "e", "i", "o", "u"] else "A"
+		post("%s %s. It's on the bench at home." % [article, car_name], "classic",
 				"music/mus_sting_barn_find|ui/ui_badge_pickup", "", "Music"))
 	Classics.restored.connect(func(car_id: String, _finish: String) -> void:
 		post("The %s is finished. Take it out from the Cars tab at home." % CarCatalogue.get_car(car_id).get("name", "classic"), "classic",

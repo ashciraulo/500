@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"gear_knob_bollard"
+display_name = "Brass bollard knob"
+description = "Turned from an old bollard cap by someone who fished off the North Mole. Heavy, and always cold first thing."
+slot = &"gear_knob"
+visual = "knob_bollard"
+found_only = true

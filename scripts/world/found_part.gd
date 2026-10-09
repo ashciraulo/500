@@ -38,7 +38,12 @@ func _ready() -> void:
 	var model_path := ""
 	if part and part.visual != "":
 		model_path = CarController.PART_MODEL_PATH % (part.visual + ("_l" if part.slot == &"wheels" else ""))
-	if model_path != "" and ResourceLoader.exists(model_path):
+		if not ResourceLoader.exists(model_path):
+			# Parts made per body family (roof racks): show the modern one.
+			model_path = CarController.PART_MODEL_PATH % (part.visual + "_modern")
+	if part and part.slot == &"plate":
+		_visual.add_child(_plate(part.visual))
+	elif model_path != "" and ResourceLoader.exists(model_path):
 		var model := (load(model_path) as PackedScene).instantiate() as Node3D
 		_visual.add_child(model)
 		PS1Model.apply(model)
@@ -51,6 +56,12 @@ func _ready() -> void:
 			second.rotation.z = 0.3
 			_visual.add_child(second)
 			PS1Model.apply(second)
+		elif part.slot == &"steering_wheel":
+			# Lying flat on the ground.
+			model.rotation.x = -PI / 2
+			model.position.y = 0.06
+		elif part.slot == &"gear_knob":
+			model.position.y = 0.05
 		else:
 			model.position.y = 0.15 if part.slot != &"roof" else 0.25
 	var glint := OmniLight3D.new()
@@ -60,6 +71,36 @@ func _ready() -> void:
 	glint.position.y = 0.8
 	_visual.add_child(glint)
 	_refresh()
+
+
+## A number plate propped up on its edge, leaning back against whatever's
+## behind it (local -Z): the plate texture on the front, dark on the back.
+func _plate(visual: String) -> Node3D:
+	var root := Node3D.new()
+	root.position = Vector3(0.0, 0.045, 0.0)
+	root.rotation.x = -0.25
+	var path := "res://art/models/cars/plates/%s.png" % visual
+	var face := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.37, 0.0925)
+	quad.center_offset = Vector3(0.0, 0.0925 * 0.5, 0.004)
+	var material := StandardMaterial3D.new()
+	if ResourceLoader.exists(path):
+		material.albedo_texture = load(path)
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	quad.material = material
+	face.mesh = quad
+	root.add_child(face)
+	var back := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.38, 0.1, 0.006)
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.12, 0.12, 0.13)
+	box.material = dark
+	back.mesh = box
+	back.position = Vector3(0.0, 0.0463, 0.0)
+	root.add_child(back)
+	return root
 
 
 func _process(delta: float) -> void:
