@@ -646,10 +646,11 @@ const HOLLOW := "res://art/models/home/mystery/boobook_hollow.glb"
 var _photo_spots := {}
 
 
-## Whether a wrong bird can be out now: the mystery is far enough along and
-## it's its hour.
+## Whether a wrong bird can be out now: the mystery is far enough along, it's
+## its hour, and the late city hasn't gone (City of Light makes them ordinary).
 static func wrong_ready(sp: Dictionary, hour: float) -> bool:
-	return sp.get("wrong", false) and Discoveries.has(String(sp.get("after", ""))) and FieldJournal.is_about(sp, hour, 0.0)
+	return sp.get("wrong", false) and Discoveries.has(String(sp.get("after", ""))) and FieldJournal.is_about(sp, hour, 0.0) \
+		and not FieldJournal.wrong_ordinary()
 
 
 func _try_wrong(focus: Vector3) -> void:

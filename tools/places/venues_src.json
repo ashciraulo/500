@@ -1031,7 +1031,11 @@
     "lamps": true,
     "interior": "cafe",
     "room": "#d2bf9c"
-   }
+   },
+   "at": [
+    36.0,
+    -188.5
+   ]
   },
   {
    "id": "bottega_lago",

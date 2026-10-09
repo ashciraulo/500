@@ -90,6 +90,31 @@ const FRESH_FLOOR := 0.4
 ## The first fish of a species weighed in earns the club's "new to the board" bonus.
 const FIRST_FISH_BONUS := 1.5
 
+## The late city (docs/STORY.md), from act 3: wrong-bird prints come back
+## blank, and each goes to Ros for Mick's field guide or to the buyer, who
+## leaves cash under the front door the next morning.
+const BLANKS_FROM_ACT := 3
+## What the buyer pays for a blank print, by stars; the thirteen's is the
+## story's second choice.
+const BUYER_PAY := [0, 150, 250, 400]
+const THIRTEEN_PAY := 5000
+const THIRTEEN := "wrong_cockatoos"
+## The note in the envelope names the bird.
+const BUYER_NOTES := {
+	"wrong_frogmouth": "For the bird on the pole. More welcome.",
+	"wrong_magpie": "For the magpie that sings. More welcome.",
+	"wrong_swan": "For the swan. More welcome.",
+	"wrong_cockatoos": "For the thirteen.",
+	"wrong_ibis": "For the bird in the crossing. More welcome.",
+	"wrong_boobook": "For the owl and its tape. More welcome.",
+	"wrong_grey_bird": "For the grey bird. It knows you.",
+}
+## The endings (Story.ending()): City of Light makes the wrong birds ordinary;
+## Lights Out fades their pages to blank over a week.
+const CITY_OF_LIGHT := &"city_of_light"
+const LIGHTS_OUT := &"lights_out"
+const FADE_DAYS := 7.0
+
 var birds := {}
 var bird_order: PackedStringArray = []
 var habitats: Array = []
@@ -103,6 +128,17 @@ var lens := 0
 var film := 0
 var prints_sold := 0
 var money_from_prints := 0
+## Blank wrong-bird prints waiting at the lab for Ros or the buyer: [{species, stars, file, day}].
+var blanks: Array = []
+## Wrong bird id -> the day Ros put its print in Mick's field guide.
+var guide := {}
+## Wrong bird id -> prints the buyer's had.
+var buyer_prints := {}
+## Cash the buyer owes (it comes under the door the morning after `buyer_day`).
+var buyer_owed := 0
+var buyer_day := -1
+var buyer_note := ""
+var money_from_buyer := 0
 
 var fish := {}
 var fish_order: PackedStringArray = []
@@ -407,8 +443,11 @@ func develop() -> Dictionary:
 			prints_sold += 1
 			Progression.add_stat("prints_sold")
 		total += pay
+		var blank: bool = frame.get("wrong", false) and story_act() >= BLANKS_FROM_ACT
+		if blank:
+			blanks.append({"species": id, "stars": int(frame.stars), "file": frame.file, "day": GameClock.day})
 		prints.append({"species": id, "name": bird(id).get("name", id), "stars": frame.stars, "pay": pay,
-			"wrong": frame.get("wrong", false), "first": first and pay > 0, "file": frame.file})
+			"wrong": frame.get("wrong", false), "blank": blank, "first": first and pay > 0, "file": frame.file})
 	var fee := DEVELOP_PRICE if not roll.is_empty() else 0
 	var net := total - fee
 	if net > 0:
@@ -420,6 +459,103 @@ func develop() -> Dictionary:
 	film_changed.emit(film_left(), roll_size())
 	roll_developed.emit(prints, net)
 	return {"prints": prints, "pay": net, "fee": fee, "gross": total}
+
+
+# --- the late city: blank prints, Ros and the buyer ---------------------------------------
+
+func _story() -> Node:
+	return get_node_or_null(^"/root/Story") if is_inside_tree() else null
+
+
+## The story's act (1 without the Story autoload).
+func story_act() -> int:
+	var story := _story()
+	return int(story.call("act")) if story else 1
+
+
+## The story's ending, or &"" before the finale.
+func story_ending() -> StringName:
+	var story := _story()
+	return StringName(story.call("ending")) if story else &""
+
+
+## Whether this blank print is the thirteen and the story hasn't had its answer yet.
+func is_thirteen_choice(p: Dictionary) -> bool:
+	var story := _story()
+	return String(p.species) == THIRTEEN and story != null and StringName(story.call("choice", &"thirteen")) == &""
+
+
+## What the buyer would pay for blank print `p`.
+func buyer_offer(p: Dictionary) -> int:
+	return THIRTEEN_PAY if is_thirteen_choice(p) else int(BUYER_PAY[clampi(int(p.stars), 1, 3)])
+
+
+## Blank print `index` goes to Ros (`&"ros"`, a page of Mick's field guide)
+## or the buyer (`&"buyer"`). Returns what the buyer will pay (0 for Ros).
+func give_blank(index: int, to: StringName) -> int:
+	if index < 0 or index >= blanks.size():
+		return 0
+	var p: Dictionary = blanks[index]
+	var id := String(p.species)
+	var pay := buyer_offer(p) if to == &"buyer" else 0
+	var story := _story()
+	if is_thirteen_choice(p):
+		story.call("make_choice", &"thirteen", to)
+	if to == &"ros":
+		if not guide.has(id):
+			guide[id] = GameClock.day
+	else:
+		buyer_prints[id] = int(buyer_prints.get(id, 0)) + 1
+		buyer_owed += pay
+		buyer_day = GameClock.day
+		buyer_note = String(BUYER_NOTES.get(id, "More welcome."))
+	blanks.remove_at(index)
+	if story:
+		story.call("note_print", id, to)
+	return pay
+
+
+## Night pages of Mick's field guide filled, and how many there are.
+func guide_pages() -> int:
+	return guide.size()
+
+
+func guide_total() -> int:
+	var n := 0
+	for id: String in bird_order:
+		if birds[id].get("wrong", false):
+			n += 1
+	return n
+
+
+## The buyer's envelope is under the door: the morning after a print went his way.
+func envelope_ready() -> bool:
+	return buyer_owed > 0 and (GameClock.day > buyer_day and GameClock.time_of_day >= 5.0 or GameClock.day > buyer_day + 1)
+
+
+## Pick up the envelope. Returns {pay, note}, or {} if there isn't one.
+func take_envelope() -> Dictionary:
+	if not envelope_ready():
+		return {}
+	var got := {"pay": buyer_owed, "note": buyer_note}
+	Wallet.earn(buyer_owed)
+	money_from_buyer += buyer_owed
+	buyer_owed = 0
+	buyer_note = ""
+	return got
+
+
+## City of Light: the wrong birds are just birds now.
+func wrong_ordinary() -> bool:
+	return story_ending() == CITY_OF_LIGHT
+
+
+## Lights Out: how far the wrong birds' pages have faded (0 none, 1 blank).
+func page_fade() -> float:
+	if story_ending() != LIGHTS_OUT:
+		return 0.0
+	var since := GameClock.day - int(_story().call("ending_day"))
+	return clampf((since + GameClock.time_of_day / 24.0) / FADE_DAYS, 0.0, 1.0)
 
 
 ## Buy the next binoculars, camera, lens or film at the lab. Returns false if you can't.
@@ -728,6 +864,8 @@ func stat(stat_name: String) -> float:
 func save_state() -> Dictionary:
 	return {"entries": entries, "roll": roll, "binoculars": binoculars, "camera": camera, "lens": lens, "film": film,
 		"prints_sold": prints_sold, "money_from_prints": money_from_prints,
+		"blanks": blanks, "guide": guide, "buyer_prints": buyer_prints, "buyer_owed": buyer_owed,
+		"buyer_day": buyer_day, "buyer_note": buyer_note, "money_from_buyer": money_from_buyer,
 		"catches": catches, "esky": esky, "rod": rod, "esky_level": esky_level, "crab_net": has_crab_net,
 		"ice_until": ice_until, "fish_weighed": fish_weighed, "money_from_fish": money_from_fish, "crab_nets": crab_nets}
 
@@ -741,6 +879,13 @@ func load_state(data: Dictionary) -> void:
 	film = int(data.get("film", 0))
 	prints_sold = int(data.get("prints_sold", 0))
 	money_from_prints = int(data.get("money_from_prints", 0))
+	blanks = data.get("blanks", [])
+	guide = data.get("guide", {})
+	buyer_prints = data.get("buyer_prints", {})
+	buyer_owed = int(data.get("buyer_owed", 0))
+	buyer_day = int(data.get("buyer_day", -1))
+	buyer_note = String(data.get("buyer_note", ""))
+	money_from_buyer = int(data.get("money_from_buyer", 0))
 	catches = data.get("catches", {})
 	esky = data.get("esky", [])
 	rod = int(data.get("rod", 0))
