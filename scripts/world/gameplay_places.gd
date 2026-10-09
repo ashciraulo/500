@@ -49,6 +49,15 @@ func _ready() -> void:
 	var odd_home := HomeOddities.new()
 	odd_home.name = "HomeOddities"
 	add_child(odd_home)
+	# The story's late-city events (scripts/world/late_city/).
+	var other := OtherHouse.new()
+	other.name = "OtherHouse"
+	add_child(other)
+	# The empty road hides the rest of the world, this node with it, so it
+	# lives beside it rather than under it.
+	var road := EmptyRoad.new()
+	road.name = "EmptyRoad"
+	get_parent().add_child.call_deferred(road)
 	for p: Dictionary in places.get("photo_spots", []):
 		var spot := PhotoSpot.new()
 		spot.spot_id = p.id

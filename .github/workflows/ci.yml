@@ -164,6 +164,17 @@ jobs:
             exit 1
           fi
 
+      - name: Story test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/story_test.gd -- --no-save 2>&1 \
+            | tee story.log | grep -E "FAIL|STORY|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" story.log; then
+            echo "::error::GDScript errors in the story"
+            exit 1
+          fi
+
       - name: Kerb test
         if: env.ALREADY_TESTED != 'true'
         run: |

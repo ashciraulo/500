@@ -53,10 +53,11 @@ frogmouths and boobooks only at night, rainbow bee-eaters arriving for the
 spring. Common birds are everywhere; the rare ones need the right place, hour
 and luck.
 
-**Quiet places.** Nine spots nobody tells you about (the map's hidden
+**Quiet places.** Ten spots nobody tells you about (the map's hidden
 birding POIs): the Herdsman Lake reedbeds, Monger Island, the Perry Lakes
 reeds, Floreat Lake, Kooyar Kep in Kings Park, the Heirisson Island marsh,
-the Burswood Park lakes, the Alfred Cove flats and the East Fremantle reeds.
+the Burswood Park lakes, the Alfred Cove flats, the East Fremantle reeds and
+the Bibra Lake reeds on its north-east shore.
 Nothing marks them on the map or in the journal. Walk within 60 m of one and
 it goes in the back of the journal (and on the map). Three birds live only in
 places like these: the Australian reed warbler in the reedbeds, the
@@ -177,6 +178,17 @@ be kept and whose pages in the Fish tab are M.'s:
 - A big pale flathead with a cold green light coming off it, on the flats at
   Point Fraser between midnight and 3:30 am once the atlas page is found.
   Let it go and its light shows under the surface, drifting out and fading.
+
+**Flickering.** Once the late city starts (`docs/STORY.md`), the wrong
+birds flicker: blink out with a faint tape shimmer and a soft warble, then
+back a moment later, up to a metre from where they were. In act 2 only the
+frogmouth does it, and only through the binoculars; from act 3 all of them,
+and the focus dial jumps if one blinks mid-shot; from act 4 ordinary birds
+too, now and then, where the late city is strong; and in act 5 the thirteen
+cockatoos lift off and fly beside the car on Fraser Avenue after 2 am,
+flickering all at once. "Strange things: gentle" keeps the shimmer but
+leaves them where they were. The journal gets a third bookmark, Nights, the
+first time the late city gives you something to write down.
 
 ## Progression, lightly
 

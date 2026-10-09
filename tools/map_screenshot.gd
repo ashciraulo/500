@@ -100,6 +100,7 @@ func _process(_delta: float) -> bool:
 			{name = "perth_station_platform", wait = 300, cam = [Vector3(575, 14.5, 575), Vector3(665, 14, 628)], fog = 0.002},
 			{name = "perth_station_bay", wait = 300, cam = [Vector3(632, 15.6, 628), Vector3(700, 15.2, 664)], fog = 0.002},
 			{name = "east_perth_sidings", wait = 300, cam = [Vector3(1690, 32, 480), Vector3(1800, 12, 380)], fog = 0.0015},
+			{name = "perth_station_p9", wait = 300, cam = [Vector3(560, 13.0, 560), Vector3(660, 15.5, 590)], fog = 0.002},
 			{name = "perth_station_east", wait = 300, cam = [Vector3(700, 38, 720), Vector3(640, 18, 630)], fog = 0.0015},
 			{name = "north_lake_rd", wait = 300, cam = [Vector3(-3760, 30, 13300), Vector3(-3700, 12, 14200)], fog = 0.002},
 			{name = "north_mole_rocks", wait = 300, cam = [Vector3(-11700, 30, 11700), Vector3(-11860, 2, 11760)], fog = 0.002},

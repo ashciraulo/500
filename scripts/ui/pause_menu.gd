@@ -29,6 +29,7 @@ var _wobble: HSlider
 var _mouse: HSlider
 var _volumes := {}
 var _cozy: CheckBox
+var _strange: OptionButton
 var _resume: Button
 ## Opened from the title screen: Back instead of Resume, and the game stays paused.
 var _from_title := false
@@ -187,6 +188,9 @@ func _build() -> void:
 	_cozy = _check(left, "Cozy mode: nothing odd at home", func(on: bool) -> void:
 		Settings.cozy_mode = on
 		Settings.apply())
+	_strange = _option(left, "Strange things", ["Full", "Gentle"], func(i: int) -> void:
+		Settings.strange_things = "gentle" if i == 1 else "full"
+		Settings.apply())
 
 	_section(right, "Look")
 	_fullscreen = _check(right, "Full screen (F11)", func(on: bool) -> void:
@@ -288,6 +292,7 @@ func _sync_from_settings() -> void:
 	_weather.select(Settings.weather_choice + 1)
 	_freeze.button_pressed = Settings.clock_frozen
 	_cozy.button_pressed = Settings.cozy_mode
+	_strange.select(1 if Settings.strange_things == "gentle" else 0)
 	_day_length.select(maxi(0, Settings.DAY_LENGTHS.find(Settings.day_length_minutes)))
 	_gearbox.select(1 if Settings.automatic_gearbox else 0)
 	_route.select(clampi(Settings.route_guide, 0, 2))
