@@ -11,13 +11,18 @@ extends SceneTree
 ## Exits with code 1 if any check fails. CI runs this.
 
 const FPS := 60
+## Longest a check waits, in real time, for work on a worker thread (a route
+## search). Headless runs go through frames several times faster than real
+## time, so a frame count alone gives the thread well under a second.
+const WAIT_MS := 15000
 
 var _main: Node
 var _failures: Array[String] = []
 var _step := 0
 var _frame := 0
 var _quitting := false
-var _route_start := Vector3.ZERO
+var _route_start := Vector3.INF
+var _step_ms := 0
 ## Loaded when used: these read autoloads, which a --script tool can't name.
 var _pins: GDScript
 var _data: GDScript
@@ -26,6 +31,7 @@ var _data: GDScript
 func _initialize() -> void:
 	_pins = load("res://scripts/ui/map_pins.gd")
 	_data = load("res://scripts/ui/map_data.gd")
+	_step_ms = Time.get_ticks_msec()
 
 
 func _process(_delta: float) -> bool:
@@ -95,15 +101,22 @@ func _process(_delta: float) -> bool:
 				_next()
 		4:
 			# Suggested routes: the job's route comes in on its own.
+			# The search runs on a worker thread: wait for it (and the minimap)
+			# rather than for a number of frames.
 			var guide := root.get_tree().get_first_node_in_group(&"route_guide")
-			if _frame >= FPS * 2:
+			var mini := _main.find_child("Minimap", true, false)
+			var view: Control = mini.get("_view") if mini else null
+			var drawn := view != null and (view.get("route") as PackedVector2Array).size() >= 2
+			var found: bool = guide != null and guide.call("has_route")
+			if _frame >= FPS * 2 and ((found and drawn) or _timed_out()):
 				_check(guide != null, "a route guide on the HUD")
 				if guide == null:
 					return _finish()
-				_check(guide.call("has_route"), "a route to the job (%.0f m)" % float(guide.get("length")))
-				var mini := _main.find_child("Minimap", true, false)
-				var view: Control = mini.get("_view") if mini else null
-				_check(view != null and (view.get("route") as PackedVector2Array).size() >= 2, "the minimap draws it")
+				_check(found, "a route to the job (%.0f m)" % float(guide.get("length")))
+				_check(drawn, "the minimap draws it")
+				if not found:
+					_next()  # nothing to leave: the next check fails on its own
+					return false
 				_route_start = (guide.get("points") as PackedVector3Array)[0]
 				# Leave it: off down a road somewhere else, well clear of the route
 				# (a long route can run right past the first spot tried).
@@ -124,10 +137,13 @@ func _process(_delta: float) -> bool:
 					break
 				_next()
 		5:
-			if _frame >= FPS * 4:
-				var guide := root.get_tree().get_first_node_in_group(&"route_guide")
-				var pts: PackedVector3Array = guide.get("points")
-				_check(pts.size() >= 2 and pts[0].distance_to(_route_start) > 100.0, "a new route after leaving it")
+			# Off the route: the guide notices in game time, then searches on a
+			# worker thread, so wait for the new route or the real-time limit.
+			var guide := root.get_tree().get_first_node_in_group(&"route_guide")
+			var pts: PackedVector3Array = guide.get("points")
+			var rerouted := _route_start != Vector3.INF and pts.size() >= 2 and pts[0].distance_to(_route_start) > 100.0
+			if _route_start == Vector3.INF or rerouted or (_frame >= FPS * 4 and _timed_out()):
+				_check(rerouted, "a new route after leaving it")
 				root.get_node("Settings").set("route_guide", 0)
 				_next()
 		6:
@@ -239,6 +255,12 @@ func _press(action: String) -> void:
 func _next() -> void:
 	_step += 1
 	_frame = 0
+	_step_ms = Time.get_ticks_msec()
+
+
+## This step has waited as long as it will in real time.
+func _timed_out() -> bool:
+	return Time.get_ticks_msec() - _step_ms >= WAIT_MS
 
 
 func _check(ok: bool, what: String) -> void:

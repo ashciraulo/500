@@ -93,6 +93,7 @@ DEM_FAR = 45.0        # ...and has all of it from here
 BUILT_REACH = 20.0    # ground this close to a building is interpolated from the roads
 BUILT_SOFT = 15.0     # softening of the built-up edge (metres)
 BARE_WINDOW = 75.0    # building mounds narrower than this come out of the DEM among buildings
+LONE_LANDMARK_SPAN = 30.0  # a landmark this narrow with no building near it doesn't count as built-up
 BARE_SOFT = 10.0
 FILL_SCALES = (12.0, 40.0, 120.0, 400.0)  # metres, finest first
 CHUNK = 12            # segments per vectorised corridor step
@@ -339,7 +340,9 @@ class World:
         # Ground the road fit must leave as the DEM shaped it: water, banks, moles.
         self.keep_dem = np.zeros(hf.H.shape, dtype=bool)
         self._raise_moles(feats)
-        self.built = self._built_up_mask([a.geom for a in feats.areas if _is_building(a.tags)])
+        buildings = [a for a in feats.areas if _is_building(a.tags)]
+        lone = _lone_landmarks(buildings)
+        self.built = self._built_up_mask([a.geom for a in buildings if a.id not in lone])
         self.built_soft = gaussian_filter(self.built.astype(np.float64), BUILT_SOFT / hf.step)
         src_ways = densify_ways(src_ways)
         self.bare = self._bare_earth()
@@ -1608,6 +1611,31 @@ def _resample(xy, step):
     n = max(2, int(np.ceil(s[-1] / step)) + 1)
     ss = np.linspace(0, s[-1], n)
     return np.column_stack([np.interp(ss, s, xy[:, 0]), np.interp(ss, s, xy[:, 1])]), ss
+
+
+def _lone_landmarks(buildings) -> set:
+    """OSM ids of the narrow landmarks that stand with no other building near
+    them (the State War Memorial's obelisk and the DNA Tower, out in Kings
+    Park). The ground round them isn't built-up: the bare earth takes their
+    DEM mound out anyway, and interpolating it from the roads pulls a hilltop
+    down towards the streets below it (23 m at the memorial, on the edge of
+    the escarpment above Mounts Bay Rd)."""
+    ids = {lm.osm[1]: lm for lm in landmarks.CATALOGUE if lm.osm[0] == "area"}
+    mine = [a for a in buildings if a.id in ids]
+    if not mine:
+        return set()
+    tree = shapely.STRtree([a.geom for a in buildings])
+    out = set()
+    for a in mine:
+        b = a.geom.bounds
+        if max(b[2] - b[0], b[3] - b[1]) > LONE_LANDMARK_SPAN:
+            continue
+        # (Buildings the landmark's model replaces don't count.)
+        zone = a.geom.buffer(ids[a.id].params.get("clear", 1.0))
+        near = [buildings[k] for k in tree.query(a.geom, predicate="dwithin", distance=2 * BUILT_REACH)]
+        if all(o.id == a.id or zone.contains(o.geom.representative_point()) for o in near):
+            out.add(a.id)
+    return out
 
 
 def _is_building(t) -> bool:
