@@ -600,6 +600,27 @@ after a map rebuild).
   `field/focus_miss` plays) when the bird in the shot has meta `"flicker"`.
   The journal's Nights bookmark shows once `Story.nights` has an entry,
   newest first, and refreshes on `night_logged`.
+- Tool scripts (`extends SceneTree`, run with `--script`) are compiled before
+  the autoloads exist, so naming a field class in one (`Binoculars.State`,
+  `FieldBirds.wrong_ready`) fails with "Identifier not found: Activities" or
+  similar. Reach them through the instances instead
+  (`field.binoculars.State.LOOKING`, `field.birds.wrong_ready(...)`).
+- Blank prints (from `Story.act()` 3, `FieldJournal.BLANKS_FROM_ACT`): a
+  developed wrong-bird frame goes on `FieldJournal.blanks` instead of
+  vanishing. The lab offers each to Ros or the buyer:
+  `give_blank(index, &"ros" | &"buyer")` calls `Story.note_print` (and, for
+  the thirteen while `Story.choice(&"thirteen")` is unset,
+  `Story.make_choice`). Ros's go in `guide` (Mick's field guide,
+  `guide_pages()` of `guide_total()`); the buyer's pay `buyer_offer(p)`
+  (`BUYER_PAY` by stars, `THIRTEEN_PAY`) into `buyer_owed`. The next morning
+  `envelope_ready()` is true and `HomeField` puts an envelope inside
+  `Door_Front`; F picks it up (`take_envelope()`: the cash and
+  `BUYER_NOTES`; `field/envelope` plays if the audio has it). The journal's
+  wrong-bird pages say "seen, sort of" from act 3. Endings
+  (`Story.ending()`): `&"city_of_light"` stops the wrong birds
+  (`FieldBirds.wrong_ready`) and their pages say they're just birds now;
+  `&"lights_out"` fades the pages to blank over `FADE_DAYS` from
+  `Story.ending_day()` (`page_fade()`).
 - Music: `music/mus_field_journal` plays while the journal is open (only if
   no other music is), and `music/mus_field_new_species` on a new bird; both
   are skipped until the audio side ships them.

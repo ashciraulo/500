@@ -534,6 +534,15 @@ func _show_wrong(b: Dictionary, e: Dictionary, verb := "saw") -> void:
 	hand.theme_type_variation = &"HandLabel"
 	hand.add_theme_font_size_override("font_size", 25)
 	hand.add_theme_constant_override("line_spacing", -2)
+	# Lights Out: the pages fade, then they're blank.
+	var fade := FieldJournal.page_fade()
+	if fade >= 1.0:
+		hand.text = ""
+		FieldUI.label(_page, "The page has gone blank.", 14, INK.lightened(0.3))
+	elif fade > 0.0:
+		hand.modulate.a = 1.0 - fade
+	var bird := verb == "saw"
+	var late := bird and FieldJournal.story_act() >= FieldJournal.BLANKS_FROM_ACT and not FieldJournal.wrong_ordinary()
 	var tex := FieldUI.photo_texture(String(e.get("best_file", "")))
 	if tex:
 		var pic := TextureRect.new()
@@ -542,8 +551,20 @@ func _show_wrong(b: Dictionary, e: Dictionary, verb := "saw") -> void:
 		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		pic.custom_minimum_size = Vector2(0, 200)
 		_page.add_child(pic)
-		FieldUI.label(_page, "Your photo. The lab won't print it.", 14, INK.lightened(0.2))
-	FieldUI.label(_page, "You %s it: day %d, %s, %s." % [verb, int(e.seen), e.get("time", ""), e.get("where", "somewhere")], 14, INK.lightened(0.2))
+		FieldUI.label(_page, "Your photo. Prints of it come out blank." if late else "Your photo. The lab won't print it.", 14, INK.lightened(0.2))
+	FieldUI.label(_page, "You %s it%s: day %d, %s, %s." % [verb, ", sort of" if late else "", int(e.seen), e.get("time", ""),
+		e.get("where", "somewhere")], 14, INK.lightened(0.2))
+	if not bird:
+		return
+	var id := String(b.id)
+	if FieldJournal.guide.has(id):
+		FieldUI.label(_page, "Ros has a print of it in Mick's field guide.", 14, INK.lightened(0.2))
+	var sold := int(FieldJournal.buyer_prints.get(id, 0))
+	if sold > 0:
+		FieldUI.label(_page, "The buyer has %s." % ("a print" if sold == 1 else "%d prints" % sold), 14, INK.lightened(0.2))
+	var like := FieldJournal.bird(String(b.get("like", "")))
+	if FieldJournal.wrong_ordinary() and not like.is_empty():
+		FieldUI.label(_page, "Now it's just a bird: %s." % String(like.name), 14, INK.lightened(0.2))
 
 
 ## The journal's own music while it's open, if nothing else is playing (the
