@@ -1,12 +1,15 @@
 extends SceneTree
-## Drives across each road where the map's old southern edge (z 10500, above
-## Bibra Lake) now carries on into the stage 7 tiles: no end-of-map barriers
-## left across them. Headless:
+## Drives across the places a road could be walled off by the map's own
+## pieces. Headless:
 ##
-##   godot --headless --path . --fixed-fps 60 --script res://tools/edge_cross_test.gd -- --no-save
+##   godot --headless --path . --fixed-fps 60 --script res://tools/crossing_drive_test.gd -- --no-save
 ##
-## Each run starts 45 m one side of the edge on the road and steers along it
-## to 45 m the other side. Exits with code 1 if the car doesn't get there.
+## - Each road where the map's old southern edge (z 10500, above Bibra Lake)
+##   now carries on into the stage 7 tiles: no end-of-map barriers left.
+## - Each road that crosses a boardwalk (tools/boardwalk_crossings.json, made
+##   from OSM): the boardwalk crosses flush, no deck or rails across the lanes.
+## Each run starts on the road one side and steers along it to the other.
+## Exits with code 1 if the car doesn't get there.
 
 ## [name, from, to] (y is found on the ground).
 const CROSSINGS := [
@@ -30,6 +33,12 @@ var _k := -1
 var _phase := 0
 var _t := 0.0
 var _quitting := false
+var _crossings: Array = CROSSINGS.duplicate()
+
+
+func _initialize() -> void:
+	for c: Array in JSON.parse_string(FileAccess.get_file_as_string("res://tools/boardwalk_crossings.json")):
+		_crossings.append([c[0], Vector3(c[1][0], 0, c[1][1]), Vector3(c[2][0], 0, c[2][1])])
 
 
 func _process(delta: float) -> bool:
@@ -43,7 +52,7 @@ func _process(delta: float) -> bool:
 		_next_crossing()
 		return false
 	_t += delta
-	var c: Array = CROSSINGS[_k]
+	var c: Array = _crossings[_k]
 	var from: Vector3 = c[1]
 	var to: Vector3 = c[2]
 	match _phase:
@@ -95,10 +104,10 @@ func _next_crossing() -> void:
 	_k += 1
 	_phase = 0
 	_t = 0.0
-	if _k >= CROSSINGS.size():
+	if _k >= _crossings.size():
 		_finish()
 		return
-	var from: Vector3 = CROSSINGS[_k][1]
+	var from: Vector3 = _crossings[_k][1]
 	_car.freeze = true
 	_car.global_position = Vector3(from.x, 60.0, from.z)
 
@@ -114,8 +123,8 @@ func _ground(p: Vector3) -> float:
 func _finish() -> void:
 	_quitting = true
 	if _failures.is_empty():
-		print("EDGE CROSS TEST PASSED")
+		print("CROSSING DRIVE TEST PASSED (%d crossings)" % _crossings.size())
 		quit(0)
 	else:
-		print("EDGE CROSS TEST FAILED (%d)" % _failures.size())
+		print("CROSSING DRIVE TEST FAILED (%d of %d)" % [_failures.size(), _crossings.size()])
 		quit(1)

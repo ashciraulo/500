@@ -51,6 +51,7 @@ BOARDWALK_DECK = 0.5  # a boardwalk's deck over the reeds or the water under it
 BOARDWALK_EDGE = 0.25  # its timber edge board, deck down to the underside
 BOARDWALK_RAIL = 0.12  # its top rail's depth, on posts BOARDWALK_POST apart
 BOARDWALK_POST = 2.5
+BOARDWALK_CLEAR = 0.5
                         # grid cell its edge crosses, or the ground drawn there leaves a ledge)...
 JETTY_RAMP = 8.0        # ...and eases back to its own height over at least this...
 SEAT_GRADE = 0.2        # ...and wide enough that the change in grade stays under this
@@ -2170,10 +2171,19 @@ class TileBuilder:
                     if not (gl.any() or gr.any()):
                         break
                 surf = self.mb.surface("bridges", deck_mat, "world")
-                ribbon(surf, rxy, top, w.width, textures.UV_SCALE.get(deck_mat, 4.0))
                 if w.tags.get("bridge") == "boardwalk":
-                    self._boardwalk_sides(rxy, top, half, gl, gr)
+                    # It meets a street or a railway at grade: no deck or rails
+                    # across the carriageway (a wall across the lanes), so the
+                    # walk crosses flush and the traffic goes through.
+                    across = shapely.contains_xy(self._crossing_area(), rxy[:, 0], rxy[:, 1])
+                    for a, b in _runs(~across):
+                        if b - a < 2:
+                            continue
+                        k = slice(a, b)
+                        ribbon(surf, rxy[k], top[k], w.width, textures.UV_SCALE.get(deck_mat, 4.0))
+                        self._boardwalk_sides(rxy[k], top[k], half, gl[k], gr[k])
                     continue
+                ribbon(surf, rxy, top, w.width, textures.UV_SCALE.get(deck_mat, 4.0))
                 conc = self.mb.surface("bridges", "concrete", "world")
                 left = offset_polyline(rxy, half)
                 right = offset_polyline(rxy, -half)
@@ -2208,6 +2218,15 @@ class TileBuilder:
                 for p, yaw, foot, top_k in self._pier_spots(w, rxy, bot):
                     _box(conc, p, foot, top_k, (1.4, min(w.width * 0.6, 6.0)), yaw)
         self._deck_joints()
+
+    def _crossing_area(self):
+        """The at-grade carriageways and railways a boardwalk can't stand
+        across (BOARDWALK_CLEAR wider each side, so its end doesn't overhang
+        the kerb)."""
+        if getattr(self, "_crossing", None) is None:
+            self._crossing = shapely.union_all([self.road_area, self.rail_area]).buffer(BOARDWALK_CLEAR)
+            shapely.prepare(self._crossing)
+        return self._crossing
 
     def _boardwalk_sides(self, rxy, top, half, gl, gr):
         """A boardwalk's timber edges and low rails: a post every BOARDWALK_POST
