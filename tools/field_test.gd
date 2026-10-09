@@ -396,6 +396,7 @@ func _process(_delta: float) -> bool:
 				_check_flicker()
 				_check_nights()
 				_check_prints()
+				_check_back_seat()
 				return _finish()
 	return false
 
@@ -832,6 +833,56 @@ func _check_prints() -> void:
 	text = "\n".join(page.call("wrong_frogmouth"))
 	_check(text.contains("just a bird"), "and their pages say so")
 	story.act_override = 0
+
+
+## The photograph: once the story asks, the next roll has one extra frame,
+## you at the wheel from the back seat, for Ros to keep or you to take home.
+func _check_back_seat() -> void:
+	var story: Node = root.get_node_or_null("Story")
+	if story == null:
+		print("skip  the story isn't loaded")
+		return
+	var lab: Node = _field.lab_screen
+	_fj.blanks.clear()
+	_fj.back_seat = {}
+	_check(not _fj.back_seat_due(), "no back-seat photo until the story asks")
+	story.set_flag(_fj.BACK_SEAT_FLAG)
+	_check(_fj.back_seat_due(), "the story asks for the back-seat photo")
+	var id: String = _fj.bird_order[0]
+	_fj.see(id, "the lane")
+	_fj.roll.clear()
+	_fj.roll.append({"species": id, "stars": 2, "file": "", "day": 1, "time": "9:00 pm", "where": "", "wrong": false})
+	lab.open()
+	var develop: Array = lab._list.find_children("*", "Button", true, false).filter(func(b: Button) -> bool: return b.text.begins_with("Develop"))
+	_check(develop.size() == 1, "the lab has the roll to develop")
+	if develop.size() == 1:
+		(develop[0] as Button).pressed.emit()
+	var extra: Array = lab._last_result.get("prints", []).filter(func(p: Dictionary) -> bool: return p.has("extra"))
+	_check(extra.size() == 1 and not _fj.back_seat_due() and _fj.back_seat_waiting(), "the roll comes back with one more frame")
+	var texts: Array = lab._list.find_children("*", "Button", true, false).map(func(b: Button) -> String: return b.text)
+	_check(texts.has("Ros keeps it") and texts.has("Take it home"), "Ros offers to keep it, or you take it home")
+	_shot("14_lab_back_seat")
+	var copy: Dictionary = JSON.parse_string(JSON.stringify(_fj.save_state()))
+	_fj.back_seat = {}
+	_fj.load_state(copy)
+	_check(_fj.back_seat_waiting(), "it's still on the counter after a save and load")
+	lab._give_back_seat(&"home")
+	_check(not _fj.back_seat_waiting() and story.flag(&"photo_back_seat_home") and story.nights.any(func(e: Dictionary) -> bool: return e.id == &"photo_back_seat"),
+		"taken home: the story hears, and it's in the Nights")
+	_fj.roll.append({"species": id, "stars": 2, "file": "", "day": 1, "time": "9:00 pm", "where": "", "wrong": false})
+	var again: Dictionary = _fj.develop()
+	_check(not again.prints.any(func(p: Dictionary) -> bool: return p.has("extra")), "only once")
+	lab.close()
+	# The print: same size, the orange date stamp in the corner.
+	var raw := Image.create(360, 240, false, Image.FORMAT_RGB8)
+	raw.fill(Color(0.3, 0.35, 0.4))
+	var printed: Image = _field.back_seat.print_look(raw, 7)
+	var dot: Color = printed.get_pixel(348, 230)
+	_check(printed.get_size() == raw.get_size() and dot.r > 0.8 and dot.b < 0.4, "the print has its date stamp (%s)" % dot)
+	var figure: Node3D = _field.back_seat.driver_figure()
+	var hidden: bool = figure.find_children("*", "MeshInstance3D", true, false).all(func(m: MeshInstance3D) -> bool: return m.layers == _field.back_seat.LAYER)
+	_check(hidden and figure.get_child_count() > 6, "the figure at the wheel is only on the photo's layer")
+	figure.free()
 
 
 func _check_hubcap(disc: Node) -> void:
