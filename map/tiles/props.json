@@ -196,7 +196,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    672.58,
-   24.82,
+   14.45,
    658.32
   ],
   "yaw": -0.4939
@@ -206,7 +206,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    673.01,
-   24.82,
+   14.45,
    657.53
   ],
   "yaw": 2.6477
@@ -216,7 +216,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    651.46,
-   24.82,
+   14.45,
    646.93
   ],
   "yaw": -0.4939
@@ -226,7 +226,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    651.89,
-   24.82,
+   14.45,
    646.14
   ],
   "yaw": 2.6477
@@ -236,7 +236,7 @@
   "scene": "res://art/models/props/station/station_board_perth.glb",
   "p": [
    680.72,
-   24.82,
+   14.45,
    662.2
   ],
   "yaw": 2.6477
@@ -246,7 +246,7 @@
   "scene": "res://art/models/props/station/station_board_perth.glb",
   "p": [
    633.19,
-   24.82,
+   14.45,
    636.57
   ],
   "yaw": 2.6477
@@ -256,7 +256,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    672.8,
-   24.82,
+   14.45,
    657.93
   ],
   "yaw": -2.0647
@@ -266,7 +266,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    662.23,
-   24.82,
+   14.45,
    652.23
   ],
   "yaw": -2.0647
@@ -276,7 +276,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    651.67,
-   24.82,
+   14.45,
    646.54
   ],
   "yaw": -2.0647
@@ -286,7 +286,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    641.11,
-   24.82,
+   14.45,
    640.84
   ],
   "yaw": -2.0647
@@ -296,7 +296,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    689.72,
-   24.82,
+   14.45,
    664.48
   ],
   "yaw": -2.0647
@@ -306,7 +306,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    679.16,
-   24.82,
+   14.45,
    658.78
   ],
   "yaw": -2.0647
@@ -316,7 +316,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    668.59,
-   24.82,
+   14.45,
    653.1
   ],
   "yaw": -2.0647
@@ -326,7 +326,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    658.03,
-   24.82,
+   14.45,
    647.41
   ],
   "yaw": -2.0647
@@ -336,7 +336,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    647.47,
-   24.82,
+   14.45,
    641.72
   ],
   "yaw": -2.0647
@@ -346,7 +346,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    636.91,
-   24.82,
+   14.45,
    636.02
   ],
   "yaw": -2.0647
@@ -356,7 +356,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    626.35,
-   24.82,
+   14.45,
    630.33
   ],
   "yaw": -2.0647
@@ -366,7 +366,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    645.84,
-   24.77,
+   13.88,
    633.23
   ],
   "yaw": 2.6529
@@ -376,7 +376,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    645.41,
-   24.77,
+   13.88,
    634.03
   ],
   "yaw": -0.4887
@@ -386,7 +386,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    667.03,
-   24.77,
+   13.88,
    644.51
   ],
   "yaw": 2.6529
@@ -396,7 +396,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    666.6,
-   24.77,
+   13.88,
    645.31
   ],
   "yaw": -0.4887
@@ -406,7 +406,7 @@
   "scene": "res://art/models/props/station/station_board_perth.glb",
   "p": [
    637.68,
-   24.77,
+   13.88,
    629.41
   ],
   "yaw": -0.4887
@@ -416,7 +416,7 @@
   "scene": "res://art/models/props/station/station_board_perth.glb",
   "p": [
    685.35,
-   24.77,
+   13.88,
    654.78
   ],
   "yaw": -0.4887
@@ -426,7 +426,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    645.62,
-   24.77,
+   13.88,
    633.63
   ],
   "yaw": 1.0821
@@ -436,7 +436,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    656.22,
-   24.77,
+   13.88,
    639.28
   ],
   "yaw": 1.0821
@@ -446,7 +446,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    666.81,
-   24.77,
+   13.88,
    644.91
   ],
   "yaw": 1.0821
@@ -456,7 +456,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    677.41,
-   24.77,
+   13.88,
    650.56
   ],
   "yaw": 1.0821
@@ -466,7 +466,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    628.6,
-   24.77,
+   13.88,
    627.31
   ],
   "yaw": 1.0838
@@ -476,7 +476,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    673.27,
-   24.77,
+   13.88,
    645.59
   ],
   "yaw": -2.0595
@@ -486,7 +486,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    662.67,
-   24.77,
+   13.88,
    639.96
   ],
   "yaw": -2.0595
@@ -496,7 +496,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    652.08,
-   24.77,
+   13.88,
    634.32
   ],
   "yaw": -2.0595
@@ -506,7 +506,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    641.48,
-   24.77,
+   13.88,
    628.68
   ],
   "yaw": -2.0595
@@ -516,7 +516,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    630.89,
-   24.77,
+   13.88,
    623.04
   ],
   "yaw": -2.0595
@@ -526,7 +526,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    639.2,
-   24.77,
+   13.88,
    632.92
   ],
   "yaw": 1.0838
@@ -536,7 +536,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    649.8,
-   24.77,
+   13.88,
    638.53
   ],
   "yaw": 1.0838
@@ -546,7 +546,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    660.41,
-   24.77,
+   13.88,
    644.15
   ],
   "yaw": 1.0838
@@ -556,7 +556,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    671.02,
-   24.77,
+   13.88,
    649.77
   ],
   "yaw": 1.0838
@@ -566,7 +566,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    681.62,
-   24.77,
+   13.88,
    655.38
   ],
   "yaw": 1.0838
@@ -576,7 +576,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    692.23,
-   24.77,
+   13.88,
    660.99
   ],
   "yaw": 1.0838
@@ -586,7 +586,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    694.45,
-   24.77,
+   13.88,
    656.87
   ],
   "yaw": -2.0595
@@ -596,7 +596,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    683.85,
-   24.77,
+   13.88,
    651.23
   ],
   "yaw": -2.0595
@@ -606,7 +606,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    539.92,
-   20.25,
+   13.76,
    573.73
   ],
   "yaw": 2.6494
@@ -616,7 +616,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    539.49,
-   20.25,
+   13.76,
    574.53
   ],
   "yaw": -0.4922
@@ -626,7 +626,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    561.08,
-   20.25,
+   13.76,
    585.06
   ],
   "yaw": 2.6494
@@ -636,7 +636,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    560.65,
-   20.25,
+   13.76,
    585.85
   ],
   "yaw": -0.4922
@@ -646,7 +646,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    582.23,
-   20.25,
+   13.76,
    596.38
   ],
   "yaw": 2.6494
@@ -656,7 +656,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    581.81,
-   20.25,
+   13.76,
    597.18
   ],
   "yaw": -0.4922
@@ -666,7 +666,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    603.39,
-   20.25,
+   13.76,
    607.72
   ],
   "yaw": 2.6494
@@ -676,7 +676,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    602.97,
-   20.25,
+   13.76,
    608.5
   ],
   "yaw": -0.4922
@@ -686,7 +686,7 @@
   "scene": "res://art/models/props/station/station_board_perth.glb",
   "p": [
    531.77,
-   20.25,
+   13.76,
    569.88
   ],
   "yaw": -0.4922
@@ -696,7 +696,7 @@
   "scene": "res://art/models/props/station/station_board_perth.glb",
   "p": [
    611.12,
-   20.25,
+   13.76,
    612.36
   ],
   "yaw": -0.4922
@@ -706,7 +706,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    539.7,
-   20.25,
+   13.76,
    574.13
   ],
   "yaw": 1.0786
@@ -716,7 +716,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    550.28,
-   20.25,
+   13.76,
    579.79
   ],
   "yaw": 1.0786
@@ -726,7 +726,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    560.86,
-   20.25,
+   13.76,
    585.46
   ],
   "yaw": 1.0786
@@ -736,7 +736,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    571.44,
-   20.25,
+   13.76,
    591.12
   ],
   "yaw": 1.0786
@@ -746,7 +746,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    582.02,
-   20.25,
+   13.76,
    596.78
   ],
   "yaw": 1.0786
@@ -756,7 +756,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    592.6,
-   20.25,
+   13.76,
    602.45
   ],
   "yaw": 1.0786
@@ -766,7 +766,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    603.17,
-   20.25,
+   13.76,
    608.12
   ],
   "yaw": 1.0786
@@ -776,7 +776,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    621.4,
-   20.25,
+   13.76,
    612.24
   ],
   "yaw": -2.063
@@ -786,7 +786,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    526.19,
-   20.25,
+   13.76,
    561.26
   ],
   "yaw": -2.063
@@ -796,7 +796,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    610.82,
-   20.25,
+   13.76,
    606.58
   ],
   "yaw": -2.063
@@ -806,7 +806,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    600.24,
-   20.25,
+   13.76,
    600.91
   ],
   "yaw": -2.063
@@ -816,7 +816,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    589.66,
-   20.25,
+   13.76,
    595.24
   ],
   "yaw": -2.063
@@ -826,7 +826,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    579.09,
-   20.25,
+   13.76,
    589.59
   ],
   "yaw": -2.063
@@ -836,7 +836,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    568.51,
-   20.25,
+   13.76,
    583.92
   ],
   "yaw": -2.063
@@ -846,7 +846,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    557.93,
-   20.25,
+   13.76,
    578.25
   ],
   "yaw": -2.063
@@ -856,7 +856,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    547.35,
-   20.25,
+   13.76,
    572.59
   ],
   "yaw": -2.063
@@ -866,7 +866,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    536.77,
-   20.25,
+   13.76,
    566.93
   ],
   "yaw": -2.063
@@ -876,7 +876,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    655.53,
-   12.93,
+   12.21,
    619.71
   ],
   "yaw": -0.5096
@@ -886,7 +886,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    655.98,
-   12.93,
+   12.21,
    618.92
   ],
   "yaw": 2.632
@@ -896,7 +896,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    634.58,
-   12.93,
+   12.21,
    608.01
   ],
   "yaw": -0.5096
@@ -906,7 +906,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    635.02,
-   12.93,
+   12.21,
    607.23
   ],
   "yaw": 2.632
@@ -916,7 +916,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    613.62,
-   12.93,
+   12.21,
    596.32
   ],
   "yaw": -0.5096
@@ -926,7 +926,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    614.06,
-   12.93,
+   12.21,
    595.53
   ],
   "yaw": 2.632
@@ -936,7 +936,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    592.66,
-   12.93,
+   12.21,
    584.62
   ],
   "yaw": -0.5096
@@ -946,7 +946,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    593.1,
-   12.93,
+   12.21,
    583.83
   ],
   "yaw": 2.632
@@ -956,7 +956,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    571.7,
-   12.93,
+   12.21,
    572.93
   ],
   "yaw": -0.5096
@@ -966,7 +966,7 @@
   "scene": "res://art/models/props/station/platform_bench.glb",
   "p": [
    572.15,
-   12.93,
+   12.21,
    572.14
   ],
   "yaw": 2.632
@@ -976,7 +976,7 @@
   "scene": "res://art/models/props/station/station_board_perth.glb",
   "p": [
    663.61,
-   12.93,
+   12.21,
    623.7
   ],
   "yaw": 2.632
@@ -986,7 +986,7 @@
   "scene": "res://art/models/props/station/station_board_perth.glb",
   "p": [
    553.59,
-   12.93,
+   12.21,
    562.3
   ],
   "yaw": 2.632
@@ -996,7 +996,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    655.76,
-   12.93,
+   12.21,
    619.32
   ],
   "yaw": -2.0804
@@ -1006,7 +1006,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    561.45,
-   12.93,
+   12.21,
    566.69
   ],
   "yaw": -2.0804
@@ -1016,7 +1016,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    645.27,
-   12.93,
+   12.21,
    613.46
   ],
   "yaw": -2.0804
@@ -1026,7 +1026,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    634.8,
-   12.93,
+   12.21,
    607.62
   ],
   "yaw": -2.0804
@@ -1036,7 +1036,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    624.31,
-   12.93,
+   12.21,
    601.77
   ],
   "yaw": -2.0804
@@ -1046,7 +1046,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    613.84,
-   12.93,
+   12.21,
    595.92
   ],
   "yaw": -2.0804
@@ -1056,7 +1056,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    603.36,
-   12.93,
+   12.21,
    590.07
   ],
   "yaw": -2.0804
@@ -1066,7 +1066,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    592.88,
-   12.93,
+   12.21,
    584.23
   ],
   "yaw": -2.0804
@@ -1076,7 +1076,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    582.4,
-   12.93,
+   12.21,
    578.38
   ],
   "yaw": -2.0804
@@ -1086,7 +1086,7 @@
   "scene": "res://art/models/props/station/platform_canopy.glb",
   "p": [
    571.92,
-   12.93,
+   12.21,
    572.53
   ],
   "yaw": -2.0804
@@ -1096,7 +1096,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    533.57,
-   12.93,
+   12.21,
    555.03
   ],
   "yaw": 1.0612
@@ -1106,7 +1106,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    627.89,
-   12.93,
+   12.21,
    607.65
   ],
   "yaw": 1.0612
@@ -1116,7 +1116,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    638.36,
-   12.93,
+   12.21,
    613.51
   ],
   "yaw": 1.0612
@@ -1126,7 +1126,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    648.85,
-   12.93,
+   12.21,
    619.35
   ],
   "yaw": 1.0612
@@ -1136,7 +1136,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    659.32,
-   12.93,
+   12.21,
    625.2
   ],
   "yaw": 1.0612
@@ -1146,7 +1146,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    669.81,
-   12.93,
+   12.21,
    631.05
   ],
   "yaw": 1.0612
@@ -1156,7 +1156,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    680.28,
-   12.93,
+   12.21,
    636.9
   ],
   "yaw": 1.0612
@@ -1166,7 +1166,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    683.62,
-   12.93,
+   12.21,
    630.97
   ],
   "yaw": -2.0804
@@ -1176,7 +1176,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    673.13,
-   12.93,
+   12.21,
    625.13
   ],
   "yaw": -2.0804
@@ -1186,7 +1186,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    662.66,
-   12.93,
+   12.21,
    619.29
   ],
   "yaw": -2.0804
@@ -1196,7 +1196,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    652.18,
-   12.93,
+   12.21,
    613.44
   ],
   "yaw": -2.0804
@@ -1206,7 +1206,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    544.06,
-   12.93,
+   12.21,
    560.88
   ],
   "yaw": 1.0612
@@ -1216,7 +1216,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    641.7,
-   12.93,
+   12.21,
    607.6
   ],
   "yaw": -2.0804
@@ -1226,7 +1226,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    631.22,
-   12.93,
+   12.21,
    601.74
   ],
   "yaw": -2.0804
@@ -1236,7 +1236,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    620.74,
-   12.93,
+   12.21,
    595.9
   ],
   "yaw": -2.0804
@@ -1246,7 +1246,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    610.26,
-   12.93,
+   12.21,
    590.05
   ],
   "yaw": -2.0804
@@ -1256,7 +1256,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    599.78,
-   12.93,
+   12.21,
    584.21
   ],
   "yaw": -2.0804
@@ -1266,7 +1266,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    589.3,
-   12.93,
+   12.21,
    578.36
   ],
   "yaw": -2.0804
@@ -1276,7 +1276,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    578.82,
-   12.93,
+   12.21,
    572.52
   ],
   "yaw": -2.0804
@@ -1286,7 +1286,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    568.34,
-   12.93,
+   12.21,
    566.68
   ],
   "yaw": -2.0804
@@ -1296,7 +1296,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    557.86,
-   12.93,
+   12.21,
    560.83
   ],
   "yaw": -2.0804
@@ -1306,7 +1306,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    547.38,
-   12.93,
+   12.21,
    554.98
   ],
   "yaw": -2.0804
@@ -1316,7 +1316,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    554.53,
-   12.93,
+   12.21,
    566.72
   ],
   "yaw": 1.0612
@@ -1326,7 +1326,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    536.9,
-   12.93,
+   12.21,
    549.13
   ],
   "yaw": -2.0804
@@ -1336,7 +1336,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    565.02,
-   12.93,
+   12.21,
    572.56
   ],
   "yaw": 1.0612
@@ -1346,7 +1346,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    575.49,
-   12.93,
+   12.21,
    578.42
   ],
   "yaw": 1.0612
@@ -1356,7 +1356,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    585.97,
-   12.93,
+   12.21,
    584.26
   ],
   "yaw": 1.0612
@@ -1366,7 +1366,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    596.45,
-   12.93,
+   12.21,
    590.11
   ],
   "yaw": 1.0612
@@ -1376,7 +1376,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    606.93,
-   12.93,
+   12.21,
    595.96
   ],
   "yaw": 1.0612
@@ -1386,7 +1386,7 @@
   "scene": "res://art/models/props/station/platform_edge.glb",
   "p": [
    617.41,
-   12.93,
+   12.21,
    601.81
   ],
   "yaw": 1.0612

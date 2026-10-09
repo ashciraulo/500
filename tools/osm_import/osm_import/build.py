@@ -94,6 +94,8 @@ SHORE_REACH = 60.0    # ...out to this far from the water
 SEED_TOLERANCE = 1.5  # roads further than this from the DEM (ramps, cuttings) don't shape the ground
 DEM_NEAR = 10.0       # open ground starts to take the DEM this far from a road...
 DEM_FAR = 45.0        # ...and has all of it from here
+STATION_REACH = 100.0  # tracks this close to a station platform are held level with each other
+TRACK_TIE = 15.0       # side by side: tracks this close (either side of an island platform)
 BUILT_REACH = 20.0    # ground this close to a building is interpolated from the roads
 BUILT_SOFT = 15.0     # softening of the built-up edge (metres)
 BARE_WINDOW = 75.0    # building mounds narrower than this come out of the DEM among buildings
@@ -379,7 +381,7 @@ class World:
         src_ways = densify_ways(src_ways)
         self.bare = self._bare_earth()
         pairs = _carriageway_pairs(src_ways)
-        node_h = compute_node_heights(src_ways, self.bare, pairs)
+        node_h = compute_node_heights(src_ways, self.bare, pairs, side_by_side=_station_ties(src_ways, feats.areas))
         wide = _median_pairs(src_ways, node_h.get("road", {}))
         if wide:
             roads = [w for w in src_ways if way_group(w.tags) == "road"]
@@ -1839,6 +1841,40 @@ def _upsample(a, f, shape):
     ii = (np.arange(shape[1]) + 0.5) / f - 0.5
     J, I = np.meshgrid(jj, ii, indexing="ij")
     return map_coordinates(a, [J, I], order=1, mode="nearest")
+
+
+def _station_ties(ways, areas) -> list[tuple[int, int]]:
+    """(node, node) pairs of tracks side by side through a station, to be level.
+    The DEM is a surface model, and a big station roof stays in it as a mound
+    the bare earth can't take out: tracks that run under it without a bound of
+    their own followed the roof (Perth's platforms 3 and 4 came out 10 m above
+    platforms 5 to 9 beside them). Pairs every node of an at-grade track within
+    STATION_REACH of a surface platform with the nodes of other such tracks
+    within TRACK_TIE."""
+    from scipy.spatial import cKDTree
+    plats = [a.geom for a in areas if a.tags.get("railway") == "platform" and not _underground(a.tags)]
+    if not plats:
+        return []
+    near = shapely.union_all(plats).buffer(STATION_REACH)
+    shapely.prepare(near)
+    xy, ids, way = [], [], []
+    for k, w in enumerate(ways):
+        if (way_group(w.tags) != "rail" or styles.is_bridge(w.tags) or styles.is_tunnel(w.tags)
+                or len(w.coords) < 2):
+            continue
+        inside = shapely.contains_xy(near, w.coords[:, 0], w.coords[:, 1])
+        xy.append(w.coords[inside])
+        ids.append(w.nodes[inside])
+        way.append(np.full(int(inside.sum()), k))
+    if not xy:
+        return []
+    xy, ids, way = np.concatenate(xy), np.concatenate(ids), np.concatenate(way)
+    tree = cKDTree(xy)
+    pairs = set()
+    for i, j in sorted(tree.query_pairs(TRACK_TIE)):
+        if way[i] != way[j] and ids[i] != ids[j]:
+            pairs.add((int(min(ids[i], ids[j])), int(max(ids[i], ids[j]))))
+    return sorted(pairs)
 
 
 def _carriageway_pairs(ways) -> list[tuple[int, int]]:

@@ -4227,7 +4227,7 @@
    "region": "first_slice",
    "hmin": 7.06,
    "hmax": 278.64,
-   "bytes": 469471,
+   "bytes": 470374,
    "traffic": "0_-2.p5r"
   },
   "1_-2": {
@@ -4237,7 +4237,7 @@
    "region": "first_slice",
    "hmin": 7.0,
    "hmax": 114.2,
-   "bytes": 682969,
+   "bytes": 625609,
    "traffic": "1_-2.p5r"
   },
   "2_-2": {
@@ -4247,7 +4247,7 @@
    "region": "first_slice",
    "hmin": 9.08,
    "hmax": 63.12,
-   "bytes": 484223,
+   "bytes": 485679,
    "traffic": "2_-2.p5r"
   },
   "3_-2": {
@@ -4507,7 +4507,7 @@
    "region": "first_slice",
    "hmin": 5.18,
    "hmax": 32.59,
-   "bytes": 581619,
+   "bytes": 594768,
    "traffic": "3_-1.p5r"
   },
   "4_-1": {
@@ -4517,7 +4517,7 @@
    "region": "first_slice",
    "hmin": 6.69,
    "hmax": 36.03,
-   "bytes": 602179,
+   "bytes": 613040,
    "traffic": "4_-1.p5r"
   },
   "5_-1": {
@@ -4777,7 +4777,7 @@
    "region": "first_slice",
    "hmin": 8.5,
    "hmax": 40.42,
-   "bytes": 469305,
+   "bytes": 470377,
    "traffic": "4_0.p5r"
   },
   "5_0": {

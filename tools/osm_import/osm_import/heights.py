@@ -31,6 +31,8 @@ TUNNEL_COVER = {"road": 8.0, "rail": 9.0, "foot": 2.4}
 # surface model with buildings and trees in it: roads take out bumps up to a
 # few hundred metres long, rail is smoother still.
 SMOOTH_LENGTH = {"road": 30.0, "rail": 60.0, "foot": 15.0}
+SIDE_BY_SIDE_SLACK = 2.0  # tracks side by side further apart than this are brought level
+SIDE_BY_SIDE_ROUNDS = 6
 DENSE_STEP = 5.0         # metres between solved heights along a way
 COUPLE_LENGTH = 2.0      # a carriageway's tie to the one beside it acts like this much road
 # Deck to the road under it: clearance for a truck plus the deck's thickness.
@@ -127,12 +129,16 @@ def _way_length(coords) -> float:
     return float(np.linalg.norm(np.diff(coords, axis=0), axis=1).sum())
 
 
-def compute_node_heights(ways, hf: HeightField, couple=(), tie=()) -> dict[str, dict[int, float]]:
+def compute_node_heights(ways, hf: HeightField, couple=(), tie=(), side_by_side=()) -> dict[str, dict[int, float]]:
     """Heights of every node of the road, rail and path networks. `couple`
     lists (node, node) pairs that should end up level with each other (the
     two carriageways of a divided road). `tie` pairs are held level through
     every pass, not just the first (halves of a street across a median, which
-    the side streets at a crossroads would otherwise pull apart)."""
+    the side streets at a crossroads would otherwise pull apart).
+    `side_by_side` lists (node, node) pairs of tracks beside each other in a
+    station: the higher of each pair comes down to the lower one (a track
+    with no bound of its own follows a station roof left in the DEM, while
+    the one beside it is held down by a tunnel's approach)."""
     out: dict[str, dict[int, float]] = {}
     by_group = defaultdict(list)
     for w in ways:
@@ -141,6 +147,21 @@ def compute_node_heights(ways, hf: HeightField, couple=(), tie=()) -> dict[str, 
             by_group[g].append(w)
     for g, ws in by_group.items():
         out[g] = _solve_group(g, ws, hf, couple if g == "road" else (), tie if g == "road" else ())
+        cap: dict[int, float] = {}
+        for _ in range(SIDE_BY_SIDE_ROUNDS if g == "rail" else 0):
+            # A track brought down can bring down the next one over.
+            h = out[g]
+            more = False
+            for i, j in side_by_side:
+                if i in h and j in h:
+                    lo_ij = min(h[i], h[j])
+                    for k in (i, j):
+                        if h[k] > lo_ij + SIDE_BY_SIDE_SLACK and lo_ij < cap.get(k, np.inf):
+                            cap[k] = lo_ij
+                            more = True
+            if not more:
+                break
+            out[g] = _solve_group(g, ws, hf, cap=cap)
     return out
 
 
@@ -203,7 +224,7 @@ def _smooth(h0, a, b, d, length, fixed=None, fixed_h=None):
     return h
 
 
-def _solve_group(group: str, ways, hf: HeightField, couple=(), tie=()) -> dict[int, float]:
+def _solve_group(group: str, ways, hf: HeightField, couple=(), tie=(), cap=None) -> dict[int, float]:
     index: dict[int, int] = {}
     pos = []
     ea, eb, ed, eg = [], [], [], []
@@ -281,6 +302,9 @@ def _solve_group(group: str, ways, hf: HeightField, couple=(), tie=()) -> dict[i
         elif t.get("embankment") in ("yes", "both", "left", "right"):
             lo[k_idx] = np.maximum(lo[k_idx], base[k_idx] + 2.5)
 
+    for nid, c in (cap or {}).items():
+        if nid in index:
+            hi[index[nid]] = min(hi[index[nid]], c)
     head = _keep_headroom(group, ways, index, xy, lo)
     on_bridge = np.zeros(n, dtype=bool)
     for w in ways:
