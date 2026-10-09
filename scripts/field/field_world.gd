@@ -26,6 +26,7 @@ var fishing_screen: FishingScreen
 var home: HomeField
 var trophies: HomeTrophies
 var quiet: QuietPlaces
+var flicker: BirdFlicker
 
 var _ui: Array[Node] = []
 
@@ -72,6 +73,10 @@ func _ready() -> void:
 	fishing_screen.name = "FishingScreen"
 	fishing_screen.fishing = fishing
 	fishing.screen = fishing_screen
+	flicker = BirdFlicker.new()
+	flicker.name = "BirdFlicker"
+	flicker.setup(birds, binoculars)
+	add_child(flicker)
 	for node: Node in [binoculars, journal, lab_screen, tackle_screen, fishing_screen]:
 		host.add_child.call_deferred(node)
 		_ui.append(node)

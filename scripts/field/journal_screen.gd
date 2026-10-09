@@ -3,7 +3,9 @@ extends CanvasLayer
 ## The field journal (J): a page per species, birds in one half (with the
 ## quiet places you've found) and fish in the other (with the fishing spots). Until you find one it's a
 ## blank with a pencilled hint; then the name, the note, where and when you
-## first saw or caught it and your best photo. The game pauses while it's open.
+## first saw or caught it and your best photo. A third bookmark, Nights,
+## turns up once the late city has given you something to write down
+## (Story.nights, docs/STORY.md). The game pauses while it's open.
 
 const ACCENT := UiStyle.RED
 const PAPER := Color("f4ecda")
@@ -18,7 +20,7 @@ var _page: VBoxContainer
 var _summary: Label
 var _close: Button
 var _selected := ""
-## "birds" or "fish".
+## "birds", "fish" or "nights".
 var _tab := "birds"
 var _tab_buttons := {}
 var _group: ButtonGroup
@@ -71,10 +73,10 @@ func _ready() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	index.add_child(tabs)
-	for tab: String in ["birds", "fish"]:
+	for tab: String in ["birds", "fish", "nights"]:
 		var b := Button.new()
 		b.text = tab.capitalize()
-		b.icon = UiStyle.icon("bird" if tab == "birds" else "fish", 20, UiStyle.INK, Vector2.ZERO, UiStyle.TEAL)
+		b.icon = UiStyle.icon({"birds": "bird", "fish": "fish", "nights": "moon"}[tab], 20, UiStyle.INK, Vector2.ZERO, UiStyle.TEAL)
 		b.toggle_mode = true
 		b.pressed.connect(func() -> void:
 			if _tab != tab:
@@ -107,6 +109,11 @@ func _ready() -> void:
 	_page.add_theme_constant_override("separation", 8)
 	page_scroll.add_child(_page)
 	visible = false
+	var story := _story()
+	if story:
+		story.connect("night_logged", func(_entry: Dictionary) -> void:
+			if visible:
+				refresh())
 
 
 func is_open() -> bool:
@@ -175,10 +182,16 @@ func close() -> void:
 
 
 func refresh() -> void:
+	(_tab_buttons["nights"] as Button).visible = not nights().is_empty()
+	if _tab == "nights" and nights().is_empty():
+		_tab = "birds"
 	for tab: String in _tab_buttons:
 		(_tab_buttons[tab] as Button).set_pressed_no_signal(tab == _tab)
 	if _tab == "fish":
 		_refresh_fish()
+		return
+	if _tab == "nights":
+		_refresh_nights()
 		return
 	_summary.text = "%d of %d seen, %d photographed. Film: %d of %d left." % [
 		FieldJournal.seen_count(), FieldJournal.species_total(), FieldJournal.photographed_count(),
@@ -290,6 +303,59 @@ func _show(id: String) -> void:
 	FieldUI.label(_page, "Where to look: %s" % b.get("hint", ""), 14, INK.lightened(0.2))
 	FieldUI.label(_page, _when(b), 14, INK.lightened(0.3))
 	FieldUI.label(_page, "Prints sell for about $%d (two stars)." % int(b.get("value", 0)), 14, INK.lightened(0.3))
+
+
+# --- nights ---------------------------------------------------------------------------------
+
+func _story() -> Node:
+	return get_node_or_null(^"/root/Story")
+
+
+## The late city's nights you've lived through, newest first: {id, text, day, time}.
+func nights() -> Array:
+	var story := _story()
+	if story == null:
+		return []
+	var out: Array = Array(story.get("nights")).duplicate()
+	out.reverse()
+	return out
+
+
+func _refresh_nights() -> void:
+	var list := nights()
+	_summary.text = "%d night%s written down." % [list.size(), "" if list.size() == 1 else "s"]
+	FieldUI.clear(_list)
+	_group = ButtonGroup.new()
+	var first: Button = null
+	if not list.any(func(n: Dictionary) -> bool: return "night:" + String(n.id) == _selected):
+		_selected = "night:" + String(list[0].id)
+	for n: Dictionary in list:
+		var key := "night:" + String(n.id)
+		var button := Button.new()
+		button.theme_type_variation = &"ListButton"
+		button.toggle_mode = true
+		button.button_group = _group
+		button.button_pressed = key == _selected
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.text = "Day %d, %s" % [int(n.get("day", 0)), _clock(float(n.get("time", 0.0)))]
+		button.pressed.connect(func() -> void:
+			_selected = key
+			_show_night(n))
+		_list.add_child(button)
+		if key == _selected:
+			first = button
+			_show_night(n)
+	if first:
+		first.grab_focus()
+
+
+func _show_night(n: Dictionary) -> void:
+	FieldUI.clear(_page)
+	_room_tone(false)
+	FieldUI.label(_page, "Day %d, %s" % [int(n.get("day", 0)), _clock(float(n.get("time", 0.0)))], 22, INK)
+	var hand := FieldUI.label(_page, String(n.get("text", "")), 15, INK)
+	hand.theme_type_variation = &"HandLabel"
+	hand.add_theme_font_size_override("font_size", 24)
 
 
 # --- fish ---------------------------------------------------------------------------------
