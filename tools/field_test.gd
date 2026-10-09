@@ -590,19 +590,21 @@ func _check_wrong_flathead(disc: Node) -> void:
 
 ## The kept hubcap goes up on the shed door at home.
 ## The late city's birds that flicker (BirdFlicker), level by level. A stand-in
-## LateCity counts the warbles and shimmers if the story's own isn't loaded.
+## A stand-in LateCity counts the warbles and shimmers and says how strong the
+## late city is; the story's own is swapped out meanwhile, then checked at the end.
 func _check_flicker() -> void:
 	var fl: Node = _field.flicker
-	var lc: Node = root.get_node_or_null("LateCity")
-	var stub := lc == null
-	if stub:
-		var gs := GDScript.new()
-		gs.source_code = "extends Node\nvar presence := 0.0\nvar warbles := 0\nfunc flicker_level() -> int: return 0\nfunc presence_at(_p: Vector3) -> float: return presence\nfunc play_flicker(_p: Vector3) -> void: warbles += 1\nfunc add_shimmer(n: Node3D, amount := 1.0) -> void: n.set_meta(\"shimmer\", amount)\nfunc remove_shimmer(n: Node3D) -> void: n.remove_meta(\"shimmer\")\n"
-		gs.reload()
-		lc = Node.new()
-		lc.set_script(gs)
-		lc.name = "LateCity"
-		root.add_child(lc)
+	var real: Node = root.get_node_or_null("LateCity")
+	var real_at := real.get_index() if real else -1
+	if real:
+		root.remove_child(real)
+	var gs := GDScript.new()
+	gs.source_code = "extends Node\nvar presence := 0.0\nvar warbles := 0\nfunc flicker_level() -> int: return 0\nfunc presence_at(_p: Vector3) -> float: return presence\nfunc play_flicker(_p: Vector3) -> void: warbles += 1\nfunc add_shimmer(n: Node3D, amount := 1.0) -> void: n.set_meta(\"shimmer\", amount)\nfunc remove_shimmer(n: Node3D) -> void: n.remove_meta(\"shimmer\")\n"
+	gs.reload()
+	var lc := Node.new()
+	lc.set_script(gs)
+	lc.name = "LateCity"
+	root.add_child(lc)
 	_birds.clear()
 	var clock: Node = root.get_node("GameClock")
 	clock.set_time(2.0)
@@ -638,24 +640,24 @@ func _check_flicker() -> void:
 	# Act 3: every wrong bird, any way you look, and it comes back nearby.
 	fl.level_override = 2
 	var before: Vector3 = mag.position
-	var warbles: int = lc.get("warbles") if stub else 0
+	var warbles: int = lc.get("warbles")
 	var gone := 0.0
 	var shimmered := false
 	for i in 400:
 		fl._process(0.05)
 		if not mag.visible:
 			gone += 0.05
-			shimmered = shimmered or not stub or mag.has_meta("shimmer")
+			shimmered = shimmered or mag.has_meta("shimmer")
 		elif gone > 0.0:
 			break
 	_check(gone > 0.0 and gone <= 0.65, "act 3: the wrong magpie blinks out for a moment (%.2f s)" % gone)
 	_check(mag.visible and mag.position.distance_to(before) <= 1.01, "and comes back within a metre (%.2f m)" % mag.position.distance_to(before))
-	_check(shimmered and (not stub or int(lc.get("warbles")) > warbles), "with the shimmer and the warble")
+	_check(shimmered and int(lc.get("warbles")) > warbles, "with the shimmer and the warble")
 	for i in 40:
 		fl._process(0.05)
 		if mag.visible and not mb.get("blink", 0.0) > 0.0 and mb.get("glow", 0.0) <= 0.0:
 			break
-	_check(not stub or not mag.has_meta("shimmer"), "the shimmer fades after")
+	_check(not mag.has_meta("shimmer"), "the shimmer fades after")
 	# The focus dial jumps when its bird blinks, and the shot carries on.
 	_bino.state = _bino.State.FOCUS
 	_bino.dial = {"node": mag, "needle": 1.0, "time": 9.0, "flash": 0.0, "flash_good": true}
@@ -667,11 +669,10 @@ func _check_flicker() -> void:
 	_bino.state = _bino.State.CLOSED
 	# Act 4: ordinary birds too, only where the late city is strong.
 	var plain := {"state": "perch", "node": mag, "sighting": {"id": "galah"}}
-	if stub:
-		lc.set("presence", 1.0)
-		_check(fl.can_flicker(plain, 3, false) and not fl.can_flicker(plain, 2, false), "act 4: ordinary birds flicker where the late city is strong")
-		lc.set("presence", 0.0)
-		_check(not fl.can_flicker(plain, 3, false), "but not elsewhere")
+	lc.set("presence", 1.0)
+	_check(fl.can_flicker(plain, 3, false) and not fl.can_flicker(plain, 2, false), "act 4: ordinary birds flicker where the late city is strong")
+	lc.set("presence", 0.0)
+	_check(not fl.can_flicker(plain, 3, false), "but not elsewhere")
 	# Act 5: the thirteen beside the car on Fraser Avenue.
 	_birds.clear()
 	fl.level_override = 4
@@ -692,10 +693,28 @@ func _check_flicker() -> void:
 		fl._along.time = 0.0
 		fl._process(0.05)
 		_check(not fl.alongside() and flock.birds.all(func(b: Dictionary) -> bool: return b.state == "fly" and b.node.visible), "then they peel off")
+	_birds.clear()
+	root.remove_child(lc)
+	lc.free()
+	if real == null:
+		fl.level_override = -1
+		return
+	root.add_child(real)
+	root.move_child(real, real_at)
+	# With the story's own LateCity: a blink puts the tape shimmer on the bird.
+	fl.level_override = 2
+	var m2: Dictionary = _birds.spawn_wrong(_fj.bird("wrong_magpie"), _car.global_position + Vector3(14, 0, 6))
+	if not m2.is_empty():
+		var b2: Dictionary = m2.birds[0]
+		var overlaid := func() -> bool:
+			return b2.node.find_children("*", "GeometryInstance3D", true, false).any(func(g: GeometryInstance3D) -> bool: return g.material_overlay != null)
+		fl.blink(b2)
+		var on: bool = overlaid.call()
+		for i in 60:
+			fl._process(0.05)
+		_check(on and b2.node.visible and not overlaid.call(), "the story's LateCity shimmers a blink and lifts it after")
 	fl.level_override = -1
 	_birds.clear()
-	if stub:
-		lc.queue_free()
 
 
 ## The journal's Nights bookmark: hidden until the late city logs a night,
