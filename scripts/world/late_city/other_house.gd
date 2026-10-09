@@ -6,11 +6,13 @@ extends Node3D
 ## brown carpet, the fire going, Mick's radio on the midnight station. Step
 ## back out and shut the door, and it's yours again.
 ##
-## The look is the late city's: the deck clicks on as the door opens, the
-## light goes sodium, the tape hisses, the counter turns. The windows always
-## show your real house from outside, because nothing changes until a door
-## opens. Act 2 on, once the first tape has turned up, at most once every few
-## nights, never in cozy mode.
+## Only the door shows it. From outside, the windows always show your own
+## house, even with the door wide open; it's 1979 only through the doorway,
+## and all round you once you step in.
+##
+## The look is the late city's: the deck clicks on and the tape hisses as the
+## door opens, and the light goes sodium once you're in. Act 2 on, once the
+## first tape has turned up, at most once every few nights, never in cozy mode.
 
 const EVENT := &"other_house"
 const FROM_ACT := 2
@@ -22,6 +24,16 @@ const DOORS := [&"Door_Front", &"Door_Sliding"]
 const BOX_MIN := Vector3(-0.1, -0.05, 0.0)
 const BOX_MAX := Vector3(5.5, 12.1, 6.0)
 const OUT_MARGIN := 0.6
+## Walk this far (m) from the house with a door left open and it lets go.
+const LET_GO := 15.0
+## The 1979 house's render layer, so today's lamps can leave it alone.
+const LAYER_1979 := 1 << 16
+## A door's opening is its leaf plus this much each side (m), and counts as
+## shut once it's had this long (s) to swing to.
+const OPENING_MARGIN := 0.05
+const DOOR_SWING := 0.7
+## Standing within this much (m) of an open doorway counts as inside.
+const DOORWAY := 0.4
 ## The shell's materials and what they become in 1979.
 const RETINT := {
 	&"WallPaint": "wallpaper", &"Carpet": "carpet", &"Jarrah": "carpet",
@@ -36,9 +48,20 @@ var last_day := -100
 var _home: HomeBase
 var _active := false
 var _dressing: House1979
-var _hidden: Array[Node3D] = []
+## 0 off, 1 looking in from outside, 2 inside (what the shader is told).
+var portal_mode := 0
 var _overrides: Array = []   # [MeshInstance3D, surface, previous override]
-var _dimmed: Array = []      # [Light3D, previous cull mask]: today's lamps, switched off
+var _dimmed: Array = []      # [Light3D, previous cull mask]: lamps kept off the other side
+var _flat_today: Array[GeometryInstance3D] = []  # no PS1 material: hidden while you're inside
+var _flat_1979: Array[GeometryInstance3D] = []   # (labels): shown only while you're inside
+var _copies: Array[MeshInstance3D] = []          # the shell's papered copies
+var _openings := {}          # door -> {centre, right, half_w, up, half_h} (world)
+var _shut_at := {}           # door -> when it was shut (s), while it swings to
+var _was_inside := false
+var _clock := 0.0            # game seconds, for the doors' swing
+var _late_cache := {}
+var _papered_cache := {}
+static var _late_shader: Shader
 var _materials := {}         # "wallpaper" -> ShaderMaterial
 var _radio: AudioStreamPlayer3D
 var _out_time := 0.0
@@ -58,6 +81,7 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	_clock += delta
 	if _home == null or not is_instance_valid(_home):
 		_check -= delta
 		if _check > 0.0:
@@ -70,6 +94,7 @@ func _process(delta: float) -> void:
 		return
 	if not _active:
 		return
+	_update_view(delta)
 	# Back outside with the doors shut, or well clear of the house: it's yours again.
 	var eyes := _eyes()
 	var inside := eyes != null and _in_box(eyes.global_position, -OUT_MARGIN)
@@ -77,8 +102,8 @@ func _process(delta: float) -> void:
 		_out_time += delta
 		var shut := true
 		for d in DOORS:
-			shut = shut and not _home.is_door_open(d)
-		var far := eyes == null or not _in_box(eyes.global_position, 4.0)
+			shut = shut and not _door_showing(d)
+		var far := eyes == null or not _in_box(eyes.global_position, LET_GO)
 		if _out_time > 0.4 and (shut or far):
 			swap_out()
 	else:
@@ -110,19 +135,23 @@ func _on_door(door: StringName, open: bool) -> void:
 	swap_in()
 
 
-## Make the inside 1979 (also called by tests).
+## Make the inside 1979 (also called by tests). From outside, only what you
+## see through the open door is 1979; the windows still show your house.
 func swap_in() -> void:
 	if _active or _home == null or not LateCity.begin(EVENT):
 		return
 	_active = true
 	_out_time = 0.0
+	_was_inside = false
 	last_day = GameClock.day
-	_hide_today()
+	_measure_doors()
+	_today_aside()
 	_retint(true)
 	_dressing = House1979.new()
 	_home.add_child(_dressing)
+	_dress_1979(_dressing)
+	_update_view(0.0)
 	_play_radio()
-	LateCity.fade_look(1.0, 0.8)
 	LateCity.set_hiss(true)
 	Discoveries.discover("oddity/other_house_1979")
 	Story.log_night(&"other_house_1979",
@@ -134,15 +163,23 @@ func swap_out() -> void:
 	if not _active:
 		return
 	_active = false
-	for n in _hidden:
-		if is_instance_valid(n):
-			n.visible = true
-	_hidden.clear()
+	for o: Array in _overrides:
+		if is_instance_valid(o[0]):
+			(o[0] as MeshInstance3D).set_surface_override_material(o[1], o[2])
+	_overrides.clear()
 	for d: Array in _dimmed:
 		if is_instance_valid(d[0]):
 			(d[0] as Light3D).light_cull_mask = d[1]
 	_dimmed.clear()
-	_retint(false)
+	for n in _flat_today:
+		if is_instance_valid(n):
+			n.visible = true
+	_flat_today.clear()
+	_flat_1979.clear()
+	for n in _copies:
+		if is_instance_valid(n):
+			n.queue_free()
+	_copies.clear()
 	if _dressing:
 		_dressing.queue_free()
 		_dressing = null
@@ -150,6 +187,8 @@ func swap_out() -> void:
 		_radio.stop()
 		_radio.queue_free()
 		_radio = null
+	portal_mode = 0
+	RenderingServer.global_shader_parameter_set(&"late_portal", 0.0)
 	LateCity.end(EVENT)
 
 
@@ -176,12 +215,111 @@ func interact() -> void:
 	Story.log_night(&"drawing_1979", "Took a drawing off the 1979 fridge. A little round car, the lane, the shed. ROBYN, 8.")
 
 
-# --- Inside -------------------------------------------------------------------------
+# --- Inside ---------------------------------------------------------------------
+#
+# Nothing is hidden or swapped wholesale: today's things inside the house and
+# the 1979 house are both there, each with a copy of the PS1 shader that has
+# LATE_SIDES on (late_side 1 and 2). The shader works out, per pixel, whether
+# you're looking at it through an open door from outside (or are inside) and
+# shows the 1979 side there, today's side everywhere else. So through the
+# windows it's always your house, even with the door wide open. Lamps only
+# light their own side.
 
-## Hide everything of today's that's inside the house: the furniture, the
-## decor, the lamps, the plants, the cat's bowl. The shell and its doors stay.
-func _hide_today() -> void:
-	_hidden.clear()
+## Where each door's opening is (world), measured with the door shut.
+func _measure_doors() -> void:
+	_openings.clear()
+	var doors: Variant = _home.get("_doors")
+	for d: StringName in DOORS:
+		if not (doors is Dictionary) or not (doors as Dictionary).has(d):
+			continue
+		var leaf: Node3D = doors[d].node
+		var rest: Transform3D = doors[d].rest
+		var parent := leaf.get_parent() as Node3D
+		# The leaf's meshes, in the house's own space, as if it were shut.
+		var to_home := _home.global_transform.affine_inverse() * parent.global_transform * rest
+		var box := AABB()
+		var first := true
+		for mi in _meshes(leaf):
+			var local := leaf.global_transform.affine_inverse() * mi.global_transform
+			var b: AABB = to_home * (local * mi.get_aabb())
+			box = b if first else box.merge(b)
+			first = false
+		if first:
+			continue
+		var size := box.size
+		var thin := 0 if size.x < size.z else 2
+		var across := Vector3.RIGHT if thin == 2 else Vector3.BACK
+		var half_w := (size.z if thin == 0 else size.x) * 0.5 + OPENING_MARGIN
+		var half_h := size.y * 0.5 + OPENING_MARGIN
+		var basis := _home.global_basis
+		_openings[d] = {
+			"centre": _home.to_global(box.get_center()),
+			"right": (basis * across).normalized(), "half_w": half_w,
+			"up": (basis * Vector3.UP).normalized(), "half_h": half_h,
+		}
+
+
+## True while a door is open, and for as long as it takes to swing shut.
+func _door_showing(d: StringName) -> bool:
+	if _home.is_door_open(d):
+		_shut_at[d] = -1.0
+		return true
+	var t: float = _shut_at.get(d, -1.0)
+	var now := _clock
+	if t < 0.0:
+		_shut_at[d] = now
+		return true
+	return now - t < DOOR_SWING
+
+
+## Tell the shader where the doors are and which side of them you are.
+func _update_view(_delta: float) -> void:
+	var cam := get_viewport().get_camera_3d()
+	var inside := cam != null and _past_threshold(cam.global_position)
+	portal_mode = 2 if inside else 1
+	RenderingServer.global_shader_parameter_set(&"late_portal", float(portal_mode))
+	var names := [&"late_door_a", &"late_door_b"]
+	for i in DOORS.size():
+		var base: String = names[i]
+		var o: Dictionary = _openings.get(DOORS[i], {})
+		var open := not o.is_empty() and _door_showing(DOORS[i])
+		var c: Vector3 = o.get("centre", Vector3.ZERO)
+		var r: Vector3 = o.get("right", Vector3.RIGHT)
+		var u: Vector3 = o.get("up", Vector3.UP)
+		RenderingServer.global_shader_parameter_set(StringName(base + "_c"), Vector4(c.x, c.y, c.z, 1.0 if open else 0.0))
+		RenderingServer.global_shader_parameter_set(StringName(base + "_r"), Vector4(r.x, r.y, r.z, o.get("half_w", 0.0)))
+		RenderingServer.global_shader_parameter_set(StringName(base + "_u"), Vector4(u.x, u.y, u.z, o.get("half_h", 0.0)))
+	for n in _flat_today:
+		if is_instance_valid(n):
+			n.visible = not inside
+	for n in _flat_1979:
+		if is_instance_valid(n):
+			n.visible = inside
+	if inside and not _was_inside:
+		_was_inside = true
+		LateCity.fade_look(1.0, 1.2)
+
+
+## Inside the house, or standing in an open doorway (so the camera's near
+## plane never cuts the opening as you step through).
+func _past_threshold(p: Vector3) -> bool:
+	if _in_box(p, 0.0):
+		return true
+	for d: StringName in _openings:
+		if not _door_showing(d):
+			continue
+		var o: Dictionary = _openings[d]
+		var h: Vector3 = p - o.centre
+		var n: Vector3 = (o.right as Vector3).cross(o.up)
+		if absf(h.dot(n)) < DOORWAY and absf(h.dot(o.right)) < float(o.half_w) + 0.1 \
+				and absf(h.dot(o.up)) < float(o.half_h) + 0.1:
+			return true
+	return false
+
+
+## Today's things inside the house get the today side of the shader, and the
+## lamps stop lighting the 1979 side.
+func _today_aside() -> void:
 	var shell := _home.get_node_or_null(^"House")
 	var world := _home.get_parent()
 	while world and not (world.name == &"World"):
@@ -191,19 +329,22 @@ func _hide_today() -> void:
 	var skip := [shell, _home.get_node_or_null(^"Site")]
 	for name in [&"PerthMap", &"Traffic", &"Car", &"CameraRig", &"Player"]:
 		skip.append(world.get_node_or_null(NodePath(String(name))))
+	_dimmed.clear()
 	_collect(world, skip)
 	# The house itself sits under the map (MapStreamer's Home), so its own
 	# furniture is gone through separately.
 	if world.is_ancestor_of(_home) and skip.any(func(n: Variant) -> bool: return n is Node and n.is_ancestor_of(_home)):
 		_collect(_home, skip)
-	# Today's lamps belong to the shell (HomeBase turns them on and off by
-	# the clock), so they're switched off by what they light instead.
-	_dimmed.clear()
+	# Today's lamps belong to the shell (HomeBase turns them on by the clock).
 	if shell:
 		for l in _lights(shell):
 			if _in_box(l.global_position, 0.0):
-				_dimmed.append([l, l.light_cull_mask])
-				l.light_cull_mask = 0
+				_dim(l)
+
+
+func _dim(l: Light3D) -> void:
+	_dimmed.append([l, l.light_cull_mask])
+	l.light_cull_mask &= ~LAYER_1979
 
 
 static func _lights(node: Node) -> Array[Light3D]:
@@ -217,39 +358,118 @@ static func _lights(node: Node) -> Array[Light3D]:
 
 func _collect(node: Node, skip: Array) -> void:
 	for c in node.get_children():
-		if c in skip or c == self:
+		if c in skip or c == self or c == _dressing:
 			continue
-		if c is VisualInstance3D and (c as Node3D).visible:
-			var v := c as VisualInstance3D
-			var centre := v.global_transform * v.get_aabb().get_center()
-			if v is Light3D:
-				centre = v.global_position
-			if _in_box(centre, 0.0):
-				v.visible = false
-				_hidden.append(v)
-				continue
+		if c is Light3D:
+			if _in_box((c as Light3D).global_position, 0.0):
+				_dim(c)
+		elif c is GeometryInstance3D and (c as Node3D).visible:
+			var g := c as GeometryInstance3D
+			if _in_box(g.global_transform * g.get_aabb().get_center(), 0.0):
+				if not _side(g, 1):
+					_flat_today.append(g)
 		_collect(c, skip)
 
 
+## Give a mesh's PS1 surfaces their `side` copy. False if it has none.
+func _side(g: GeometryInstance3D, side: int) -> bool:
+	if g.material_override is ShaderMaterial and (g.material_override as ShaderMaterial).shader == PS1Model.SHADER:
+		g.material_override = late_material(g.material_override, side)
+		return true
+	var mi := g as MeshInstance3D
+	if mi == null or mi.mesh == null:
+		return false
+	var any := false
+	for i in mi.mesh.get_surface_count():
+		var m := mi.get_active_material(i)
+		if m is ShaderMaterial and (m as ShaderMaterial).shader == PS1Model.SHADER:
+			_overrides.append([mi, i, mi.get_surface_override_material(i)])
+			mi.set_surface_override_material(i, late_material(m, side))
+			any = true
+	return any
+
+
+## The 1979 house: the 1979 side, lit only by its own lamps.
+func _dress_1979(node: Node) -> void:
+	for c in node.get_children():
+		if c is Light3D:
+			(c as Light3D).light_cull_mask = LAYER_1979
+		elif c is GeometryInstance3D:
+			var g := c as GeometryInstance3D
+			g.layers = LAYER_1979
+			if not _side(g, 2):
+				_flat_1979.append(g)
+		_dress_1979(c)
+
+
+## The shell's walls, floors and ceilings: today's paint where it's today, and
+## a copy of just those surfaces papered and carpeted for 1979.
 func _retint(on: bool) -> void:
 	if not on:
-		for o: Array in _overrides:
-			if is_instance_valid(o[0]):
-				(o[0] as MeshInstance3D).set_surface_override_material(o[1], o[2])
-		_overrides.clear()
 		return
 	var shell := _home.get_node_or_null(^"House")
 	if shell == null:
 		return
 	for mi in _meshes(shell):
-		if String(mi.name).begins_with("Door"):
+		if String(mi.name).begins_with("Door") or mi.name == &"Late1979":
 			continue
+		var surfaces: Array[int] = []
 		for i in mi.mesh.get_surface_count():
 			var m := mi.mesh.surface_get_material(i)
-			if m == null or not RETINT.has(StringName(m.resource_name)):
-				continue
-			_overrides.append([mi, i, mi.get_surface_override_material(i)])
-			mi.set_surface_override_material(i, _material(RETINT[StringName(m.resource_name)]))
+			if m != null and RETINT.has(StringName(m.resource_name)):
+				surfaces.append(i)
+		if surfaces.is_empty():
+			continue
+		var copy := MeshInstance3D.new()
+		copy.name = "Late1979"
+		copy.mesh = _papered(mi.mesh, surfaces)
+		copy.layers = LAYER_1979
+		copy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.add_child(copy)
+		_copies.append(copy)
+		for i in surfaces:
+			var m := mi.get_active_material(i)
+			if m is ShaderMaterial:
+				_overrides.append([mi, i, mi.get_surface_override_material(i)])
+				mi.set_surface_override_material(i, late_material(m, 1))
+
+
+## Just the papered surfaces of `mesh`, in their 1979 materials (kept for next time).
+func _papered(mesh: Mesh, surfaces: Array[int]) -> ArrayMesh:
+	if _papered_cache.has(mesh):
+		return _papered_cache[mesh]
+	var out := ArrayMesh.new()
+	for i in surfaces:
+		out.add_surface_from_arrays(mesh.surface_get_primitive_type(i), mesh.surface_get_arrays(i))
+		var kind: String = RETINT[StringName(mesh.surface_get_material(i).resource_name)]
+		out.surface_set_material(out.get_surface_count() - 1, late_material(_material(kind), 2))
+	_papered_cache[mesh] = out
+	return out
+
+
+## A copy of a PS1 material on the late-sides shader, showing `side`.
+func late_material(source: ShaderMaterial, side: int) -> ShaderMaterial:
+	var key := "%d:%d" % [source.get_instance_id(), side]
+	if _late_cache.has(key):
+		return _late_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = late_shader()
+	for u: Dictionary in source.shader.get_shader_uniform_list():
+		m.set_shader_parameter(u.name, source.get_shader_parameter(u.name))
+	m.set_shader_parameter("late_side", side)
+	m.resource_name = source.resource_name
+	for meta in source.get_meta_list():
+		m.set_meta(meta, source.get_meta(meta))
+	_late_cache[key] = m
+	return m
+
+
+## The PS1 shader with LATE_SIDES on (built once, from the same source).
+static func late_shader() -> Shader:
+	if _late_shader == null:
+		_late_shader = Shader.new()
+		_late_shader.code = PS1Model.SHADER.code.replace("shader_type spatial;", "shader_type spatial;\n#define LATE_SIDES")
+	return _late_shader
 
 
 func _material(kind: String) -> ShaderMaterial:

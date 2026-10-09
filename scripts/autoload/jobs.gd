@@ -192,7 +192,7 @@ func objective_text() -> String:
 	var target := target_site()
 	var where := target.label() if target else "?"
 	var distance := ""
-	if target and _car:
+	if target and is_instance_valid(_car):
 		distance = "  %.1f km" % (_car.global_position.distance_to(target.global_position) / 1000.0)
 	match active.stage:
 		"to_pickup":

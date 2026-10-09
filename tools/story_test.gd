@@ -108,9 +108,10 @@ func _process(_delta: float) -> bool:
 				_check(_home.toggle_door(&"Door_Front"), "the front door opens")
 				_check(_other.is_active(), "and inside it's 1979")
 				_check(late.event == &"other_house", "the late city is running the other house")
-				_check(_visible_meshes(interior) == 0, "today's furniture is gone, bar the balcony pots outside (%d left: %s)" % [_visible_meshes(interior), _visible_names(interior)])
+				_check(_other.portal_mode == 1, "from the doorstep, it's 1979 only through the door (mode %d)" % _other.portal_mode)
+				_check(_sided(interior, 1) > 0 and _sided(interior, 0) == 0, "today's furniture shows only where 1979 doesn't (%d sided, %d not)" % [_sided(interior, 1), _sided(interior, 0)])
 				_check(_home.find_child("House1979", false, false) != null, "the Dorans' things are in")
-				_check(_retinted() > 0, "the walls and floors are 1979 (%d surfaces)" % _retinted())
+				_check(_retinted() > 0, "the walls and floors have a 1979 side (%d surfaces)" % _retinted())
 				_check(story.has_night(&"other_house_1979"), "it's in the Nights log")
 				_check(_other.interact_hint() == "Take the drawing", "the drawing on the fridge can be taken")
 				_other.interact()
@@ -119,13 +120,13 @@ func _process(_delta: float) -> bool:
 				# Walk in, then back out and shut the door.
 				_put_player(_home.to_global(_H79.at(Vector3(2.5, 3.0, 0.2))))
 			elif _frames == 240:
-				_check(_other.is_active(), "still 1979 while you're inside")
+				_check(_other.is_active() and _other.portal_mode == 2, "all 1979 once you're inside (mode %d)" % _other.portal_mode)
 				_put_player(_home.spawn_transform(&"Spawn_Front").origin + Vector3.UP * 0.1)
 			elif _frames == 250:
 				_home.toggle_door(&"Door_Front")
 			elif _frames == 300:
 				_check(not _other.is_active(), "out and the door shut: it's your house again")
-				_check((_home.get_node("Interior") as Node3D).visible, "today's furniture is back")
+				_check(_sided(_home.get_node("Interior"), 1) == 0 and _other.portal_mode == 0, "today's furniture is plain again")
 				_check(_retinted() == 0, "and the walls are yours")
 				_check(not late.active(), "the late city has let go")
 				# Opening from inside never does it.
@@ -166,9 +167,16 @@ func _process(_delta: float) -> bool:
 
 
 ## Each run: drive up to ~1.2 km before May Drive's end, start the road,
-## watch it empty, then leave it (first run) or deliver (second run).
+## watch it empty, then leave it (first run), deliver (second run) or stop
+## the car (third run).
 func _road_run(late: Node, story: Node) -> bool:
 	var f := _frames - _run_from
+	# Creep along (standing still lets you go), except on the last run.
+	if _runs == 2 and f >= 450 and f < 800:
+		_car.linear_velocity = Vector3(0, _car.linear_velocity.y, 0)  # foot on the brake
+	if f > 120 and f < 450:
+		var fwd: Vector3 = -_car.global_transform.basis.z
+		_car.linear_velocity = Vector3(fwd.x * 1.4, _car.linear_velocity.y, fwd.z * 1.4)
 	if f == 120:
 		_check(late.map_idle(), "the map has loaded round the car")
 		var on := MapData.shared().street_at(_car.global_position, 12.0)
@@ -195,7 +203,9 @@ func _road_run(late: Node, story: Node) -> bool:
 		_check(hidden.size() > 0, "the map's own road meshes are hidden under the ribbon (%d: %s)" % [hidden.size(), ", ".join(hidden.slice(0, 4).map(func(n: Node) -> String: return String(n.name)))])
 		_check(is_equal_approx(_road.void_amount, 1.0), "the void is full")
 		_check(late.mute_amount() > 0.95, "only the engine is left")
-		if _runs == 0:
+		if _runs == 2:
+			pass  # Stop the car and wait.
+		elif _runs == 0:
 			# Leave the road: drive off into the dark.
 			var right: Vector3 = (_car.global_transform.basis.x).normalized()
 			_car.teleport(Transform3D(_car.global_transform.basis, _car.global_position + right * 20.0 + Vector3.UP * 0.5))
@@ -204,7 +214,10 @@ func _road_run(late: Node, story: Node) -> bool:
 			_car.teleport(Transform3D(_car.global_transform.basis, _ER.DROPOFF + Vector3.UP * 0.8))
 	elif f == 470 and _runs == 0:
 		_check(_road.phase == _ER.Phase.FADE_IN, "off the road, the world comes back")
-	elif f == (650 if _runs == 0 else 900):
+	elif f == 800 and _runs == 2:
+		_check(_road.phase == _ER.Phase.FADE_IN or _road.phase == _ER.Phase.IDLE, "stopping the car lets you go too (phase %d, %.1f km/h)" % [_road.phase, _car.speed_kmh()])
+		_next()
+	elif f == (650 if _runs == 0 else 900) and _runs < 2:
 		_check(_road.phase == _ER.Phase.IDLE, "and it's over")
 		var map := get_first_node_in_group(&"perth_map") as Node3D
 		_check(map != null and map.visible, "the city is back")
@@ -213,6 +226,7 @@ func _road_run(late: Node, story: Node) -> bool:
 		if _runs == 0:
 			_check(story.has_night(&"empty_road_left"), "leaving it is in the Nights log")
 			_check(not story.flag(&"empty_road_done"), "the parcel is still to go")
+			_check(not _road.get("_armed"), "and it won't start again until you've left May Drive")
 			_runs = 1
 			_start_run()
 			_run_from = _frames
@@ -220,7 +234,9 @@ func _road_run(late: Node, story: Node) -> bool:
 			_check(story.flag(&"empty_road_done"), "the parcel was signed for")
 			_check(story.has_night(&"empty_road"), "and it's in the Nights log")
 			_check(root.get_node("Jobs").active.is_empty(), "the job is done")
-			_next()
+			_runs = 2
+			_start_run()
+			_run_from = _frames
 	return false
 
 
@@ -232,8 +248,9 @@ func _start_run() -> void:
 		job = _story_job()
 	if not job.is_empty():
 		jobs.accept(job)
-	jobs.active.stage = "to_dropoff"
-	jobs._stage_changed()
+	if not jobs.active.is_empty():
+		jobs.active.stage = "to_dropoff"
+		jobs._stage_changed()
 	root.get_node("GameClock").set_time(1.0)
 	# 1.2 km back along the road from May Drive, facing along it.
 	var cum := TrafficGraph.cumulative(_route)
@@ -268,28 +285,33 @@ func _retinted() -> int:
 	var shell: Node = _home.get_node("House")
 	var n := 0
 	for mi in _OH._meshes(shell):
+		if mi.name != &"Late1979" or not mi.is_inside_tree() or mi.is_queued_for_deletion():
+			continue
 		for i in mi.mesh.get_surface_count():
-			var m: Material = mi.get_surface_override_material(i)
-			if m != null and m.has_meta(&"late_1979"):
+			var m: Material = mi.mesh.surface_get_material(i)
+			if m != null and m.has_meta(&"late_1979") and m.get_shader_parameter("late_side") == 2:
 				n += 1
 	return n
 
 
-func _visible_meshes(node: Node) -> int:
+## Meshes inside the house (PS1 ones) whose surfaces are on `side` (0: plain).
+func _sided(node: Node, side: int) -> int:
 	var n := 0
 	for mi in _OH._meshes(node):
-		if mi.is_visible_in_tree() and _other._in_box(mi.global_transform * mi.get_aabb().get_center(), 0.0):
+		if not mi.is_visible_in_tree() or not _other._in_box(mi.global_transform * mi.get_aabb().get_center(), 0.0):
+			continue
+		var found := 0
+		var ps1 := false
+		for i in mi.mesh.get_surface_count():
+			var m := mi.get_active_material(i) as ShaderMaterial
+			if m == null:
+				continue
+			ps1 = true
+			var v: Variant = m.get_shader_parameter("late_side")
+			found = int(v) if v != null else 0
+		if ps1 and found == side:
 			n += 1
 	return n
-
-
-func _visible_names(node: Node) -> String:
-	var out := PackedStringArray()
-	for mi in _OH._meshes(node):
-		if mi.is_visible_in_tree() and _other._in_box(mi.global_transform * mi.get_aabb().get_center(), 0.0):
-			var c: Vector3 = mi.global_transform * mi.get_aabb().get_center()
-			out.append("%s %s" % [mi.name, _home.to_local(c)])
-	return ", ".join(out)
 
 
 func _next() -> void:
