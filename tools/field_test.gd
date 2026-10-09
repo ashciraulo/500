@@ -690,6 +690,8 @@ func _check_flicker() -> void:
 			all_out = all_out or flock.birds.all(func(b: Dictionary) -> bool: return not b.node.visible)
 		var near: bool = flock.birds.all(func(b: Dictionary) -> bool: return b.node.global_position.distance_to(_car.global_position) < 25.0)
 		_check(near, "keeping pace beside the car")
+		var left: bool = flock.birds.all(func(b: Dictionary) -> bool: return _car.to_local(b.node.global_position).x < -3.0)
+		_check(left, "on the passenger side")
 		_check(all_out, "flickering in step")
 		fl._along.time = 0.0
 		fl._process(0.05)

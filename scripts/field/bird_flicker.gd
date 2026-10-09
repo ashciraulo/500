@@ -19,6 +19,9 @@ const GONE := Vector2(0.2, 0.6)
 const AFTERGLOW := 1.2
 ## The wrong frogmouth's steady shimmer through the binoculars (act 2).
 const FROGMOUTH_GLOW := 0.6
+## The thirteen keep a faint shimmer the whole way along Fraser Avenue, so
+## black birds read against the night sky.
+const ALONG_GLOW := 0.7
 ## Seconds between flickers: wrong birds, ordinary ones.
 const WRONG_EVERY := Vector2(3.0, 9.0)
 const ORDINARY_EVERY := Vector2(12.0, 35.0)
@@ -105,7 +108,7 @@ func _update(b: Dictionary, lvl: int, bino: bool, delta: float) -> void:
 	if b.get("glow", 0.0) > 0.0:
 		b.glow -= delta
 		if b.glow <= 0.0:
-			_unshimmer(node)
+			_unshimmer(node, b)
 	if b.state == "along":
 		return  # the Fraser Avenue flock flickers together (_alongside)
 	if not can_flicker(b, lvl, bino):
@@ -166,12 +169,15 @@ func _back(b: Dictionary) -> void:
 			node.rotation.y += _rng.randf_range(-2.0, 2.0)
 
 
-func _unshimmer(node: Node3D) -> void:
+func _unshimmer(node: Node3D, b := {}) -> void:
 	var lc := _late_city()
 	if lc == null or not is_instance_valid(node):
 		return
+	# Back to a steady shimmer, for the birds that keep one.
 	if node == _frogmouth_glow:
-		lc.call("add_shimmer", node, FROGMOUTH_GLOW)  # back to its steady shimmer
+		lc.call("add_shimmer", node, FROGMOUTH_GLOW)
+	elif b.get("state", "") == "along":
+		lc.call("add_shimmer", node, ALONG_GLOW)
 	else:
 		lc.call("remove_shimmer", node)
 
@@ -231,12 +237,16 @@ func start_alongside() -> bool:
 		"props": [], "wrong": true}
 	_birds.sightings.append(s)
 	for i in 13:
-		var b := _birds._add_bird(s, {"pos": car.global_position + Vector3.UP * 8.0, "kind": "air"})
+		var b := _birds._add_bird(s, {"pos": car.global_position + Vector3.UP * 4.0, "kind": "air"})
 		b.state = "along"
-		# Two loose lines off the passenger side, a little behind and above.
-		b.home = Vector3(9.0 + (i % 2) * 3.5 + _rng.randf_range(-0.8, 0.8), 6.0 + (i % 3) * 1.4, -4.0 + (i / 2) * 2.6)
+		# Two loose lines off the passenger side (the car's left: it's right-hand
+		# drive), low over the verge and just ahead, where the chase camera sees them.
+		b.home = Vector3(-(5.5 + (i % 2) * 2.5 + _rng.randf_range(-0.6, 0.6)), 2.2 + (i % 3) * 0.8, 1.0 + (i / 2) * 1.8)
 		b.node.position = _beside(car, b.home)
 		s.birds.append(b)
+		var lc := _late_city()
+		if lc:
+			lc.call("add_shimmer", b.node, ALONG_GLOW)
 	_along = {"sighting": s, "time": ALONGSIDE_TIME, "flick": _rng.randf_range(1.0, 2.5), "phase": 0.0}
 	return true
 
@@ -273,7 +283,7 @@ func _fly_alongside(delta: float) -> void:
 		_along.flick = _rng.randf_range(1.5, 3.5)
 		var lc := _late_city()
 		if lc:
-			lc.call("play_flicker", car.global_position + car.global_basis.x * 10.0)
+			lc.call("play_flicker", car.global_position - car.global_basis.x * 7.0)
 		var gone := _rng.randf_range(GONE.x, GONE.y)
 		for b: Dictionary in s.birds:
 			if is_instance_valid(b.node) and b.node.visible:
