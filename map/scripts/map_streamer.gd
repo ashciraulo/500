@@ -68,6 +68,8 @@ var _lakes: Array[Dictionary] = []  # from lakes.json, read on first use
 var _lakes_read := false
 var _placed: Dictionary = {}  # Vector2i -> [props.json entries], read on first use
 var _placed_read := false
+var _venues: Dictionary = {}  # Vector2i -> [venues.json entries]
+var _venues_read := false
 
 
 func _ready() -> void:
@@ -287,6 +289,23 @@ func _add_placed_props(key: Vector2i, root: Node3D) -> void:
 		node.rotation.y = float(entry.yaw)
 		node.rotation.x = float(entry.get("pitch", 0.0))  # a run piece tilted down a sloping jetty
 		root.add_child(node)
+
+
+## Northbridge's cafes, bars, pubs and restaurants (data/world/venues.json,
+## scripts/world/venue.gd): each goes under its tile's node like the props.
+func _add_venues(key: Vector2i, root: Node3D) -> void:
+	if not _venues_read:
+		_venues_read = true
+		for entry: Dictionary in Venue.entries():
+			var p: Array = entry.position
+			var k := tile_at(Vector3(p[0], p[1], p[2]))
+			if not _venues.has(k):
+				_venues[k] = []
+			_venues[k].append(entry)
+	for entry: Dictionary in _venues.get(key, []):
+		var venue := Venue.from_entry(entry)
+		venue.position -= root.position
+		root.add_child(venue)
 
 
 ## Tile key containing a world position.
@@ -601,6 +620,7 @@ func _finish_tile(result: MapTileLoader.TileResult, with_collision: bool) -> voi
 		return
 	add_child(result.root)
 	_add_placed_props(result.key, result.root)
+	_add_venues(result.key, result.root)
 	var glow := result.root.get_node_or_null(^"light_pools")
 	if glow:
 		glow.visible = _pools_on

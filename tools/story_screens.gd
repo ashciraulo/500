@@ -4,7 +4,7 @@ extends SceneTree
 ## May Drive. Needs a display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
-##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road]
+##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people]
 
 var _shots := "/tmp/story"
 var _only := PackedStringArray()
@@ -21,6 +21,7 @@ var _door_x := 1.0
 var _step := -1
 var _frames := 0
 var _steps: Array = []
+var _creep := false
 
 
 func _initialize() -> void:
@@ -46,38 +47,47 @@ func _build_steps() -> void:
 		_house_steps()
 	if _want("road"):
 		_road_steps()
+	if _want("people"):
+		_people_steps()
 
 
 func _house_steps() -> void:
+	var street := func() -> void: _look(_h(_door_x + 0.6, -9.0, 1.7), _h(_door_x + 0.8, 3.0, 2.2))
+	var back := func() -> void: _look(_h(1.6, 15.2, 1.6), _h(2.2, 8.5, 1.1))
 	_steps.append(["house_0_setup", func() -> void:
 		_hour(1.0)
 		_player.call("get_out"), 200, null, false])
-	_steps.append(["house_1_front_at_night", func() -> void:
+	_steps.append(["house_01_street_door_shut", func() -> void:
 		_hour(1.0)
 		_put_player(_home.spawn_transform(&"Spawn_Front").origin)
 		_door_x = _home.to_local(_home.spawn_transform(&"Spawn_Front").origin).x
-		_look(_h(_door_x + 0.6, -9.0, 1.7), _h(_door_x + 0.8, 3.0, 2.2)), 60])
-	_steps.append(["house_2_door_opens_on_1979", func() -> void:
-		_look(_h(_door_x, -1.6, 1.62), _h(_door_x + 0.3, 4.0, 1.2))
+		street.call(), 60])
+	_steps.append(["house_02_back_glass_door_shut", back, 30])
+	_steps.append(["house_03_street_door_open", func() -> void:
+		street.call()
 		_other.force = true
-		_home.toggle_door(&"Door_Front"), 90])
-	_steps.append(["house_3_lounge", func() -> void:
-		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.6)), 40])
-	_steps.append(["house_4_fire_and_telly", func() -> void:
+		_home.toggle_door(&"Door_Front"), 60])
+	_steps.append(["house_04_back_glass_door_open", back, 30])
+	_steps.append(["house_05_doorstep", func() -> void:
+		_look(_h(_door_x, -1.6, 1.62), _h(_door_x + 0.3, 4.0, 1.2)), 30])
+	_steps.append(["house_06_lounge", func() -> void:
+		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.6)), 60])
+	_steps.append(["house_07_fire_and_telly", func() -> void:
 		_look(_h(4.6, 1.0, 1.6), _h(0.6, 3.4, 0.6)), 40])
-	_steps.append(["house_5_fridge_drawing", func() -> void:
+	_steps.append(["house_08_fridge_drawing", func() -> void:
 		_look(_h(2.9, 8.7, 1.5), _h(2.5, 7.3, 1.3)), 40])
-	_steps.append(["house_6_kitchen_calendar", func() -> void:
+	_steps.append(["house_09_kitchen_calendar", func() -> void:
 		_look(_h(3.5, 8.3, 1.75), _h(3.3, 7.02, 1.8)), 40])
-	_steps.append(["house_7_dining", func() -> void:
+	_steps.append(["house_10_dining", func() -> void:
 		_look(_h(3.8, 9.4, 1.75), _h(1.4, 10.7, 0.75)), 40])
-	_steps.append(["house_8_robyns_room", func() -> void:
+	_steps.append(["house_11_robyns_room", func() -> void:
 		_look(_h(2.8, 8.8, 3.16 + 1.55), _h(1.0, 10.4, 3.16 + 0.4)), 40])
-	_steps.append(["house_9_shut_and_open_again", func() -> void:
-		_look(_h(_door_x, -1.6, 1.62), _h(_door_x + 0.3, 4.0, 1.2))
+	_steps.append(["house_12_back_out_on_the_street", street, 40])
+	_steps.append(["house_13_shut", func() -> void:
 		_other.force = false
 		_home.toggle_door(&"Door_Front"), 90, func() -> void: pass, false])
-	_steps.append(["house_9_your_house_again", func() -> void:
+	_steps.append(["house_13_your_house_again", func() -> void:
+		_look(_h(_door_x, -1.6, 1.62), _h(_door_x + 0.3, 4.0, 1.2))
 		_home.toggle_door(&"Door_Front"), 60])
 
 
@@ -97,6 +107,7 @@ func _road_steps() -> void:
 		var traffic := _world.get_node_or_null("Traffic")
 		if traffic:
 			traffic.clear_all()
+		_creep = true
 		print("road starts: ", _road.start(), " ", _road.refused), 230])
 	_steps.append(["road_3_only_the_road", func() -> void: pass, 200])
 	_steps.append(["road_4_from_above", func() -> void:
@@ -110,10 +121,47 @@ func _road_steps() -> void:
 		var at := _point_back(7.0)
 		_look(at + Vector3.UP * 1.3, EmptyRoad.DROPOFF + Vector3.UP * 0.6), 30])
 	_steps.append(["road_7_off_the_road", func() -> void:
+		_creep = false
 		_drive_view()
 		var right := _car.global_transform.basis.x
 		_car.teleport(Transform3D(_car.global_transform.basis, _car.global_position + right * 20.0 + Vector3.UP * 0.5)), 80])
 	_steps.append(["road_8_city_back", func() -> void: pass, 240])
+
+
+func _people_steps() -> void:
+	var story := root.get_node("Story")
+	var people := _main.find_child("StoryPeople", true, false)
+	var machine := func() -> Node: return _home.find_child("AnsweringMachine", false, false)
+	var bench := func() -> void: _look(_h(3.4, 9.6, 1.65), _h(4.4, 8.62, 1.2))
+	_steps.append(["people_0_setup", func() -> void:
+		_hour(21.0)
+		story.load_state({})
+		people.card_act = 5
+		_player.call("get_out"), 200, null, false])
+	_steps.append(["people_01_answering_machine", func() -> void:
+		_put_player(_home.spawn_transform(&"Spawn_Front").origin)
+		story.leave_message(&"kostas_welcome", "Thea Kostas, number 11", String(people.messages[0].text))
+		story.leave_message(&"agency_rent", "Swan Property Management", String(people.messages[1].text))
+		bench.call(), 45])
+	_steps.append(["people_02_playing_a_message", func() -> void:
+		machine.call().interact(), 120])
+	_steps.append(["people_03_porch_switch", func() -> void:
+		_look(_h(1.3, 1.3, 1.6), _h(0.2, 0.0, 1.25)), 40])
+	_steps.append(["people_04_act_card", func() -> void:
+		story.act_override = 2
+		people.card_act = 1
+		people._maybe_card()
+		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.6)), 100])
+	_steps.append(["people_05_porch_light_on", func() -> void:
+		_hour(1.0)
+		story.act_override = 0
+		_door_x = _home.to_local(_home.spawn_transform(&"Spawn_Front").origin).x
+		_look(_h(_door_x + 1.2, -3.2, 1.6), _h(_door_x + 0.2, 0.0, 1.6)), 450])
+	_steps.append(["people_06_porch_light_off", func() -> void:
+		people.set_porch_light(false), 30])
+	_steps.append(["people_07_three_knocks", func() -> void:
+		people.set_porch_light(true)
+		people.set("_blinks", 0.7 * 3.0), 34])
 
 
 func _process(_delta: float) -> bool:
@@ -128,6 +176,10 @@ func _process(_delta: float) -> bool:
 		_frames = -240
 		return false
 	_frames += 1
+	if _creep:
+		# Rolling along at walking pace (standing still lets the road go).
+		var fwd := -_car.global_transform.basis.z
+		_car.linear_velocity = Vector3(fwd.x * 1.4, _car.linear_velocity.y, fwd.z * 1.4)
 	if _step == -1:
 		if _frames > 0:
 			MapData.shared().wait()

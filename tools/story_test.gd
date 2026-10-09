@@ -12,6 +12,11 @@ extends SceneTree
 ##   - The empty road: the parcel job turns up, the road empties (sound, then
 ##     everything but the road), leaving the road brings the world back, and
 ##     on a second go the parcel is signed for and the world comes back.
+##   - The people: messages on the answering machine (left once, by act and
+##     day, played and marked heard, saved), the porch light switch and the
+##     twenty-to-three check (choice 1), the thirteen (choice 2), the endings,
+##     the act cards, the midnight station's finds as a challenge stat, and
+##     that things can't be used through a wall.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/story_test.gd -- --no-save
 ##
@@ -108,9 +113,10 @@ func _process(_delta: float) -> bool:
 				_check(_home.toggle_door(&"Door_Front"), "the front door opens")
 				_check(_other.is_active(), "and inside it's 1979")
 				_check(late.event == &"other_house", "the late city is running the other house")
-				_check(_visible_meshes(interior) == 0, "today's furniture is gone, bar the balcony pots outside (%d left: %s)" % [_visible_meshes(interior), _visible_names(interior)])
+				_check(_other.portal_mode == 1, "from the doorstep, it's 1979 only through the door (mode %d)" % _other.portal_mode)
+				_check(_sided(interior, 1) > 0 and _sided(interior, 0) == 0, "today's furniture shows only where 1979 doesn't (%d sided, %d not)" % [_sided(interior, 1), _sided(interior, 0)])
 				_check(_home.find_child("House1979", false, false) != null, "the Dorans' things are in")
-				_check(_retinted() > 0, "the walls and floors are 1979 (%d surfaces)" % _retinted())
+				_check(_retinted() > 0, "the walls and floors have a 1979 side (%d surfaces)" % _retinted())
 				_check(story.has_night(&"other_house_1979"), "it's in the Nights log")
 				_check(_other.interact_hint() == "Take the drawing", "the drawing on the fridge can be taken")
 				_other.interact()
@@ -119,13 +125,13 @@ func _process(_delta: float) -> bool:
 				# Walk in, then back out and shut the door.
 				_put_player(_home.to_global(_H79.at(Vector3(2.5, 3.0, 0.2))))
 			elif _frames == 240:
-				_check(_other.is_active(), "still 1979 while you're inside")
+				_check(_other.is_active() and _other.portal_mode == 2, "all 1979 once you're inside (mode %d)" % _other.portal_mode)
 				_put_player(_home.spawn_transform(&"Spawn_Front").origin + Vector3.UP * 0.1)
 			elif _frames == 250:
 				_home.toggle_door(&"Door_Front")
 			elif _frames == 300:
 				_check(not _other.is_active(), "out and the door shut: it's your house again")
-				_check((_home.get_node("Interior") as Node3D).visible, "today's furniture is back")
+				_check(_sided(_home.get_node("Interior"), 1) == 0 and _other.portal_mode == 0, "today's furniture is plain again")
 				_check(_retinted() == 0, "and the walls are yours")
 				_check(not late.active(), "the late city has let go")
 				# Opening from inside never does it.
@@ -160,15 +166,123 @@ func _process(_delta: float) -> bool:
 				_run_from = _frames
 			elif _frames > 360:
 				return _road_run(late, story)
-		3:
+		3:  # The people, the answering machine, choices 1 and 2.
+			var switch: Node = _home.find_child("PorchSwitch", false, false)
+			if _frames == 1:
+				_people(story, clock)
+				# You can use things you can see, but not through a wall.
+				if _home.is_door_open(&"Door_Front"):
+					_home.toggle_door(&"Door_Front")
+				_put_player(_home.to_global(_H79.at(Vector3(0.7, 1.0, 0.2))))
+			elif _frames == 20:
+				_player.face(switch.interact_point())
+			elif _frames == 22:
+				_check(_player._nearest_thing() == switch, "the porch switch can be used from the hall")
+				_put_player(_home.to_global(_H79.at(Vector3(0.3, -0.8, 0.2))))
+			elif _frames == 40:
+				_player.face(switch.interact_point())
+			elif _frames == 42:
+				var d: float = _player.global_position.distance_to(switch.interact_point())
+				_check(_player._nearest_thing() != switch, "but not through the wall from the porch (%.1f m away)" % d)
+				_next()
+		4:
 			return _finish()
 	return false
 
 
+func _people(story: Node, clock: Node) -> void:
+	var people := _main.find_child("StoryPeople", true, false)
+	var machine: Node = _home.find_child("AnsweringMachine", false, false)
+	var switch: Node = _home.find_child("PorchSwitch", false, false)
+	_check(people != null and machine != null and switch != null, "the answering machine and the porch switch are in the house")
+	if people == null or machine == null or switch == null:
+		return
+	_check((people.messages as Array).size() >= 14, "the messages are loaded (%d)" % (people.messages as Array).size())
+	story.load_state({})
+	story.act_override = 1
+	clock.set_time(10.0)
+	_check(machine.interact_hint() == "", "nothing on the machine in a new game")
+	# The first message turns up on its own.
+	people.set("_last_left_day", -1)
+	people._maybe_message()
+	_check(story.has_message(&"kostas_welcome"), "Mrs Kostas says welcome on the first day")
+	_check(story.unheard_messages() == 1, "one message waiting")
+	people._maybe_message()
+	_check(story.unheard_messages() == 1, "and only one a day")
+	_check(not people.ready_to_leave({"act": 2}), "a later act's message waits for its act")
+	_check(not people.ready_to_leave({"act": 1, "needs": ["deliveries:999"]}), "and messages wait for what they need")
+	_check(not story.leave_message(&"kostas_welcome", "x", "y"), "a message is only left once")
+	_check(machine.interact_hint() == "Play messages (1)", "the machine offers to play it ('%s')" % machine.interact_hint())
+	machine.interact()
+	_check(story.unheard_messages() == 0 and story.heard(&"kostas_welcome"), "playing it marks it heard")
+	_check(machine.interact_hint() == "" or machine.interact_hint() == "Play the last message", "then it offers the last one again")
+	var saved: Dictionary = story.save_state()
+	story.load_state({})
+	_check(story.messages.is_empty(), "loading an empty save clears the machine")
+	story.load_state(saved)
+	_check(story.heard(&"kostas_welcome"), "and the save brings the messages back, heard")
+	# Choice 1: the porch light.
+	_check(switch.interact_hint() == "Porch light: turn off", "the porch light is on to start with")
+	switch.interact()
+	_check(not people.porch_light_on and switch.interact_hint() == "Porch light: turn on", "the switch turns it off")
+	switch.interact()
+	_check(people.porch_light_on, "and on again")
+	story.act_override = 3
+	clock.set_time(1.0)
+	_check(people.ready_to_leave({"act": 3, "late": true}), "late messages come after midnight")
+	clock.set_time(14.0)
+	_check(not people.ready_to_leave({"act": 3, "late": true}), "not in the afternoon")
+	story.leave_message(&"porch_light", "No caller", "Leave the porch light on.", true)
+	clock.set_time(2.75)
+	people._maybe_porch_check()
+	_check(story.choice(&"porch_light") == &"", "not checked the same night it was asked")
+	story.message(&"porch_light").day = int(clock.day) - 2
+	people._maybe_porch_check()
+	_check(story.choice(&"porch_light") == &"on", "left on at twenty to three the next night: choice 1 is 'on'")
+	_check(story.has_night(&"porch_light_on"), "and it's in the Nights log")
+	# Choice 2: the thirteen to the buyer (the bird thread's lab pays).
+	story.make_choice(&"thirteen", &"buyer")
+	_check(story.has_night(&"thirteen_buyer"), "selling the thirteen is in the Nights log")
+	# The endings.
+	story.set_ending(&"lights_out")
+	story.set_ending(&"sideways")
+	_check(story.ending() == &"lights_out" and story.ending_day() == int(clock.day), "an ending is remembered, with its day")
+	var with_ending: Dictionary = story.save_state()
+	story.load_state({})
+	_check(story.ending() == &"" and story.ending_day() == -1, "no ending in a new game")
+	story.load_state(with_ending)
+	_check(story.ending() == &"lights_out", "and the save keeps it")
+	# The act cards.
+	people.card_act = 1
+	people._maybe_card()
+	_check(int(people.card_act) == 3 and people.get("_card").showing(), "a new act shows its card (Side C)")
+	story.act_override = 0
+	# The midnight station's finds count for the story challenges.
+	var progression := root.get_node("Progression")
+	var discoveries := root.get_node("Discoveries")
+	var clues: float = progression.get_stat("clues_found")
+	discoveries.discover("mystery/polaroid")
+	discoveries.discover("mystery/solved")
+	_check(progression.get_stat("clues_found") == clues + 1.0, "a find counts as a clue, the ending doesn't (%.0f -> %.0f)" % [clues, progression.get_stat("clues_found")])
+	var story_challenges := 0
+	for tier: Dictionary in progression.tiers:
+		for c: Dictionary in tier.challenges:
+			if c.stat == "clues_found":
+				story_challenges += 1
+	_check(story_challenges == 5, "one story challenge in each tier (%d)" % story_challenges)
+
+
 ## Each run: drive up to ~1.2 km before May Drive's end, start the road,
-## watch it empty, then leave it (first run) or deliver (second run).
+## watch it empty, then leave it (first run), deliver (second run) or stop
+## the car (third run).
 func _road_run(late: Node, story: Node) -> bool:
 	var f := _frames - _run_from
+	# Creep along (standing still lets you go), except on the last run.
+	if _runs == 2 and f >= 450 and f < 800:
+		_car.linear_velocity = Vector3(0, _car.linear_velocity.y, 0)  # foot on the brake
+	if f > 120 and f < 450:
+		var fwd: Vector3 = -_car.global_transform.basis.z
+		_car.linear_velocity = Vector3(fwd.x * 1.4, _car.linear_velocity.y, fwd.z * 1.4)
 	if f == 120:
 		_check(late.map_idle(), "the map has loaded round the car")
 		var on := MapData.shared().street_at(_car.global_position, 12.0)
@@ -195,7 +309,9 @@ func _road_run(late: Node, story: Node) -> bool:
 		_check(hidden.size() > 0, "the map's own road meshes are hidden under the ribbon (%d: %s)" % [hidden.size(), ", ".join(hidden.slice(0, 4).map(func(n: Node) -> String: return String(n.name)))])
 		_check(is_equal_approx(_road.void_amount, 1.0), "the void is full")
 		_check(late.mute_amount() > 0.95, "only the engine is left")
-		if _runs == 0:
+		if _runs == 2:
+			pass  # Stop the car and wait.
+		elif _runs == 0:
 			# Leave the road: drive off into the dark.
 			var right: Vector3 = (_car.global_transform.basis.x).normalized()
 			_car.teleport(Transform3D(_car.global_transform.basis, _car.global_position + right * 20.0 + Vector3.UP * 0.5))
@@ -204,7 +320,10 @@ func _road_run(late: Node, story: Node) -> bool:
 			_car.teleport(Transform3D(_car.global_transform.basis, _ER.DROPOFF + Vector3.UP * 0.8))
 	elif f == 470 and _runs == 0:
 		_check(_road.phase == _ER.Phase.FADE_IN, "off the road, the world comes back")
-	elif f == (650 if _runs == 0 else 900):
+	elif f == 800 and _runs == 2:
+		_check(_road.phase == _ER.Phase.FADE_IN or _road.phase == _ER.Phase.IDLE, "stopping the car lets you go too (phase %d, %.1f km/h)" % [_road.phase, _car.speed_kmh()])
+		_next()
+	elif f == (650 if _runs == 0 else 900) and _runs < 2:
 		_check(_road.phase == _ER.Phase.IDLE, "and it's over")
 		var map := get_first_node_in_group(&"perth_map") as Node3D
 		_check(map != null and map.visible, "the city is back")
@@ -213,6 +332,7 @@ func _road_run(late: Node, story: Node) -> bool:
 		if _runs == 0:
 			_check(story.has_night(&"empty_road_left"), "leaving it is in the Nights log")
 			_check(not story.flag(&"empty_road_done"), "the parcel is still to go")
+			_check(not _road.get("_armed"), "and it won't start again until you've left May Drive")
 			_runs = 1
 			_start_run()
 			_run_from = _frames
@@ -220,7 +340,9 @@ func _road_run(late: Node, story: Node) -> bool:
 			_check(story.flag(&"empty_road_done"), "the parcel was signed for")
 			_check(story.has_night(&"empty_road"), "and it's in the Nights log")
 			_check(root.get_node("Jobs").active.is_empty(), "the job is done")
-			_next()
+			_runs = 2
+			_start_run()
+			_run_from = _frames
 	return false
 
 
@@ -232,8 +354,9 @@ func _start_run() -> void:
 		job = _story_job()
 	if not job.is_empty():
 		jobs.accept(job)
-	jobs.active.stage = "to_dropoff"
-	jobs._stage_changed()
+	if not jobs.active.is_empty():
+		jobs.active.stage = "to_dropoff"
+		jobs._stage_changed()
 	root.get_node("GameClock").set_time(1.0)
 	# 1.2 km back along the road from May Drive, facing along it.
 	var cum := TrafficGraph.cumulative(_route)
@@ -268,28 +391,33 @@ func _retinted() -> int:
 	var shell: Node = _home.get_node("House")
 	var n := 0
 	for mi in _OH._meshes(shell):
+		if mi.name != &"Late1979" or not mi.is_inside_tree() or mi.is_queued_for_deletion():
+			continue
 		for i in mi.mesh.get_surface_count():
-			var m: Material = mi.get_surface_override_material(i)
-			if m != null and m.has_meta(&"late_1979"):
+			var m: Material = mi.mesh.surface_get_material(i)
+			if m != null and m.has_meta(&"late_1979") and m.get_shader_parameter("late_side") == 2:
 				n += 1
 	return n
 
 
-func _visible_meshes(node: Node) -> int:
+## Meshes inside the house (PS1 ones) whose surfaces are on `side` (0: plain).
+func _sided(node: Node, side: int) -> int:
 	var n := 0
 	for mi in _OH._meshes(node):
-		if mi.is_visible_in_tree() and _other._in_box(mi.global_transform * mi.get_aabb().get_center(), 0.0):
+		if not mi.is_visible_in_tree() or not _other._in_box(mi.global_transform * mi.get_aabb().get_center(), 0.0):
+			continue
+		var found := 0
+		var ps1 := false
+		for i in mi.mesh.get_surface_count():
+			var m := mi.get_active_material(i) as ShaderMaterial
+			if m == null:
+				continue
+			ps1 = true
+			var v: Variant = m.get_shader_parameter("late_side")
+			found = int(v) if v != null else 0
+		if ps1 and found == side:
 			n += 1
 	return n
-
-
-func _visible_names(node: Node) -> String:
-	var out := PackedStringArray()
-	for mi in _OH._meshes(node):
-		if mi.is_visible_in_tree() and _other._in_box(mi.global_transform * mi.get_aabb().get_center(), 0.0):
-			var c: Vector3 = mi.global_transform * mi.get_aabb().get_center()
-			out.append("%s %s" % [mi.name, _home.to_local(c)])
-	return ", ".join(out)
 
 
 func _next() -> void:

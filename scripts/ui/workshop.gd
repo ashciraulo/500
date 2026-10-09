@@ -280,12 +280,20 @@ func _refresh_parts() -> void:
 		var fitted: CarPart = _car.parts.get(slot)
 		var choices := PartsCatalogue.for_car(slot, _car.car_id).filter(func(p: CarPart) -> bool:
 			return not p.found_only or Garage.is_found(p))
+		# Parts you found that are for other cars (classic wheels while you're
+		# in the Pop): listed, greyed out, saying which cars take them.
+		var elsewhere := PartsCatalogue.for_slot(slot).filter(func(p: CarPart) -> bool:
+			return p.found_only and Garage.is_found(p) and not PartsCatalogue.fits(p, _car.car_id))
 		# Slots this car has nothing for (a lid rack on a Pop) stay out of the list.
-		if not slot in [&"roof", &"lights"] and PartsCatalogue.for_car(slot, _car.car_id).all(func(p: CarPart) -> bool: return p.is_stock()):
+		if not slot in [&"roof", &"lights"] and elsewhere.is_empty() \
+				and PartsCatalogue.for_car(slot, _car.car_id).all(func(p: CarPart) -> bool: return p.is_stock()):
 			continue
 		_heading(_parts_list, SLOT_NAMES.get(String(slot), String(slot).capitalize()))
+		for part: CarPart in elsewhere:
+			_other_car_part(part)
 		if choices.size() <= 1 and slot in [&"roof", &"lights"]:
-			_text(_parts_list, "Nothing yet. Some parts turn up around the city.")
+			if elsewhere.is_empty():
+				_text(_parts_list, "Nothing yet. Some parts turn up around the city.")
 			continue
 		for part: CarPart in choices:
 			var is_fitted := (fitted == null and part.is_stock()) or (fitted != null and fitted.id == part.id)
@@ -316,6 +324,30 @@ func _refresh_parts() -> void:
 			button.pressed.connect(_fit.bind(part))
 			row.add_child(button)
 			_parts_list.add_child(row)
+
+
+## A found part that's yours but goes on a different car.
+func _other_car_part(part: CarPart) -> void:
+	var row := HBoxContainer.new()
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var name_label := Label.new()
+	name_label.text = part.display_name
+	name_label.add_theme_color_override("font_color", UiStyle.INK_2)
+	text.add_child(name_label)
+	var desc := Label.new()
+	desc.text = "Yours, for %s. Fit it when you bring one in." % PartsCatalogue.fits_phrase(part)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.add_theme_font_size_override("font_size", 13)
+	desc.add_theme_color_override("font_color", UiStyle.INK_2)
+	text.add_child(desc)
+	row.add_child(text)
+	var button := Button.new()
+	button.custom_minimum_size.x = 150
+	button.text = "Not this car"
+	button.disabled = true
+	row.add_child(button)
+	_parts_list.add_child(row)
 
 
 func _refresh_tuning() -> void:

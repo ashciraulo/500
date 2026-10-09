@@ -320,7 +320,8 @@ func play_flicker(pos: Vector3) -> void:
 func _set_mute(v: float) -> void:
 	_mute = v
 	for bus in _amps:
-		(_amps[bus] as AudioEffectAmplify).volume_db = linear_to_db(maxf(1.0 - v, 0.0001))
+		# Even in dB, so the fade is heard all the way down, then gone.
+		(_amps[bus] as AudioEffectAmplify).volume_db = -80.0 if v >= 0.999 else -48.0 * v
 
 
 func _set_look(v: float) -> void:
@@ -350,7 +351,6 @@ func _add_bus_effects() -> void:
 			continue
 		var shift := AudioEffectPitchShift.new()
 		shift.pitch_scale = 1.0
-		shift.oversampling = 2
 		AudioServer.add_bus_effect(i, shift)
 		AudioServer.set_bus_effect_enabled(i, AudioServer.get_bus_effect_count(i) - 1, false)
 		_pitches[bus] = shift

@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://jvd8ka36cu03"
+path="res://.godot/imported/cosmos_bar_room_cosmos_bar.png-c29f4b467d755914efdfb5d990e55b32.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "d267951f4c2d602fb14fe54815ab0470"
+}
+
+[deps]
+
+source_file="res://art/models/props/venues/cosmos_bar_room_cosmos_bar.png"
+dest_files=["res://.godot/imported/cosmos_bar_room_cosmos_bar.png-c29f4b467d755914efdfb5d990e55b32.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1
