@@ -2897,7 +2897,9 @@ func _spawn_train(edge: TrafficGraph.RailEdge, s: float, fwd: bool, cars := 0) -
 	var stripe := TrafficModels.material(Color(0.05, 0.3, 0.38))
 	for i in cars:
 		var body := AnimatableBody3D.new()
-		body.sync_to_physics = true
+		# Synced to physics once placed: until then setting the transform
+		# wouldn't show till the next physics step.
+		body.sync_to_physics = false
 		body.position = Vector3(0, -500, 0)
 		body.collision_layer = 0
 		body.collision_mask = 0
@@ -2943,6 +2945,7 @@ func _spawn_train(edge: TrafficGraph.RailEdge, s: float, fwd: bool, cars := 0) -
 	trains.append(train)
 	_place_train(train)
 	for body in train.cars:
+		body.sync_to_physics = true
 		body.collision_layer = TRAFFIC_LAYER
 	stats.trains += 1
 	train_spawned.emit(train.root)
@@ -2984,6 +2987,10 @@ func _update_trains(dt: float) -> void:
 			_despawn_train(train)
 
 
+## Rail lines run at ground height in the map data; the importer lays the
+## ballast 0.12 m over that and the rails 0.16 m over the ballast.
+const RAIL_TOP := 0.28
+
 func _place_train(train: TrafficTrain) -> void:
 	for i in train.cars.size():
 		var center := train.front - TrafficModels.CARRIAGE_LENGTH * 0.5 - i * (TrafficModels.CARRIAGE_LENGTH + TrafficTrain.GAP)
@@ -2992,7 +2999,7 @@ func _place_train(train: TrafficTrain) -> void:
 		var dir := a - b
 		if dir.length_squared() < 0.01:
 			continue
-		train.cars[i].global_transform = Transform3D(Basis.looking_at(dir.normalized(), Vector3.UP), (a + b) * 0.5)
+		train.cars[i].global_transform = Transform3D(Basis.looking_at(dir.normalized(), Vector3.UP), (a + b) * 0.5 + Vector3.UP * RAIL_TOP)
 
 
 func _despawn_train(train: TrafficTrain) -> void:

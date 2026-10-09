@@ -9,6 +9,8 @@ const MAX_SPEED := 22.0
 const ACCEL := 0.8
 const BRAKE := 1.0
 const DWELL := 14.0
+## Stops of one station closer than this along the path are one stop.
+const SAME_STATION := 150.0
 
 var root: Node3D
 var cars: Array = []
@@ -105,11 +107,21 @@ func next_station_stop() -> float:
 	return INF
 
 
+## Mark the stop the train just dwelled at as served, with any other stop of
+## the same station along the next platform's length: a station can attach to
+## two edges that meet near it, and the train would stop twice.
 func mark_served_near(d: float) -> void:
+	var names := {}
 	for seg in segs:
 		for st in seg.edge.stations:
 			var sd: float = seg.start + (st.s if seg.fwd else seg.edge.length - st.s)
 			if absf(sd + length * 0.5 - d) < 2.0:
+				served["%d/%d" % [seg.edge.get_instance_id(), int(st.s)]] = true
+				names[st.name] = true
+	for seg in segs:
+		for st in seg.edge.stations:
+			var sd: float = seg.start + (st.s if seg.fwd else seg.edge.length - st.s)
+			if names.has(st.name) and absf(sd + length * 0.5 - d) < SAME_STATION:
 				served["%d/%d" % [seg.edge.get_instance_id(), int(st.s)]] = true
 
 
