@@ -18,6 +18,7 @@ signal choice_made(id: StringName, value: StringName)
 signal flag_set(id: StringName)
 signal night_logged(entry: Dictionary)
 signal message_left(message: Dictionary)
+signal ending_reached(ending: StringName)
 
 const ACTS := 5
 ## Choice ids and the values each may take (STORY_API.md).
@@ -27,6 +28,8 @@ const CHOICES := {
 	&"robyn": [&"found"],
 	&"eleventh_july": [&"lights_on", &"tape_13", &"switch_off", &"went_in"],
 }
+## The five endings (STORY.md section 9).
+const ENDINGS := [&"city_of_light", &"half_light", &"night_drive_13", &"lights_out", &"late_city"]
 
 ## Oldest first. Each: {id: StringName, text: String, day: int, time: float}.
 var nights: Array[Dictionary] = []
@@ -42,6 +45,8 @@ var _choices := {}   # StringName -> StringName
 var _flags := {}     # StringName -> day set
 var _last_act := 0
 var _act_began := {}  # int act -> day it began
+var _ending := &""
+var _ending_day := -1
 
 
 func _ready() -> void:
@@ -177,6 +182,27 @@ func take_unheard() -> Array[Dictionary]:
 	return list
 
 
+## Which ending the game reached (ENDINGS), or &"" before the finale.
+func ending() -> StringName:
+	return _ending
+
+
+## The game day the ending was reached, or -1.
+func ending_day() -> int:
+	return _ending_day
+
+
+func set_ending(id: StringName) -> void:
+	if not id in ENDINGS:
+		push_warning("Story: unknown ending %s" % id)
+		return
+	if _ending == id:
+		return
+	_ending = id
+	_ending_day = GameClock.day
+	ending_reached.emit(id)
+
+
 ## The game day an act began (0 for act 1, or an act not reached yet).
 func act_began(a: int) -> int:
 	return int(_act_began.get(a, 0))
@@ -209,7 +235,7 @@ func save_state() -> Dictionary:
 	for a in _act_began:
 		began[str(a)] = _act_began[a]
 	return {"choices": choices, "flags": flags, "nights": entries, "messages": left,
-		"act_began": began, "prints_to_ros": prints_to_ros, "prints_to_buyer": prints_to_buyer}
+		"act_began": began, "ending": String(_ending), "ending_day": _ending_day, "prints_to_ros": prints_to_ros, "prints_to_buyer": prints_to_buyer}
 
 
 func load_state(data: Dictionary) -> void:
@@ -231,6 +257,8 @@ func load_state(data: Dictionary) -> void:
 	_act_began.clear()
 	for a in data.get("act_began", {}):
 		_act_began[int(a)] = int(data.act_began[a])
+	_ending = StringName(data.get("ending", ""))
+	_ending_day = int(data.get("ending_day", -1))
 	prints_to_ros = int(data.get("prints_to_ros", 0))
 	prints_to_buyer = int(data.get("prints_to_buyer", 0))
 	_check_act.call_deferred()

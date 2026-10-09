@@ -10,9 +10,8 @@ extends Node
 ##   - Choice 1, the porch light: the switch by the front door. After the
 ##     "leave the porch light on for me" message, at twenty to three the next
 ##     night, the game looks to see if it's on.
-##   - Choice 2's consequences (the bird thread's lab asks the question and
-##     calls Story.make_choice(&"thirteen", ...)): Ros's thanks, or $5,000
-##     under the door.
+##   - Choice 2's Nights lines (the bird thread's lab asks the question,
+##     calls Story.make_choice(&"thirteen", ...) and pays the buyer's money).
 ##
 ## Added by GameplayPlaces. Saved under "story_people".
 
@@ -24,7 +23,6 @@ const CHECK_WINDOW := 0.75
 const CHECK_AFTER := 20.0
 ## Seconds into a new game before Side A's card.
 const FIRST_CARD := 6.0
-const THIRTEEN_CASH := 5000
 
 var messages: Array = []
 var porch_light_on := true
@@ -226,9 +224,7 @@ func _on_choice(id: StringName, value: StringName) -> void:
 		return
 	match value:
 		&"buyer":
-			Wallet.earn(THIRTEEN_CASH, "An envelope under the door")
-			Notices.post("An envelope under the door: $5,000 in old fifties, and a note in neat capitals. FOR THE THIRTEEN.", "odd")
-			Story.log_night(&"thirteen_buyer", "Sold the thirteen. Five thousand dollars under the door, and a note in his capitals.")
+			Story.log_night(&"thirteen_buyer", "Sold the thirteen to the buyer.")
 		&"ros":
 			Story.log_night(&"thirteen_ros", "Gave the thirteen to Ros. The night section is finished.")
 

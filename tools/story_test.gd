@@ -14,7 +14,7 @@ extends SceneTree
 ##     on a second go the parcel is signed for and the world comes back.
 ##   - The people: messages on the answering machine (left once, by act and
 ##     day, played and marked heard, saved), the porch light switch and the
-##     twenty-to-three check (choice 1), the thirteen's envelope (choice 2),
+##     twenty-to-three check (choice 1), the thirteen (choice 2), the endings,
 ##     the act cards, the midnight station's finds as a challenge stat, and
 ##     that things can't be used through a wall.
 ##
@@ -240,12 +240,18 @@ func _people(story: Node, clock: Node) -> void:
 	people._maybe_porch_check()
 	_check(story.choice(&"porch_light") == &"on", "left on at twenty to three the next night: choice 1 is 'on'")
 	_check(story.has_night(&"porch_light_on"), "and it's in the Nights log")
-	# Choice 2: the thirteen to the buyer.
-	var wallet := root.get_node("Wallet")
-	var before: int = wallet.balance
+	# Choice 2: the thirteen to the buyer (the bird thread's lab pays).
 	story.make_choice(&"thirteen", &"buyer")
-	_check(wallet.balance == before + 5000, "the buyer's envelope has $5,000 in it")
-	_check(story.has_night(&"thirteen_buyer"), "and that's in the Nights log")
+	_check(story.has_night(&"thirteen_buyer"), "selling the thirteen is in the Nights log")
+	# The endings.
+	story.set_ending(&"lights_out")
+	story.set_ending(&"sideways")
+	_check(story.ending() == &"lights_out" and story.ending_day() == int(clock.day), "an ending is remembered, with its day")
+	var with_ending: Dictionary = story.save_state()
+	story.load_state({})
+	_check(story.ending() == &"" and story.ending_day() == -1, "no ending in a new game")
+	story.load_state(with_ending)
+	_check(story.ending() == &"lights_out", "and the save keeps it")
 	# The act cards.
 	people.card_act = 1
 	people._maybe_card()
