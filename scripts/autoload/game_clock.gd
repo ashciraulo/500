@@ -25,6 +25,8 @@ const DECLINATION_DEG := -4.6
 var time_of_day := 8.5
 var day := 1
 var locked := false
+## While not "", the dash and phone clocks read this (shown_time_string).
+var shown_override := ""
 var _phase: StringName = &""
 
 
@@ -109,6 +111,12 @@ func is_night() -> bool:
 func time_string() -> String:
 	var minutes := int(time_of_day * 60.0) % (24 * 60)
 	return "%02d:%02d" % [minutes / 60, minutes % 60]
+
+
+## What the clocks you can see (the dash and the phone) read: the time,
+## unless the late city has stopped them (shown_override, set by StoppedClock).
+func shown_time_string() -> String:
+	return shown_override if shown_override != "" else time_string()
 
 
 ## Which part of the day it is, from the sun: &"night", &"dawn", &"day" or

@@ -99,6 +99,9 @@ func _process(delta: float) -> void:
 	_view.turn = _yaw
 	_view.player = Vector2(p.x, p.z)
 	_view.player_yaw = yaw
+	_view.ghost = MinimapPassenger.shown
+	_view.ghost_yaw = MinimapPassenger.shown_yaw
+	_view.ghost_alpha = MinimapPassenger.alpha
 	_pins_timer -= delta
 	if _pins_timer <= 0.0:
 		_pins_timer = 1.0

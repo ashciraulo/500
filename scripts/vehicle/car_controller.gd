@@ -28,6 +28,8 @@ signal transmission_changed(automatic: bool)
 signal impact(strength: float)
 signal surface_changed(surface: StringName)
 signal headlights_changed(on: bool)
+## The driver flashed the headlights (K): high beam for as long as it's held.
+signal lights_flashed
 ## A part was installed (or a slot went back to stock). The car body listens
 ## to swap visuals such as wheels and exhausts.
 signal parts_changed(slot: StringName, part: CarPart)
@@ -255,6 +257,8 @@ var surface: StringName = DEFAULT_SURFACE
 var grounded_wheels := 0
 var is_shifting := false
 var headlights_on := false
+## True while the headlights are flashed (high beam, lights on or not).
+var flashing := false
 ## Front road-wheel angle in radians, positive = left.
 var steer_angle := 0.0
 ## True while the camera is in the cabin (set by CarCameraRig). Audio uses it
@@ -336,6 +340,8 @@ var _model_wheels := {}
 const PART_MODEL_PATH := "res://art/models/cars/parts/%s.glb"
 ## The yellow glow of lit fog lamp lenses.
 const FOG_GLOW := Color(1.0, 0.68, 0.12)
+## How much brighter the headlights are while flashed (high beam).
+const FLASH_BOOST := 1.8
 ## Slots whose parts sit on the body, and the empty each sits at.
 const PART_MOUNTS := {&"engine": "Mount_Exhaust", &"exhaust": "Mount_Exhaust", &"roof": "Mount_Roof", &"lights": "Mount_Spotlights",
 	&"rear_rack": "Mount_RearRack", &"towbar": "Mount_TowBar", &"steering_wheel": "Mount_SteeringWheel",
@@ -439,6 +445,8 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if player_controlled:
 		_read_player_input(delta)
+	elif flashing:
+		flash_lights(false)
 	if is_parked_for_viewing() != _parked:
 		_parked = not _parked
 		parked_changed.emit(_parked)
@@ -810,6 +818,26 @@ func toggle_headlights() -> void:
 	_headlights_manual = true
 	headlights_on = not headlights_on
 	_update_lights()
+
+
+## High beam while `on`, whether the headlights are on or not.
+func flash_lights(on: bool) -> void:
+	if on == flashing:
+		return
+	flashing = on
+	var lights := get_node_or_null("Headlights")
+	if lights:
+		lights.visible = headlights_on or on
+		for lamp: Light3D in lights.find_children("*", "Light3D", true, false):
+			_keep_out_of_rooms(lamp)
+			if on:
+				lamp.set_meta(&"before_flash", lamp.light_energy)
+				lamp.light_energy *= FLASH_BOOST
+			elif lamp.has_meta(&"before_flash"):
+				lamp.light_energy = lamp.get_meta(&"before_flash")
+				lamp.remove_meta(&"before_flash")
+	if on:
+		lights_flashed.emit()
 
 
 ## Fold the roof back or put it up, on cars with a folding one. Done by
@@ -1741,6 +1769,10 @@ func _read_player_input(delta: float) -> void:
 		toggle_transmission()
 	if Input.is_action_just_pressed("toggle_headlights"):
 		toggle_headlights()
+	if Input.is_action_just_pressed("flash_lights"):
+		flash_lights(true)
+	elif flashing and not Input.is_action_pressed("flash_lights"):
+		flash_lights(false)
 	if Input.is_action_just_pressed("toggle_roof"):
 		toggle_roof()
 	if Input.is_action_just_pressed("reset_car"):
@@ -1937,7 +1969,7 @@ func _stock_torque_at(at_rpm: float) -> float:
 func _update_lights() -> void:
 	var lights := get_node_or_null("Headlights")
 	if lights:
-		lights.visible = headlights_on
+		lights.visible = headlights_on or flashing
 		for lamp in lights.find_children("*", "Light3D", true, false):
 			_keep_out_of_rooms(lamp)
 	for lamp in find_children("*", "SpotLight3D", true, false):

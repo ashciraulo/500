@@ -4,7 +4,7 @@ extends SceneTree
 ## May Drive. Needs a display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
-##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people]
+##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,out,drive]
 
 var _shots := "/tmp/story"
 var _only := PackedStringArray()
@@ -49,6 +49,12 @@ func _build_steps() -> void:
 		_road_steps()
 	if _want("people"):
 		_people_steps()
+	if _want("empty"):
+		_empty_steps()
+	if _want("out"):
+		_out_steps()
+	if _want("drive"):
+		_drive_steps()
 
 
 func _house_steps() -> void:
@@ -171,6 +177,226 @@ func _people_steps() -> void:
 	_steps.append(["people_07_three_knocks", func() -> void:
 		people.set_porch_light(true)
 		people.set("_blinks", 0.7 * 3.0), 34])
+
+
+func _empty_steps() -> void:
+	_steps.append(["empty_0_setup", func() -> void:
+		_hour(1.0)
+		_main.find_child("StoryPeople", true, false).card_act = 5
+		_player.call("get_out"), 200, null, false])
+	_steps.append(["empty_01_street_door_open", func() -> void:
+		_put_player(_home.spawn_transform(&"Spawn_Front").origin)
+		_door_x = _home.to_local(_home.spawn_transform(&"Spawn_Front").origin).x
+		_other.force = true
+		_other.force_form = &"abandoned"
+		_home.toggle_door(&"Door_Front")
+		_look(_h(_door_x + 0.6, -6.0, 1.7), _h(_door_x + 0.6, 3.0, 1.4)), 90])
+	_steps.append(["empty_02_doorstep_leaves", func() -> void:
+		_look(_h(_door_x, -1.2, 1.62), _h(_door_x + 0.1, 2.5, 0.3)), 30])
+	_steps.append(["empty_03_switch_taped", func() -> void:
+		_look(_h(0.9, 1.4, 1.5), _h(0.0, 1.57, 1.15)), 30])
+	_steps.append(["empty_04_lounge_sheets", func() -> void:
+		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.6)), 40])
+	_steps.append(["empty_05_lounge_back", func() -> void:
+		_look(_h(4.6, 1.0, 1.6), _h(0.6, 3.4, 0.6)), 30])
+	_steps.append(["empty_06_kitchen", func() -> void:
+		_look(_h(3.5, 9.4, 1.75), _h(3.0, 7.0, 1.2)), 30])
+	_steps.append(["empty_07_dining_chairs_up", func() -> void:
+		_look(_h(3.8, 9.4, 1.75), _h(1.4, 10.7, 0.9)), 30])
+	_steps.append(["empty_08_stairs_stain_tape", func() -> void:
+		_look(_h(0.6, 10.6, 1.5), _h(0.4, 7.5, 1.0)), 30])
+	_steps.append(["empty_09_tape_close", func() -> void:
+		_look(_h(0.9, 9.1, 1.2), _h(HouseAbandoned.TAPE_AT.x, HouseAbandoned.TAPE_AT.y, HouseAbandoned.TAPE_AT.z)), 30])
+	_steps.append(["empty_10_upstairs_robyn", func() -> void:
+		_look(_h(2.8, 8.8, 3.16 + 1.55), _h(1.0, 10.4, 3.16 + 0.4)), 30])
+	_steps.append(["empty_11_upstairs_front", func() -> void:
+		_look(_h(1.5, 3.6, 3.16 + 1.55), _h(4.3, 1.5, 3.16 + 0.3)), 30])
+	_steps.append(["empty_12_shut", func() -> void:
+		_other.force = false
+		_look(_h(_door_x + 0.6, -6.0, 1.7), _h(_door_x + 0.6, 3.0, 1.4))
+		_home.toggle_door(&"Door_Front"), 90, func() -> void: pass, false])
+	_steps.append(["empty_13_gentle_lounge", func() -> void:
+		root.get_node("Settings").set("strange_things", "gentle")
+		_other.force = true
+		_home.toggle_door(&"Door_Front")
+		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.6)), 90])
+	_steps.append(["empty_14_gentle_hall", func() -> void:
+		_look(_h(_door_x, -1.2, 1.62), _h(_door_x + 0.1, 2.5, 0.3)), 30])
+	_steps.append(["empty_15_done", func() -> void:
+		root.get_node("Settings").set("strange_things", "full")
+		_other.force = false
+		_look(_h(_door_x + 0.6, -6.0, 1.7), _h(_door_x + 0.6, 3.0, 1.4))
+		_home.toggle_door(&"Door_Front"), 90, func() -> void: pass, false])
+
+
+func _out_steps() -> void:
+	var looking := func() -> LookingOut: return _main.find_child("LookingOut", true, false) as LookingOut
+	var lounge := func() -> void: _look(_h(3.5, 2.4, 1.65), _h(3.3, -9.0, 1.0))
+	var balcony := func() -> void: _look(_h(1.2, 1.6, 3.16 + 1.6), _h(2.6, -10.0, 1.4))
+	_steps.append(["out_0_setup", func() -> void:
+		_hour(1.0)
+		_main.find_child("StoryPeople", true, false).card_act = 5
+		_player.call("get_out"), 200, null, false])
+	_steps.append(["out_00_lane_from_above", func() -> void:
+		_put_player(_h(2.8, 2.6, 0.2))
+		_look(_h(2.0, -2.0, 14.0), _h(2.0, -7.0, 0.0)), 60])
+	_steps.append(["out_01_lane_today", func() -> void:
+		lounge.call(), 30])
+	_steps.append(["out_02_lane_1979", func() -> void:
+		looking.call().force = true
+		looking.call().begin(&"1979"), 90])
+	_steps.append(["out_02b_lane_1979_above", func() -> void:
+		_look(_h(2.0, -2.0, 14.0), _h(2.0, -7.0, 0.0)), 30])
+	_steps.append(["out_02c_lane_1979_doorstep", func() -> void:
+		_look(_h(3.5, -2.0, 1.65), _h(3.3, -12.0, 1.6)), 30])
+	_steps.append(["out_03_lane_1979_upstairs", balcony, 30])
+	_steps.append(["out_04_mick_car_close", func() -> void:
+		_look(_h(1.0, -2.6, 1.4), _h(3.2, -5.4, 0.5)), 30])
+	_steps.append(["out_05_door_opens", func() -> void:
+		_home.toggle_door(&"Door_Front")
+		lounge.call(), 60])
+	_steps.append(["out_06_nothing", func() -> void:
+		_home.toggle_door(&"Door_Front")
+		looking.call().begin(&"nothing")
+		lounge.call(), 240])
+	_steps.append(["out_07_nothing_upstairs", balcony, 30])
+	_steps.append(["out_08_nothing_back", func() -> void:
+		_look(_h(2.6, 9.4, 1.55), _h(3.0, 18.0, 1.0)), 30])
+	_steps.append(["out_09_nothing_inside", func() -> void:
+		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.6)), 30])
+	_steps.append(["out_10_door_back", func() -> void:
+		_home.toggle_door(&"Door_Front")
+		lounge.call(), 60])
+	_steps.append(["out_11_done", func() -> void:
+		_home.toggle_door(&"Door_Front")
+		looking.call().force = false, 30, null, false])
+
+
+func _drive_steps() -> void:
+	var events := {}
+	_steps.append(["drive_0_setup", func() -> void:
+		_hour(1.0)
+		_main.find_child("StoryPeople", true, false).card_act = 5
+		for n in ["RepeatStreet", "MinimapPassenger", "LookoutSignal", "StoppedClock", "StationVoice"]:
+			events[n] = _main.find_child(n, true, false)
+		var found := _long_street()
+		events.path = found.get("points", PackedVector3Array())
+		var path: PackedVector3Array = events.path
+		print("repeat street on ", found.get("name", "?"), " ", path.size())
+		var dir := path[3] - path[2]
+		dir.y = 0.0
+		_car.teleport(Transform3D(Basis.looking_at(dir.normalized(), Vector3.UP), path[2] + Vector3.UP))
+		_drive_view(), 240, null, false])
+	_steps.append(["drive_01_repeat_street_ahead", func() -> void:
+		_car.headlights_on = true
+		_car._update_lights()
+		var rs: RepeatStreet = events.RepeatStreet
+		rs.force = true
+		_creep = true
+		print("repeat begins: ", rs._ready_to_start(), " ", rs.begin(), " on ", rs.street), 90])
+	_steps.append(["drive_02_the_three", func() -> void:
+		var rs: RepeatStreet = events.RepeatStreet
+		var at := TrafficGraph.point_at(rs._path, rs._cum, rs._three_s - 22.0)
+		var to := TrafficGraph.point_at(rs._path, rs._cum, rs._three_s)
+		_look(at + Vector3.UP * 1.3, to + Vector3.UP * 1.5)
+		rs._show(true), 60])
+	_steps.append(["drive_03_the_three_close", func() -> void:
+		var rs: RepeatStreet = events.RepeatStreet
+		var man := rs._three.get_node_or_null(^"Man") as Node3D
+		var lamp := rs._three.get_node(^"Lamp") as Node3D
+		_look(lamp.global_position + (man.global_position - lamp.global_position) * 0.5 + Vector3.UP * 1.6 - rs._three.global_basis.z * -9.0, lamp.global_position + Vector3.UP * 1.5), 30])
+	_steps.append(["drive_04_flash", func() -> void:
+		_drive_view()
+		_car.flash_lights(true), 20])
+	_steps.append(["drive_05_through", func() -> void:
+		_car.flash_lights(false)
+		events.RepeatStreet.force = false
+		_creep = false, 120])
+	_steps.append(["drive_06a_to_trail_end", func() -> void:
+		var path: PackedVector3Array = events.path
+		var cum := TrafficGraph.cumulative(path)
+		var end := minf(cum[cum.size() - 1] - 30.0, 320.0)
+		var t := TrafficGraph.tangent_at(path, cum, end)
+		_car.teleport(Transform3D(Basis.looking_at(Vector3(t.x, 0.0, t.z).normalized(), Vector3.UP), TrafficGraph.point_at(path, cum, end) + Vector3.UP)), 60, null, false])
+	_steps.append(["drive_06_minimap_passenger", func() -> void:
+		var mp: MinimapPassenger = events.MinimapPassenger
+		# A trail every 2 m along the street, as if just driven, up to the car.
+		var path: PackedVector3Array = events.path
+		var cum := TrafficGraph.cumulative(path)
+		var end := minf(cum[cum.size() - 1] - 30.0, 320.0)
+		var trail := PackedVector3Array()
+		var s := 0.0
+		while s <= end:
+			trail.append(TrafficGraph.point_at(path, cum, s))
+			s += 2.0
+		mp._trail = trail
+		mp.force = true
+		mp.begin()
+		mp._t = mp.ARRIVE + 0.5
+		mp._gap = mp.FOLLOW, 120])
+	_steps.append(["drive_07_stopped_clock", func() -> void:
+		events.MinimapPassenger.force = false
+		events.MinimapPassenger.finish()
+		_hour(2.7)
+		var sc: StoppedClock = events.StoppedClock
+		sc.force = true
+		sc.begin()
+		_hour(3.6), 90])
+	_steps.append(["drive_08_clock_back", func() -> void:
+		events.StoppedClock.force = false
+		events.StoppedClock._let_go(), 120])
+	_steps.append(["drive_09_station_here", func() -> void:
+		root.get_node("Story").act_override = 3
+		events.StationVoice.force = true
+		root.get_node("Activities").say("Under the static, the calm voice: \"...%s...\"" % events.StationVoice.here_line()), 60])
+	for k in 2:
+		_steps.append(["drive_%d0_lookout" % (k + 1), func() -> void:
+			root.get_node("Story").act_override = 0
+			var l: Dictionary = events.LookoutSignal.LOOKOUTS[k]
+			var at: Vector3 = l.at
+			var dir: Vector3 = (l.lights - at) * Vector3(1, 0, 1)
+			_car.teleport(Transform3D(Basis.looking_at(dir.normalized(), Vector3.UP), at + Vector3.UP * 4.0)), 240, null, false])
+		_steps.append(["drive_%d1_lookout_view" % (k + 1), func() -> void:
+			# From the edge of the scarp, where you'd pull up on the grass.
+			var l: Dictionary = events.LookoutSignal.LOOKOUTS[k]
+			var at: Vector3 = l.at
+			var dir: Vector3 = ((l.lights - at) * Vector3(1, 0, 1)).normalized()
+			var edge: Vector3 = at + dir * [60.0, 100.0][k]
+			var q := PhysicsRayQueryParameters3D.create(edge + Vector3.UP * 60.0, edge + Vector3.DOWN * 60.0, ~MapTileLoader.LAYER_WATER)
+			q.exclude = [_car.get_rid()]
+			var hit := _car.get_world_3d().direct_space_state.intersect_ray(q)
+			if not hit.is_empty():
+				edge.y = hit.position.y
+			_look(edge + Vector3.UP * 1.6, l.lights), 30])
+		_steps.append(["drive_%d2_lookout_answers" % (k + 1), func() -> void:
+			var ls: LookoutSignal = events.LookoutSignal
+			ls.force = true
+			ls._here = ls.LOOKOUTS[k]
+			ls.begin()
+			ls._t = ls.BEAT + 0.1, 8])
+		_steps.append(["drive_%d3_lookout_done" % (k + 1), func() -> void:
+			events.LookoutSignal._t = 20.0, 60])
+
+
+## A long straight-on residential street within a couple of km of home.
+func _long_street() -> Dictionary:
+	var g := MapData.shared().routes
+	var home := _home.global_position
+	var best := {}
+	for r in g.road_pts.size():
+		if not g.road_kinds[r] in RepeatStreet.KINDS or g.road_names[r] == "":
+			continue
+		var p := g.road_pts[r][0]
+		if p.distance_to(home) > 1500.0:
+			continue
+		var t := TrafficGraph.tangent_at(g.road_pts[r], g.road_cum[r], 1.0)
+		var found := RepeatStreet.street_ahead(p, Vector2(t.x, t.z))
+		if found.is_empty():
+			continue
+		var cum := TrafficGraph.cumulative(found.points)
+		if cum[cum.size() - 1] > 500.0:
+			return found
+	return best
 
 
 func _process(_delta: float) -> bool:

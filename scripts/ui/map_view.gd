@@ -23,6 +23,11 @@ var night := 0.0:
 ## direction of -Z turned by it: rotation.y).
 var player := Vector2.INF
 var player_yaw := 0.0
+## A second arrow, greyed, for the late city's minimap passenger
+## (MinimapPassenger): where (world x/z, INF for none), its yaw, how solid.
+var ghost := Vector2.INF
+var ghost_yaw := 0.0
+var ghost_alpha := 0.0
 ## Drawn over the map. Each: {at: Vector2 (world x/z), icon, accent: Color,
 ## label (optional), kind ("place", "marker", "target"), rim: bool (keep it
 ## on the edge of the view when it's off it)}.
@@ -188,6 +193,8 @@ func _draw_overlay() -> void:
 						at = at.clamp(box.position, box.end)
 						on_rim = true
 			_draw_pin(at, pin, i == hot_pin, on_rim)
+	if ghost != Vector2.INF and ghost_alpha > 0.01:
+		_draw_ghost(to_screen(ghost))
 	if player != Vector2.INF:
 		_draw_player(to_screen(player))
 
@@ -282,6 +289,19 @@ func _draw_player(at: Vector2) -> void:
 	var closed := out.duplicate()
 	closed.append(out[0])
 	_overlay.draw_polyline(closed, UiStyle.CREAM_TEXT, 1.2, true)
+
+
+## The minimap passenger: the player's arrow in faded sodium, no shadow.
+func _draw_ghost(at: Vector2) -> void:
+	var a := -ghost_yaw + turn
+	var pts := PackedVector2Array()
+	for p in [Vector2(0, -11), Vector2(8, 8), Vector2(0, 4), Vector2(-8, 8)]:
+		pts.append(at + (p as Vector2).rotated(a))
+	var rim := PackedVector2Array()
+	for p in [Vector2(0, -11), Vector2(8, 8), Vector2(0, 4), Vector2(-8, 8)]:
+		rim.append(at + ((p as Vector2) * 1.28).rotated(a))
+	_overlay.draw_colored_polygon(rim, Color(UiStyle.INK, 0.5 * ghost_alpha))
+	_overlay.draw_colored_polygon(pts, Color(1.0, 0.7, 0.4, ghost_alpha))
 
 
 ## Street names along the roads, close in, like a street directory.

@@ -149,7 +149,7 @@ func _scroll_tab(title: String) -> VBoxContainer:
 func _refresh() -> void:
 	if not _panel.visible:
 		return
-	_clock.text = GameClock.time_string()
+	_clock.text = GameClock.shown_time_string()
 	_refresh_jobs()
 	_refresh_progress()
 	_refresh_leads()

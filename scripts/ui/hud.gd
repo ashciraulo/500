@@ -17,6 +17,7 @@ const HELP := [
 		["C", "Y", "Chase or interior camera"],
 		["Hold Z", "Hold R3", "Look behind"],
 		["L", "D-pad up", "Headlights"],
+		["Hold K", "", "Flash the headlights"],
 		["O", "", "Roof (convertibles)"],
 		["H", "", "Horn"],
 		["R", "D-pad down", "Put the car back upright"],
@@ -227,7 +228,7 @@ func _strip_gap(row: HBoxContainer) -> void:
 func _update_strip() -> void:
 	_money.text = "$" + UiStyle.number(Wallet.balance)
 	_day.text = "Day %d, %s" % [GameClock.day, Garage.weekday().left(3)]
-	_clock.text = GameClock.time_string()
+	_clock.text = GameClock.shown_time_string()
 	_clock_lock.visible = GameClock.locked
 	_weather.text = Weather.state_name()
 	_weather_lock.visible = Weather.locked
