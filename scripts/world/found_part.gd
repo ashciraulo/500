@@ -116,10 +116,29 @@ func take() -> void:
 		return
 	var part := PartsCatalogue.get_part(StringName(part_id))
 	var title := part.display_name if part else part_id
-	Notices.post("%s. It's yours to fit in the workshop." % title, "find")
+	var fits := PartsCatalogue.fits_phrase(part) if part else ""
+	if fits != "":
+		# Say who it's for, or a classic-only part seems to vanish from the
+		# workshop while you're in the Pop.
+		Notices.post("%s. Yours to fit to %s at any workshop." % [title, fits], "find")
+	else:
+		Notices.post("%s. It's yours to fit in the workshop." % title, "find")
 	Progression.add_stat("parts_found")
 	_refresh()
 
 
 func _refresh() -> void:
-	_visual.visible = not Discoveries.has("part/" + part_id)
+	_visual.visible = not Discoveries.has("part/" + part_id) and turned_up(part_id)
+
+
+## A part only turns up (out in the city, and as a rumour) once you own a car
+## it fits: the classic wheels and tailpipe wait until you have a classic, so
+## the early finds are ones the Pop can use.
+static func turned_up(id: String) -> bool:
+	var part := PartsCatalogue.get_part(StringName(id))
+	if part == null:
+		return true
+	for car_id in Garage.owned_cars:
+		if PartsCatalogue.fits(part, car_id):
+			return true
+	return false
