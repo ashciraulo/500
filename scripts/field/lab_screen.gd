@@ -3,8 +3,9 @@ extends CanvasLayer
 ## The counter at the Lake Street photo lab: develop the roll and sell the
 ## prints, and buy better binoculars and cameras. From the story's act 3 the
 ## wrong birds' prints come back blank, and each goes to Ros for Mick's field
-## guide or is kept for the buyer (FieldJournal.give_blank). The game pauses
-## while it's open.
+## guide or is kept for the buyer (FieldJournal.give_blank). Once the story
+## asks for it, a roll comes back with one extra frame: you at the wheel, from
+## the back seat (BackSeatPhoto). The game pauses while it's open.
 
 const ACCENT := Color("a8456d")
 
@@ -13,6 +14,8 @@ var _dim: ColorRect
 var _list: VBoxContainer
 var _close: Button
 var _last_result := {}
+## Takes the back-seat photograph if it's due when you develop (FieldWorld sets it).
+var back_seat_photo: BackSeatPhoto
 
 
 func _ready() -> void:
@@ -73,9 +76,12 @@ func _input(event: InputEvent) -> void:
 func refresh() -> void:
 	FieldUI.clear(_list)
 	var roll := FieldJournal.roll
+	_back_seat()
 	if not _last_result.is_empty():
 		UiStyle.section(_list, "Your prints", ACCENT)
 		for p: Dictionary in _last_result.prints:
+			if p.has("extra"):
+				continue
 			var stars := UiStyle.stars(int(p.stars))
 			if p.wrong:
 				FieldUI.shop_row(_list, "%s  ·  %s" % [p.name, stars], "Came out blank. Ros holds it up to the light." if p.get("blank", false)
@@ -102,8 +108,13 @@ func refresh() -> void:
 			"About $%d in prints" % value, "Develop  $%d" % FieldJournal.DEVELOP_PRICE)
 		develop.theme_type_variation = &"PrimaryButton"
 		develop.pressed.connect(func() -> void:
+			if FieldJournal.back_seat_due() and back_seat_photo and back_seat_photo.can_take_now():
+				develop.disabled = true
+				await back_seat_photo.take()
 			_last_result = FieldJournal.develop()
 			Activities.say("Prints sold: $%d." % _last_result.pay)
+			if _last_result.prints.any(func(p: Dictionary) -> bool: return p.has("extra")):
+				_tape_click()
 			refresh())
 
 	UiStyle.section(_list, "Behind the counter", ACCENT)
@@ -115,6 +126,64 @@ func refresh() -> void:
 		func(g: Dictionary) -> String: return "Birds %.1fx bigger in photos" % float(g.reach))
 	_gear_row("film", FieldJournal.FILMS, FieldJournal.film,
 		func(g: Dictionary) -> String: return "Sharp after dark" if float(g.night) >= 1.0 else "Copes with dusk")
+
+
+## The back-seat photograph, waiting on the counter until you say where it goes.
+func _back_seat() -> void:
+	if not FieldJournal.back_seat_waiting():
+		return
+	UiStyle.section(_list, "One more frame", ACCENT)
+	var tex := FieldUI.photo_texture(String(FieldJournal.back_seat.print), 300)
+	if tex:
+		# On the counter as a print, white border and all.
+		var paper := PanelContainer.new()
+		paper.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var border := StyleBoxFlat.new()
+		border.bg_color = Color("f7f2e6")
+		border.set_content_margin_all(6)
+		border.content_margin_bottom = 14
+		border.shadow_color = Color(0, 0, 0, 0.25)
+		border.shadow_size = 3
+		border.shadow_offset = Vector2(1, 2)
+		paper.add_theme_stylebox_override("panel", border)
+		_list.add_child(paper)
+		var pic := TextureRect.new()
+		pic.texture = tex
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		paper.add_child(pic)
+	var ros := FieldUI.shop_row(_list, "A frame you didn't take",
+		"You, at the wheel, from the back seat. \"I'll keep this one, if you like,\" Ros says.", "Ros keeps it")
+	var answers := VBoxContainer.new()
+	answers.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ros.get_parent().add_child(answers)
+	ros.reparent(answers)
+	var home := Button.new()
+	home.text = "Take it home"
+	answers.add_child(home)
+	ros.pressed.connect(_give_back_seat.bind(&"ros"))
+	home.pressed.connect(_give_back_seat.bind(&"home"))
+
+
+func _give_back_seat(to: StringName) -> void:
+	FieldJournal.give_back_seat(to)
+	Activities.say("Ros slips it into Mick's manuscript, at the back." if to == &"ros" else "You take it home. It's in the album now.")
+	refresh()
+	_close.grab_focus()
+
+
+## The late city's tape click, as the extra frame comes out of the envelope.
+func _tape_click() -> void:
+	var audio := get_node_or_null(^"/root/Audio")
+	if audio and audio.has("late/late_tape_start"):
+		audio.play_2d("late/late_tape_start", "SFX", -6.0)
+	else:
+		var p := AudioStreamPlayer.new()
+		p.stream = LateSounds.make("late_tape_start")
+		p.bus = "SFX"
+		p.volume_db = -6.0
+		add_child(p)
+		p.finished.connect(p.queue_free)
+		p.play()
 
 
 ## The blank prints waiting on the counter, and Mick's field guide.

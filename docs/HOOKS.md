@@ -621,6 +621,20 @@ after a map rebuild).
   (`FieldBirds.wrong_ready`) and their pages say they're just birds now;
   `&"lights_out"` fades the pages to blank over `FADE_DAYS` from
   `Story.ending_day()` (`page_fade()`).
+- The photograph (STORY.md section 10): once `Story.flag(&"photo_back_seat")`
+  is set (`FieldJournal.back_seat_due()`), `BackSeatPhoto`
+  (`scripts/field/back_seat_photo.gd`, under FieldWorld) waits until you've
+  driven 4 s over 5 m/s, clicks a quiet shutter on the Cabin bus (not with
+  `Story.gentle()`), and renders the back seat's view into its own
+  SubViewport with a figure at the wheel on render layer 20
+  (`BackSeatPhoto.LAYER`; the game camera drops that layer for the two
+  frames). If you never drove, the lab takes it as it develops, when the
+  car's within `LAB_REACH`. The raw frame is in `FieldJournal.back_seat`;
+  `develop()` prints it (`print_look`: the sodium grade, grain and a
+  `'79 7 11` date stamp) as one extra print `{"extra": "back_seat"}`, and
+  the lab shows it until `give_back_seat(&"ros" | &"home")`, which sets
+  `Story` flag `photo_back_seat_ros` or `photo_back_seat_home`, logs the
+  Nights entry `photo_back_seat`, and (home) adds it to the album.
 - Music: `music/mus_field_journal` plays while the journal is open (only if
   no other music is), and `music/mus_field_new_species` on a new bird; both
   are skipped until the audio side ships them.
