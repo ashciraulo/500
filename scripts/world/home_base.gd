@@ -197,10 +197,31 @@ func _split_shell(shell: Node) -> void:
 		for i in inner_mats.size():
 			rooms.set_surface_override_material(i, inner_mats[i])
 			inner.surface_set_material(i, inner_mats[i])
+		_keep_faces(mi)
 		mi.mesh = outer
 		for i in outer_mats.size():
 			outer.surface_set_material(i, outer_mats[i])
 			mi.set_surface_override_material(i, outer_mats[i])
+
+
+## The trimesh collision under `mi` numbers its faces by the unsplit mesh, and
+## footsteps read the floor's material through the collider's parent mesh: move
+## the collider under a hidden copy of the whole mesh so that still lines up.
+func _keep_faces(mi: MeshInstance3D) -> void:
+	var bodies := mi.get_children().filter(func(c: Node) -> bool: return c is StaticBody3D)
+	if bodies.is_empty():
+		return
+	var faces := MeshInstance3D.new()
+	faces.name = String(mi.name) + "_Faces"
+	faces.mesh = mi.mesh
+	faces.visible = false
+	faces.layers = 0
+	faces.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for i in mi.mesh.get_surface_count():
+		faces.set_surface_override_material(i, mi.get_active_material(i))
+	mi.add_child(faces)
+	for body: Node in bodies:
+		body.reparent(faces, false)
 
 
 ## [outside, inside] index arrays for a triangle surface, by whether each
