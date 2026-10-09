@@ -51,7 +51,9 @@ class Landmark:
 # Perth landmarks. Ids are stable (the POI export and saves use them).
 CATALOGUE = [
     Landmark("bell_tower", "The Bell Tower", "bell_tower", ("area", 147704624), "Perth"),
-    Landmark("state_war_memorial", "State War Memorial", "obelisk", ("area", 51138412), "Kings Park"),
+    # (On the escarpment's brow, 15 m below Wadjuk Carpark, where you park for it.)
+    Landmark("state_war_memorial", "State War Memorial", "obelisk", ("area", 51138412), "Kings Park",
+             params={"climb": 16.0}),
     Landmark("optus_stadium", "Optus Stadium", "stadium", ("area", 695799456), "Burswood", params={"clear": 8.0}),
     Landmark("round_house", "Round House", "round_house", ("area", 49965210), "Fremantle"),
     Landmark("indiana_tea_house", "Indiana Tea House", "tea_house", ("area", 44961447), "Cottesloe"),
