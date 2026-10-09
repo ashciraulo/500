@@ -1,0 +1,989 @@
+{
+ "_comment": "Northbridge cafes, bars, pubs and restaurants for tools/places/place_venues.py and art/models/scripts/build_venues.py. Each is a real place (osm: its OpenStreetMap node or area, lat/lon) with a made-up name; look is how its shopfront is built (art/models/scripts/lib/venues.py DEFAULTS has every key); width is how much of its wall it wants; hours are clock hours open ([[open, close]], close past 24 runs after midnight); lane: it fronts a back lane, not a street.",
+ "venues": [
+  {
+   "id": "basecamp_canteen",
+   "osm": "n4252916832",
+   "lat": -31.9493161,
+   "lon": 115.8593342,
+   "name": "Basecamp Canteen",
+   "kind": "restaurant",
+   "street": "William St",
+   "width": 6.5,
+   "hours": [
+    [
+     17,
+     23
+    ]
+   ],
+   "look": {
+    "wall": "#2f3432",
+    "wall2": "#6b4a32",
+    "trim": "#151515",
+    "front": "windows",
+    "door": "left",
+    "sign": {
+     "text": "BASECAMP",
+     "font": "sans",
+     "style": "letters",
+     "ink": "#f2e2c0"
+    },
+    "awning": {
+     "type": "box",
+     "colour": "#1b1b1b"
+    },
+    "seating": {
+     "type": "high",
+     "rows": 1,
+     "table": "#6b4a32"
+    },
+    "interior": "bar",
+    "room": "#3a3028",
+    "lamps": true
+   }
+  },
+  {
+   "id": "saffra",
+   "osm": "n4252916836",
+   "lat": -31.9492286,
+   "lon": 115.8593869,
+   "name": "Saffra",
+   "kind": "restaurant",
+   "street": "William St",
+   "width": 8.0,
+   "hours": [
+    [
+     17,
+     23
+    ]
+   ],
+   "look": {
+    "wall": "#8e4a35",
+    "wall2": "#e2d6bd",
+    "trim": "#2a2a2a",
+    "front": "windows",
+    "door": "right",
+    "cornice": true,
+    "sign": {
+     "text": "Saffra",
+     "font": "script",
+     "style": "neon",
+     "ink": "#ff4f9a"
+    },
+    "awning": {
+     "type": "box",
+     "colour": "#202020"
+    },
+    "interior": "restaurant",
+    "room": "#d8783a",
+    "light": "#ffc070"
+   }
+  },
+  {
+   "id": "no_capo",
+   "osm": "a148789739",
+   "lat": -31.9479343,
+   "lon": 115.8602318,
+   "name": "No Capo",
+   "kind": "restaurant",
+   "street": "William St",
+   "width": 5.5,
+   "look": {
+    "wall": "#e8dcc2",
+    "wall2": "#2f4a3a",
+    "trim": "#1e2a24",
+    "door": "right",
+    "sign": {
+     "text": "NO CAPO",
+     "font": "serif",
+     "style": "painted",
+     "ink": "#d9b45a",
+     "board": "#2f4a3a"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#2f4a3a"
+    },
+    "seating": {
+     "type": "bistro",
+     "rows": 1,
+     "chair": "#1c1c1c",
+     "table": "#efece6"
+    },
+    "aframe": true,
+    "board": [
+     "PASTA",
+     "VINO",
+     "TONITE"
+    ],
+    "interior": "restaurant",
+    "room": "#b88a5a"
+   }
+  },
+  {
+   "id": "albert_ivys",
+   "osm": "n14154018481",
+   "lat": -31.9475404,
+   "lon": 115.8601265,
+   "name": "Albert & Ivy's",
+   "kind": "pub",
+   "street": "William St",
+   "width": 9.0,
+   "hours": [
+    [
+     12,
+     24
+    ]
+   ],
+   "look": {
+    "wall": "#c9b38a",
+    "wall2": "#6e2a26",
+    "tile": "#6e2a26",
+    "trim": "#24302a",
+    "front": "pub",
+    "door": "double",
+    "sign": {
+     "text": "ALBERT & IVY'S",
+     "font": "serif",
+     "style": "painted",
+     "ink": "#efe2bf",
+     "board": "#24302a"
+    },
+    "awning": {
+     "type": "none"
+    },
+    "blade": {
+     "text": "PIES",
+     "style": "lightbox",
+     "board": "#efe2bf",
+     "ink": "#6e2a26"
+    },
+    "lamps": true
+   }
+  },
+  {
+   "id": "little_wallys",
+   "osm": "a1417668979",
+   "lat": -31.9474425,
+   "lon": 115.8599173,
+   "name": "Little Wally's",
+   "kind": "cafe",
+   "street": "William St",
+   "width": 4.2,
+   "hours": [
+    [
+     6,
+     16
+    ]
+   ],
+   "look": {
+    "wall": "#d9a43a",
+    "wall2": "#3a3a3a",
+    "trim": "#3a2a20",
+    "front": "glass",
+    "door": "left",
+    "sign": {
+     "text": "LITTLE WALLY'S",
+     "font": "sans",
+     "style": "painted",
+     "ink": "#2a2420"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#b8322a",
+     "stripe": "#f2e6cc"
+    },
+    "seating": {
+     "type": "bench",
+     "rows": 1,
+     "table": "#7a5236"
+    },
+    "aframe": true,
+    "board": [
+     "BRKFST",
+     "BURRTO",
+     "COFFEE"
+    ],
+    "interior": "cafe",
+    "room": "#c89a5a"
+   }
+  },
+  {
+   "id": "la_bonita",
+   "osm": "n13113131264",
+   "lat": -31.9472882,
+   "lon": 115.8602845,
+   "name": "La Bonita Cantina",
+   "kind": "restaurant",
+   "street": "William St",
+   "width": 8.0,
+   "hours": [
+    [
+     17,
+     23.5
+    ]
+   ],
+   "look": {
+    "wall": "#e0703a",
+    "wall2": "#2f8a85",
+    "trim": "#2a2420",
+    "door": "left",
+    "sign": {
+     "text": "La Bonita",
+     "font": "script",
+     "style": "neon",
+     "ink": "#ffd23f",
+     "board": "#2a2420"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#d6457a",
+     "stripe": "#2f8a85"
+    },
+    "seating": {
+     "type": "square",
+     "rows": 1,
+     "chair": "#2f8a85",
+     "table": "#e9c46a"
+    },
+    "festoon": true,
+    "lamps": true,
+    "interior": "restaurant",
+    "room": "#c8603a",
+    "light": "#ffb060"
+   }
+  },
+  {
+   "id": "electric_palms",
+   "osm": "n11827284788",
+   "lat": -31.9479255,
+   "lon": 115.8598852,
+   "name": "Electric Palms",
+   "kind": "bar",
+   "street": "William St",
+   "width": 6.5,
+   "hours": [
+    [
+     17,
+     24
+    ]
+   ],
+   "look": {
+    "wall": "#f1e4cf",
+    "wall2": "#2bb3b1",
+    "trim": "#1d1d1f",
+    "door": "left",
+    "sign": {
+     "text": "Electric Palms",
+     "font": "script",
+     "style": "neon",
+     "ink": "#ff4fb8",
+     "board": "#1e1a24"
+    },
+    "blade": {
+     "text": "BAR",
+     "style": "neon",
+     "board": "#1e1a24",
+     "ink": "#3ff0e0"
+    },
+    "planters": true,
+    "seating": {
+     "type": "none"
+    },
+    "interior": "bar",
+    "room": "#3a2050",
+    "light": "#ff7ad0"
+   }
+  },
+  {
+   "id": "the_temperance",
+   "osm": "n11827284785",
+   "lat": -31.9486283,
+   "lon": 115.8597775,
+   "name": "The Temperance",
+   "kind": "bar",
+   "street": "William St",
+   "width": 12.0,
+   "hours": [
+    [
+     16,
+     26
+    ]
+   ],
+   "look": {
+    "wall": "#d8ccb4",
+    "wall2": "#8a7f6c",
+    "trim": "#2a2a28",
+    "front": "arched",
+    "door": "centre",
+    "cornice": true,
+    "sign": {
+     "text": "THE TEMPERANCE",
+     "font": "serif",
+     "style": "letters",
+     "ink": "#6b4423"
+    },
+    "blade": {
+     "text": "LIVE",
+     "style": "lightbox",
+     "board": "#f0e8d8",
+     "ink": "#b8282a"
+    },
+    "lamps": true,
+    "interior": "bar",
+    "room": "#4a3a30"
+   }
+  },
+  {
+   "id": "cosmos_bar",
+   "osm": "n2507811880",
+   "lat": -31.9486571,
+   "lon": 115.8594269,
+   "name": "Cosmos Bar",
+   "kind": "bar",
+   "street": "William St",
+   "width": 6.5,
+   "hours": [
+    [
+     17,
+     26
+    ]
+   ],
+   "look": {
+    "wall": "#1c2340",
+    "wall2": "#3a3a3a",
+    "trim": "#111111",
+    "door": "right",
+    "sign": {
+     "text": "COSMOS BAR",
+     "font": "sans",
+     "style": "neon",
+     "ink": "#5ab8ff"
+    },
+    "blade": {
+     "text": "JAZZ",
+     "style": "neon",
+     "board": "#111111",
+     "ink": "#ffb43a"
+    },
+    "interior": "bar",
+    "room": "#2a2440",
+    "light": "#ffa860"
+   }
+  },
+  {
+   "id": "coppini_gelato",
+   "osm": "n13113183792",
+   "lat": -31.9474994,
+   "lon": 115.8604571,
+   "name": "Coppini Gelato",
+   "kind": "gelato",
+   "street": "William St",
+   "width": 5.0,
+   "hours": [
+    [
+     12,
+     22.5
+    ]
+   ],
+   "look": {
+    "wall": "#f4efe8",
+    "wall2": "#c8684a",
+    "trim": "#d8d2c8",
+    "front": "glass",
+    "door": "right",
+    "sign": {
+     "text": "Coppini",
+     "font": "script",
+     "style": "letters",
+     "ink": "#c8684a"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#e9a8a0"
+    },
+    "seating": {
+     "type": "bistro",
+     "rows": 1,
+     "chair": "#e9a8a0",
+     "table": "#f4efe8"
+    },
+    "interior": "gelato"
+   }
+  },
+  {
+   "id": "paddock",
+   "osm": "a148868451",
+   "lat": -31.9465602,
+   "lon": 115.8611665,
+   "name": "Paddock Liquor & Eatery",
+   "kind": "pub",
+   "street": "William St",
+   "width": 10.0,
+   "hours": [
+    [
+     7,
+     14
+    ],
+    [
+     17,
+     25
+    ]
+   ],
+   "look": {
+    "wall": "#b9a68a",
+    "wall2": "#5a4632",
+    "trim": "#2b2b2b",
+    "front": "bifold",
+    "door": "centre",
+    "sign": {
+     "text": "PADDOCK",
+     "font": "serif",
+     "style": "letters",
+     "ink": "#f0e6cf"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#5f6b3a"
+    },
+    "seating": {
+     "type": "square",
+     "rows": 2,
+     "barrier": "#5f6b3a",
+     "table": "#a07a50",
+     "chair": "#2b2b2b"
+    },
+    "festoon": true,
+    "interior": "pub",
+    "room": "#6a4a32"
+   }
+  },
+  {
+   "id": "my_angkor",
+   "osm": "n14209378920",
+   "lat": -31.9464541,
+   "lon": 115.8607976,
+   "name": "My Angkor",
+   "kind": "restaurant",
+   "street": "William St",
+   "width": 5.5,
+   "hours": [
+    [
+     17,
+     22.5
+    ]
+   ],
+   "look": {
+    "wall": "#e7d9b8",
+    "wall2": "#8a2a22",
+    "trim": "#3a2a1e",
+    "door": "centre",
+    "sign": {
+     "text": "MY ANGKOR",
+     "font": "serif",
+     "style": "painted",
+     "ink": "#d4a640",
+     "board": "#8a2a22"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#8a2a22"
+    },
+    "lanterns": "#e0a030",
+    "interior": "asian",
+    "room": "#d8b070"
+   }
+  },
+  {
+   "id": "paddy_hares",
+   "osm": "a148366525",
+   "lat": -31.947358,
+   "lon": 115.8550525,
+   "name": "Paddy Hare's",
+   "kind": "pub",
+   "street": "James St",
+   "width": 12.0,
+   "hours": [
+    [
+     12,
+     25
+    ]
+   ],
+   "look": {
+    "wall": "#d7c9a6",
+    "wall2": "#1f4d35",
+    "tile": "#1f4d35",
+    "trim": "#1f4d35",
+    "front": "pub",
+    "door": "double",
+    "sign": {
+     "text": "WHISKEY BAR",
+     "font": "serif",
+     "style": "painted",
+     "ink": "#e8c86a",
+     "board": "#1f4d35"
+    },
+    "awning": {
+     "type": "verandah",
+     "colour": "#2a2a2a",
+     "post": "#1a1a1a",
+     "sign": {
+      "text": "PADDY HARE'S · IRISH PUB",
+      "ink": "#e8c86a"
+     }
+    },
+    "seating": {
+     "type": "barrel",
+     "rows": 1
+    },
+    "lamps": true
+   }
+  },
+  {
+   "id": "the_andalusian",
+   "osm": "n490664805",
+   "lat": -31.9476521,
+   "lon": 115.8565756,
+   "name": "The Andalusian",
+   "kind": "restaurant",
+   "street": "James St",
+   "width": 7.0,
+   "hours": [
+    [
+     17,
+     22.5
+    ]
+   ],
+   "look": {
+    "wall": "#f2ead8",
+    "wall2": "#2b5f8a",
+    "tile": "#2b5f8a",
+    "trim": "#5a2f1a",
+    "door": "centre",
+    "sign": {
+     "text": "THE ANDALUSIAN",
+     "font": "serif",
+     "style": "letters",
+     "ink": "#b5432a"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#b5432a",
+     "stripe": "#e8b23a"
+    },
+    "seating": {
+     "type": "square",
+     "rows": 1,
+     "chair": "#5a2f1a",
+     "table": "#f2ead8"
+    },
+    "festoon": true,
+    "interior": "restaurant",
+    "room": "#d0905a"
+   }
+  },
+  {
+   "id": "old_macau",
+   "osm": "a147856465",
+   "lat": -31.9485471,
+   "lon": 115.8573243,
+   "name": "Old Macau Food Hall",
+   "kind": "restaurant",
+   "street": "James St",
+   "width": 12.0,
+   "hours": [
+    [
+     10,
+     22
+    ]
+   ],
+   "look": {
+    "wall": "#b8302a",
+    "wall2": "#2a2a2a",
+    "trim": "#d4a640",
+    "front": "bifold",
+    "sign": {
+     "text": "OLD MACAU FOOD HALL",
+     "font": "serif",
+     "style": "painted",
+     "ink": "#f0c850",
+     "board": "#8a1e1a"
+    },
+    "awning": {
+     "type": "box",
+     "colour": "#2a2a2a"
+    },
+    "lanterns": true,
+    "seating": {
+     "type": "square",
+     "rows": 2,
+     "chair": "#c83a2a",
+     "table": "#e8e2d4"
+    },
+    "interior": "asian"
+   }
+  },
+  {
+   "id": "bangkok_cousins",
+   "osm": "n492489129",
+   "lat": -31.9487283,
+   "lon": 115.8582734,
+   "name": "Bangkok Cousins",
+   "kind": "restaurant",
+   "street": "James St",
+   "width": 7.0,
+   "hours": [
+    [
+     11.5,
+     24
+    ]
+   ],
+   "look": {
+    "wall": "#1f6f63",
+    "wall2": "#e8b33a",
+    "trim": "#141414",
+    "door": "left",
+    "sign": {
+     "text": "Bangkok Cousins",
+     "font": "script",
+     "style": "neon",
+     "ink": "#ffd84a"
+    },
+    "awning": {
+     "type": "box",
+     "colour": "#141414"
+    },
+    "interior": "asian",
+    "room": "#e0c080"
+   }
+  },
+  {
+   "id": "copper_possum",
+   "osm": "a147958698",
+   "lat": -31.9488202,
+   "lon": 115.8592045,
+   "name": "The Copper Possum",
+   "kind": "pub",
+   "street": "James St",
+   "width": 14.0,
+   "hours": [
+    [
+     11,
+     24
+    ]
+   ],
+   "look": {
+    "wall": "#e3d3b0",
+    "wall2": "#6a2e2a",
+    "tile": "#6a2e2a",
+    "trim": "#2c3b30",
+    "front": "pub",
+    "door": "double",
+    "sign": {
+     "text": "EST. 1896",
+     "font": "serif",
+     "style": "painted",
+     "ink": "#efe2bf",
+     "board": "#2c3b30"
+    },
+    "awning": {
+     "type": "lace",
+     "colour": "#c9ccc8",
+     "post": "#2c3b30",
+     "sign": {
+      "text": "THE COPPER POSSUM HOTEL",
+      "ink": "#efe2bf"
+     }
+    },
+    "lamps": true
+   }
+  },
+  {
+   "id": "lake_st_brewing",
+   "osm": "n1113853154",
+   "lat": -31.9473853,
+   "lon": 115.8572839,
+   "name": "Lake St Brewing Co.",
+   "kind": "pub",
+   "street": "Lake St",
+   "width": 12.0,
+   "hours": [
+    [
+     11,
+     25
+    ]
+   ],
+   "look": {
+    "wall": "#3a3c3e",
+    "wall2": "#7a4a32",
+    "trim": "#1a1a1a",
+    "front": "glass",
+    "door": "right",
+    "sign": {
+     "text": "LAKE ST BREWING CO.",
+     "font": "sans",
+     "style": "letters",
+     "ink": "#f2f2ee"
+    },
+    "awning": {
+     "type": "box",
+     "colour": "#1a1a1a"
+    },
+    "seating": {
+     "type": "high",
+     "rows": 2,
+     "table": "#8a6440"
+    },
+    "interior": "brewery"
+   }
+  },
+  {
+   "id": "thunder_dragon",
+   "osm": "n4765759021",
+   "lat": -31.9453913,
+   "lon": 115.8585421,
+   "name": "Thunder Dragon",
+   "kind": "restaurant",
+   "street": "Lake St",
+   "width": 7.0,
+   "hours": [
+    [
+     17,
+     23
+    ]
+   ],
+   "look": {
+    "wall": "#e8dcc0",
+    "wall2": "#8a2a1e",
+    "trim": "#5a3a1a",
+    "door": "centre",
+    "sign": {
+     "text": "THUNDER DRAGON",
+     "font": "serif",
+     "style": "painted",
+     "ink": "#e8b84a",
+     "board": "#8a2a1e"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#e09a2a"
+    },
+    "seating": {
+     "type": "bistro",
+     "rows": 1,
+     "chair": "#5a3a1a",
+     "table": "#e8dcc0"
+    },
+    "festoon": true,
+    "interior": "restaurant",
+    "room": "#c87a3a"
+   }
+  },
+  {
+   "id": "the_regular",
+   "osm": "n3266588952",
+   "lat": -31.9494202,
+   "lon": 115.8577938,
+   "name": "The Regular",
+   "kind": "bar",
+   "street": "Roe St",
+   "width": 8.0,
+   "hours": [
+    [
+     16,
+     24
+    ]
+   ],
+   "look": {
+    "wall": "#2b2e2c",
+    "wall2": "#5a5a52",
+    "trim": "#111111",
+    "door": "left",
+    "sign": {
+     "text": "THE REGULAR",
+     "font": "sans",
+     "style": "letters",
+     "ink": "#f0ece2"
+    },
+    "blade": {
+     "text": "BAR",
+     "style": "lightbox",
+     "board": "#f0ece2",
+     "ink": "#111111"
+    },
+    "lamps": true,
+    "interior": "bar"
+   }
+  },
+  {
+   "id": "canton_lane",
+   "osm": "n1972156822",
+   "lat": -31.9495114,
+   "lon": 115.8579967,
+   "name": "Canton Lane",
+   "kind": "restaurant",
+   "street": "Roe St",
+   "width": 7.0,
+   "hours": [
+    [
+     9,
+     15
+    ]
+   ],
+   "look": {
+    "wall": "#f0e4d0",
+    "wall2": "#a0282a",
+    "trim": "#2a2a2a",
+    "door": "right",
+    "sign": {
+     "text": "CANTON LANE",
+     "font": "serif",
+     "style": "letters",
+     "ink": "#b8282a"
+    },
+    "awning": {
+     "type": "box",
+     "colour": "#2a2a2a"
+    },
+    "lanterns": true,
+    "interior": "asian"
+   }
+  },
+  {
+   "id": "sly_tonys",
+   "osm": "n3266587326",
+   "lat": -31.949047,
+   "lon": 115.8577308,
+   "name": "Sly Tony's",
+   "kind": "bar",
+   "street": "Roe St",
+   "width": 1.8,
+   "hours": [
+    [
+     16,
+     24
+    ]
+   ],
+   "lane": true,
+   "look": {
+    "wall": "#4a4744",
+    "wall2": "#3a3836",
+    "trim": "#2a2a2a",
+    "front": "door",
+    "interior": "bar"
+   }
+  },
+  {
+   "id": "jackalope_jims",
+   "osm": "n4332188150",
+   "lat": -31.9456601,
+   "lon": 115.8567735,
+   "name": "Jackalope Jim's",
+   "kind": "bar",
+   "street": "Aberdeen St",
+   "width": 8.0,
+   "hours": [
+    [
+     20,
+     28
+    ]
+   ],
+   "look": {
+    "wall": "#f0ebe0",
+    "wall2": "#c8282a",
+    "trim": "#c0c4c6",
+    "front": "glass",
+    "door": "left",
+    "sign": {
+     "text": "Jackalope Jim's",
+     "font": "script",
+     "style": "neon",
+     "ink": "#ff3a3a",
+     "board": "#1a1a1a"
+    },
+    "blade": {
+     "text": "DINER",
+     "style": "neon",
+     "board": "#1a1a1a",
+     "ink": "#3ae0f0"
+    },
+    "interior": "diner"
+   }
+  },
+  {
+   "id": "campus_bar",
+   "osm": "a149015690",
+   "lat": -31.9461891,
+   "lon": 115.8587426,
+   "name": "Campus Bar & Grill",
+   "kind": "pub",
+   "street": "Aberdeen St",
+   "width": 9.0,
+   "hours": [
+    [
+     11,
+     22
+    ]
+   ],
+   "look": {
+    "wall": "#1e3a5f",
+    "wall2": "#c8a030",
+    "trim": "#111111",
+    "door": "left",
+    "sign": {
+     "text": "CAMPUS BAR & GRILL",
+     "font": "sans",
+     "style": "letters",
+     "ink": "#e8c050"
+    },
+    "awning": {
+     "type": "box",
+     "colour": "#1e3a5f"
+    },
+    "seating": {
+     "type": "high",
+     "rows": 1,
+     "table": "#c8a030"
+    },
+    "interior": "pub"
+   }
+  },
+  {
+   "id": "yiayias",
+   "osm": "n12960462860",
+   "lat": -31.9449783,
+   "lon": 115.8579177,
+   "name": "Yiayia's Meze",
+   "kind": "restaurant",
+   "street": "Newcastle St",
+   "width": 7.0,
+   "hours": [
+    [
+     8,
+     15
+    ]
+   ],
+   "look": {
+    "wall": "#f4f2ec",
+    "wall2": "#2a5aa0",
+    "trim": "#2a5aa0",
+    "door": "centre",
+    "sign": {
+     "text": "YIAYIA'S MEZE",
+     "font": "serif",
+     "style": "letters",
+     "ink": "#2a5aa0"
+    },
+    "awning": {
+     "type": "canvas",
+     "colour": "#2a5aa0",
+     "stripe": "#f4f2ec"
+    },
+    "planters": true,
+    "interior": "restaurant",
+    "room": "#e8e0d0",
+    "light": "#fff0d0"
+   }
+  }
+ ]
+}

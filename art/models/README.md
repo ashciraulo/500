@@ -84,6 +84,21 @@ plain boxes and empties: `Lamp` and `Door` (lights), `View` and `Entry` (hide;
 the boardwalk runs 14 m back toward -Z and ramps down to the bank), `Front`,
 `Apron` and `Tower` (surf club).
 
+Northbridge's cafes, bars, pubs and restaurants (`lib/venues.py`):
+`blender -b -P art/models/scripts/build_venues.py [-- id ...]` writes
+`props/venues/<id>.glb` for each place in `data/world/venues.json`, fitted
+to its wall and footpath there, with the look from
+`tools/places/venues_src.json` (`lib/venues.py` DEFAULTS lists every key):
+shopfront, doors, made-up signage (painted, lit box, letters or neon, and a
+blade sign), canvas or box awning or a verandah on posts, tables out front,
+festoon bulbs and lanterns. The room behind the glass is one painted
+picture per venue. Origin on the footpath at the wall in the middle of the
+shopfront, the street toward Godot +Z; a `<Name>_Col` body of boxes and a
+`Door` empty. Materials the game lights by the venue's hours
+(`scripts/world/venue.gd`): `VN_Glow*` (the room, lit boxes), `VN_Neon*`,
+`VN_Bulb*` (festoons, lanterns) and `VN_Lamp*` (porch lamps, every night).
+No real names or logos. `-- --render out/prefix [--night]` renders each.
+
 Stage 6 river pieces (`lib/river_landmarks.py`, same build):
 `kent_st_weir.glb` (Kent Street Weir as rebuilt in 2017: 17 bays of lay-flat
 gates, the fishway and the footbridge; origin on the weir's centre line at

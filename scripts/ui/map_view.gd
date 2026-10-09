@@ -346,6 +346,9 @@ const GLYPHS := {
 	"shop": "<path d='M5 8h14l-1.2 12.5H6.2z' fill='{a}' stroke='{c}' stroke-width='2' stroke-linejoin='round'/><path d='M9 10V7a3 3 0 0 1 6 0v3' fill='none' stroke='{c}' stroke-width='2' stroke-linecap='round'/>",
 	"park": "<rect x='3.5' y='3.5' width='17' height='17' rx='3' fill='{a}' stroke='{c}' stroke-width='2'/><path d='M9.5 17V7h3.5a3 3 0 0 1 0 6H9.5' fill='none' stroke='#fff4dd' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/>",
 	"quiet": "<path d='M12 3c3 4 5 6.5 5 9.5a5 5 0 0 1-10 0C7 9.5 9 7 12 3z' fill='{a}' stroke='{c}' stroke-width='1.8' stroke-linejoin='round'/><path d='M12 21v-6' stroke='{c}' stroke-width='1.8' stroke-linecap='round'/>",
+	"cup": "<path d='M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z' fill='{a}' stroke='{c}' stroke-width='2' stroke-linejoin='round'/><path d='M16 10.5h1.5a2.5 2.5 0 0 1 0 5H16' fill='none' stroke='{c}' stroke-width='2'/><path d='M3.5 21h15' stroke='{c}' stroke-width='2' stroke-linecap='round'/><path d='M9 3.5c-1 1.2 1 2 0 3.5M12.5 3.5c-1 1.2 1 2 0 3.5' fill='none' stroke='{c}' stroke-width='1.6' stroke-linecap='round'/>",
+	"glass": "<path d='M4.5 4h15L12 12.5z' fill='{a}' stroke='{c}' stroke-width='2' stroke-linejoin='round'/><path d='M12 12.5v7M7.5 20.5h9' stroke='{c}' stroke-width='2' stroke-linecap='round'/><circle cx='16.5' cy='3.5' r='1.6' fill='{c}'/>",
+	"plate": "<circle cx='12' cy='12' r='6' fill='{a}' stroke='{c}' stroke-width='2'/><circle cx='12' cy='12' r='2.8' fill='none' stroke='{c}' stroke-width='1.2'/><path d='M3 4v4.5a1.2 1.2 0 0 0 2.4 0V4M4.2 9v11M20.5 4c-1.6 1.6-2 4-2 6.5h2V20' fill='none' stroke='{c}' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/>",
 	"north": "<path d='M12 2.5l5.5 15L12 14l-5.5 3.5z' fill='{a}' stroke='{c}' stroke-width='1.6' stroke-linejoin='round'/>",
 }
 

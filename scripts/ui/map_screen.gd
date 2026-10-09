@@ -17,7 +17,8 @@ const PAN_SPEED := 520.0
 const KEY := [
 	["home", "Home"], ["flag", "The job you're on"], ["note", "Job places"], ["wrench", "Workshop"],
 	["fish", "Tackle, fishing spots"], ["camera", "Photo lab"], ["fuel", "Servo"],
-	["bird", "Birds"], ["park", "Parking challenge"], ["quiet", "Quiet places"],
+	["bird", "Birds"], ["cup", "Cafes"], ["glass", "Bars and pubs"], ["plate", "Restaurants"],
+	["park", "Parking challenge"], ["quiet", "Quiet places"],
 	["route", "Suggested route"],
 ]
 
@@ -462,7 +463,8 @@ func _key_icon(name: String) -> Texture2D:
 
 static func _accent(name: String) -> Color:
 	return {"flag": UiStyle.RED, "note": UiStyle.SUN, "wrench": UiStyle.TEAL, "fish": UiStyle.SUN, "camera": UiStyle.SUN,
-		"fuel": UiStyle.SUN, "bird": UiStyle.GOOD}.get(name, UiStyle.RED)
+		"fuel": UiStyle.SUN, "bird": UiStyle.GOOD, "cup": UiStyle.SUN_LIGHT, "glass": UiStyle.RED,
+		"plate": UiStyle.TEAL_LIGHT}.get(name, UiStyle.RED)
 
 
 func _fill_hints() -> void:
