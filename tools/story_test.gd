@@ -12,6 +12,11 @@ extends SceneTree
 ##   - The empty road: the parcel job turns up, the road empties (sound, then
 ##     everything but the road), leaving the road brings the world back, and
 ##     on a second go the parcel is signed for and the world comes back.
+##   - The people: messages on the answering machine (left once, by act and
+##     day, played and marked heard, saved), the porch light switch and the
+##     twenty-to-three check (choice 1), the thirteen (choice 2), the endings,
+##     the act cards, the midnight station's finds as a challenge stat, and
+##     that things can't be used through a wall.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/story_test.gd -- --no-save
 ##
@@ -161,9 +166,110 @@ func _process(_delta: float) -> bool:
 				_run_from = _frames
 			elif _frames > 360:
 				return _road_run(late, story)
-		3:
+		3:  # The people, the answering machine, choices 1 and 2.
+			var switch: Node = _home.find_child("PorchSwitch", false, false)
+			if _frames == 1:
+				_people(story, clock)
+				# You can use things you can see, but not through a wall.
+				if _home.is_door_open(&"Door_Front"):
+					_home.toggle_door(&"Door_Front")
+				_put_player(_home.to_global(_H79.at(Vector3(0.7, 1.0, 0.2))))
+			elif _frames == 20:
+				_player.face(switch.interact_point())
+			elif _frames == 22:
+				_check(_player._nearest_thing() == switch, "the porch switch can be used from the hall")
+				_put_player(_home.to_global(_H79.at(Vector3(0.3, -0.8, 0.2))))
+			elif _frames == 40:
+				_player.face(switch.interact_point())
+			elif _frames == 42:
+				var d: float = _player.global_position.distance_to(switch.interact_point())
+				_check(_player._nearest_thing() != switch, "but not through the wall from the porch (%.1f m away)" % d)
+				_next()
+		4:
 			return _finish()
 	return false
+
+
+func _people(story: Node, clock: Node) -> void:
+	var people := _main.find_child("StoryPeople", true, false)
+	var machine: Node = _home.find_child("AnsweringMachine", false, false)
+	var switch: Node = _home.find_child("PorchSwitch", false, false)
+	_check(people != null and machine != null and switch != null, "the answering machine and the porch switch are in the house")
+	if people == null or machine == null or switch == null:
+		return
+	_check((people.messages as Array).size() >= 14, "the messages are loaded (%d)" % (people.messages as Array).size())
+	story.load_state({})
+	story.act_override = 1
+	clock.set_time(10.0)
+	_check(machine.interact_hint() == "", "nothing on the machine in a new game")
+	# The first message turns up on its own.
+	people.set("_last_left_day", -1)
+	people._maybe_message()
+	_check(story.has_message(&"kostas_welcome"), "Mrs Kostas says welcome on the first day")
+	_check(story.unheard_messages() == 1, "one message waiting")
+	people._maybe_message()
+	_check(story.unheard_messages() == 1, "and only one a day")
+	_check(not people.ready_to_leave({"act": 2}), "a later act's message waits for its act")
+	_check(not people.ready_to_leave({"act": 1, "needs": ["deliveries:999"]}), "and messages wait for what they need")
+	_check(not story.leave_message(&"kostas_welcome", "x", "y"), "a message is only left once")
+	_check(machine.interact_hint() == "Play messages (1)", "the machine offers to play it ('%s')" % machine.interact_hint())
+	machine.interact()
+	_check(story.unheard_messages() == 0 and story.heard(&"kostas_welcome"), "playing it marks it heard")
+	_check(machine.interact_hint() == "" or machine.interact_hint() == "Play the last message", "then it offers the last one again")
+	var saved: Dictionary = story.save_state()
+	story.load_state({})
+	_check(story.messages.is_empty(), "loading an empty save clears the machine")
+	story.load_state(saved)
+	_check(story.heard(&"kostas_welcome"), "and the save brings the messages back, heard")
+	# Choice 1: the porch light.
+	_check(switch.interact_hint() == "Porch light: turn off", "the porch light is on to start with")
+	switch.interact()
+	_check(not people.porch_light_on and switch.interact_hint() == "Porch light: turn on", "the switch turns it off")
+	switch.interact()
+	_check(people.porch_light_on, "and on again")
+	story.act_override = 3
+	clock.set_time(1.0)
+	_check(people.ready_to_leave({"act": 3, "late": true}), "late messages come after midnight")
+	clock.set_time(14.0)
+	_check(not people.ready_to_leave({"act": 3, "late": true}), "not in the afternoon")
+	story.leave_message(&"porch_light", "No caller", "Leave the porch light on.", true)
+	clock.set_time(2.75)
+	people._maybe_porch_check()
+	_check(story.choice(&"porch_light") == &"", "not checked the same night it was asked")
+	story.message(&"porch_light").day = int(clock.day) - 2
+	people._maybe_porch_check()
+	_check(story.choice(&"porch_light") == &"on", "left on at twenty to three the next night: choice 1 is 'on'")
+	_check(story.has_night(&"porch_light_on"), "and it's in the Nights log")
+	# Choice 2: the thirteen to the buyer (the bird thread's lab pays).
+	story.make_choice(&"thirteen", &"buyer")
+	_check(story.has_night(&"thirteen_buyer"), "selling the thirteen is in the Nights log")
+	# The endings.
+	story.set_ending(&"lights_out")
+	story.set_ending(&"sideways")
+	_check(story.ending() == &"lights_out" and story.ending_day() == int(clock.day), "an ending is remembered, with its day")
+	var with_ending: Dictionary = story.save_state()
+	story.load_state({})
+	_check(story.ending() == &"" and story.ending_day() == -1, "no ending in a new game")
+	story.load_state(with_ending)
+	_check(story.ending() == &"lights_out", "and the save keeps it")
+	# The act cards.
+	people.card_act = 1
+	people._maybe_card()
+	_check(int(people.card_act) == 3 and people.get("_card").showing(), "a new act shows its card (Side C)")
+	story.act_override = 0
+	# The midnight station's finds count for the story challenges.
+	var progression := root.get_node("Progression")
+	var discoveries := root.get_node("Discoveries")
+	var clues: float = progression.get_stat("clues_found")
+	discoveries.discover("mystery/polaroid")
+	discoveries.discover("mystery/solved")
+	_check(progression.get_stat("clues_found") == clues + 1.0, "a find counts as a clue, the ending doesn't (%.0f -> %.0f)" % [clues, progression.get_stat("clues_found")])
+	var story_challenges := 0
+	for tier: Dictionary in progression.tiers:
+		for c: Dictionary in tier.challenges:
+			if c.stat == "clues_found":
+				story_challenges += 1
+	_check(story_challenges == 5, "one story challenge in each tier (%d)" % story_challenges)
 
 
 ## Each run: drive up to ~1.2 km before May Drive's end, start the road,

@@ -12,7 +12,7 @@
 				{"id": "t1_km", "title": "Learning the roads", "description": "Drive 120 km.", "stat": "km_driven", "target": 120},
 				{"id": "t1_trials", "title": "Not just a shopping trolley", "description": "Earn a medal in 2 time trials.", "stat": "trials_medalled", "target": 2},
 				{"id": "t1_night", "title": "Night shift", "description": "Finish 3 deliveries after dark.", "stat": "night_deliveries", "target": 3},
-				{"id": "t1_rain", "title": "Rain or shine", "description": "Finish 2 deliveries in the rain.", "stat": "rain_deliveries", "target": 2},
+				{"id": "t1_story", "title": "The midnight station", "description": "After midnight, find the station that isn't listed and go where it says.", "stat": "clues_found", "target": 1},
 				{"id": "t1_discover", "title": "Wandering", "description": "Discover 8 places.", "stat": "discoveries", "target": 8},
 				{"id": "t1_upgrades", "title": "A bit of love", "description": "Fit an upgrade to your car.", "stat": "upgrades_fitted", "target": 1}
 			]
@@ -28,7 +28,7 @@
 				{"id": "t2_car", "title": "Something with more go", "description": "Drive 160 km in a Lounge or TwinAir.", "stat": "km_tier_car", "target": 160},
 				{"id": "t2_silver", "title": "Quick little thing", "description": "Earn silver or better in 3 time trials.", "stat": "trials_silver", "target": 3},
 				{"id": "t2_birds_seen", "title": "Getting your eye in", "description": "Spot 15 different birds through the binoculars.", "stat": "species_seen", "target": 15},
-				{"id": "t2_scenic", "title": "Sunday drive", "description": "Finish 2 signposted scenic drives.", "stat": "scenic_drives", "target": 2},
+				{"id": "t2_story", "title": "Late listener", "description": "Find 3 things the midnight station sends you to.", "stat": "clues_found", "target": 3},
 				{"id": "t2_discover", "title": "Local knowledge", "description": "Discover 20 places.", "stat": "discoveries", "target": 20},
 				{"id": "t2_upgrades", "title": "Making it yours", "description": "Have 2 upgrades fitted to the car you drive.", "stat": "upgrades_fitted", "target": 2}
 			]
@@ -43,7 +43,7 @@
 				{"id": "t3_deliveries", "title": "Busy season", "description": "Finish 45 deliveries.", "stat": "deliveries", "target": 45},
 				{"id": "t3_car", "title": "Scorpion", "description": "Drive 200 km in an Abarth 500 or a 500e.", "stat": "km_tier_car", "target": 200},
 				{"id": "t3_gold", "title": "Giant killer", "description": "Earn gold in 2 time trials.", "stat": "trials_gold", "target": 2},
-				{"id": "t3_storm", "title": "Through the storm", "description": "Finish 2 deliveries in a storm.", "stat": "storm_deliveries", "target": 2},
+				{"id": "t3_story", "title": "Small hours", "description": "Find 4 things the midnight station sends you to.", "stat": "clues_found", "target": 4},
 				{"id": "t3_photos", "title": "Holiday snaps", "description": "Take a photo at 10 of the marked photo spots.", "stat": "photo_spots", "target": 10},
 				{"id": "t3_suburbs", "title": "All over the map", "description": "Deliver to 14 different suburbs.", "stat": "suburbs_delivered", "target": 14},
 				{"id": "t3_birds_shot", "title": "Twelve frames", "description": "Photograph 12 different birds.", "stat": "species_photographed", "target": 12}
@@ -59,7 +59,7 @@
 				{"id": "t4_deliveries", "title": "Institution", "description": "Finish 75 deliveries.", "stat": "deliveries", "target": 75},
 				{"id": "t4_car", "title": "Hot hatch", "description": "Drive 320 km in a 595 or the new 500e.", "stat": "km_tier_car", "target": 320},
 				{"id": "t4_gold", "title": "Clean sweep", "description": "Earn gold in 4 time trials.", "stat": "trials_gold", "target": 4},
-				{"id": "t4_parking", "title": "Tight squeeze", "description": "Get gold on 3 parking challenges.", "stat": "parking_gold", "target": 3},
+				{"id": "t4_story", "title": "Someone's keys", "description": "Find 6 things the midnight station sends you to.", "stat": "clues_found", "target": 6},
 				{"id": "t4_fish", "title": "Off the jetty", "description": "Land 6 different kinds of fish.", "stat": "fish_species", "target": 6},
 				{"id": "t4_suburbs", "title": "Every postcode", "description": "Deliver to 20 different suburbs.", "stat": "suburbs_delivered", "target": 20},
 				{"id": "t4_upgrades", "title": "Fully sorted", "description": "Have 4 upgrades fitted to the car you drive.", "stat": "upgrades_fitted", "target": 4}
@@ -78,7 +78,7 @@
 				{"id": "t5_birds_shot", "title": "Thirty on film", "description": "Photograph 30 different birds.", "stat": "species_photographed", "target": 30},
 				{"id": "t5_classic", "title": "Back from the dead", "description": "Find a barn-find classic and restore it.", "stat": "classics_restored", "target": 1},
 				{"id": "t5_cars", "title": "The collection", "description": "Own 5 cars.", "stat": "cars_owned", "target": 5},
-				{"id": "t5_badges", "title": "Every nook", "description": "Find 45 of the hidden 500 badges.", "stat": "badges", "target": 45}
+				{"id": "t5_story", "title": "The shed", "description": "Find all 7 things the midnight station sends you to.", "stat": "clues_found", "target": 7}
 			]
 		}
 	]

@@ -38,6 +38,7 @@ const KNOWN_STATS := [
 	"parking_done", "parking_gold", "scenic_drives", "meets_attended", "lifts_given",
 	"trains_raced", "trains_beaten", "parts_found", "services_done",
 	"species_seen", "species_photographed", "prints_sold", "fish_caught", "fish_species",
+	"clues_found",
 ]
 ## Stats the field journal keeps (birds and fish); read live from it.
 const JOURNAL_STATS := ["species_seen", "species_photographed", "prints_sold", "fish_caught", "fish_species"]
@@ -116,6 +117,10 @@ func get_stat(stat: String) -> float:
 			return Garage.owned_cars.size()
 		"badges":
 			return Collectible.found_count()
+		"clues_found":
+			# The midnight station's finds (the mystery), not the shed's ending.
+			return Array(Discoveries.all()).filter(func(id: String) -> bool:
+				return id.begins_with("mystery/") and id != "mystery/solved").size()
 		"upgrades_fitted":
 			var car := _car()
 			return car.parts.size() if car else 0.0

@@ -1,0 +1,33 @@
+{
+	"_comment": "Messages left on the answering machine at home (scripts/world/story/story_people.gd), one a day at most, oldest first. `act`: from this act (1-5). `days`: at least this many game days after that act began. `needs` (optional, all must hold): \"deliveries:N\", \"photos:N\" (species photographed), \"found:<discovery id>\", \"flag:<story flag>\", \"choice:<id>=<value>\", \"heard:<message id>\". `late`: from the late city (no caller, tape hiss, the deck's sounds); left only between midnight and half past four. `from` is who the machine says it is. Keep them short: they're read off a card.",
+	"messages": [
+		{"id": "kostas_welcome", "act": 1, "days": 0, "from": "Thea Kostas, number 11",
+			"text": "Hello love, it's Thea from number eleven. Welcome to the lane. There's a plate of koulourakia on your step, bring the plate back whenever. Oh, and the porch light's the switch by the front door. The last fellow always left it on."},
+		{"id": "agency_rent", "act": 1, "days": 1, "from": "Swan Property Management",
+			"text": "Hi, it's Kylie from Swan Property. Just confirming your bond's lodged and the rent's set up. Any problems with the place, give us a ring. The shed out the back isn't part of the lease, sorry. The owner keeps it locked."},
+		{"id": "customer_bikes", "act": 1, "days": 2, "needs": ["deliveries:3"], "from": "Phil, a customer",
+			"text": "Yeah, g'day, it's Phil from the bike shop. Parcel turned up in one piece for once. Cheers for that. If you're ever doing a run our way again, we've always got more."},
+		{"id": "ros_first_roll", "act": 1, "days": 2, "needs": ["photos:1"], "from": "Ros, the photo lab",
+			"text": "Hello, it's Ros at the lab on Lake Street. Your first roll's come up lovely. I've been printing in this shop since the seventies and you've got the eye. Pop in whenever you like."},
+		{"id": "kostas_family", "act": 2, "days": 1, "from": "Thea Kostas, number 11",
+			"text": "Thea again. I meant to say, when I moved in, back in seventy-four, there was a young family in your place. Lovely people. The little girl used to wave at my cat through the fence. Anyway. The plate, love, no rush."},
+		{"id": "dee_returning", "act": 2, "days": 3, "from": "Dee, Notte FM",
+			"text": "Hi, it's Dee from Notte FM, returning a call from this number. Two-forty this morning, it came up. Whoever rang didn't say anything, just a lot of hiss. If you want a song played, write in. Night."},
+		{"id": "ros_cassette", "act": 2, "days": 2, "needs": ["found:mystery/tape_1"], "from": "Ros, the photo lab",
+			"text": "Ros here. Someone said you found an old cassette by the road up in Kings Park. If the label's typed in capitals, would you bring it in? Someone I used to know labelled his tapes like that."},
+		{"id": "porch_light", "act": 2, "days": 4, "needs": ["found:mystery/tape_1"], "late": true, "from": "No caller",
+			"text": "Tape hiss, a long way off. A man's voice, tired, kind: \"...if you can hear this, leave the porch light on for me.\" Then the click of a deck switching off."},
+		{"id": "kostas_dorans", "act": 3, "days": 2, "from": "Thea Kostas, number 11",
+			"text": "It's Thea. You asked about the family. Doran, they were. Mick and Carol and the little one, Robyn. He drove nights, like you. Carol left the porch light on for him every night. After he was gone she kept leaving it on for a year. Then they moved. That's all, love."},
+		{"id": "len_narrows", "act": 3, "days": 3, "from": "Len",
+			"text": "This is Len. Ros at the lab gave me your number. She says you've been out under the Narrows of a night. Fish the south side, if you want my advice. Not the north. I'll tell you why one day."},
+		{"id": "ros_manuscript", "act": 3, "days": 5, "from": "Ros, the photo lab",
+			"text": "Ros again. I've got something I'd like to show you. A manuscript, a field guide to Perth's birds, from seventy-nine. It was never finished. There's a whole section at the back called Night, and nothing in it. Come by the lab."},
+		{"id": "ros_thirteen", "act": 3, "days": 0, "needs": ["choice:thirteen=ros"], "from": "Ros, the photo lab",
+			"text": "It's in. The night section's finished, the thirteen right in the middle of it. It goes to the printer Monday. His name's on the cover, and yours. I've waited forty-odd years to say that."},
+		{"id": "kostas_robyn", "act": 4, "days": 2, "from": "Thea Kostas, number 11",
+			"text": "Thea here. I was thinking about Robyn, the little girl. She still sends me a card at Christmas, you know. From Fremantle, every year. She'd be fifty-five now. Imagine."},
+		{"id": "robyn_1979", "act": 4, "days": 5, "late": true, "from": "No caller",
+			"text": "A little girl, close to the phone, whispering so nobody hears: \"Is Dad on his way home? Mum says go to sleep, but I can see the porch light from my window.\" Hiss. Click."}
+	]
+}

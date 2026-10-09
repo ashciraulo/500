@@ -1,7 +1,9 @@
 class_name LateSounds
 extends RefCounted
 ## Stand-in sounds for the late city, made up in code: the cassette deck
-## starting and stopping, the warble of something blinking out, and tape hiss.
+## starting and stopping, the warble of something blinking out, tape hiss,
+## and for the story at home the answering machine's beep (machine_beep) and
+## the porch light's switch (light_switch).
 ## A recording with the same name in audio/late/ (late_tape_start,
 ## late_tape_stop, late_flicker, late_tape_hiss_loop) replaces each one.
 
@@ -18,7 +20,40 @@ static func make(sound: String) -> AudioStreamWAV:
 			return _wav(_flicker(), false)
 		"late_tape_hiss_loop":
 			return _wav(_hiss(), true)
+		"machine_beep":
+			return _wav(_beep(), false)
+		"light_switch":
+			return _wav(_switch(), false)
 	return _wav(PackedFloat32Array([0.0]), false)
+
+
+## The answering machine's beep before its messages: one clean tone.
+static func _beep() -> PackedFloat32Array:
+	var n := int(RATE * 0.42)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	for i in n:
+		var t := float(i) / RATE
+		var env := clampf(t / 0.01, 0.0, 1.0) * clampf((0.42 - t) / 0.03, 0.0, 1.0)
+		out[i] = (sin(TAU * 1020.0 * t) * 0.8 + sin(TAU * 2040.0 * t) * 0.1) * 0.35 * env
+	return out
+
+
+## An old rocker switch: a dull snap, the plate ringing a little.
+static func _switch() -> PackedFloat32Array:
+	var n := int(RATE * 0.09)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		lp += (rng.randf_range(-1.0, 1.0) - lp) * 0.35
+		var snap := lp * exp(-t * 260.0) * 1.4
+		var ring := sin(TAU * 1850.0 * t) * exp(-t * 90.0) * 0.18
+		out[i] = (snap + ring) * 0.6
+	return out
 
 
 ## Play pressed: a hard click, then the motor and the capstan whirring up.
