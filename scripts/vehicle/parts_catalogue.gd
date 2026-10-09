@@ -55,6 +55,22 @@ static func fits(part: CarPart, car_id: String) -> bool:
 	return true
 
 
+## Which cars a part is for, in words ("a classic 500"), or "" when any
+## car can take it.
+static func fits_phrase(part: CarPart) -> String:
+	var words: Array[String] = []
+	if not part.fits.is_empty():
+		for car_id in part.fits:
+			words.append("the " + String(CarCatalogue.get_car(car_id).get("name", car_id)))
+	else:
+		for ladder in part.ladders:
+			words.append(LADDER_WORDS.get(ladder, "a %s 500" % ladder))
+	return " or ".join(words)
+
+
+const LADDER_WORDS := {"classic": "a classic 500", "modern": "a modern 500", "electric": "the 500e"}
+
+
 ## Parts for one slot that fit a car, cheapest first.
 static func for_car(slot: StringName, car_id: String) -> Array[CarPart]:
 	var result: Array[CarPart] = []

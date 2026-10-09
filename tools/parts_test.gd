@@ -210,6 +210,14 @@ func _found_parts() -> void:
 			node = n
 		elif n.part_id == "exhaust_abarth_classic":
 			_check(n.on_foot, "the tailpipe on the shed bench is only taken on foot")
+	var found_part: Variant = load("res://scripts/world/found_part.gd")
+	_check(found_part.turned_up("roof_surf_rack"), "the surf rack is out there from the start")
+	_check(not found_part.turned_up("wheels_campagnolo"), "classic wheels wait until you own a classic")
+	garage.owned_cars.append("classic_nuova")
+	_check(found_part.turned_up("wheels_campagnolo"), "and turn up once you do")
+	garage.owned_cars.remove_at(garage.owned_cars.find("classic_nuova"))
+	_check(catalogue.fits_phrase(catalogue.get_part(&"wheels_campagnolo")) == "a classic 500", "classic wheels say they're for a classic 500")
+	_check(catalogue.fits_phrase(rack) == "", "the rack goes on anything")
 	_check(node != null, "the surf rack is somewhere")
 	if node == null:
 		return

@@ -284,7 +284,8 @@ func _refresh_leads() -> void:
 		var car := CarCatalogue.get_car(lead.car)
 		_rumour(_leads_list, String(lead.rumour), "%s. Probably a %s." % [String(lead.where).left(1).to_upper() + String(lead.where).substr(1), car.get("name", "classic")])
 
-	var parts := FoundPart.entries()
+	var parts := FoundPart.entries().filter(func(e: Dictionary) -> bool:
+		return Discoveries.has("part/" + String(e.part)) or FoundPart.turned_up(String(e.part)))
 	var found := 0
 	for entry: Dictionary in parts:
 		if Discoveries.has("part/" + String(entry.part)):
