@@ -90,12 +90,14 @@ def _area_way(tags) -> bool:
         return tags.get("area") == "yes" or "area:highway" in tags
     if tags.get("tourism") in ("viewpoint", "zoo"):
         return True
+    if tags.get("railway") == "platform":
+        return True  # station platforms, drawn as decks
     return any(k in tags for k in ("landuse", "leisure", "natural", "water", "amenity", "place", "man_made", "area:highway"))
 
 
 def extract(pbf: Path, proj: Projector, bbox_lonlat: tuple, use_cache: bool = True) -> Features:
     """bbox_lonlat = (lon0, lat0, lon1, lat1)."""
-    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 12)).encode()).hexdigest()[:16]
+    key = hashlib.sha1(repr((str(pbf), pbf.stat().st_mtime, bbox_lonlat, proj.lat0, proj.lon0, 13)).encode()).hexdigest()[:16]
     cache = CACHE_DIR / f"features_{key}.pkl"
     if use_cache and cache.exists():
         with open(cache, "rb") as f:

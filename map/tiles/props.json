@@ -190,5 +190,1725 @@
    5410.0
   ],
   "yaw": -1.5708
+ },
+ {
+  "id": "perth_plat3_bench_1l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   672.58,
+   24.82,
+   658.32
+  ],
+  "yaw": -0.4939
+ },
+ {
+  "id": "perth_plat3_bench_1r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   673.01,
+   24.82,
+   657.53
+  ],
+  "yaw": 2.6477
+ },
+ {
+  "id": "perth_plat3_bench_3l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   651.46,
+   24.82,
+   646.93
+  ],
+  "yaw": -0.4939
+ },
+ {
+  "id": "perth_plat3_bench_3r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   651.89,
+   24.82,
+   646.14
+  ],
+  "yaw": 2.6477
+ },
+ {
+  "id": "perth_plat3_board_1",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   680.72,
+   24.82,
+   662.2
+  ],
+  "yaw": 2.6477
+ },
+ {
+  "id": "perth_plat3_board_2",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   633.19,
+   24.82,
+   636.57
+  ],
+  "yaw": 2.6477
+ },
+ {
+  "id": "perth_plat3_canopy_1",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   672.8,
+   24.82,
+   657.93
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_canopy_2",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   662.23,
+   24.82,
+   652.23
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_canopy_3",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   651.67,
+   24.82,
+   646.54
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_canopy_4",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   641.11,
+   24.82,
+   640.84
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_edge_1",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   689.72,
+   24.82,
+   664.48
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_edge_2",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   679.16,
+   24.82,
+   658.78
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_edge_3",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   668.59,
+   24.82,
+   653.1
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_edge_4",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   658.03,
+   24.82,
+   647.41
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_edge_5",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   647.47,
+   24.82,
+   641.72
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_edge_6",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   636.91,
+   24.82,
+   636.02
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat3_edge_7",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   626.35,
+   24.82,
+   630.33
+  ],
+  "yaw": -2.0647
+ },
+ {
+  "id": "perth_plat4_bench_1l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   645.84,
+   24.77,
+   633.23
+  ],
+  "yaw": 2.6529
+ },
+ {
+  "id": "perth_plat4_bench_1r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   645.41,
+   24.77,
+   634.03
+  ],
+  "yaw": -0.4887
+ },
+ {
+  "id": "perth_plat4_bench_3l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   667.03,
+   24.77,
+   644.51
+  ],
+  "yaw": 2.6529
+ },
+ {
+  "id": "perth_plat4_bench_3r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   666.6,
+   24.77,
+   645.31
+  ],
+  "yaw": -0.4887
+ },
+ {
+  "id": "perth_plat4_board_1",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   637.68,
+   24.77,
+   629.41
+  ],
+  "yaw": -0.4887
+ },
+ {
+  "id": "perth_plat4_board_2",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   685.35,
+   24.77,
+   654.78
+  ],
+  "yaw": -0.4887
+ },
+ {
+  "id": "perth_plat4_canopy_1",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   645.62,
+   24.77,
+   633.63
+  ],
+  "yaw": 1.0821
+ },
+ {
+  "id": "perth_plat4_canopy_2",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   656.22,
+   24.77,
+   639.28
+  ],
+  "yaw": 1.0821
+ },
+ {
+  "id": "perth_plat4_canopy_3",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   666.81,
+   24.77,
+   644.91
+  ],
+  "yaw": 1.0821
+ },
+ {
+  "id": "perth_plat4_canopy_4",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   677.41,
+   24.77,
+   650.56
+  ],
+  "yaw": 1.0821
+ },
+ {
+  "id": "perth_plat4_edge_1",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   628.6,
+   24.77,
+   627.31
+  ],
+  "yaw": 1.0838
+ },
+ {
+  "id": "perth_plat4_edge_10",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   673.27,
+   24.77,
+   645.59
+  ],
+  "yaw": -2.0595
+ },
+ {
+  "id": "perth_plat4_edge_11",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   662.67,
+   24.77,
+   639.96
+  ],
+  "yaw": -2.0595
+ },
+ {
+  "id": "perth_plat4_edge_12",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   652.08,
+   24.77,
+   634.32
+  ],
+  "yaw": -2.0595
+ },
+ {
+  "id": "perth_plat4_edge_13",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   641.48,
+   24.77,
+   628.68
+  ],
+  "yaw": -2.0595
+ },
+ {
+  "id": "perth_plat4_edge_14",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   630.89,
+   24.77,
+   623.04
+  ],
+  "yaw": -2.0595
+ },
+ {
+  "id": "perth_plat4_edge_2",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   639.2,
+   24.77,
+   632.92
+  ],
+  "yaw": 1.0838
+ },
+ {
+  "id": "perth_plat4_edge_3",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   649.8,
+   24.77,
+   638.53
+  ],
+  "yaw": 1.0838
+ },
+ {
+  "id": "perth_plat4_edge_4",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   660.41,
+   24.77,
+   644.15
+  ],
+  "yaw": 1.0838
+ },
+ {
+  "id": "perth_plat4_edge_5",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   671.02,
+   24.77,
+   649.77
+  ],
+  "yaw": 1.0838
+ },
+ {
+  "id": "perth_plat4_edge_6",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   681.62,
+   24.77,
+   655.38
+  ],
+  "yaw": 1.0838
+ },
+ {
+  "id": "perth_plat4_edge_7",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   692.23,
+   24.77,
+   660.99
+  ],
+  "yaw": 1.0838
+ },
+ {
+  "id": "perth_plat4_edge_8",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   694.45,
+   24.77,
+   656.87
+  ],
+  "yaw": -2.0595
+ },
+ {
+  "id": "perth_plat4_edge_9",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   683.85,
+   24.77,
+   651.23
+  ],
+  "yaw": -2.0595
+ },
+ {
+  "id": "perth_plat5_bench_1l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   539.92,
+   20.25,
+   573.73
+  ],
+  "yaw": 2.6494
+ },
+ {
+  "id": "perth_plat5_bench_1r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   539.49,
+   20.25,
+   574.53
+  ],
+  "yaw": -0.4922
+ },
+ {
+  "id": "perth_plat5_bench_3l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   561.08,
+   20.25,
+   585.06
+  ],
+  "yaw": 2.6494
+ },
+ {
+  "id": "perth_plat5_bench_3r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   560.65,
+   20.25,
+   585.85
+  ],
+  "yaw": -0.4922
+ },
+ {
+  "id": "perth_plat5_bench_5l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   582.23,
+   20.25,
+   596.38
+  ],
+  "yaw": 2.6494
+ },
+ {
+  "id": "perth_plat5_bench_5r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   581.81,
+   20.25,
+   597.18
+  ],
+  "yaw": -0.4922
+ },
+ {
+  "id": "perth_plat5_bench_7l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   603.39,
+   20.25,
+   607.72
+  ],
+  "yaw": 2.6494
+ },
+ {
+  "id": "perth_plat5_bench_7r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   602.97,
+   20.25,
+   608.5
+  ],
+  "yaw": -0.4922
+ },
+ {
+  "id": "perth_plat5_board_1",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   531.77,
+   20.25,
+   569.88
+  ],
+  "yaw": -0.4922
+ },
+ {
+  "id": "perth_plat5_board_2",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   611.12,
+   20.25,
+   612.36
+  ],
+  "yaw": -0.4922
+ },
+ {
+  "id": "perth_plat5_canopy_1",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   539.7,
+   20.25,
+   574.13
+  ],
+  "yaw": 1.0786
+ },
+ {
+  "id": "perth_plat5_canopy_2",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   550.28,
+   20.25,
+   579.79
+  ],
+  "yaw": 1.0786
+ },
+ {
+  "id": "perth_plat5_canopy_3",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   560.86,
+   20.25,
+   585.46
+  ],
+  "yaw": 1.0786
+ },
+ {
+  "id": "perth_plat5_canopy_4",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   571.44,
+   20.25,
+   591.12
+  ],
+  "yaw": 1.0786
+ },
+ {
+  "id": "perth_plat5_canopy_5",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   582.02,
+   20.25,
+   596.78
+  ],
+  "yaw": 1.0786
+ },
+ {
+  "id": "perth_plat5_canopy_6",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   592.6,
+   20.25,
+   602.45
+  ],
+  "yaw": 1.0786
+ },
+ {
+  "id": "perth_plat5_canopy_7",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   603.17,
+   20.25,
+   608.12
+  ],
+  "yaw": 1.0786
+ },
+ {
+  "id": "perth_plat5_edge_1",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   621.4,
+   20.25,
+   612.24
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_10",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   526.19,
+   20.25,
+   561.26
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_2",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   610.82,
+   20.25,
+   606.58
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_3",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   600.24,
+   20.25,
+   600.91
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_4",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   589.66,
+   20.25,
+   595.24
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_5",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   579.09,
+   20.25,
+   589.59
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_6",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   568.51,
+   20.25,
+   583.92
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_7",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   557.93,
+   20.25,
+   578.25
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_8",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   547.35,
+   20.25,
+   572.59
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat5_edge_9",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   536.77,
+   20.25,
+   566.93
+  ],
+  "yaw": -2.063
+ },
+ {
+  "id": "perth_plat6_7_bench_1l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   655.53,
+   12.93,
+   619.71
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat6_7_bench_1r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   655.98,
+   12.93,
+   618.92
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat6_7_bench_3l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   634.58,
+   12.93,
+   608.01
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat6_7_bench_3r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   635.02,
+   12.93,
+   607.23
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat6_7_bench_5l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   613.62,
+   12.93,
+   596.32
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat6_7_bench_5r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   614.06,
+   12.93,
+   595.53
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat6_7_bench_7l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   592.66,
+   12.93,
+   584.62
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat6_7_bench_7r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   593.1,
+   12.93,
+   583.83
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat6_7_bench_9l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   571.7,
+   12.93,
+   572.93
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat6_7_bench_9r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   572.15,
+   12.93,
+   572.14
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat6_7_board_1",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   663.61,
+   12.93,
+   623.7
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat6_7_board_2",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   553.59,
+   12.93,
+   562.3
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat6_7_canopy_1",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   655.76,
+   12.93,
+   619.32
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_10",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   561.45,
+   12.93,
+   566.69
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_2",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   645.27,
+   12.93,
+   613.46
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_3",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   634.8,
+   12.93,
+   607.62
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_4",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   624.31,
+   12.93,
+   601.77
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_5",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   613.84,
+   12.93,
+   595.92
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_6",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   603.36,
+   12.93,
+   590.07
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_7",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   592.88,
+   12.93,
+   584.23
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_8",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   582.4,
+   12.93,
+   578.38
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_canopy_9",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   571.92,
+   12.93,
+   572.53
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_1",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   533.57,
+   12.93,
+   555.03
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_10",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   627.89,
+   12.93,
+   607.65
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_11",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   638.36,
+   12.93,
+   613.51
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_12",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   648.85,
+   12.93,
+   619.35
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_13",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   659.32,
+   12.93,
+   625.2
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_14",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   669.81,
+   12.93,
+   631.05
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_15",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   680.28,
+   12.93,
+   636.9
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_16",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   683.62,
+   12.93,
+   630.97
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_17",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   673.13,
+   12.93,
+   625.13
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_18",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   662.66,
+   12.93,
+   619.29
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_19",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   652.18,
+   12.93,
+   613.44
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_2",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   544.06,
+   12.93,
+   560.88
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_20",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   641.7,
+   12.93,
+   607.6
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_21",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   631.22,
+   12.93,
+   601.74
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_22",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   620.74,
+   12.93,
+   595.9
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_23",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   610.26,
+   12.93,
+   590.05
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_24",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   599.78,
+   12.93,
+   584.21
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_25",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   589.3,
+   12.93,
+   578.36
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_26",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   578.82,
+   12.93,
+   572.52
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_27",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   568.34,
+   12.93,
+   566.68
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_28",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   557.86,
+   12.93,
+   560.83
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_29",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   547.38,
+   12.93,
+   554.98
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_3",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   554.53,
+   12.93,
+   566.72
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_30",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   536.9,
+   12.93,
+   549.13
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat6_7_edge_4",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   565.02,
+   12.93,
+   572.56
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_5",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   575.49,
+   12.93,
+   578.42
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_6",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   585.97,
+   12.93,
+   584.26
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_7",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   596.45,
+   12.93,
+   590.11
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_8",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   606.93,
+   12.93,
+   595.96
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat6_7_edge_9",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   617.41,
+   12.93,
+   601.81
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_bench_1l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   570.34,
+   10.44,
+   552.66
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat8_9_bench_1r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   569.91,
+   10.44,
+   553.44
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat8_9_bench_3l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   591.29,
+   10.44,
+   564.36
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat8_9_bench_3r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   590.86,
+   10.44,
+   565.15
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat8_9_bench_5l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   612.24,
+   10.44,
+   576.07
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat8_9_bench_5r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   611.8,
+   10.44,
+   576.86
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat8_9_bench_7l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   633.19,
+   10.44,
+   587.78
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat8_9_bench_7r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   632.75,
+   10.44,
+   588.57
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat8_9_bench_9l",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   654.14,
+   10.44,
+   599.49
+  ],
+  "yaw": 2.632
+ },
+ {
+  "id": "perth_plat8_9_bench_9r",
+  "scene": "res://art/models/props/station/platform_bench.glb",
+  "p": [
+   653.7,
+   10.44,
+   600.28
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat8_9_board_1",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   562.27,
+   10.44,
+   548.66
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat8_9_board_2",
+  "scene": "res://art/models/props/station/station_board_perth.glb",
+  "p": [
+   672.26,
+   10.44,
+   610.14
+  ],
+  "yaw": -0.5096
+ },
+ {
+  "id": "perth_plat8_9_canopy_1",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   570.13,
+   10.44,
+   553.05
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_10",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   664.4,
+   10.44,
+   605.75
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_2",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   580.6,
+   10.44,
+   558.9
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_3",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   591.08,
+   10.44,
+   564.76
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_4",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   601.55,
+   10.44,
+   570.61
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_5",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   612.03,
+   10.44,
+   576.47
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_6",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   622.5,
+   10.44,
+   582.33
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_7",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   632.98,
+   10.44,
+   588.18
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_8",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   643.45,
+   10.44,
+   594.04
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_canopy_9",
+  "scene": "res://art/models/props/station/platform_canopy.glb",
+  "p": [
+   653.93,
+   10.44,
+   599.89
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_1",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   542.31,
+   10.44,
+   541.29
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_10",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   636.6,
+   10.44,
+   593.97
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_11",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   647.07,
+   10.44,
+   599.81
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_12",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   657.55,
+   10.44,
+   605.67
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_13",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   668.02,
+   10.44,
+   611.52
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_14",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   678.51,
+   10.44,
+   617.38
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_15",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   688.98,
+   10.44,
+   623.22
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_16",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   692.2,
+   10.44,
+   617.49
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_17",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   681.73,
+   10.44,
+   611.64
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_18",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   671.25,
+   10.44,
+   605.78
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_19",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   660.78,
+   10.44,
+   599.93
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_2",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   552.79,
+   10.44,
+   547.15
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_20",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   650.3,
+   10.44,
+   594.07
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_21",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   639.83,
+   10.44,
+   588.23
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_22",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   629.36,
+   10.44,
+   582.37
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_23",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   618.89,
+   10.44,
+   576.51
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_24",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   608.41,
+   10.44,
+   570.66
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_25",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   597.94,
+   10.44,
+   564.8
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_26",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   587.46,
+   10.44,
+   558.95
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_27",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   576.99,
+   10.44,
+   553.09
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_28",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   566.51,
+   10.44,
+   547.24
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_29",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   556.04,
+   10.44,
+   541.38
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_3",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   563.26,
+   10.44,
+   552.99
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_30",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   545.56,
+   10.44,
+   535.53
+  ],
+  "yaw": -2.0804
+ },
+ {
+  "id": "perth_plat8_9_edge_4",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   573.74,
+   10.44,
+   558.85
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_5",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   584.22,
+   10.44,
+   564.7
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_6",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   594.7,
+   10.44,
+   570.56
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_7",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   605.17,
+   10.44,
+   576.4
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_8",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   615.65,
+   10.44,
+   582.26
+  ],
+  "yaw": 1.0612
+ },
+ {
+  "id": "perth_plat8_9_edge_9",
+  "scene": "res://art/models/props/station/platform_edge.glb",
+  "p": [
+   626.12,
+   10.44,
+   588.11
+  ],
+  "yaw": 1.0612
  }
 ]
