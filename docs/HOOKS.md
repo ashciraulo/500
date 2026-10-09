@@ -616,11 +616,11 @@ after a map rebuild).
   `envelope_ready()` is true and `HomeField` puts an envelope inside
   `Door_Front`; F picks it up (`take_envelope()`: the cash and
   `BUYER_NOTES`; `field/envelope` plays if the audio has it). The journal's
-  wrong-bird pages say "seen, sort of" from act 3. Endings, read as Story
-  flags: `&"ending_city_of_light"` stops the wrong birds
+  wrong-bird pages say "seen, sort of" from act 3. Endings
+  (`Story.ending()`): `&"city_of_light"` stops the wrong birds
   (`FieldBirds.wrong_ready`) and their pages say they're just birds now;
-  `&"ending_lights_out"` fades the pages to blank over `FADE_DAYS`
-  (`page_fade()`, from `lights_out_day`).
+  `&"lights_out"` fades the pages to blank over `FADE_DAYS` from
+  `Story.ending_day()` (`page_fade()`).
 - Music: `music/mus_field_journal` plays while the journal is open (only if
   no other music is), and `music/mus_field_new_species` on a new bird; both
   are skipped until the audio side ships them.

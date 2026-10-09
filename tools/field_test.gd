@@ -823,12 +823,11 @@ func _check_prints() -> void:
 	var text := "\n".join(page.call("wrong_frogmouth"))
 	_check(text.contains("sort of") and text.contains("Mick's field guide"), "the journal: seen, sort of, and in Mick's guide")
 	# The endings.
-	story.set_flag(_fj.LIGHTS_OUT)
-	_fj.page_fade()
+	story.set_ending(_fj.LIGHTS_OUT)
 	clock.day += 8
 	text = "\n".join(page.call("wrong_frogmouth"))
 	_check(_fj.page_fade() >= 1.0 and text.contains("gone blank"), "Lights Out: the pages go blank")
-	story.set_flag(_fj.CITY_OF_LIGHT)
+	story.set_ending(_fj.CITY_OF_LIGHT)
 	_check(not _birds.wrong_ready(_fj.bird("wrong_frogmouth"), 1.0), "City of Light: the wrong birds stop coming")
 	text = "\n".join(page.call("wrong_frogmouth"))
 	_check(text.contains("just a bird"), "and their pages say so")

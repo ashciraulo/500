@@ -109,10 +109,10 @@ const BUYER_NOTES := {
 	"wrong_boobook": "For the owl and its tape. More welcome.",
 	"wrong_grey_bird": "For the grey bird. It knows you.",
 }
-## The endings (Story flags, set by the story's finale): City of Light makes
-## the wrong birds ordinary; Lights Out fades their pages to blank over a week.
-const CITY_OF_LIGHT := &"ending_city_of_light"
-const LIGHTS_OUT := &"ending_lights_out"
+## The endings (Story.ending()): City of Light makes the wrong birds ordinary;
+## Lights Out fades their pages to blank over a week.
+const CITY_OF_LIGHT := &"city_of_light"
+const LIGHTS_OUT := &"lights_out"
 const FADE_DAYS := 7.0
 
 var birds := {}
@@ -139,8 +139,6 @@ var buyer_owed := 0
 var buyer_day := -1
 var buyer_note := ""
 var money_from_buyer := 0
-## The day Lights Out began (the wrong birds' pages fade from then), or -1.
-var lights_out_day := -1
 
 var fish := {}
 var fish_order: PackedStringArray = []
@@ -475,9 +473,10 @@ func story_act() -> int:
 	return int(story.call("act")) if story else 1
 
 
-func story_flag(id: StringName) -> bool:
+## The story's ending, or &"" before the finale.
+func story_ending() -> StringName:
 	var story := _story()
-	return story != null and bool(story.call("flag", id))
+	return StringName(story.call("ending")) if story else &""
 
 
 ## Whether this blank print is the thirteen and the story hasn't had its answer yet.
@@ -548,16 +547,15 @@ func take_envelope() -> Dictionary:
 
 ## City of Light: the wrong birds are just birds now.
 func wrong_ordinary() -> bool:
-	return story_flag(CITY_OF_LIGHT)
+	return story_ending() == CITY_OF_LIGHT
 
 
 ## Lights Out: how far the wrong birds' pages have faded (0 none, 1 blank).
 func page_fade() -> float:
-	if not story_flag(LIGHTS_OUT):
+	if story_ending() != LIGHTS_OUT:
 		return 0.0
-	if lights_out_day < 0:
-		lights_out_day = GameClock.day
-	return clampf((GameClock.day - lights_out_day + GameClock.time_of_day / 24.0) / FADE_DAYS, 0.0, 1.0)
+	var since := GameClock.day - int(_story().call("ending_day"))
+	return clampf((since + GameClock.time_of_day / 24.0) / FADE_DAYS, 0.0, 1.0)
 
 
 ## Buy the next binoculars, camera, lens or film at the lab. Returns false if you can't.
@@ -868,7 +866,6 @@ func save_state() -> Dictionary:
 		"prints_sold": prints_sold, "money_from_prints": money_from_prints,
 		"blanks": blanks, "guide": guide, "buyer_prints": buyer_prints, "buyer_owed": buyer_owed,
 		"buyer_day": buyer_day, "buyer_note": buyer_note, "money_from_buyer": money_from_buyer,
-		"lights_out_day": lights_out_day,
 		"catches": catches, "esky": esky, "rod": rod, "esky_level": esky_level, "crab_net": has_crab_net,
 		"ice_until": ice_until, "fish_weighed": fish_weighed, "money_from_fish": money_from_fish, "crab_nets": crab_nets}
 
@@ -889,7 +886,6 @@ func load_state(data: Dictionary) -> void:
 	buyer_day = int(data.get("buyer_day", -1))
 	buyer_note = String(data.get("buyer_note", ""))
 	money_from_buyer = int(data.get("money_from_buyer", 0))
-	lights_out_day = int(data.get("lights_out_day", -1))
 	catches = data.get("catches", {})
 	esky = data.get("esky", [])
 	rod = int(data.get("rod", 0))
