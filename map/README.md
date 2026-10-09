@@ -51,6 +51,16 @@ The drivable city, generated from OpenStreetMap by `tools/osm_import`.
   `tools/osm_import/config.json` "pois"; ones off the built map appear when a
   region covers them. Spots with `"hidden": true` are for the player to find:
   the field journal keeps them off its map until you are close.
+- **Cafes, bars, pubs and restaurants**: 25 real Northbridge places with
+  made-up names, from `data/world/venues.json`. `tools/places/place_venues.py`
+  (no Godot) reads each one's OSM spot, name and look from
+  `tools/places/venues_src.json`, finds its building's front wall on the
+  named street in the built tiles, and writes the shopfront's position, yaw,
+  width, footpath heights and the trees and street lights in front.
+  `art/models/scripts/build_venues.py` builds each shopfront to fit, and the
+  streamer adds a `Venue` (`scripts/world/venue.gd`) under the tile it stands
+  on. Re-run `place_venues.py` and the model build after the tiles round
+  them are rebuilt. Exteriors only for now.
 - **Habitats**: `map/tiles/habitats.json` lists OSM wetlands and beaches, one
   per line: `id` (`wetland_<osm id>` or `beach_<osm id>`, stable), `kind`,
   `name` (may be empty), `wetland` (reedbed, marsh, swamp, tidalflat... when

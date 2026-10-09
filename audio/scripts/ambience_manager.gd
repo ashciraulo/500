@@ -16,7 +16,8 @@ extends Node
 ##   weather come through the walls and rain is heard on the windows.
 ##
 ## - Places: close-up detail for a point of interest (a beach, a lookout,
-##   bush, Elizabeth Quay, the river bank, a car park) over the zone bed,
+##   bush, Elizabeth Quay, the river bank, a car park, an open cafe, bar,
+##   pub or restaurant: scripts/world/venue.gd) over the zone bed,
 ##   heard from the place itself (a 3D source at the nearest one of each
 ##   kind) as the listener comes within its radius. See update_places().
 ##
@@ -85,7 +86,7 @@ const HOME_RADIUS := 90.0
 ## MapStreamer.get_pois() by Audio.hooks), from nodes in the "poi" group with
 ## meta "poi_type" (and optionally "radius", metres), or from add_place().
 const PLACE_TYPES := ["beach", "surf", "lookout", "bush", "quay", "riverside", "carpark", "jetty", "groyne",
-		"tackle_shop", "photo_lab", "wrong_cockatoos", "servo"]
+		"tackle_shop", "photo_lab", "wrong_cockatoos", "servo", "cafe", "restaurant", "bar", "pub"]
 const PLACE_RADIUS := 120.0
 ## The servos you can fill up at (MapStreamer builds them from this file):
 ## each one's forecourt is a "servo" place. The map's other servo POIs (the

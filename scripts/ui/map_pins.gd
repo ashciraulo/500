@@ -11,6 +11,9 @@ extends RefCounted
 const MAX_MARKERS := 12
 ## How close you need to get to a hand-picked quiet spot to put it on the map.
 const SPOT_REACH := 60.0
+## Map glyphs for the venues by kind, and their colours.
+const VENUE_ICONS := {"cafe": "cup", "gelato": "cup", "bar": "glass", "pub": "glass", "restaurant": "plate"}
+const VENUE_ACCENTS := {"cup": UiStyle.SUN_LIGHT, "glass": UiStyle.RED, "plate": UiStyle.TEAL_LIGHT}
 
 ## Your markers: [{at: Vector2 (world x/z), name: String}].
 static var markers: Array = []
@@ -62,6 +65,8 @@ static func gather(tree: SceneTree, mini := false) -> Array:
 					pins.append(_pin(at, "bird", UiStyle.GOOD, String(poi.get("name", "Birds"))))
 				elif Discoveries.has("places/" + String(poi.id)):
 					pins.append(_pin(at, "quiet", UiStyle.GOOD, String(poi.get("name", "A quiet place"))))
+	if not mini:
+		_venue_pins(pins)
 	_field_pins(pins)
 	_challenge_pins(tree, pins, mini)
 	var target := Jobs.target_site() if Jobs.has_method("target_site") else null
@@ -84,6 +89,16 @@ static func gather(tree: SceneTree, mini := false) -> Array:
 		pin.rim = mini and i == nearest
 		pins.append(pin)
 	return pins
+
+
+## Northbridge's cafes, bars, pubs and restaurants (data/world/venues.json):
+## on the full map only, where a strip of them reads as a strip.
+static func _venue_pins(pins: Array) -> void:
+	for entry: Dictionary in Venue.entries():
+		var p: Array = entry.position
+		var kind := String(entry.get("kind", "cafe"))
+		var icon: String = VENUE_ICONS.get(kind, "plate")
+		pins.append(_pin(Vector2(p[0], p[2]), icon, VENUE_ACCENTS.get(icon, UiStyle.SUN_LIGHT), String(entry.get("name", ""))))
 
 
 static func _field_pins(pins: Array) -> void:

@@ -102,6 +102,7 @@ func _process(_delta: float) -> bool:
 				for body in _map.find_children("props", "StaticBody3D", true, false):
 					poles += body.get_child_count()
 				_check(poles > 50, "trees and street lights near the car are solid (%d)" % poles)
+				_check_venues()
 				_next()
 		2:  # Gentle drive out of the carport.
 			Input.action_press("accelerate", 0.4)
@@ -183,6 +184,35 @@ func _check_walkers_on_ground(traffic) -> void:
 				off.append("%+.1f m at (%.0f, %.0f)" % [gap, p.x, p.z])
 	_check(n > 500 and off.size() <= n / 100, "walkers stand on the ground (%d of %d path points more than 1 m off%s)"
 		% [off.size(), n, (": " + ", ".join(off.slice(0, 4))) if not off.is_empty() else ""])
+
+
+## Northbridge's cafes, bars, pubs and restaurants (data/world/venues.json):
+## one on each loaded tile's frontage, a pin on the map for every one, and
+## open by their hours (a bar runs past midnight, a cafe shuts by evening).
+func _check_venues() -> void:
+	var venues := _main.get_tree().get_nodes_in_group(&"venues")
+	var expect := 0
+	for e: Dictionary in Venue.entries():
+		var p: Array = e.position
+		if _map.is_tile_loaded(_map.tile_at(Vector3(p[0], p[1], p[2]))):
+			expect += 1
+	_check(expect > 0 and venues.size() == expect,
+		"Northbridge's cafes, bars and restaurants stand on the loaded tiles (%d of %d)" % [venues.size(), expect])
+	var built := venues.filter(func(v: Node) -> bool: return v.get_node_or_null(^"Model") != null).size()
+	_check(built == venues.size(), "every venue has its shopfront (%d of %d)" % [built, venues.size()])
+	var pins := 0
+	for pin: Dictionary in load("res://scripts/ui/map_pins.gd").gather(_main.get_tree()):
+		if pin.get("icon", "") in ["cup", "glass", "plate"]:
+			pins += 1
+	_check(pins == Venue.entries().size(), "a map pin for every venue (%d)" % pins)
+	var cafe := Venue.new()
+	cafe.kind = "cafe"
+	var bar := Venue.new()
+	bar.kind = "bar"
+	_check(cafe.open_at(9.0) and not cafe.open_at(20.0) and bar.open_at(1.0) and not bar.open_at(10.0),
+		"venues keep their hours (a bar is open at 1 am, a cafe shut at 8 pm)")
+	cafe.free()
+	bar.free()
 
 
 func _ray_down(p: Vector3) -> Dictionary:
