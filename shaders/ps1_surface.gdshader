@@ -22,6 +22,16 @@ global uniform float ps1_wetness;
 // late_keep (the one road left).
 global uniform float late_void;
 uniform bool late_keep = false;
+// Inside the townhouse (HomeBase marks the rooms and what's put in them): the
+// flat sky fill mostly stays outside and what gets in is warm, so the lamps
+// carry the rooms at night. 0 outdoors, 1 indoors.
+// indoor_daylight (0 night, 1 midday, HomeBase sets it) adds the warm
+// light that comes in off the courtyard and bounces round the rooms by day.
+uniform float indoor = 0.0;
+uniform float indoor_daylight = 0.0;
+const float INDOOR_FILL = 0.3;
+const vec3 INDOOR_TINT = vec3(1.0, 0.9, 0.76);
+const vec3 INDOOR_BOUNCE = vec3(0.34, 0.27, 0.19);
 #ifdef LATE_SIDES
 // The story's other house (scripts/world/late_city/other_house.gd) builds a
 // copy of this shader with LATE_SIDES defined, for the house's insides only,
@@ -203,6 +213,12 @@ void fragment() {
 	METALLIC = metallic;
 	SPECULAR = mix(0.15, 0.8, wet);
 	EMISSION = emission_color.rgb * emission_energy * texture(emission_texture, uv).rgb;
+	if (indoor > 0.0) {
+		AO = mix(1.0, INDOOR_FILL, indoor);
+		AO_LIGHT_AFFECT = 0.0;
+		ALBEDO *= mix(vec3(1.0), INDOOR_TINT, indoor);
+		EMISSION += ALBEDO * INDOOR_BOUNCE * indoor_daylight * indoor;
+	}
 	if (!late_keep && late_void > 0.0) {
 		float keep = 1.0 - late_void;
 		ALBEDO *= keep;
