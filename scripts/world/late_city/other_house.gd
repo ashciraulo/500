@@ -55,6 +55,7 @@ var _dimmed: Array = []      # [Light3D, previous cull mask]: lamps kept off the
 var _flat_today: Array[GeometryInstance3D] = []  # no PS1 material: hidden while you're inside
 var _flat_1979: Array[GeometryInstance3D] = []   # (labels): shown only while you're inside
 var _copies: Array[MeshInstance3D] = []          # the shell's papered copies
+var _shelved: Array[Node] = []   # today's interactables in the house (the cat's bowl...): out of reach in 1979
 var _openings := {}          # door -> {centre, right, half_w, up, half_h} (world)
 var _shut_at := {}           # door -> when it was shut (s), while it swings to
 var _was_inside := false
@@ -146,6 +147,7 @@ func swap_in() -> void:
 	last_day = GameClock.day
 	_measure_doors()
 	_today_aside()
+	_shelve_today()
 	_retint(true)
 	_dressing = House1979.new()
 	_home.add_child(_dressing)
@@ -176,6 +178,10 @@ func swap_out() -> void:
 			n.visible = true
 	_flat_today.clear()
 	_flat_1979.clear()
+	for n in _shelved:
+		if is_instance_valid(n):
+			n.add_to_group(&"interactables")
+	_shelved.clear()
 	for n in _copies:
 		if is_instance_valid(n):
 			n.queue_free()
@@ -190,6 +196,17 @@ func swap_out() -> void:
 	portal_mode = 0
 	RenderingServer.global_shader_parameter_set(&"late_portal", 0.0)
 	LateCity.end(EVENT)
+
+
+## Today's things you can use (the cat's bowl, the answering machine...)
+## can't be used in 1979: out of the interactables group until it's over.
+func _shelve_today() -> void:
+	for n in get_tree().get_nodes_in_group(&"interactables"):
+		if n == self or not n.has_method("interact_point"):
+			continue
+		if _in_box(n.interact_point(), 0.0):
+			n.remove_from_group(&"interactables")
+			_shelved.append(n)
 
 
 # --- Taking the drawing (interactables) ------------------------------------------

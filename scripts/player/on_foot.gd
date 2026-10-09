@@ -776,19 +776,30 @@ func _nearest_thing() -> Node:
 	return best
 
 
-## Nothing solid between your eye and `at`, short of `at` itself (a thing's
-## point can sit just inside the cupboard or fridge it's on) or `thing`'s own body.
+## Nothing solid between your eye and `at` but `thing`'s own body. Looked at
+## both ways: from the eye, anything short of `at` by more than SEE_SLACK
+## hides it (a thing's point can sit just inside the cupboard or fridge it's
+## on); from `at` back to the eye, anything at all does (a switch on the far
+## side of a wall sits within SEE_SLACK of the wall, but the wall's inside
+## face is in the way looking back).
 func _can_see(eye: Vector3, at: Vector3, thing: Node) -> bool:
+	var space := get_world_3d().direct_space_state
 	var q := PhysicsRayQueryParameters3D.create(eye, at, MASK)
 	q.exclude = [get_rid()]
-	var hit := get_world_3d().direct_space_state.intersect_ray(q)
-	if hit.is_empty() or eye.distance_to(hit.position) > eye.distance_to(at) - SEE_SLACK:
-		return true
-	var n: Node = hit.get("collider")
-	while n:
-		if n == thing:
+	var hit := space.intersect_ray(q)
+	if not hit.is_empty() and eye.distance_to(hit.position) < eye.distance_to(at) - SEE_SLACK and not _part_of(hit.collider, thing):
+		return false
+	q = PhysicsRayQueryParameters3D.create(at, eye, MASK)
+	q.exclude = [get_rid()]
+	hit = space.intersect_ray(q)
+	return hit.is_empty() or _part_of(hit.collider, thing)
+
+
+func _part_of(node: Node, thing: Node) -> bool:
+	while node:
+		if node == thing:
 			return true
-		n = n.get_parent()
+		node = node.get_parent()
 	return false
 
 

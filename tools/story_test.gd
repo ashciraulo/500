@@ -119,6 +119,10 @@ func _process(_delta: float) -> bool:
 				_check(_retinted() > 0, "the walls and floors have a 1979 side (%d surfaces)" % _retinted())
 				_check(story.has_night(&"other_house_1979"), "it's in the Nights log")
 				_check(_other.interact_hint() == "Take the drawing", "the drawing on the fridge can be taken")
+				var today := get_nodes_in_group(&"interactables").filter(func(n: Node) -> bool:
+					return n != _other and _other._in_box(n.interact_point(), 0.0))
+				_check(today.is_empty() and not _home.find_child("AnsweringMachine", false, false).is_in_group(&"interactables"),
+					"today's things (the cat's bowl, the answering machine) can't be used in 1979 (%d can)" % today.size())
 				_other.interact()
 				_check(story.flag(&"drawing_1979"), "taking it is remembered")
 			elif _frames == 200:
@@ -131,6 +135,7 @@ func _process(_delta: float) -> bool:
 				_home.toggle_door(&"Door_Front")
 			elif _frames == 300:
 				_check(not _other.is_active(), "out and the door shut: it's your house again")
+				_check(_home.find_child("AnsweringMachine", false, false).is_in_group(&"interactables"), "and today's things can be used again")
 				_check(_sided(_home.get_node("Interior"), 1) == 0 and _other.portal_mode == 0, "today's furniture is plain again")
 				_check(_retinted() == 0, "and the walls are yours")
 				_check(not late.active(), "the late city has let go")
@@ -170,20 +175,28 @@ func _process(_delta: float) -> bool:
 			var switch: Node = _home.find_child("PorchSwitch", false, false)
 			if _frames == 1:
 				_people(story, clock)
-				# You can use things you can see, but not through a wall.
-				if _home.is_door_open(&"Door_Front"):
+				# You can use things you can see, but not through a wall: from
+				# the hall with the front door open, yes; from outside, no.
+				if not _home.is_door_open(&"Door_Front"):
 					_home.toggle_door(&"Door_Front")
-				_put_player(_home.to_global(_H79.at(Vector3(0.7, 1.0, 0.2))))
-			elif _frames == 20:
+				_put_player(_home.to_global(_H79.at(Vector3(1.2, 1.4, 0.2))))
+			elif _frames == 60:
 				_player.face(switch.interact_point())
-			elif _frames == 22:
-				_check(_player._nearest_thing() == switch, "the porch switch can be used from the hall")
-				_put_player(_home.to_global(_H79.at(Vector3(0.3, -0.8, 0.2))))
-			elif _frames == 40:
+			elif _frames == 62:
+				var t: Array = _player._target()
+				_check(t[0] == "thing" and t[1] == switch, "the porch switch can be used from the hall with the front door open (%s)" % [t[0]])
+				_put_player(_home.to_global(_H79.at(Vector3(0.9, -1.6, 0.2))))
+			elif _frames == 80:
 				_player.face(switch.interact_point())
-			elif _frames == 42:
+			elif _frames == 82:
+				_check(_player._nearest_thing() != switch, "but not from the step outside")
+				_home.toggle_door(&"Door_Front")
+				_put_player(_home.to_global(_H79.at(Vector3(0.3, -0.35, 0.2))))
+			elif _frames == 140:
+				_player.face(switch.interact_point())
+			elif _frames == 142:
 				var d: float = _player.global_position.distance_to(switch.interact_point())
-				_check(_player._nearest_thing() != switch, "but not through the wall from the porch (%.1f m away)" % d)
+				_check(_player._nearest_thing() != switch, "nor through the wall from the porch with the door shut (%.1f m away)" % d)
 				_next()
 		4:
 			return _finish()
@@ -221,7 +234,11 @@ func _people(story: Node, clock: Node) -> void:
 	_check(story.messages.is_empty(), "loading an empty save clears the machine")
 	story.load_state(saved)
 	_check(story.heard(&"kostas_welcome"), "and the save brings the messages back, heard")
-	# Choice 1: the porch light.
+	# Choice 1: the porch light. A spot lights the step (the house's own omni
+	# lamp there lit the hall through the wall).
+	var spot: Variant = people.get("_porch_lamp")
+	var omni: Variant = people.get("_house_lamp")
+	_check(spot is SpotLight3D and omni is OmniLight3D and (omni as OmniLight3D).light_energy == 0.0, "the porch is lit by a spot, not the omni that lit the hall")
 	_check(switch.interact_hint() == "Porch light: turn off", "the porch light is on to start with")
 	switch.interact()
 	_check(not people.porch_light_on and switch.interact_hint() == "Porch light: turn on", "the switch turns it off")

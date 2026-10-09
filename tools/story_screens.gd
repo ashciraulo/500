@@ -145,9 +145,18 @@ func _people_steps() -> void:
 		bench.call(), 45])
 	_steps.append(["people_02_playing_a_message", func() -> void:
 		machine.call().interact(), 120])
-	_steps.append(["people_03_porch_switch", func() -> void:
-		_look(_h(1.3, 1.3, 1.6), _h(0.2, 0.0, 1.25)), 40])
+	_steps.append(["people_03_porch_switch_door_open", func() -> void:
+		_home.toggle_door(&"Door_Front")
+		_look(_h(1.4, 1.2, 1.6), _h(0.0, 1.57, 1.15)), 60])
+	_steps.append(["people_03a_switch_close", func() -> void:
+		_look(_h(1.1, 0.9, 1.6), _h(0.0, 1.57, 1.15)), 20])
+	_steps.append(["people_03b_hall_porch_on", func() -> void:
+		_home.toggle_door(&"Door_Front")
+		_look(_h(1.2, 2.6, 1.6), _h(1.2, 0.0, 1.4)), 60])
+	_steps.append(["people_03c_hall_porch_off", func() -> void:
+		people.set_porch_light(false), 20])
 	_steps.append(["people_04_act_card", func() -> void:
+		people.set_porch_light(true)
 		story.act_override = 2
 		people.card_act = 1
 		people._maybe_card()
