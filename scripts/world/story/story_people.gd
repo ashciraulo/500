@@ -36,7 +36,11 @@ var _card: ActCard
 var _check := 0.0
 var _since_start := 0.0
 var _last_left_day := -1
-var _porch_lamp: OmniLight3D
+## The porch's own light, which StoryPeople switches. The house's omni lamp
+## there lit the hall through the front wall, so it's kept dark and this spot,
+## pointing out and down at the step, lights the porch instead.
+var _porch_lamp: SpotLight3D
+var _house_lamp: OmniLight3D
 var _porch_energy := 0.9
 ## The porch lamps' glowing shades: [mesh, surface, unlit material], so they
 ## go dark with the light. And whether they're lit now.
@@ -87,8 +91,9 @@ func _find_home() -> void:
 	if markers is Dictionary and (markers as Dictionary).has(&"Light_Porch"):
 		for c in (markers[&"Light_Porch"] as Node).get_children():
 			if c is OmniLight3D:
-				_porch_lamp = c
-				_porch_energy = _porch_lamp.light_energy
+				_house_lamp = c
+		if _house_lamp:
+			_porch_lamp = _porch_spot(markers[&"Light_Porch"] as Node3D, _house_lamp)
 	for mi: MeshInstance3D in _home.find_children("porch_light*", "MeshInstance3D", true, false):
 		for i in mi.get_surface_override_material_count():
 			var m := mi.get_active_material(i) as ShaderMaterial
@@ -170,9 +175,33 @@ func set_porch_light(on: bool) -> void:
 	porch_light_on = on
 
 
+## A spot in place of the house's omni lamp, the same colour, aimed out over
+## the step so nothing behind the front wall is lit.
+func _porch_spot(marker: Node3D, lamp: OmniLight3D) -> SpotLight3D:
+	var spot := SpotLight3D.new()
+	spot.name = "PorchSpot"
+	spot.light_color = lamp.light_color
+	_porch_energy = lamp.light_energy * 1.6
+	spot.light_energy = _porch_energy
+	spot.spot_range = lamp.omni_range + 2.0
+	spot.spot_angle = 70.0
+	spot.spot_attenuation = 0.8
+	spot.shadow_enabled = false
+	marker.add_child(spot)
+	# House frame y is the home's -z: out to the street is +z, down a little.
+	var out := (_home.global_basis * Vector3(0.0, -0.7, 1.0)).normalized()
+	spot.look_at(spot.global_position + out, _home.global_basis.y)
+	lamp.light_energy = 0.0
+	return spot
+
+
 func _update_porch(delta: float) -> void:
 	if _porch_lamp == null or not is_instance_valid(_porch_lamp):
 		return
+	# The house turns its lamps on at dusk; the spot follows its lamp.
+	_porch_lamp.visible = _house_lamp != null and is_instance_valid(_house_lamp) and _house_lamp.visible
+	if _house_lamp and is_instance_valid(_house_lamp):
+		_house_lamp.light_energy = 0.0
 	var energy := _porch_energy if porch_light_on else 0.0
 	# Three blinks, like three knocks on the door.
 	if _blinks > 0.0:

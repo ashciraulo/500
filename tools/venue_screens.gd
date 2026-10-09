@@ -98,6 +98,8 @@ func _process(_delta: float) -> bool:
 		_frames = -240
 		return false
 	_frames += 1
+	if _frames % 10 == 0:
+		_hide_act_card()
 	if _step == -1:
 		if _frames > 0:
 			MapData.shared().wait()
@@ -123,6 +125,15 @@ func _next() -> void:
 	_frames = 0
 	if _step < _steps.size():
 		(_steps[_step][1] as Callable).call()
+
+
+## The story's act card would sit over the first shots. (Found by name:
+## naming the class here would compile it before the autoloads exist.)
+func _hide_act_card() -> void:
+	for card in root.find_children("*", "CanvasLayer", true, false):
+		var script: Script = card.get_script()
+		if script and script.get_global_name() == &"ActCard":
+			card.visible = false
 
 
 func _hour(h: float) -> void:
