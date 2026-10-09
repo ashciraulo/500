@@ -318,10 +318,38 @@ def _deck_samples(poly, spacing: float = 1.5) -> np.ndarray:
     return np.concatenate([np.asarray(edge, float).reshape(-1, 2), np.c_[E[inside], N[inside]]])
 
 
+def _underground(tags) -> bool:
+    """Below ground by its layer, level or location tag."""
+    if tags.get("location") in ("underground", "tunnel") or styles.is_tunnel(tags):
+        return True
+    for k in ("layer", "level"):
+        try:
+            if min(float(v) for v in str(tags.get(k, "0")).split(";")) < 0:
+                return True
+        except ValueError:
+            pass
+    return False
+
+
+def _make_canopies(areas, canopies: dict):
+    """Buildings drawn as a roof up on columns rather than a solid block
+    (config "canopies", OSM id -> {"under": m, "depth": m}): Perth station's
+    building covers its surface platforms and tracks, and as a block it buried
+    the platforms and the trains ran into it. Its walls and roof start
+    `under` metres up (min_height), so nothing below collides with it."""
+    for a in areas:
+        c = canopies.get(str(a.id))
+        if c and "building" in a.tags:
+            a.tags = dict(a.tags, min_height=str(c["under"]), height=str(c["under"] + c["depth"]))
+            a.tags["roof:shape"] = "flat"
+            a.tags.pop("building:levels", None)
+
+
 class World:
     def __init__(self, cfg: dict, proj: Projector, feats, hf: HeightField):
         self.cfg, self.proj, self.hf = cfg, proj, hf
         self.tile_size = cfg["tile_size"]
+        _make_canopies(feats.areas, cfg.get("canopies", {}))
         t0 = time.time()
         cb = cfg.get("cbd_bbox")
         if cb:
@@ -416,6 +444,8 @@ class World:
             if _is_building(t):
                 self.buildings.append(a)
                 continue
+            if t.get("railway") == "platform" and _underground(t):
+                continue  # (Perth Underground's, down in the tunnel)
             if t.get("man_made") == "pier" or t.get("railway") == "platform":
                 # (Breakwater and groyne areas stay terrain: some carry roads, like North Mole.)
                 self.decks.append((a.geom, "pier" if t.get("man_made") == "pier" else "platform", a.id))
