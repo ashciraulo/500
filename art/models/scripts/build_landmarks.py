@@ -5,7 +5,9 @@
 
 plus the stage 6 river ones (lib/river_landmarks.py) and city dressing
 (lib/city_dressing.py: royal_st_roller_door, lockup_garage, lane_carport,
-kensington_shed .glb).
+kensington_shed .glb) and railway platform pieces (lib/station_props.py:
+platform_slab(_island), platform_edge, platform_canopy, platform_bench,
+station_board_<name> .glb, in art/models/props/station/).
 
 Origin on the ground at the anchor, front toward -Y in Blender (Godot +Z).
 Each has a `<Name>_Col` static body (from `-colonly`) of plain boxes and
@@ -25,9 +27,11 @@ from lib import coast_landmarks as LM  # noqa: E402
 from lib import common as C  # noqa: E402
 from lib import furniture as F  # noqa: E402
 from lib import river_landmarks as RL  # noqa: E402
+from lib import station_props as SP  # noqa: E402
 
 OUT = "art/models/props/landmarks/"
-ALL = dict(LM.LANDMARKS, **RL.LANDMARKS, **CD.LANDMARKS)
+STATION = "art/models/props/station/"
+ALL = dict(LM.LANDMARKS, **RL.LANDMARKS, **CD.LANDMARKS, **SP.LANDMARKS)
 
 
 def build(name):
@@ -35,7 +39,7 @@ def build(name):
     title = "".join(w.capitalize() for w in name.split("_"))
     objs = [F.item(title, parts, (0, 0, 0))]
     cmat = C.mat("Collision", "#ff00ff")
-    cobj = F.item(title + "_Col-colonly", [F.bx(lo, hi, cmat) for lo, hi in col], (0, 0, 0))
+    cobj = F.item(title + "_Col-colonly", [F.bx(lo, hi, cmat) for lo, hi in col], (0, 0, 0)) if col else None
     for nm, loc in sockets.items():
         C.empty(nm, loc, size=0.2)
     return objs, cobj
@@ -58,6 +62,14 @@ VIEWS = {   # camera, target, lens: front three-quarter and a closer look
     "lockup_garage": [((-6, -10, 3.5), (0, 0, 1.2), 30), ((1.2, -6, 1.5), (0, 0.5, 1.0), 28)],
     "lane_carport": [((-6, -9, 3.5), (0, 0, 1.2), 30), ((5, 4, 2.5), (0, 0, 1.0), 30)],
     "kensington_shed": [((-6, -10, 3.5), (0, 0, 1.2), 30), ((8, -2, 2.0), (0, -0.4, 1.4), 30)],
+    "platform_slab": [((-7, -11, 4), (0, 0, 0.6), 32), ((-3.2, -6.5, 1.6), (-1.6, -3, 0.95), 30)],
+    "platform_slab_island": [((-8, -12, 4.5), (0, 0, 0.6), 32)],
+    "platform_edge": [((-2, -3, 1.5), (0.4, 0, 0), 32)],
+    "platform_canopy": [((-8, -12, 4), (0, 0, 2.4), 32), ((-1.5, -2, 1.6), (0.5, 2, 3.4), 28)],
+    "platform_bench": [((-1.6, -2.4, 1.2), (0, 0, 0.45), 32)],
+    "station_board_perth": [((-1.5, -3.5, 2.0), (0, 0, 2.0), 32), ((1.5, 3.5, 2.0), (0, 0, 2.0), 32)],
+    "station_board_perth_underground": [((-1.5, -4.5, 2.0), (0, 0, 2.0), 32)],
+    "station_board_elizabeth_quay": [((-1.5, -4.5, 2.0), (0, 0, 2.0), 32)],
 }
 
 
@@ -68,10 +80,13 @@ def main():
         C.clear_material_cache()
         objs, cobj = build(name)
         print(name, "triangles:", C.tri_count(objs))
-        C.export_glb(OUT + name + ".glb")
+        out = STATION if name in SP.LANDMARKS else OUT
+        os.makedirs(os.path.join(C.REPO, out), exist_ok=True)
+        C.export_glb(out + name + ".glb")
         if "--render" in sys.argv:
             prefix = sys.argv[sys.argv.index("--render") + 1]
-            cobj.hide_render = True
+            if cobj is not None:
+                cobj.hide_render = True
             C.render_setup((960, 640), 24, world="#c9d6e0", strength=0.9)
             C.sun(rot=(50, 10, 210), energy=3.5)
             for i, (cam, tgt, lens) in enumerate(VIEWS[name]):
