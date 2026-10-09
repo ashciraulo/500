@@ -167,7 +167,7 @@
    "region": "bibra_lake",
    "hmin": 7.73,
    "hmax": 45.49,
-   "bytes": 308288,
+   "bytes": 309026,
    "traffic": "-7_-33.p5r"
   },
   "-6_-33": {
@@ -227,7 +227,7 @@
    "region": "bibra_lake",
    "hmin": 5.9,
    "hmax": 26.03,
-   "bytes": 165049,
+   "bytes": 171816,
    "traffic": "-6_-32.p5r"
   },
   "-5_-32": {
@@ -237,7 +237,7 @@
    "region": "bibra_lake",
    "hmin": 7.73,
    "hmax": 37.7,
-   "bytes": 222572,
+   "bytes": 227405,
    "traffic": "-5_-32.p5r"
   },
   "-4_-32": {
@@ -1076,8 +1076,8 @@
    "file": "-9_-21.p5t",
    "region": "alfred_cove",
    "hmin": 1.66,
-   "hmax": 22.78,
-   "bytes": 258717,
+   "hmax": 22.77,
+   "bytes": 259026,
    "traffic": "-9_-21.p5r"
   },
   "-8_-21": {
@@ -1086,8 +1086,8 @@
    "file": "-8_-21.p5t",
    "region": "alfred_cove",
    "hmin": 1.66,
-   "hmax": 27.16,
-   "bytes": 251891,
+   "hmax": 27.15,
+   "bytes": 256424,
    "traffic": "-8_-21.p5r"
   },
   "-7_-21": {
@@ -1097,7 +1097,7 @@
    "region": "alfred_cove",
    "hmin": 8.06,
    "hmax": 30.56,
-   "bytes": 218441,
+   "bytes": 216859,
    "traffic": "-7_-21.p5r"
   },
   "-6_-21": {
@@ -1106,8 +1106,8 @@
    "file": "-6_-21.p5t",
    "region": "alfred_cove",
    "hmin": 15.06,
-   "hmax": 37.97,
-   "bytes": 308724,
+   "hmax": 37.95,
+   "bytes": 308652,
    "traffic": "-6_-21.p5r"
   },
   "-1_-21": {
@@ -7682,6 +7682,7 @@
   "stadium_bronze",
   "stadium_seats",
   "steel_white",
+  "timber",
   "tree_bark",
   "tree_gum",
   "tree_leaves",
@@ -8297,11 +8298,11 @@
   {
    "id": "subiaco_markets",
    "position": [
-    -2882.3,
-    25.46,
-    -130.0
+    -2882.33,
+    25.43,
+    -129.95
    ],
-   "yaw": 3.1416,
+   "yaw": 0.0046,
    "name": "Station Street Markets",
    "suburb": "Subiaco"
   },
@@ -8364,7 +8365,7 @@
    "id": "scarborough_beach",
    "position": [
     -9216.32,
-    14.9,
+    14.89,
     -5782.77
    ],
    "yaw": 0.2878,
@@ -11073,13 +11074,13 @@
    "name": "Shell",
    "p": [
     -3647.01,
-    11.4,
+    11.47,
     10378.84
    ],
    "yaw": -1.5664,
    "at": [
     -3647.01,
-    11.1,
+    11.17,
     10378.84
    ],
    "brand": "Shell",

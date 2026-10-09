@@ -48,6 +48,9 @@ PATH_TOUCH = 1.0        # a path's node this close to a jetty leads onto it
 LANDING = 3.0           # a jetty is level with the shore this far in from the water
 JETTY_PAD = 7.5         # ground this close to a jetty's shore end is level with its deck (every
 BOARDWALK_DECK = 0.5  # a boardwalk's deck over the reeds or the water under it
+BOARDWALK_EDGE = 0.25  # its timber edge board, deck down to the underside
+BOARDWALK_RAIL = 0.12  # its top rail's depth, on posts BOARDWALK_POST apart
+BOARDWALK_POST = 2.5
                         # grid cell its edge crosses, or the ground drawn there leaves a ledge)...
 JETTY_RAMP = 8.0        # ...and eases back to its own height over at least this...
 SEAT_GRADE = 0.2        # ...and wide enough that the change in grade stays under this
@@ -2121,6 +2124,8 @@ class TileBuilder:
                     deck_mat = "asphalt"
                 elif w.group == "rail":
                     deck_mat = "ballast"
+                elif w.tags.get("bridge") == "boardwalk":
+                    deck_mat = "timber"
                 else:
                     deck_mat = "path"
                 half = w.width / 2
@@ -2138,6 +2143,9 @@ class TileBuilder:
                         break
                 surf = self.mb.surface("bridges", deck_mat, "world")
                 ribbon(surf, rxy, top, w.width, textures.UV_SCALE.get(deck_mat, 4.0))
+                if w.tags.get("bridge") == "boardwalk":
+                    self._boardwalk_sides(rxy, top, half, gl, gr)
+                    continue
                 conc = self.mb.surface("bridges", "concrete", "world")
                 left = offset_polyline(rxy, half)
                 right = offset_polyline(rxy, -half)
@@ -2172,6 +2180,34 @@ class TileBuilder:
                 for p, yaw, foot, top_k in self._pier_spots(w, rxy, bot):
                     _box(conc, p, foot, top_k, (1.4, min(w.width * 0.6, 6.0)), yaw)
         self._deck_joints()
+
+    def _boardwalk_sides(self, rxy, top, half, gl, gr):
+        """A boardwalk's timber edges and low rails: a post every BOARDWALK_POST
+        and a rail along the top, open underneath, instead of a footbridge's
+        concrete parapet walls. No piers (it is only just off the ground)."""
+        wood = self.mb.surface("bridges", "timber", "world")
+        bot = top - BOARDWALK_EDGE
+        left, right = offset_polyline(rxy, half), offset_polyline(rxy, -half)
+        walls(wood, left[::-1], bot[::-1], top[::-1], 2.0, 2.0, closed=False)
+        walls(wood, right, bot, top, 2.0, 2.0, closed=False)
+        ribbon(wood, rxy, bot, 2 * half, 2.0, up=False)
+        s = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(rxy, axis=0), axis=1))])
+        for side, joined, sign in ((left, gl, 1.0), (right, gr, -1.0)):
+            line = offset_polyline(rxy, sign * (half - 0.08))
+            for a, b in _runs(~joined):
+                b = min(b + 1, len(rxy))
+                if b - a < 2:
+                    continue
+                h = top[a:b] + RAIL_H
+                walls(wood, line[a:b], h - BOARDWALK_RAIL, h, 2.0, 2.0, closed=False)
+                walls(wood, line[a:b][::-1], (h - BOARDWALK_RAIL)[::-1], h[::-1], 2.0, 2.0, closed=False)
+                ribbon(wood, rxy[a:b], h, 0.12, 2.0, lateral=sign * (half - 0.08))
+                for d in np.arange(s[a], s[b - 1] + 1e-6, BOARDWALK_POST):
+                    p = np.array([np.interp(d, s, line[:, 0]), np.interp(d, s, line[:, 1])])
+                    k = min(int(np.searchsorted(s, d)), len(rxy) - 1)
+                    t = rxy[min(k + 1, len(rxy) - 1)] - rxy[max(k - 1, 0)]
+                    yaw = math.atan2(t[1], t[0])
+                    _box(wood, p, float(np.interp(d, s, top)), float(np.interp(d, s, top)) + RAIL_H, (0.12, 0.12), yaw)
 
     def _deck_joints(self):
         """Where two bridge ways meet end to end at an angle (a deck split

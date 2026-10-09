@@ -20,7 +20,7 @@ S = 64
 UV_SCALE = {
     "ground_urban": 8.0, "grass": 8.0, "bush": 8.0, "turf": 12.0, "sand": 8.0, "wetland": 8.0,
     "paving": 4.0, "dirt": 8.0, "concrete": 6.0, "riverbed": 8.0, "asphalt": 6.0,
-    "sidewalk": 2.4, "path": 2.0, "ballast": 3.0,
+    "sidewalk": 2.4, "path": 2.0, "timber": 2.0, "ballast": 3.0,
 }
 
 
@@ -147,6 +147,11 @@ def generate() -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
     img = _base((196, 186, 168), rng, (4, 12))  # pale gum bark
     img[:, ::7] -= 30
     T["tree_bark"] = (img, None)
+    rng = r("timber")
+    img = _base((128, 96, 64), rng, (4, 10), (16, 6))  # weathered jarrah boards (boardwalks)
+    img[::16, :] -= 34  # board gaps
+    img[:, ::5] -= 6  # grain
+    T["timber"] = (img, None)
     T["light_pole"] = (_base((110, 112, 114), r("pole"), (8, 4)), None)
     T["light_head"] = (np.zeros((S, S, 3)) + (250, 214, 150), np.zeros((S, S, 3)) + (255, 190, 110))
     return T
