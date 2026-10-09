@@ -50,6 +50,9 @@ KERB_SEARCH = 16.0    # metres out from the wall to look for the road
 GRID = 0.5            # footpath sample spacing
 SIDE = 1.5            # sample this far past each end of the shopfront
 OBSTACLE_KINDS = ("tree_round", "tree_gum", "tree_palm", "street_light")
+# Hard surfaces underfoot; anything else in front of a shop (the tiles'
+# urban ground, grass) gets paved over by the venue's model out to these.
+PAVED = ("sidewalk", "path", "paving", "concrete")
 
 
 def frame(yaw):
@@ -61,7 +64,7 @@ class Map:
     """The built tiles around the venues: walls, roofs, ground and props."""
 
     def __init__(self, keys):
-        roofs, walk, road, walls = [], [], [], []
+        roofs, walk, road, walls, paved = [], [], [], [], []
         self.obstacles = []
         self.streets = []   # (name, points (n, 2) in world x/z)
         for key in keys:
@@ -80,6 +83,8 @@ class Map:
                     roofs.append((pos, tri))
                 elif mesh in ("ground", "roads") and mat != "kerb":
                     (road if mat == "asphalt" else walk).append((pos, tri))
+                    if mat in PAVED:
+                        paved.append((pos, tri))
             d = read_container(path)
             ox, _, oz = d["origin"]
             for kind, arr in d.get("instances", {}).items():
@@ -91,6 +96,7 @@ class Map:
         self.roof = _query(roofs)
         self.walk = _query(walk)
         self.road = _query(road)
+        self.paved = _query(paved)
         self.segs = _wall_segments(walls)
 
     def has_roof(self, x, z):
@@ -243,6 +249,16 @@ def main():
         wz0 = wz + uz[1] * np.where(gz.ravel() == 0.0, 0.15, 0.0)
         h = m.walk.heights(wx0, wz0)
         y0 = float(np.nanmedian(h[gz.ravel() < 1.01]))
+        # How far out from the wall each column is still unpaved (a strip of
+        # verge between the building and the footpath): the model paves it.
+        hp = m.paved.heights(wx0, wz0)
+        walk_h = np.where(np.isnan(h), -np.inf, h)
+        ok = (~np.isnan(hp) & (hp >= walk_h - 0.03)).reshape(len(zs), len(xs))
+        pave = []
+        for c in range(len(xs)):
+            rows = np.nonzero(ok[:, c])[0]
+            first = int(rows[0]) if len(rows) else len(zs)
+            pave.append(0.0 if first == 0 else round(min(float(zs[min(first, len(zs) - 1)]) + 0.25, depth - 0.3), 2))
         h = np.where(np.isnan(h), y0, h) - y0
         obstacles = []
         for kind, ox, oz, scale in m.obstacles:
@@ -261,6 +277,8 @@ def main():
             "ground": [round(float(x), 2) for x in h],
             "obstacles": obstacles,
         }
+        if any(pave):
+            entry["pave"] = pave
         for k in ("sound", "hours", "outdoor"):
             if k in v:
                 entry[k] = v[k]
@@ -275,7 +293,8 @@ def main():
         "is the shopfront along the wall and depth the footpath out to the kerb; wall_top how high the building's wall goes; ground is the "
         "footpath's height above position on a 0.5 m grid (x from ground_x[0], ground_x[1] points, "
         "fastest; z from 0 out, ground_z points); obstacles are street trees and lights in front "
-        "(kind, local x, z). scene is the venue's model (art/models/scripts/build_venues.py)."),
+        "(kind, local x, z); pave, per ground_x column, how far out from the wall the ground is "
+        "unpaved verge the model paves over. scene is the venue's model (art/models/scripts/build_venues.py)."),
         "venues": out}, indent=None, separators=(", ", ": ")).replace("}, {", "},\n{") + "\n")
     print(f"{len(out)} venues -> {OUT.relative_to(ROOT)}")
     if plot:

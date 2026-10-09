@@ -7,8 +7,10 @@ extends SceneTree
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
 ##     --script res://tools/venue_screens.gd -- --no-save shots=/tmp/venues [ids=no_capo,saffra] [only=day,night]
 ##
-## Without ids= it shoots every venue. The shots per venue are day, night
-## and drive; only= picks some (map is one shot at the end).
+## Without ids= it shoots every venue. The shots per venue are day, night,
+## drive and side (at night from along the footpath, as someone walking up
+## sees the blade signs and the tables); only= picks some (map is one shot
+## at the end).
 
 var _shots := "/tmp/venues"
 var _ids := PackedStringArray()
@@ -66,6 +68,13 @@ func _build_steps() -> void:
 				_free_camera(false)
 				_teleport(road, car_yaw)
 				_free_camera(true, eye, look), 60])
+		if _want("side"):
+			var from := at + basis * Vector3(-w * 0.5 - 7.0, 1.7, minf(depth - 0.8, 4.0))
+			_steps.append([tag + "_4_side", func() -> void:
+				_hour(21.0)
+				_free_camera(false)
+				_teleport(road, car_yaw)
+				_free_camera(true, from, at + basis * Vector3(w * 0.25, 2.2, 1.0)), 60])
 		if _want("drive"):
 			_steps.append([tag + "_3_drive", func() -> void:
 				_hour(open_day)
@@ -89,6 +98,8 @@ func _process(_delta: float) -> bool:
 		_frames = -240
 		return false
 	_frames += 1
+	if _frames % 10 == 0:
+		_hide_act_card()
 	if _step == -1:
 		if _frames > 0:
 			MapData.shared().wait()
@@ -114,6 +125,15 @@ func _next() -> void:
 	_frames = 0
 	if _step < _steps.size():
 		(_steps[_step][1] as Callable).call()
+
+
+## The story's act card would sit over the first shots. (Found by name:
+## naming the class here would compile it before the autoloads exist.)
+func _hide_act_card() -> void:
+	for card in root.find_children("*", "CanvasLayer", true, false):
+		var script: Script = card.get_script()
+		if script and script.get_global_name() == &"ActCard":
+			card.visible = false
 
 
 func _hour(h: float) -> void:

@@ -1,9 +1,13 @@
 {
-	"_comment": "Parts you can't buy: each one is somewhere in the city (scripts/world/found_part.gd). `near` is a barn find (barn:<car id>), a job site (site:<id>) or a photo spot (photo:<id>) from data/world/places.json or the map; `offset` is metres east, up and south of it; optional `yaw` turns it (wheels lean toward their local -X); `on_foot` means stopping the car next to it doesn't take it, you have to walk up to it. `rumour` shows in the phone's Leads tab until it's found. Stop next to it or walk up to it to take it home.",
+	"_comment": "Parts you can't buy: each one is somewhere in the city (scripts/world/found_part.gd). `near` is a barn find (barn:<car id>), a job site (site:<id>), a photo spot (photo:<id>) from data/world/places.json, or a beach, fishing spot or landmark from the map (poi:<id>, index.json \"pois\"); `offset` is metres east, up and south of it; optional `yaw` turns it (wheels lean toward their local -X); `on_foot` means stopping the car next to it doesn't take it, you have to walk up to it. `rumour` shows in the phone's Leads tab until it's found. A part only turns up once you own a car it fits. Stop next to it or walk up to it to take it home.",
 	"parts": [
 		{"part": "wheels_campagnolo", "near": "barn:classic_500l", "offset": [3.8, 0.0, -6.55], "yaw": -1.571, "rumour": "The warehouse on Royal Street had a set of old magnesium wheels leaning by the roller door."},
 		{"part": "exhaust_abarth_classic", "near": "barn:classic_abarth_595", "offset": [1.95, 0.0, 0.3], "on_foot": true, "rumour": "Someone left an Abarth tailpipe on the bench of a Kensington shed."},
 		{"part": "roof_surf_rack", "near": "site:cottesloe_surf_club", "offset": [21.3, 5.5, 20.0], "rumour": "There's a rack and an old single-fin out the back of the Cottesloe surf club. Nobody's claimed it."},
-		{"part": "lights_period_spots", "near": "photo:mounts_bay_crawley", "offset": [5.0, 0.0, 6.0], "rumour": "A pair of chrome spotlights is sitting on the kerb along Mounts Bay Road in Crawley."}
+		{"part": "lights_period_spots", "near": "photo:mounts_bay_crawley", "offset": [5.0, 0.0, 6.0], "rumour": "A pair of chrome spotlights is sitting on the kerb along Mounts Bay Road in Crawley."},
+		{"part": "gear_knob_bollard", "near": "poi:fishing_north_mole", "offset": [0.0, 0.0, 0.0], "rumour": "One of the old blokes who fishes the North Mole turned a gear knob out of a brass bollard cap. He left it by the car park for whoever wants it."},
+		{"part": "steering_wheel_bakelite", "near": "site:guildford_antiques", "offset": [5.5, 0.0, 3.0], "rumour": "The antique shop in Guildford put a cream steering wheel out on the grass by the side street. A sign says free to a good home."},
+		{"part": "roof_esky_basket", "near": "poi:beach_trigg_beach", "offset": [-4.5, 0.0, -2.0], "rumour": "Someone left a roof basket with an old esky in it at the Trigg Beach car park. It's been there all week."},
+		{"part": "plate_old_black", "near": "site:subiaco_markets", "offset": [7.0, 0.0, 0.0], "yaw": -1.571, "rumour": "There's an old black-and-white number plate propped against the wall by the Station Street Markets in Subiaco."}
 	]
 }

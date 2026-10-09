@@ -29,6 +29,9 @@ const DETAIL_RANGE := 260.0
 ## Only this many venues nearest the player light the footpath for real.
 const LIT_NEAREST := 4
 const LIGHT_REACH := 90.0
+## Neon's brightest channel after dark (emission colour x energy). Much over 1
+## and the tonemapper bleaches every tube to white; this keeps the colour.
+const NEON_PEAK := 0.9
 const DATA_PATH := "res://data/world/venues.json"
 
 @export var venue_id := ""
@@ -137,7 +140,12 @@ func _update(force: bool) -> void:
 		for m in _glow:
 			m.set_shader_parameter("emission_energy", (1.5 if night else 0.55) if open else 0.0)
 		for m in _neon:
-			m.set_shader_parameter("emission_energy", (2.6 if night else 0.9) if open else 0.0)
+			var full: float = minf(2.6, m.get_meta(&"neon_peak", 2.6))
+			m.set_shader_parameter("emission_energy", (full if night else minf(0.9, full)) if open else 0.0)
+			# lit tubes after dark are all glow: the footpath light on their
+			# own colour would only wash them paler
+			var tube: Color = m.get_meta(&"albedo", Color.WHITE)
+			m.set_shader_parameter("albedo_color", tube.darkened(0.8) if open and night else tube)
 		for m in _bulbs:
 			m.set_shader_parameter("emission_energy", 2.4 if open and night else 0.0)
 		for m in _lamps:
@@ -177,6 +185,9 @@ func _take_materials(by_name: Dictionary) -> void:
 				m.set_shader_parameter("emission_color", Color.WHITE)
 			_glow.append(m)
 		elif n.begins_with("VN_Neon"):
+			var c: Color = (m.get_shader_parameter("emission_color") as Color).srgb_to_linear()
+			m.set_meta(&"neon_peak", NEON_PEAK / maxf(maxf(c.r, c.g), maxf(c.b, 0.05)))
+			m.set_meta(&"albedo", m.get_shader_parameter("albedo_color"))
 			_neon.append(m)
 		elif n.begins_with("VN_Bulb"):
 			_bulbs.append(m)
