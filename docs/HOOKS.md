@@ -570,10 +570,12 @@ after a map rebuild).
   `FieldWorld.trophies` (`HomeTrophies`) hangs the kept hubcap on the outside
   of `Shed_Door` once `fishing/fiat_hubcap` is discovered (`hubcap()`), and
   pins M.'s `m_page_<bird>.glb` pages above the coat hooks (children of
-  `Binoculars_Hook`, named `MPage_<wrong id>`, `pages()`) for each wrong bird
-  in the journal. The wrong boobook (`"behaviour": "nest"`) sits on the `Bird`
-  empty of `boobook_hollow.glb`, a stump `FieldBirds.find_hollow(sighting)`
-  returns, facing out of the hollow. The dash bird (10
+  `Binoculars_Hook`, named `MPage_<wrong id>`, `pages()`, flat on the wall
+  `PAGE_WALL` behind the hook) for each wrong bird in the journal. The wrong
+  boobook (`"behaviour": "nest"`) sits on the `Bird` empty of
+  `boobook_hollow.glb`, a stump `FieldBirds.find_hollow(sighting)` returns,
+  facing out of the hollow. The stump is solid, so it stands on the nearest
+  open ground at least 4 m clear of any road or path (`_off_paths`). The dash bird (10
   species) is the car's: `FieldJournal.seen_count()` and `species_seen`.
 - Quiet places (`FieldWorld.quiet`, `QuietPlaces`): habitats.json entries
   with `"hidden": true` and fishing_spots.json spots with `"hidden": true`
