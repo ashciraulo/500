@@ -17,6 +17,11 @@ render_mode diffuse_lambert, specular_schlick_ggx;
 global uniform vec2 ps1_snap_resolution;
 global uniform float ps1_affine_strength;
 global uniform float ps1_wetness;
+// The story's empty road (scripts/world/late_city/empty_road.gd): 0 normally;
+// as it rises to 1 everything goes dark into the void except materials with
+// late_keep (the one road left).
+global uniform float late_void;
+uniform bool late_keep = false;
 
 uniform vec4 albedo_color : source_color = vec4(1.0);
 uniform sampler2D albedo_texture : source_color, filter_nearest_mipmap, repeat_enable, hint_default_white;
@@ -163,4 +168,10 @@ void fragment() {
 	METALLIC = metallic;
 	SPECULAR = mix(0.15, 0.8, wet);
 	EMISSION = emission_color.rgb * emission_energy * texture(emission_texture, uv).rgb;
+	if (!late_keep && late_void > 0.0) {
+		float keep = 1.0 - late_void;
+		ALBEDO *= keep;
+		EMISSION *= keep;
+		SPECULAR *= keep;
+	}
 }

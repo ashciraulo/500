@@ -34,6 +34,8 @@ Activities="*res://scripts/autoload/activities.gd"
 FieldJournal="*res://scripts/field/field_journal.gd"
 Audio="*res://audio/scripts/audio_manager.gd"
 Notices="*res://scripts/ui/notices.gd"
+Story="*res://scripts/autoload/story.gd"
+LateCity="*res://scripts/autoload/late_city.gd"
 
 [display]
 
@@ -301,6 +303,10 @@ ps1_affine_strength={
 "value": 0.6
 }
 ps1_wetness={
+"type": "float",
+"value": 0.0
+}
+late_void={
 "type": "float",
 "value": 0.0
 }

@@ -38,6 +38,9 @@ var ui_size := 1
 ## knocking back from the shed, no plant turned round). The main mystery
 ## still runs; its things still turn up in the cupboard.
 var cozy_mode := false
+## How strange the story's late-city events get: "full", or "gentle" (the
+## scariest forms swap for softer ones; the story is the same).
+var strange_things := "full"
 ## Volume sliders, 0..1 (1 = as mixed). The Audio autoload applies them.
 var volume_master := 1.0
 var volume_music := 1.0
@@ -145,7 +148,7 @@ func _keys() -> PackedStringArray:
 		"automatic_gearbox", "mouse_sensitivity", "day_length_minutes", "weather_choice",
 		"clock_frozen", "lofi_enabled", "lofi_target_height", "dither_enabled",
 		"vertex_snap_scale", "lofi_preset", "color_levels", "dither_strength", "affine_strength",
-		"softness", "show_help", "fullscreen", "ui_size", "cozy_mode",
+		"softness", "show_help", "fullscreen", "ui_size", "cozy_mode", "strange_things",
 		"volume_master", "volume_music", "volume_radio", "volume_effects",
 		"volume_car", "volume_surroundings", "route_guide",
 	])
