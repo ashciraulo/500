@@ -28,7 +28,7 @@ const SURFACE_OF := {
 	&"tunnel_wall": &"concrete", &"path": &"brick",
 	&"grass": &"grass", &"turf": &"grass", &"ground_urban": &"grass",
 	&"bush": &"dirt", &"wetland": &"dirt", &"dirt": &"dirt",
-	&"sand": &"sand", &"riverbed": &"sand", &"ballast": &"gravel",
+	&"sand": &"sand", &"riverbed": &"sand", &"ballast": &"gravel", &"timber": &"wood",
 }
 
 ## Detail meshes are hidden past these distances (metres from the camera to
