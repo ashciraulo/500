@@ -190,6 +190,17 @@ flickering all at once. "Strange things: gentle" keeps the shimmer but
 leaves them where they were. The journal gets a third bookmark, Nights, the
 first time the late city gives you something to write down.
 
+**Blank prints.** From act 3 the wrong birds' prints come back blank, and
+Ros holds each one up to the light: it's a page for the night section of the
+1979 field guide Mick never finished. Give it to her, or keep it. Keep one
+and the next morning there's an envelope of cash inside the front door, with
+a note in the tapes' handwriting ("For the bird on the pole. More welcome.").
+After that the lab shows what the buyer will pay. The thirteen's print is the
+story's second choice: the guide's last night page, or $5,000. In the
+journal, their pages say you saw them "sort of", and whether Ros or the
+buyer has the print. City of Light leaves them ordinary birds; Lights Out
+fades their pages to blank over a week.
+
 ## Progression, lightly
 
 Selling prints and weighing in fish earns money, so it's an alternative to

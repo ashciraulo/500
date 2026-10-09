@@ -3,7 +3,9 @@ extends Node3D
 ## The field journal at home: the binoculars you start with hang on the hook
 ## by the back door until you take them (an M scratched into the prism
 ## cover), and once the journal has 30 species a bird feeder goes up in the
-## courtyard and garden birds you've seen come to it by day.
+## courtyard and garden birds you've seen come to it by day. From the story's
+## act 3, the buyer's envelope turns up inside the front door the morning
+## after you keep a blank print (FieldJournal.take_envelope).
 
 const BINOCULARS := "res://art/models/props/field/binoculars.glb"
 const FEEDER := "res://art/models/props/field/bird_feeder.glb"
@@ -16,12 +18,15 @@ const FEEDER_BIRDS := ["laughing_dove", "spotted_dove", "new_holland_honeyeater"
 const REACH := 1.5
 ## Birds at the feeder keep this far from you.
 const SHY := 4.0
+## The envelope lies on the hall floor this far in from the front door.
+const ENVELOPE_IN := 0.5
 
 var _home: Node3D
 var _hook: Node3D
 var _hanging: Node3D
 var _feeder: Node3D
 var _visitors: Array[Node3D] = []
+var _envelope: Node3D
 var _visit_day := -1
 var _prompt: PromptChip
 var _prompt_layer: CanvasLayer
@@ -57,7 +62,8 @@ func _process(delta: float) -> void:
 		_find_home()
 		_update_hook()
 		_update_feeder()
-	_prompt.text = "F  Take the binoculars" if _can_take() else ""
+		_update_envelope()
+	_prompt.text = "F  Take the binoculars" if _can_take() else ("F  Pick up the envelope" if _near_envelope() else "")
 	_animate_visitors(delta)
 
 
@@ -66,6 +72,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if _can_take():
 		take_binoculars()
+		get_viewport().set_input_as_handled()
+	elif _near_envelope():
+		take_envelope()
 		get_viewport().set_input_as_handled()
 
 
@@ -190,3 +199,68 @@ func _clear_visitors() -> void:
 		if is_instance_valid(bird):
 			bird.queue_free()
 	_visitors.clear()
+
+
+# --- the buyer's envelope -----------------------------------------------------------------------
+
+func _update_envelope() -> void:
+	if not FieldJournal.envelope_ready() or not is_instance_valid(_home):
+		if is_instance_valid(_envelope):
+			_envelope.queue_free()
+		_envelope = null
+		return
+	if is_instance_valid(_envelope):
+		return
+	var door := _home.find_child("Door_Front", true, false) as Node3D
+	if door == null:
+		return
+	var box := _bounds(door)
+	var centre := box.get_center()
+	# In from the door: away from the front gate.
+	var gate: Transform3D = _home.call("spawn_transform", &"Spawn_Front") if _home.has_method("spawn_transform") else _home.global_transform
+	var inward := centre - gate.origin
+	inward.y = 0.0
+	inward = inward.normalized() if inward.length() > 0.01 else Vector3.FORWARD
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.23, 0.004, 0.12)
+	mesh.material = PS1Material.make(Color("c4a26a"), 1.0)  # a brown paper envelope
+	var env := MeshInstance3D.new()
+	env.name = "BuyerEnvelope"
+	env.mesh = mesh
+	add_child(env)
+	env.global_position = Vector3(centre.x, box.position.y + 0.004, centre.z) + inward * ENVELOPE_IN
+	env.rotation.y = atan2(inward.x, inward.z) + _rng.randf_range(-0.5, 0.5)
+	_envelope = env
+
+
+func _bounds(node: Node3D) -> AABB:
+	var box := AABB(node.global_position, Vector3.ZERO)
+	for m: MeshInstance3D in node.find_children("*", "MeshInstance3D", true, false):
+		box = box.merge(m.global_transform * m.get_aabb())
+	if node is MeshInstance3D:
+		box = box.merge(node.global_transform * (node as MeshInstance3D).get_aabb())
+	return box
+
+
+func _near_envelope() -> bool:
+	if not is_instance_valid(_envelope) or get_tree().paused:
+		return false
+	var walker := _walker()
+	if walker == null:
+		return false
+	var to := _envelope.global_position - walker.global_position
+	return Vector2(to.x, to.z).length() < REACH
+
+
+## Pick up the buyer's envelope: the cash, and a note in the tapes' handwriting.
+func take_envelope() -> void:
+	var got := FieldJournal.take_envelope()
+	if is_instance_valid(_envelope):
+		_envelope.queue_free()
+	_envelope = null
+	if got.is_empty():
+		return
+	Activities.say("An envelope under the door. $%d, and a note: \"%s\"" % [int(got.pay), String(got.note)])
+	var audio := get_node_or_null("/root/Audio")
+	if audio and audio.has_method("has") and audio.has("field/envelope"):
+		audio.play_2d("field/envelope", "UI", -6.0)

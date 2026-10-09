@@ -1,7 +1,10 @@
 class_name LabScreen
 extends CanvasLayer
 ## The counter at the Lake Street photo lab: develop the roll and sell the
-## prints, and buy better binoculars and cameras. The game pauses while it's open.
+## prints, and buy better binoculars and cameras. From the story's act 3 the
+## wrong birds' prints come back blank, and each goes to Ros for Mick's field
+## guide or is kept for the buyer (FieldJournal.give_blank). The game pauses
+## while it's open.
 
 const ACCENT := Color("a8456d")
 
@@ -75,14 +78,18 @@ func refresh() -> void:
 		for p: Dictionary in _last_result.prints:
 			var stars := UiStyle.stars(int(p.stars))
 			if p.wrong:
-				FieldUI.shop_row(_list, "%s  ·  %s" % [p.name, stars], "Came out blank. \"Odd, that. The rest of the roll's fine.\"",
+				FieldUI.shop_row(_list, "%s  ·  %s" % [p.name, stars], "Came out blank. Ros holds it up to the light." if p.get("blank", false)
+					else "Came out blank. \"Odd, that. The rest of the roll's fine.\"",
 					"", true, SpeciesIcon.bird(FieldJournal.bird(String(p.species)), 44, true))
 			else:
 				FieldUI.shop_row(_list, "%s  ·  %s  ·  $%d" % [p.name, stars, p.pay], "First print: the magazine pays extra" if p.first else "",
 					"", true, SpeciesIcon.bird(FieldJournal.bird(String(p.species)), 44))
-		var paid := UiStyle.label(_list, "Paid $%d, after $%d developing" % [_last_result.pay, _last_result.fee], "", 18)
+		var paid := UiStyle.label(_list, "Paid $%d, after $%d developing" % [_last_result.pay, _last_result.fee] if int(_last_result.pay) >= 0
+			else "Developing: $%d" % _last_result.fee, "", 18)
 		paid.add_theme_font_override("font", UiStyle.BOLD_FONT)
 		paid.add_theme_color_override("font_color", UiStyle.GOOD)
+
+	_blank_prints()
 
 	UiStyle.section(_list, "Your film", ACCENT)
 	if roll.is_empty():
@@ -108,6 +115,53 @@ func refresh() -> void:
 		func(g: Dictionary) -> String: return "Birds %.1fx bigger in photos" % float(g.reach))
 	_gear_row("film", FieldJournal.FILMS, FieldJournal.film,
 		func(g: Dictionary) -> String: return "Sharp after dark" if float(g.night) >= 1.0 else "Copes with dusk")
+
+
+## The blank prints waiting on the counter, and Mick's field guide.
+func _blank_prints() -> void:
+	if FieldJournal.story_act() < FieldJournal.BLANKS_FROM_ACT and FieldJournal.blanks.is_empty():
+		return
+	UiStyle.section(_list, "Blank prints", ACCENT)
+	FieldUI.shop_row(_list, "Mick's field guide", "Night pages: %d of %d. Ros keeps the manuscript under the counter." % [
+		FieldJournal.guide_pages(), FieldJournal.guide_total()])
+	for i in FieldJournal.blanks.size():
+		var p: Dictionary = FieldJournal.blanks[i]
+		var b := FieldJournal.bird(String(p.species))
+		var thirteen := FieldJournal.is_thirteen_choice(p)
+		var note := "\"That's the page Mick never finished. The buyer wants it too.\"" if thirteen \
+			else ("\"Mick's page for this one is empty.\"" if not FieldJournal.guide.has(String(p.species))
+			else "\"Mick's page for this one is done. Still, it's yours.\"")
+		var ros := FieldUI.shop_row(_list, "%s  ·  %s" % [b.get("name", p.species), UiStyle.stars(int(p.stars))], note,
+			"Give to Ros", true, SpeciesIcon.bird(b, 44, true))
+		# The two answers stacked, so the print's name keeps its line.
+		var answers := VBoxContainer.new()
+		answers.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		ros.get_parent().add_child(answers)
+		ros.reparent(answers)
+		var buyer := Button.new()
+		# Until the first envelope, you don't know there's a buyer.
+		buyer.text = "Keep it" if not _buyer_known() else "Keep for the buyer  $%d" % FieldJournal.buyer_offer(p)
+		answers.add_child(buyer)
+		ros.pressed.connect(_give.bind(i, &"ros"))
+		buyer.pressed.connect(_give.bind(i, &"buyer"))
+
+
+func _give(index: int, to: StringName) -> void:
+	var thirteen := index < FieldJournal.blanks.size() and FieldJournal.is_thirteen_choice(FieldJournal.blanks[index])
+	var known := _buyer_known()
+	var pay := FieldJournal.give_blank(index, to)
+	if to == &"ros":
+		Activities.say("Ros finds Mick's page for it." + (" The night section's done." if thirteen else ""))
+	elif known:
+		Activities.say("You keep it. By morning there'll be $%d under your door." % pay)
+	else:
+		Activities.say("You keep it.")
+	refresh()
+	_close.grab_focus()
+
+
+func _buyer_known() -> bool:
+	return FieldJournal.money_from_buyer > 0
 
 
 func _gear_row(kind: String, list: Array, level: int, describe: Callable) -> void:
