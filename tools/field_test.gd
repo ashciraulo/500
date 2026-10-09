@@ -395,6 +395,7 @@ func _process(_delta: float) -> bool:
 				_check_hubcap(root.get_node("Discoveries"))
 				_check_flicker()
 				_check_nights()
+				_check_prints()
 				return _finish()
 	return false
 
@@ -755,6 +756,81 @@ func _check_nights() -> void:
 		for i in range(list.size() - 1, -1, -1):
 			if String(list[i].id).begins_with("test_"):
 				list.remove_at(i)
+
+
+## The late city at the lab (act 3 on): wrong-bird prints come back blank and
+## go to Ros or the buyer, the thirteen's is the story's choice, the buyer's
+## cash is under the door next morning, and the endings change the pages.
+func _check_prints() -> void:
+	var story: Node = root.get_node_or_null("Story")
+	if story == null:
+		print("skip  the story isn't loaded")
+		return
+	var clock: Node = root.get_node("GameClock")
+	var wallet: Node = root.get_node("Wallet")
+	var lab: Node = _field.lab_screen
+	_fj.roll.clear()
+	_fj.blanks.clear()
+	var frame := func(id: String, stars: int) -> Dictionary:
+		return {"species": id, "stars": stars, "file": "", "day": 1, "time": "3:00 am", "where": "", "wrong": true}
+	story.act_override = 2
+	_fj.roll.append(frame.call("wrong_frogmouth", 2))
+	_fj.develop()
+	_check(_fj.blanks.is_empty(), "act 2: a wrong bird's print is just blank")
+	story.act_override = 3
+	_fj.roll.append(frame.call("wrong_frogmouth", 2))
+	_fj.roll.append(frame.call("wrong_cockatoos", 3))
+	_fj.roll.append(frame.call("wrong_magpie", 1))
+	_fj.develop()
+	_check(_fj.blanks.size() == 3, "act 3: they wait on the counter for Ros or the buyer (%d)" % _fj.blanks.size())
+	lab.open()
+	var rows: Array = lab._list.find_children("*", "Button", true, false).map(func(b: Button) -> String: return b.text)
+	_check(rows.count("Give to Ros") == 3 and rows.has("Keep it"), "the lab offers each one to Ros, or you keep it")
+	_shot("13_lab_blanks")
+	var ros_before: int = story.prints_to_ros
+	lab._give(0, &"ros")
+	_check(_fj.guide.has("wrong_frogmouth") and story.prints_to_ros == ros_before + 1 and _fj.blanks.size() == 2,
+		"Ros puts the frogmouth in Mick's field guide")
+	lab._give(1, &"buyer")
+	_check(_fj.buyer_owed == _fj.BUYER_PAY[1] and not _fj.envelope_ready(), "the magpie's kept for the buyer; the cash comes tomorrow")
+	clock.day += 1
+	clock.set_time(7.0)
+	var before: int = wallet.balance
+	var got: Dictionary = _fj.take_envelope()
+	_check(wallet.balance == before + _fj.BUYER_PAY[1] and String(got.get("note", "")).contains("magpie"), "an envelope under the door: $%d" % int(got.get("pay", 0)))
+	lab.refresh()
+	var thirteen_offer: bool = lab._list.find_children("*", "Button", true, false).any(func(b: Button) -> bool: return b.text == "Keep for the buyer  $%d" % _fj.THIRTEEN_PAY)
+	_check(thirteen_offer, "the thirteen: the buyer offers $%d" % _fj.THIRTEEN_PAY)
+	var choice_was: StringName = story.choice(&"thirteen")
+	lab._give(0, &"buyer")
+	_check(choice_was == &"" and story.choice(&"thirteen") == &"buyer" and _fj.buyer_owed == _fj.THIRTEEN_PAY,
+		"selling it is the story's choice (%s, $%d)" % [story.choice(&"thirteen"), _fj.buyer_owed])
+	lab.close()
+	# The journal: "seen, sort of", and what happened to the prints.
+	_fj.see("wrong_frogmouth", "the lane")
+	var page := func(id: String) -> PackedStringArray:
+		_field.journal.open()
+		_field.journal._tab = "birds"
+		_field.journal._selected = id
+		_field.journal.refresh()
+		var out := PackedStringArray()
+		for l: Label in _field.journal._page.find_children("*", "Label", true, false):
+			out.append(l.text)
+		_field.journal.close()
+		return out
+	var text := "\n".join(page.call("wrong_frogmouth"))
+	_check(text.contains("sort of") and text.contains("Mick's field guide"), "the journal: seen, sort of, and in Mick's guide")
+	# The endings.
+	story.set_flag(_fj.LIGHTS_OUT)
+	_fj.page_fade()
+	clock.day += 8
+	text = "\n".join(page.call("wrong_frogmouth"))
+	_check(_fj.page_fade() >= 1.0 and text.contains("gone blank"), "Lights Out: the pages go blank")
+	story.set_flag(_fj.CITY_OF_LIGHT)
+	_check(not _birds.wrong_ready(_fj.bird("wrong_frogmouth"), 1.0), "City of Light: the wrong birds stop coming")
+	text = "\n".join(page.call("wrong_frogmouth"))
+	_check(text.contains("just a bird"), "and their pages say so")
+	story.act_override = 0
 
 
 func _check_hubcap(disc: Node) -> void:
