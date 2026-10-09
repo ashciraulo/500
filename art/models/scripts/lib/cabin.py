@@ -486,12 +486,14 @@ def gear_lever(M, X):
     tilt = math.radians(-40)
     rot = Matrix.Rotation(tilt, 4, "X")
     base = Vector((0, -0.44, 0.50))
+    # gaiter and stick run up the tilted lever axis (a loc on the object would
+    # stand them straight up and poke the stick's tip out past the knob)
     for i, (r0, r1) in enumerate(((0.062, 0.05), (0.052, 0.04), (0.042, 0.028))):
-        c = C.cylinder("gaiter", r0, 0.03, segs=10, loc=(0, 0, 0.014 + i * 0.026), material=M["knob"], r_top=r1)
-        c.data.transform(Matrix.Translation(base) @ rot)
+        c = C.cylinder("gaiter", r0, 0.03, segs=10, material=M["knob"], r_top=r1)
+        c.data.transform(Matrix.Translation(base) @ rot @ Matrix.Translation((0, 0, 0.014 + i * 0.026)))
         out.append(c)
-    lever = C.cylinder("gear_stick", 0.011, 0.06, segs=8, loc=(0, 0, 0.09), material=M["chrome"])
-    lever.data.transform(Matrix.Translation(base) @ rot)
+    lever = C.cylinder("gear_stick", 0.011, 0.06, segs=8, material=M["chrome"])
+    lever.data.transform(Matrix.Translation(base) @ rot @ Matrix.Translation((0, 0, 0.09)))
     out.append(lever)
     knob_c = Vector((0, -0.37, 0.595))
     knob = C.sphere("gear_knob", 0.034, (0, 0, 0), M["knob"], segs=12, rings=7, scale=(1, 1, 0.85))
