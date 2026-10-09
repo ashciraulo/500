@@ -223,7 +223,7 @@ func _update_envelope() -> void:
 	inward = inward.normalized() if inward.length() > 0.01 else Vector3.FORWARD
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(0.23, 0.004, 0.12)
-	mesh.material = PS1Material.make(Color("c4a26a"), 1.0)  # a brown paper envelope
+	mesh.material = PS1Material.make(Color("c8782a"), 1.0)  # brown paper, warm enough to stay brown in the hall's cool morning light
 	var env := MeshInstance3D.new()
 	env.name = "BuyerEnvelope"
 	env.mesh = mesh

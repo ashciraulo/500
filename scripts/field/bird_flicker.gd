@@ -240,8 +240,9 @@ func start_alongside() -> bool:
 		var b := _birds._add_bird(s, {"pos": car.global_position + Vector3.UP * 4.0, "kind": "air"})
 		b.state = "along"
 		# Two loose lines off the passenger side (the car's left: it's right-hand
-		# drive), low over the verge and just ahead, where the chase camera sees them.
-		b.home = Vector3(-(5.5 + (i % 2) * 2.5 + _rng.randf_range(-0.6, 0.6)), 2.2 + (i % 3) * 0.8, 1.0 + (i / 2) * 1.8)
+		# drive), low over the verge and a few metres ahead, so the chase camera has
+		# all thirteen in frame.
+		b.home = Vector3(-(5.0 + (i % 2) * 2.0 + _rng.randf_range(-0.5, 0.5)), 2.2 + (i % 3) * 0.7, 5.0 + (i / 2) * 1.6)
 		b.node.position = _beside(car, b.home)
 		s.birds.append(b)
 		var lc := _late_city()
@@ -274,7 +275,7 @@ func _fly_alongside(delta: float) -> void:
 		if not is_instance_valid(node):
 			continue
 		var want := _beside(car, b.home + Vector3(0, sin(_along.phase * 1.3 + b.phase) * 0.6, 0))
-		node.position = node.position.lerp(want, minf(delta * 3.0, 1.0))
+		node.position = node.position.lerp(want, minf(delta * 6.0, 1.0))
 		node.rotation = Vector3(0, heading + PI, 0)
 		BirdModels.flap(node, _along.phase * 9.0 + b.phase)
 	# All of them at once, as if they were one thing.
