@@ -14,8 +14,15 @@ art/models/cars/parts/ (origin at the car's mount empty, front toward -Z):
   roofrack_surf.glb      the modern surf rack under its old name
   spotlights_period.glb  a pair of round 1960s driving lamps on a bar,
                          at Mount_Spotlights
+  roofrack_esky_<roof>.glb  a chrome roof basket with an old esky and a
+                         rolled beach umbrella (a found part, Trigg Beach)
+  wheel_bakelite.glb     a thin cream bakelite wheel (a found part)
+  knob_bollard.glb       a brass gear knob turned like a mooring bollard
+                         (a found part, the North Mole)
 
-    python3.11 art/models/scripts/build_accessories.py [--render]
+    python3.11 art/models/scripts/build_accessories.py [--render] [--only name,name]
+
+--only builds just those glbs (names without .glb).
 """
 import math
 import os
@@ -274,6 +281,78 @@ def roofrack_surf(roof="modern"):
     return [rack, board]
 
 
+def roofrack_esky(roof):
+    """A chrome tube basket on the bars, slats for a floor, an old two-tone
+    esky and a rolled beach umbrella strapped in beside it."""
+    rack, top = _rack(roof)
+    M = _mats()
+    r = ROOFS[roof]
+    mod = roof == "modern"
+    wood = C.mat("Slat", "#8a6a48", rough=0.9)
+    esky_body = C.mat("EskyBody", "#e9e4d6", rough=0.5)
+    esky_lid = C.mat("EskyLid", "#2f6f9a", rough=0.45)
+    canvas = C.mat("Umbrella", "#c8463a", rough=0.9)
+    canvas_2 = C.mat("UmbrellaStripe", "#efe6cf", rough=0.9)
+    pole = C.mat("UmbrellaPole", "#7b5a3a", rough=0.6)
+    # basket: a rail round the load, a little above the bars, on eight posts
+    bx0, bx1 = (-0.42, 0.42) if mod else (-0.34, 0.34)
+    by0, by1 = r["fy"][0] - 0.06, r["fy"][1] + 0.06
+    rail = top + 0.075
+    base = top + 0.014
+    bits = []
+    for y in (by0, by1):
+        bits.append(C.cylinder("rail", 0.009, bx1 - bx0, segs=6, axis="X", loc=(0, y, rail), material=M["chrome"]))
+    for x in (bx0, bx1):
+        bits.append(C.cylinder("rail", 0.009, by1 - by0, segs=6, axis="Y", loc=(x, (by0 + by1) / 2, rail),
+                               material=M["chrome"]))
+    for x in (bx0, bx1, bx0 / 3, bx1 / 3):
+        for y in (by0, by1):
+            bits.append(C.cylinder("post", 0.007, rail - top + 0.01, segs=6, loc=(x, y, (rail + top - 0.01) / 2),
+                                   material=M["chrome"]))
+    for i in range(5):
+        x = bx0 + 0.04 + (bx1 - bx0 - 0.08) * i / 4
+        bits.append(C.box_minmax("slat", (x - 0.035, by0, top), (x + 0.035, by1, base), wood))
+    basket = C.join(bits, "Basket")
+    # the esky, lengthways across the car on the left of the basket
+    ew, ed, eh = (0.46, 0.32, 0.30) if mod else (0.40, 0.28, 0.26)
+    ex = bx0 + 0.03 + ew / 2
+    ey = (r["fy"][0] + r["fy"][1]) / 2
+    ebits = [C.box_minmax("esky", (ex - ew / 2, ey - ed / 2, base), (ex + ew / 2, ey + ed / 2, base + eh * 0.78),
+                          esky_body),
+             C.box_minmax("lid", (ex - ew / 2 - 0.008, ey - ed / 2 - 0.008, base + eh * 0.78),
+                          (ex + ew / 2 + 0.008, ey + ed / 2 + 0.008, base + eh), esky_lid),
+             C.box_minmax("handle", (ex - 0.08, ey - 0.02, base + eh), (ex + 0.08, ey + 0.02, base + eh + 0.025),
+                          esky_body)]
+    for sx in (-1, 1):
+        ebits.append(C.box_minmax("grip", (ex + sx * (ew / 2 + 0.018) - 0.012, ey - 0.07, base + eh * 0.55),
+                                  (ex + sx * (ew / 2 + 0.018) + 0.012, ey + 0.07, base + eh * 0.68), esky_lid))
+    esky = C.join(ebits, "Esky")
+    # the umbrella, rolled, lying fore and aft on the right of the basket
+    ux, ul = bx1 - 0.09, (by1 - by0) + 0.18
+    uz = base + 0.05
+    ubits = [C.cylinder("canvas", 0.05, ul * 0.62, segs=8, axis="Y", loc=(ux, ey + 0.05, uz), material=canvas,
+                        r_top=0.022),
+             C.cylinder("pole", 0.012, ul, segs=6, axis="Y", loc=(ux, ey, uz), material=pole)]
+    for k in range(3):
+        ubits.append(C.cylinder("stripe", 0.047 - k * 0.008, 0.03, segs=8, axis="Y",
+                                loc=(ux, ey + 0.05 - ul * 0.2 + k * ul * 0.18, uz), material=canvas_2))
+    umbrella = C.join(ubits, "Umbrella")
+    # one strap over the esky lid, tied off on both bars
+    straps = []
+    hi = base + eh + 0.004
+    for y in r["fy"]:
+        straps.append(C.box_minmax("strap", (ex - 0.025, y - 0.018, top - 0.016), (ex + 0.025, y + 0.018, base + 0.006),
+                                   M["strap"]))
+    straps += [C.box_minmax("strap", (ex - 0.025, ey - ed / 2 - 0.014, hi), (ex + 0.025, ey + ed / 2 + 0.014, hi + 0.006),
+                            M["strap"]),
+               C.box_minmax("strap", (ex - 0.025, ey - ed / 2 - 0.014, base), (ex + 0.025, ey - ed / 2 - 0.008, hi),
+                            M["strap"]),
+               C.box_minmax("strap", (ex - 0.025, ey + ed / 2 + 0.008, base), (ex + 0.025, ey + ed / 2 + 0.014, hi),
+                            M["strap"])]
+    _rod_mount(roof, top, (ex + ew / 2 + ux - 0.05) / 2)
+    return [rack, basket, esky, umbrella, C.join(straps, "Straps")]
+
+
 def spotlights():
     """Two chrome-backed round lamps (Carello-style) on short stalks from a
     bar that clamps to the bumper; lenses face forward (Blender -Y)."""
@@ -479,6 +558,27 @@ def wheel_wood():
     return [C.join(bits, "SteeringWheel")]
 
 
+def wheel_bakelite():
+    """A thin-rimmed cream bakelite wheel, four chrome wire spokes and a
+    chrome horn ring: what came on the family cars of the fifties."""
+    cream = C.mat("Bakelite", "#e8dcc0", rough=0.3)
+    chrome = _mats()["chrome"]
+    from lib import cabin as CB
+    rim_r, tube, dish = 0.175, 0.009, 0.045
+    bits = [CB.torus_rim("rim", rim_r, tube, 32, cream, ts=8)]
+    bits[0].location.y = dish
+    bits.append(C.cylinder("boss", 0.036, 0.05, segs=12, axis="Y", loc=(0, 0.005, 0), material=cream))
+    bits.append(C.cylinder("horn", 0.032, 0.012, segs=14, axis="Y", loc=(0, 0.034, 0), material=chrome))
+    for a in (math.pi / 4, 3 * math.pi / 4, 5 * math.pi / 4, 7 * math.pi / 4):
+        d = Vector((math.cos(a), 0, math.sin(a)))
+        bits.append(_tube("spoke", d * 0.03 + Vector((0, 0.02, 0)), d * (rim_r - tube * 0.5) + Vector((0, dish, 0)),
+                          0.004, chrome))
+    ring = CB.torus_rim("horn_ring", 0.11, 0.004, 28, chrome, ts=4)
+    ring.location.y = 0.034
+    bits.append(ring)
+    return [C.join(bits, "SteeringWheel")]
+
+
 def wheel_sport():
     """A smaller leather-rim sport wheel, black spokes, a red band at twelve
     o'clock."""
@@ -503,6 +603,15 @@ def knob_wood():
     brass = C.mat("KnobBrass", "#b8913d", rough=0.3, metal=0.8)
     return [C.join([_knob("knob", wood, 0.03, (1, 1, 1.12)),
                     C.cylinder("collar", 0.012, 0.016, segs=10, loc=(0, 0, -0.03), material=brass)], "GearKnob")]
+
+
+def knob_bollard():
+    """A brass knob turned like a mooring bollard: a waisted post under a
+    wide mushroom cap."""
+    brass = C.mat("KnobBrass", "#b8913d", rough=0.3, metal=0.8)
+    return [C.join([C.cylinder("cap", 0.03, 0.016, segs=14, loc=(0, 0, 0.018), material=brass, r_top=0.026),
+                    C.cylinder("post", 0.018, 0.04, segs=12, loc=(0, 0, -0.012), material=brass, r_top=0.015),
+                    C.cylinder("collar", 0.012, 0.016, segs=10, loc=(0, 0, -0.04), material=brass)], "GearKnob")]
 
 
 def knob_chrome():
@@ -667,7 +776,12 @@ def seatcover_beaded(roof):
     return [_cover(roof, "SeatCover", mats, 0.02, 0.0, rows=26, uv_k=(7.0, 14.0))]
 
 
+ONLY = sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else None
+
+
 def export(builder, name):
+    if ONLY and name.removesuffix(".glb") not in ONLY:
+        return
     C.reset()
     C.clear_material_cache()
     objs = builder()
@@ -676,7 +790,8 @@ def export(builder, name):
     C.export_glb(PARTS + name)
 
 
-RACKS = {"plain": roofrack_plain, "luggage": roofrack_luggage, "bike": roofrack_bike, "surf": roofrack_surf}
+RACKS = {"plain": roofrack_plain, "luggage": roofrack_luggage, "bike": roofrack_bike, "surf": roofrack_surf,
+         "esky": roofrack_esky}
 
 
 def main():
@@ -693,7 +808,7 @@ def main():
     export(towbar, "towbar.glb")
     export(mudflap, "mudflap.glb")
     export(lambda: mudflap(0.1), "mudflap_short.glb")
-    for fn in (wheel_wood, wheel_sport, knob_wood, knob_chrome, knob_8ball):
+    for fn in (wheel_wood, wheel_sport, wheel_bakelite, knob_wood, knob_chrome, knob_8ball, knob_bollard):
         export(fn, fn.__name__ + ".glb")
     for fn in (seatcover_sheepskin, seatcover_beaded):
         for roof in ROOFS:

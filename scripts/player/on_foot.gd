@@ -43,6 +43,8 @@ const GRAVITY := 9.8
 const MASK := 1 | 2
 ## How far from the driver's door you can be to get in.
 const CAR_REACH := 2.2
+## How far short of a thing's point a wall can be and still not hide it (m).
+const SEE_SLACK := 0.25
 ## Seconds F has to be held in the car to get out.
 const HOLD_TO_GET_OUT := 0.45
 ## Getting in: the door opens, you sit, it shuts, belt on, key in and turned,
@@ -754,8 +756,8 @@ func _door_hit(home: HomeBase, hit: Dictionary) -> StringName:
 	return &""
 
 
-## The closest interactable within reach that you're looking towards and that
-## has something to do.
+## The closest interactable within reach that you're looking towards, that
+## you can see (not through a wall) and that has something to do.
 func _nearest_thing() -> Node:
 	var eye := _camera.global_position
 	var look := -_camera.global_basis.z
@@ -767,11 +769,38 @@ func _nearest_thing() -> Node:
 		var d := to.length()
 		if d > best_d or (d > 0.6 and look.dot(to / d) < 0.55):
 			continue
-		if String(node.interact_hint()) == "":
+		if String(node.interact_hint()) == "" or not _can_see(eye, at, node):
 			continue
 		best = node
 		best_d = d
 	return best
+
+
+## Nothing solid between your eye and `at` but `thing`'s own body. Looked at
+## both ways: from the eye, anything short of `at` by more than SEE_SLACK
+## hides it (a thing's point can sit just inside the cupboard or fridge it's
+## on); from `at` back to the eye, anything at all does (a switch on the far
+## side of a wall sits within SEE_SLACK of the wall, but the wall's inside
+## face is in the way looking back).
+func _can_see(eye: Vector3, at: Vector3, thing: Node) -> bool:
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsRayQueryParameters3D.create(eye, at, MASK)
+	q.exclude = [get_rid()]
+	var hit := space.intersect_ray(q)
+	if not hit.is_empty() and eye.distance_to(hit.position) < eye.distance_to(at) - SEE_SLACK and not _part_of(hit.collider, thing):
+		return false
+	q = PhysicsRayQueryParameters3D.create(at, eye, MASK)
+	q.exclude = [get_rid()]
+	hit = space.intersect_ray(q)
+	return hit.is_empty() or _part_of(hit.collider, thing)
+
+
+func _part_of(node: Node, thing: Node) -> bool:
+	while node:
+		if node == thing:
+			return true
+		node = node.get_parent()
+	return false
 
 
 ## Looking toward the car, not away from it: with your back to the car, F is

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"roof_esky_basket"
+display_name = "Roof basket and esky"
+description = "A chrome basket with an old two-tone esky and a beach umbrella strapped in. Left at Trigg. Adds a little drag."
+slot = &"roof"
+modifiers = {"drag_mult": 1.06, "mass_add": 14.0}
+visual = "roofrack_esky"
+found_only = true
