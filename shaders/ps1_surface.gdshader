@@ -22,6 +22,41 @@ global uniform float ps1_wetness;
 // late_keep (the one road left).
 global uniform float late_void;
 uniform bool late_keep = false;
+#ifdef LATE_SIDES
+// The story's other house (scripts/world/late_city/other_house.gd) builds a
+// copy of this shader with LATE_SIDES defined, for the house's insides only,
+// so the discard below never touches the rest of the world. late_portal: 0 off,
+// 1 looking in from outside (1979 only through an open door), 2 inside (all
+// 1979). Each door: c = centre (w 1 when open), r and u = unit right and up
+// with half the opening's width and height in w.
+global uniform float late_portal;
+global uniform vec4 late_door_a_c;
+global uniform vec4 late_door_a_r;
+global uniform vec4 late_door_a_u;
+global uniform vec4 late_door_b_c;
+global uniform vec4 late_door_b_r;
+global uniform vec4 late_door_b_u;
+// 1: today's (hidden where 1979 shows), 2: 1979's (only where it shows).
+uniform int late_side = 0;
+
+bool late_through(vec4 c, vec4 r, vec4 u, vec3 eye, vec3 p) {
+	if (c.w < 0.5) {
+		return false;
+	}
+	vec3 n = cross(r.xyz, u.xyz);
+	vec3 d = p - eye;
+	float dn = dot(d, n);
+	if (abs(dn) < 1e-5) {
+		return false;
+	}
+	float t = dot(c.xyz - eye, n) / dn;
+	if (t < 0.0 || t > 1.0) {
+		return false;
+	}
+	vec3 h = eye + d * t - c.xyz;
+	return abs(dot(h, r.xyz)) < r.w && abs(dot(h, u.xyz)) < u.w;
+}
+#endif
 
 uniform vec4 albedo_color : source_color = vec4(1.0);
 uniform sampler2D albedo_texture : source_color, filter_nearest_mipmap, repeat_enable, hint_default_white;
@@ -174,4 +209,19 @@ void fragment() {
 		EMISSION *= keep;
 		SPECULAR *= keep;
 	}
+#ifdef LATE_SIDES
+	if (late_side != 0) {
+		bool past = late_portal > 1.5;
+		// Directional shadow passes (orthographic) keep today's side.
+		if (!past && late_portal > 0.5 && PROJECTION_MATRIX[3][3] < 0.5) {
+			vec3 p = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+			vec3 eye = CAMERA_POSITION_WORLD;
+			past = late_through(late_door_a_c, late_door_a_r, late_door_a_u, eye, p)
+				|| late_through(late_door_b_c, late_door_b_r, late_door_b_u, eye, p);
+		}
+		if ((late_side == 1 && past) || (late_side == 2 && !past)) {
+			discard;
+		}
+	}
+#endif
 }

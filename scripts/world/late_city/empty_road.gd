@@ -46,6 +46,12 @@ const AFTER_DELIVERY := 3.5
 const OFF_ROAD := 4.0
 ## Turned round: driving against the road's direction for this long (s).
 const TURN_ROUND := 2.5
+## Stopped (under 3 km/h) this long (s), away from the letterbox: it lets you go.
+const STOPPED := 4.0
+## After it lets you go, not again until you've left May Drive and this long (s) has passed.
+const REARM_AFTER := 90.0
+## On the road means within this much (m) of May Drive's centreline.
+const ON_ROAD := 4.0
 const SKY := Color(0.012, 0.016, 0.04)
 const VOID_FOG := 0.018
 const GENTLE_FOG := 0.06
@@ -85,6 +91,12 @@ var _traffic_scale := [1.0, 1.0]
 var _delivered := false
 var _since_delivery := 0.0
 var _against := 0.0
+var _stopped := 0.0
+var _went := false   # past the sound: the world went this time
+## Ready to start again: false after it lets you go, until you've left May
+## Drive and REARM_AFTER has passed.
+var _armed := true
+var _rearm_t := 0.0
 var _road_mat: ShaderMaterial
 var _line_mat: ShaderMaterial
 var _verge_mat: ShaderMaterial
@@ -178,6 +190,7 @@ func _on_job_completed(job: Dictionary, _pay: int, _summary: String) -> void:
 func _process(delta: float) -> void:
 	match phase:
 		Phase.IDLE:
+			_rearm_t += delta
 			_check -= delta
 			if _check <= 0.0:
 				_check = 1.0
@@ -186,11 +199,15 @@ func _process(delta: float) -> void:
 			_t += delta
 			if _t >= SOUND_OUT:
 				_begin_fade()
+			else:
+				_check_leave(delta)
 		Phase.FADE_OUT:
 			_t += delta
 			_set_void(clampf(_t / FADE_OUT, 0.0, 1.0))
 			if _t >= FADE_OUT:
 				_go_empty()
+			else:
+				_check_leave(delta)
 		Phase.EMPTY:
 			_update_lamps()
 			_check_leave(delta)
@@ -207,7 +224,15 @@ func _try_start() -> void:
 	if Jobs.active.get("story", "") != String(EVENT) or Jobs.active.get("stage", "") != "to_dropoff":
 		return
 	_car = get_tree().get_first_node_in_group(&"player_car") as CarController
-	if _car == null or not _car.player_controlled or _car.speed_kmh() < 15.0:
+	if _car == null or not _car.player_controlled:
+		return
+	var on_may := MapData.shared().street_at(_car.global_position, ON_ROAD) == STREET
+	if not _armed:
+		# Once it's let you go: off May Drive and a little while, then again.
+		if not on_may and _rearm_t >= REARM_AFTER:
+			_armed = true
+		return
+	if _car.speed_kmh() < 15.0 or not on_may:
 		return
 	if not force and Story.act() < FROM_ACT:
 		return
@@ -216,8 +241,6 @@ func _try_start() -> void:
 	if _car.global_position.distance_to(DROPOFF) > MAX_ROUTE:
 		return
 	# Only on the back road itself, in the bush, never on the way there.
-	if MapData.shared().street_at(_car.global_position, 12.0) != STREET:
-		return
 	if not start():
 		return
 
@@ -244,13 +267,16 @@ func start() -> bool:
 	phase = Phase.SOUND_OUT
 	_t = 0.0
 	_delivered = false
+	_went = false
 	_against = 0.0
+	_stopped = 0.0
 	LateCity.fade_mute(1.0, SOUND_OUT)
 	return true
 
 
 func _begin_fade() -> void:
 	phase = Phase.FADE_OUT
+	_went = true
 	_t = 0.0
 	_build_ribbon()
 	_build_house()
@@ -321,6 +347,14 @@ func _check_leave(delta: float) -> void:
 	if _against > TURN_ROUND:
 		_end_void()
 		return
+	# Stopped, anywhere but the letterbox.
+	if _car.speed_kmh() < 3.0 and _car.global_position.distance_to(DROPOFF) > 25.0:
+		_stopped += delta
+	else:
+		_stopped = 0.0
+	if _stopped > STOPPED:
+		_end_void()
+		return
 	# Past the end of the road, or the parcel is in.
 	if s >= _cum[_cum.size() - 1] + 40.0:
 		_end_void()
@@ -332,6 +366,12 @@ func _check_leave(delta: float) -> void:
 
 
 func _end_void() -> void:
+	if phase == Phase.SOUND_OUT:
+		# Only the sound had gone: it comes back, and that's it.
+		phase = Phase.FADE_IN
+		_t = FADE_IN
+		LateCity.fade_mute(0.0, 1.0)
+		return
 	if phase != Phase.EMPTY and phase != Phase.FADE_OUT:
 		return
 	phase = Phase.FADE_IN
@@ -344,8 +384,10 @@ func _end_void() -> void:
 		if is_instance_valid(n):
 			n.visible = true
 	_hidden_roads.clear()
-	_ribbon.visible = false
-	_house.visible = false
+	if _ribbon:
+		_ribbon.visible = false
+	if _house:
+		_house.visible = false
 	for l in _pool:
 		l.visible = false
 	var traffic := get_tree().root.find_child("Traffic", true, false)
@@ -374,6 +416,9 @@ func _finish() -> void:
 	_pool.clear()
 	LateCity.end(EVENT)
 	if not _delivered:
+		_armed = false
+		_rearm_t = 0.0
+	if not _delivered and _went:
 		Story.log_night(&"empty_road_left",
 			"On May Drive the city went, and there was only the road. I left it, and the city came back.")
 
@@ -471,6 +516,14 @@ func _build_route(points: PackedVector3Array) -> void:
 		s += STEP
 	_route.append(points[points.size() - 1])
 	_cum.append(total)
+	# The route can stop short of the letterbox: run on to it.
+	var last := points[points.size() - 1]
+	var gap := Vector2(last.x - DROPOFF.x, last.z - DROPOFF.z).length()
+	if gap > 2.0:
+		var n := ceili(gap / STEP)
+		for k in range(1, n + 1):
+			_route.append(last.lerp(DROPOFF, float(k) / n))
+			_cum.append(total + gap * float(k) / n)
 	# Snap to the road's own collider where it's loaded.
 	var space := get_world_3d().direct_space_state
 	for i in _route.size():
