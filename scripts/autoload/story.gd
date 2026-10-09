@@ -9,6 +9,7 @@ extends Node
 ##   Story.act()                                  # 1..5
 ##   Story.make_choice(&"porch_light", &"on")
 ##   Story.log_night(&"other_house_1979", "Opened the door and it was 1979.")
+##   Story.leave_message(&"ros_first_roll", "Ros", "Got your roll back...")
 ##
 ## Saved under "story".
 
@@ -16,6 +17,7 @@ signal act_changed(act: int)
 signal choice_made(id: StringName, value: StringName)
 signal flag_set(id: StringName)
 signal night_logged(entry: Dictionary)
+signal message_left(message: Dictionary)
 
 const ACTS := 5
 ## Choice ids and the values each may take (STORY_API.md).
@@ -28,6 +30,9 @@ const CHOICES := {
 
 ## Oldest first. Each: {id: StringName, text: String, day: int, time: float}.
 var nights: Array[Dictionary] = []
+## The answering machine at home, oldest first. Each: {id: StringName,
+## from: String, text: String, late: bool, day: int, time: float, heard: bool}.
+var messages: Array[Dictionary] = []
 var prints_to_ros := 0
 var prints_to_buyer := 0
 ## Dev and test override: when > 0, act() returns this instead of the tier.
@@ -36,6 +41,7 @@ var act_override := 0
 var _choices := {}   # StringName -> StringName
 var _flags := {}     # StringName -> day set
 var _last_act := 0
+var _act_began := {}  # int act -> day it began
 
 
 func _ready() -> void:
@@ -124,8 +130,62 @@ func has_night(id: StringName) -> bool:
 	return false
 
 
+## Leaves a message on the machine at home, once per id. Late ones are from
+## the late city (hiss and the deck's click instead of a beep). Returns true
+## if it was new.
+func leave_message(id: StringName, from: String, text: String, late := false) -> bool:
+	if has_message(id):
+		return false
+	var m := {"id": id, "from": from, "text": text, "late": late,
+		"day": GameClock.day, "time": GameClock.time_of_day, "heard": false}
+	messages.append(m)
+	message_left.emit(m)
+	return true
+
+
+func has_message(id: StringName) -> bool:
+	return not message(id).is_empty()
+
+
+## The message with this id, or {} if it hasn't been left.
+func message(id: StringName) -> Dictionary:
+	for m in messages:
+		if m.id == id:
+			return m
+	return {}
+
+
+func heard(id: StringName) -> bool:
+	return bool(message(id).get("heard", false))
+
+
+func unheard_messages() -> int:
+	var n := 0
+	for m in messages:
+		if not m.heard:
+			n += 1
+	return n
+
+
+## The unheard messages, oldest first, now marked heard.
+func take_unheard() -> Array[Dictionary]:
+	var list: Array[Dictionary] = []
+	for m in messages:
+		if not m.heard:
+			m.heard = true
+			list.append(m)
+	return list
+
+
+## The game day an act began (0 for act 1, or an act not reached yet).
+func act_began(a: int) -> int:
+	return int(_act_began.get(a, 0))
+
+
 func _check_act() -> void:
 	var a := act()
+	if not _act_began.has(a):
+		_act_began[a] = GameClock.day
 	if a != _last_act:
 		_last_act = a
 		act_changed.emit(a)
@@ -141,8 +201,15 @@ func save_state() -> Dictionary:
 	var entries := []
 	for entry in nights:
 		entries.append({"id": String(entry.id), "text": entry.text, "day": entry.day, "time": entry.time})
-	return {"choices": choices, "flags": flags, "nights": entries,
-		"prints_to_ros": prints_to_ros, "prints_to_buyer": prints_to_buyer}
+	var left := []
+	for m in messages:
+		left.append({"id": String(m.id), "from": m.from, "text": m.text, "late": m.late,
+			"day": m.day, "time": m.time, "heard": m.heard})
+	var began := {}
+	for a in _act_began:
+		began[str(a)] = _act_began[a]
+	return {"choices": choices, "flags": flags, "nights": entries, "messages": left,
+		"act_began": began, "prints_to_ros": prints_to_ros, "prints_to_buyer": prints_to_buyer}
 
 
 func load_state(data: Dictionary) -> void:
@@ -156,6 +223,14 @@ func load_state(data: Dictionary) -> void:
 	for e: Dictionary in data.get("nights", []):
 		nights.append({"id": StringName(e.get("id", "")), "text": String(e.get("text", "")),
 			"day": int(e.get("day", 0)), "time": float(e.get("time", 0.0))})
+	messages.clear()
+	for m: Dictionary in data.get("messages", []):
+		messages.append({"id": StringName(m.get("id", "")), "from": String(m.get("from", "")),
+			"text": String(m.get("text", "")), "late": bool(m.get("late", false)),
+			"day": int(m.get("day", 0)), "time": float(m.get("time", 0.0)), "heard": bool(m.get("heard", false))})
+	_act_began.clear()
+	for a in data.get("act_began", {}):
+		_act_began[int(a)] = int(data.act_began[a])
 	prints_to_ros = int(data.get("prints_to_ros", 0))
 	prints_to_buyer = int(data.get("prints_to_buyer", 0))
 	_check_act.call_deferred()

@@ -49,6 +49,7 @@ FISH_HALF_LIFE_H = 25.0  # hours to land half of them
 PARKING_BAYS = 10        # parking challenges
 PARKING_GOLD_HALF_LIFE_H = 30.0
 SCENIC_PER_HOUR = 0.12   # scenic drives finished per hour of play
+CLUE_HOURS = 3.0         # hours of play per midnight-station find once the tier allows it
 CLASSIC_FIRST_H = 45.0   # hours before the first barn find is restored (rumours come with tiers and meets)
 PARTS_SHARE = 0.25       # share of income spent on parts, paint, washes
 AVG_PART_PRICE = 600     # what a typical upgrade costs
@@ -75,6 +76,7 @@ def delivery_pay(multiplier):
 def main():
     tiers = json.load(open(os.path.join(ROOT, "data/progression/tiers.json")))["tiers"]
     cars = json.load(open(os.path.join(ROOT, "data/cars/cars.json")))["cars"]
+    clue_tiers = [c["tier"] for c in json.load(open(os.path.join(ROOT, "data/progression/mystery.json")))["clues"]]
     medal_rewards = {"gold": 220, "silver": 120, "bronze": 60}
 
     minutes_per_delivery = (DELIVERY_KM + DEADHEAD_KM) / AVG_SPEED_KMH * 60 + LOAD_MIN
@@ -83,7 +85,7 @@ def main():
         "fragile_perfect", "km_driven", "km_tier_car", "earned", "trials_medalled",
         "trials_silver", "trials_gold", "discoveries", "suburbs_delivered",
         "upgrades_fitted", "cars_owned", "washes", "badges", "photo_spots", "parking_gold",
-        "scenic_drives", "classics_restored", "species_seen", "species_photographed", "fish_species"]}
+        "scenic_drives", "classics_restored", "species_seen", "species_photographed", "fish_species", "clues_found"]}
     stats["cars_owned"] = 1
     money = 400.0
     tier = 0
@@ -128,6 +130,8 @@ def main():
         stats["species_seen"] = BIRDS * (1 - 0.5 ** (hour / BIRD_SEEN_HALF_LIFE_H))
         stats["species_photographed"] = BIRDS * (1 - 0.5 ** (hour / BIRD_SHOT_HALF_LIFE_H))
         stats["fish_species"] = FISH * (1 - 0.5 ** (hour / FISH_HALF_LIFE_H))
+        open_clues = sum(1 for t in clue_tiers if t <= tier)
+        stats["clues_found"] = min(open_clues, stats["clues_found"] + step / CLUE_HOURS)
         stats["classics_restored"] = max(0.0, (hour - CLASSIC_FIRST_H) / 12.0)
         money += (pay + trial_pay) * (1 - PARTS_SHARE) - km * FUEL_PER_KM
         parts_spend += (pay + trial_pay) * PARTS_SHARE

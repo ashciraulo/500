@@ -4,7 +4,7 @@ extends SceneTree
 ## May Drive. Needs a display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
-##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road]
+##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people]
 
 var _shots := "/tmp/story"
 var _only := PackedStringArray()
@@ -47,6 +47,8 @@ func _build_steps() -> void:
 		_house_steps()
 	if _want("road"):
 		_road_steps()
+	if _want("people"):
+		_people_steps()
 
 
 func _house_steps() -> void:
@@ -124,6 +126,42 @@ func _road_steps() -> void:
 		var right := _car.global_transform.basis.x
 		_car.teleport(Transform3D(_car.global_transform.basis, _car.global_position + right * 20.0 + Vector3.UP * 0.5)), 80])
 	_steps.append(["road_8_city_back", func() -> void: pass, 240])
+
+
+func _people_steps() -> void:
+	var story := root.get_node("Story")
+	var people := _main.find_child("StoryPeople", true, false)
+	var machine := func() -> Node: return _home.find_child("AnsweringMachine", false, false)
+	var bench := func() -> void: _look(_h(3.4, 9.6, 1.65), _h(4.4, 8.62, 1.2))
+	_steps.append(["people_0_setup", func() -> void:
+		_hour(21.0)
+		story.load_state({})
+		people.card_act = 5
+		_player.call("get_out"), 200, null, false])
+	_steps.append(["people_01_answering_machine", func() -> void:
+		_put_player(_home.spawn_transform(&"Spawn_Front").origin)
+		story.leave_message(&"kostas_welcome", "Thea Kostas, number 11", String(people.messages[0].text))
+		story.leave_message(&"agency_rent", "Swan Property Management", String(people.messages[1].text))
+		bench.call(), 45])
+	_steps.append(["people_02_playing_a_message", func() -> void:
+		machine.call().interact(), 120])
+	_steps.append(["people_03_porch_switch", func() -> void:
+		_look(_h(1.3, 1.3, 1.6), _h(0.2, 0.0, 1.25)), 40])
+	_steps.append(["people_04_act_card", func() -> void:
+		story.act_override = 2
+		people.card_act = 1
+		people._maybe_card()
+		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.6)), 100])
+	_steps.append(["people_05_porch_light_on", func() -> void:
+		_hour(1.0)
+		story.act_override = 0
+		_door_x = _home.to_local(_home.spawn_transform(&"Spawn_Front").origin).x
+		_look(_h(_door_x + 1.2, -3.2, 1.6), _h(_door_x + 0.2, 0.0, 1.6)), 450])
+	_steps.append(["people_06_porch_light_off", func() -> void:
+		people.set_porch_light(false), 30])
+	_steps.append(["people_07_three_knocks", func() -> void:
+		people.set_porch_light(true)
+		people.set("_blinks", 0.7 * 3.0), 34])
 
 
 func _process(_delta: float) -> bool:

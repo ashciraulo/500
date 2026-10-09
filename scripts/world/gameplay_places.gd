@@ -53,6 +53,10 @@ func _ready() -> void:
 	var other := OtherHouse.new()
 	other.name = "OtherHouse"
 	add_child(other)
+	# The story's people: the answering machine, act cards, the porch light.
+	var people := StoryPeople.new()
+	people.name = "StoryPeople"
+	add_child(people)
 	# The empty road hides the rest of the world, this node with it, so it
 	# lives beside it rather than under it.
 	var road := EmptyRoad.new()
