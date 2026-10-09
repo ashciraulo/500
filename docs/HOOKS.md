@@ -585,6 +585,21 @@ after a map rebuild).
   `FieldJournal.places_found()` / `stat("places_found")` count them;
   `field/quiet_place` plays on finding one (falls back to the new-species
   music).
+- The late city (`docs/STORY.md`; autoloads `Story` and `LateCity`, read
+  with `get_node_or_null` so the field world runs without them):
+  `FieldWorld.flicker` (`BirdFlicker`) follows `LateCity.flicker_level()`
+  (`level_override` for tests). A blink calls `LateCity.play_flicker(pos)`
+  and `add_shimmer(node, 1.0)`, hides the bird 0.2 to 0.6 s with meta
+  `"flicker"` true, then brings it back up to a metre away (not with
+  `Story.gentle()`) and lifts the shimmer after `AFTERGLOW`. At level 1 the
+  wrong frogmouth keeps a steady `FROGMOUTH_GLOW` shimmer while the
+  binoculars are up. Level 3 adds ordinary birds where
+  `LateCity.presence_at(bird) > 0.3`; level 4, the thirteen
+  (`start_alongside()`, `alongside()`) beside the car within 700 m of their
+  place, 2 to 5 am, once a day. The binoculars' focus dial jumps (and
+  `field/focus_miss` plays) when the bird in the shot has meta `"flicker"`.
+  The journal's Nights bookmark shows once `Story.nights` has an entry,
+  newest first, and refreshes on `night_logged`.
 - Music: `music/mus_field_journal` plays while the journal is open (only if
   no other music is), and `music/mus_field_new_species` on a new bird; both
   are skipped until the audio side ships them.
