@@ -3461,6 +3461,299 @@ def home_dawn():
     save_loop("amb/amb_home_dawn", B.x, norm="lufs:-30", **LEAN)
 
 
+# ---- Northbridge's cafes, restaurants, bars and pubs (scripts/world/venue.gd)
+# Heard from the shopfront while the place is open: the nearest open one of
+# each kind. The street's own chatter is in amb_northbridge_*; these are the
+# close-up layer at the door and the tables out front. The talk comes from
+# the game's own crowd loops (gen_traffic.py, cut from the CC0 bar and pub
+# recordings), re-woven into longer stereo beds; the rest is synthesised.
+
+WALLA = {  # key: (game file, the recordings it was made from)
+    "crowd_small": ("traffic/traffic_crowd_small_loop.ogg", ["bar_wa"]),
+    "crowd_busy": ("traffic/traffic_crowd_busy_loop.ogg", ["pub_crowd", "bar_wa"]),
+    "crowd_roar": ("traffic/traffic_crowd_roar_loop.ogg", ["pub_crowd"]),
+    "chatter": ("traffic/traffic_food_van_chatter_loop.ogg", ["bar_wa"]),
+}
+
+
+def walla(key, dur, seed, chunk=6.0):
+    """A stereo bed of `dur` s woven from one of the game's mono crowd
+    loops, each side from different stretches so they don't match."""
+    rel, made_from = WALLA[key]
+    USED.update(made_from)
+    k = "walla:" + key
+    if k not in _mem:
+        _mem[k] = S.load(S.AUDIO_ROOT / rel, mono=True)
+    x = _mem[k]
+    return np.stack([texture(x, dur, seed, chunk).mean(axis=1), texture(x, dur, seed + 7, chunk).mean(axis=1)], axis=1)
+
+
+def espresso_steam(seed, dur=3.5):
+    """The steam wand frothing a jug: a rising hiss that settles into a
+    gurgling roar."""
+    r = np.random.default_rng(seed)
+    n = secs(dur)
+    t = S.t_axis(n)
+    hiss = S.bp(r.standard_normal(n), 2500, 9000, 2)
+    gurgle = S.bp(r.standard_normal(n), 300, 1400, 2) * (1 + 0.6 * S.smooth_noise(n, 9, seed, periodic=False))
+    mix = hiss * (1 - 0.5 * np.clip(t / dur, 0, 1)) + gurgle * 0.7 * np.clip(t / dur * 1.5, 0, 1)
+    return S.fade(mix * S.env_adsr(n, 0.08, 0.2, 0.8, 0.4), 0.02, 0.2)
+
+
+def grinder(seed, dur=2.4):
+    """A burr grinder: a motor's buzz through beans crunching."""
+    r = np.random.default_rng(seed)
+    n = secs(dur)
+    t = S.t_axis(n)
+    motor = np.sin(2 * np.pi * 148 * t) + 0.5 * np.sin(2 * np.pi * 296 * t) + 0.3 * np.sin(2 * np.pi * 444 * t)
+    crunch = S.bp(r.standard_normal(n), 900, 6000, 2) * (0.6 + 0.4 * (r.random(n) > 0.7))
+    return S.fade((np.tanh(motor) * 0.5 + crunch) * S.env_adsr(n, 0.05, 0.1, 0.9, 0.15), 0.01, 0.1)
+
+
+def knock_box(seed):
+    """The portafilter knocked out: two dull wooden thuds."""
+    r = np.random.default_rng(seed)
+    y = np.zeros(secs(0.8))
+    for k in range(2):
+        m = secs(0.12)
+        tk = S.t_axis(m)
+        th = np.sin(2 * np.pi * r.uniform(90, 130) * tk) * np.exp(-tk / 0.03) + \
+            S.bp(r.standard_normal(m), 400, 2500, 1) * np.exp(-tk / 0.01) * 0.5
+        S.place(y, th, secs(0.05 + k * r.uniform(0.25, 0.35)))
+    return y
+
+
+def shaker(seed, dur=3.0):
+    """A cocktail shaker: ice rattling back and forth."""
+    r = np.random.default_rng(seed)
+    n = secs(dur)
+    y = np.zeros(n)
+    tt = 0.0
+    while tt < dur - 0.2:
+        m = secs(0.09)
+        tk = S.t_axis(m)
+        hit = S.bp(r.standard_normal(m), 2000, 9000, 2) * np.exp(-tk / 0.025)
+        S.place(y, hit * r.uniform(0.6, 1.0), secs(tt))
+        tt += 1 / r.uniform(6.5, 7.5)
+    return S.fade(y, 0.05, 0.2)
+
+
+def tap_pour(seed, dur=4.0):
+    """Beer pulled from the tap: a frothy hiss into the glass, rising as it fills."""
+    r = np.random.default_rng(seed)
+    n = secs(dur)
+    t = S.t_axis(n)
+    lo = 900 + 700 * t / dur
+    y = S.bp(r.standard_normal(n), 900, 5000, 2) * (1 + 0.3 * S.smooth_noise(n, 14, seed, periodic=False))
+    y += 0.4 * np.sin(2 * np.pi * np.cumsum(lo) / SR) * S.smooth_noise(n, 30, seed + 1, periodic=False)
+    return S.fade(y * S.env_adsr(n, 0.1, 0.2, 0.9, 0.3), 0.03, 0.2)
+
+
+def cork_pop(seed):
+    r = np.random.default_rng(seed)
+    m = secs(0.25)
+    tk = S.t_axis(m)
+    return np.sin(2 * np.pi * (r.uniform(380, 480) * tk - 200 * tk ** 2)) * np.exp(-tk / 0.02) + \
+        S.bp(r.standard_normal(m), 1500, 6000, 1) * np.exp(-tk / 0.05) * 0.3
+
+
+def sizzle(seed, dur=5.0):
+    """Something hitting a hot pan in the kitchen, settling to a fry."""
+    r = np.random.default_rng(seed)
+    n = secs(dur)
+    t = S.t_axis(n)
+    crackle = S.bp(r.standard_normal(n), 2500, 10000, 2) * (r.random(n) > 0.4)
+    return S.fade(crackle * (0.4 + 0.6 * np.exp(-t / 0.8)), 0.01, 0.6)
+
+
+def room_music(n, seed, bpm=92, style="lounge"):
+    """Music playing inside, heard through the open door and the glass:
+    "lounge" a brushed groove with walking bass and soft electric-piano
+    chords, "pub" a band's backbeat and bass, "latin" a cumbia shuffle.
+    Muffled, mostly low end and a little of the chords."""
+    beats = max(8, round(n / SR * bpm / 60 / 4) * 4)
+    bl = n / beats
+    t = S.t_axis(n)
+    y = np.zeros(n)
+    r = np.random.default_rng(seed)
+    kn = secs(0.3)
+    tk = S.t_axis(kn)
+    kick = np.sin(2 * np.pi * (55 * tk + 1.8 * (1 - np.exp(-tk / 0.03)))) * np.exp(-tk / 0.15)
+    sn_n = secs(0.25)
+    snare = S.bp(r.standard_normal(sn_n), 500, 5000, 1) * np.exp(-S.t_axis(sn_n) / (0.05 if style != "lounge" else 0.12))
+    for b in range(beats):
+        at = int(b * bl)
+        if style == "latin":
+            S.place(y, kick * 0.8, at, wrap=True)
+            S.place(y, snare * 0.35, int(at + bl * 0.5), wrap=True)
+            S.place(y, snare * 0.25, int(at + bl * 0.75), wrap=True)
+        else:
+            if b % 2 == 0 or (style == "pub" and b % 4 == 3):
+                S.place(y, kick, at, wrap=True)
+            if b % 2 == 1:
+                S.place(y, snare * (0.4 if style == "lounge" else 0.7), at, wrap=True)
+    roots = {"lounge": [110.0, 146.8, 123.5, 164.8], "pub": [82.4, 110.0, 98.0, 110.0],
+             "latin": [98.0, 130.8, 146.8, 130.8]}[style]
+    bar = np.floor(t / (bl * 4 / SR)).astype(int) % len(roots)
+    beat_in = (t / (bl / SR)) % 1.0
+    step = np.floor(t / (bl / SR)).astype(int) % 4
+    walk = np.array([1.0, 1.26, 1.5, 1.68]) if style == "lounge" else np.array([1.0, 1.0, 1.5, 1.0])
+    f = np.array(roots)[bar] * walk[step]
+    gate = S.circ_lp(((beat_in > 0.02) & (beat_in < 0.85)).astype(float), 40, 1)
+    bass = np.sin(2 * np.pi * np.cumsum(f) / SR) * gate
+    chord = np.zeros(n)
+    for m in (2.0, 2.52, 3.0, 3.78):
+        fc = np.array(roots)[bar] * m
+        chord += np.sin(2 * np.pi * np.cumsum(fc) / SR)
+    # struck once a bar and dying away by the next, so each bar's phase
+    # jump (and the loop point) falls in silence
+    bar_pos = (t / (bl * 4 / SR)) % 1.0
+    hit = (1 - bar_pos) ** 1.5 * np.clip(bar_pos / 0.01, 0, 1)
+    chord *= 0.18 * hit * (1 + 0.3 * np.sin(2 * np.pi * periodic_tone(n, 5.0) * t))
+    if style == "pub":
+        chord = np.tanh(chord * 3) * 0.15
+    low = S.circ_lp(y + 0.8 * bass, 220, 3)
+    mid = S.circ_lp(S.circ_hp(y * 0.4 + chord, 250, 1), 1500, 2)
+    return low + mid * 0.6
+
+
+@builder("place_cafe")
+def place_cafe():
+    """At a Northbridge cafe's door by day: the room's chatter spilling out,
+    the grinder, the steam wand, the knock box, cups and saucers on the
+    tables out front."""
+    dur = 48
+    B = Bed(dur, 5101)
+    n = B.n
+    B.add(walla("crowd_small", dur, 51011), -27)
+    B.add(S.circ_lp(walla("chatter", dur, 51012), 3000), -34)
+    B.add(np.stack([clinks(n, 51013, 30), clinks(n, 51014, 30)], axis=1), -37)
+    for k, at in enumerate(B.times(2, 0.6)):
+        B.put(distant(grinder(51100 + k, 1.8), 0.4, B.r.uniform(-0.4, 0.4), 51110 + k, room=0.9), at, -27)
+    for k, at in enumerate(B.times(3, 0.6)):
+        B.put(distant(espresso_steam(51200 + k, B.r.uniform(2.2, 3.2)), 0.4, B.r.uniform(-0.4, 0.4), 51210 + k,
+                      room=0.9), at, -25)
+    for k, at in enumerate(B.times(5, 0.7)):
+        B.put(distant(knock_box(51300 + k), 0.3, B.r.uniform(-0.4, 0.4), 51310 + k, room=0.9), at, -20)
+    place_save("place_cafe_loop", B.x)
+
+
+@builder("place_cafe_night")
+def place_cafe_night():
+    """The gelato bar after dark (the cafes are shut): the display freezer
+    humming, a few people, scoops knocking on the cups, the odd laugh."""
+    dur = 48
+    B = Bed(dur, 5201)
+    n = B.n
+    B.add(S.circ_lp(walla("crowd_small", dur, 52011), 3500), -32)
+    B.add(fridge_hum(n, 52012), -37)
+    B.add(np.stack([clinks(n, 52013, 12), clinks(n, 52014, 12)], axis=1), -40)
+    place_save("place_cafe_night_loop", B.x)
+
+
+@builder("place_restaurant")
+def place_restaurant():
+    """Out front of a restaurant at lunch: diners talking at the tables,
+    knives and forks on plates, the kitchen through the door now and then."""
+    dur = 52
+    B = Bed(dur, 5301)
+    n = B.n
+    B.add(walla("chatter", dur, 53011), -27)
+    B.add(S.circ_lp(walla("crowd_small", dur, 53012), 5000), -31)
+    B.add(np.stack([clinks(n, 53013, 40), clinks(n, 53014, 40)], axis=1), -36)
+    for k, at in enumerate(B.times(2, 0.6)):
+        B.put(distant(sizzle(53100 + k, 3.5), 0.5, B.r.uniform(-0.3, 0.3), 53110 + k, room=1.2), at, -31)
+    place_save("place_restaurant_loop", B.x)
+
+
+@builder("place_restaurant_night")
+def place_restaurant_night():
+    """A restaurant at dinner: a fuller room, music low inside, cutlery,
+    glasses, a cork popped, the kitchen."""
+    dur = 56
+    B = Bed(dur, 5401)
+    n = B.n
+    B.add(S.circ_lp(walla("crowd_busy", dur, 54011), 4500), -28)
+    B.add(walla("chatter", dur, 54012), -30)
+    m = room_music(n, 54013, bpm=96, style="latin")
+    B.add(np.stack([m, np.roll(m, secs(0.013))], axis=1), -39)
+    B.add(np.stack([clinks(n, 54014, 44), clinks(n, 54015, 44)], axis=1), -35)
+    for k, at in enumerate(B.times(2, 0.6)):
+        B.put(distant(cork_pop(54100 + k), 0.35, B.r.uniform(-0.5, 0.5), 54110 + k, room=1.0), at, -22)
+    for k, at in enumerate(B.times(2, 0.6)):
+        B.put(distant(sizzle(54200 + k, 3.5), 0.5, B.r.uniform(-0.3, 0.3), 54210 + k, room=1.2), at, -32)
+    place_save("place_restaurant_night_loop", B.x)
+
+
+@builder("place_bar")
+def place_bar():
+    """A bar in the late afternoon: a handful of drinkers, music low through
+    the door, glasses, a shaker now and then."""
+    dur = 52
+    B = Bed(dur, 5501)
+    n = B.n
+    B.add(S.circ_lp(walla("crowd_small", dur, 55011), 5000), -29)
+    m = room_music(n, 55012, bpm=88, style="lounge")
+    B.add(np.stack([m, np.roll(m, secs(0.011))], axis=1), -35)
+    B.add(np.stack([clinks(n, 55013, 22), clinks(n, 55014, 22)], axis=1), -37)
+    for k, at in enumerate(B.times(2, 0.6)):
+        B.put(distant(shaker(55100 + k), 0.35, B.r.uniform(-0.4, 0.4), 55110 + k, room=1.0), at, -23)
+    place_save("place_bar_loop", B.x)
+
+
+@builder("place_bar_night")
+def place_bar_night():
+    """A bar after dark: a packed room behind the door, the music up, the
+    crowd loud, glasses, shakers going."""
+    dur = 56
+    B = Bed(dur, 5601)
+    n = B.n
+    B.add(walla("crowd_busy", dur, 56011), -28)
+    B.add(S.circ_lp(walla("crowd_small", dur, 56012), 4000), -32)
+    leak = 0.5 + 0.5 * sum(env_window(n, st, L, 0.4, 0.8) for st, L in ((9, 7), (33, 10)))
+    m = room_music(n, 56013, bpm=100, style="lounge") * leak
+    B.add(np.stack([m, np.roll(m, secs(0.012))], axis=1), -31)
+    B.add(np.stack([clinks(n, 56014, 34), clinks(n, 56015, 34)], axis=1), -35)
+    for k, at in enumerate(B.times(3, 0.6)):
+        B.put(distant(shaker(56100 + k), 0.35, B.r.uniform(-0.4, 0.4), 56110 + k, room=1.0), at, -22)
+    place_save("place_bar_night_loop", B.x)
+
+
+@builder("place_pub")
+def place_pub():
+    """At the pub's door by day: the front bar's crowd, beer pulled from the
+    taps, glasses, the footy on the telly somewhere under it all."""
+    dur = 52
+    B = Bed(dur, 5701)
+    n = B.n
+    B.add(S.circ_lp(walla("crowd_busy", dur, 57011), 4500), -29)
+    B.add(walla("crowd_small", dur, 57012), -32)
+    B.add(np.stack([clinks(n, 57013, 26), clinks(n, 57014, 26)], axis=1), -37)
+    for k, at in enumerate(B.times(3, 0.6)):
+        B.put(distant(tap_pour(57100 + k, B.r.uniform(3.0, 4.5)), 0.35, B.r.uniform(-0.4, 0.4), 57110 + k,
+                      room=1.0), at, -24)
+    place_save("place_pub_loop", B.x)
+
+
+@builder("place_pub_night")
+def place_pub_night():
+    """The pub at night: a band or a loud playlist inside, the crowd roaring
+    over it, taps, glasses."""
+    dur = 56
+    B = Bed(dur, 5801)
+    n = B.n
+    B.add(walla("crowd_roar", dur, 58011), -28)
+    B.add(S.circ_lp(walla("crowd_busy", dur, 58015), 5000), -30)
+    m = room_music(n, 58012, bpm=118, style="pub")
+    B.add(np.stack([m, np.roll(m, secs(0.012))], axis=1), -31)
+    B.add(np.stack([clinks(n, 58013, 34), clinks(n, 58014, 34)], axis=1), -36)
+    for k, at in enumerate(B.times(3, 0.6)):
+        B.put(distant(tap_pour(58100 + k, B.r.uniform(3.0, 4.5)), 0.35, B.r.uniform(-0.4, 0.4), 58110 + k,
+                      room=1.0), at, -25)
+    place_save("place_pub_night_loop", B.x)
+
+
+
 def main(argv):
     import json
     names = list(BUILD)
