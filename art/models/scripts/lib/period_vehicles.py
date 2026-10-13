@@ -49,7 +49,7 @@ ROOF = H - 0.012
 def _mats():
     M = CV._common()
     M.update({
-        "paint": _m("Paint", "#9cb79b", 0.45, 0.05),
+        "paint": _m("Paint", "#657f57", 0.45, 0.05),
         "glass": C.mat("VC_Glass", "#6d8893", rough=0.03, metal=0.35, alpha=0.5),
         "trim": _m("VC_Trim", "#56604f", 0.85),
         "liner": _m("VC_Headliner", "#cfcbbb", 0.9),
