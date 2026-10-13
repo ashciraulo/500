@@ -7,7 +7,7 @@ extends SceneTree
 ## display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
-##     --script res://tools/findables_screens.gd -- --no-save shots=/tmp/findables [only=clues,parts,cuttings,barns,badges] [ids=tape_1,...]
+##     --script res://tools/findables_screens.gd -- --no-save shots=/tmp/findables [only=clues,parts,cuttings,barns,badges] [ids=tape_1,...] [top]
 
 const FAR := 40.0
 const NEAR := 15.0
@@ -15,6 +15,8 @@ const NEAR := 15.0
 var _shots := "/tmp/findables"
 var _only := PackedStringArray()
 var _ids := PackedStringArray()
+var _top := false
+var _cam: Camera3D
 var _main: Node
 var _world: Node3D
 var _car: RigidBody3D
@@ -32,6 +34,8 @@ func _initialize() -> void:
 			_only = arg.trim_prefix("only=").split(",")
 		elif arg.begins_with("ids="):
 			_ids = arg.trim_prefix("ids=").split(",")
+		elif arg == "top":
+			_top = true
 	DirAccess.make_dir_recursive_absolute(_shots)
 
 
@@ -94,14 +98,25 @@ func _scripted(node: Node, name: String) -> Array[Node3D]:
 	return out
 
 
-## Shots of `at` from the nearest road: FAR then NEAR metres back along it.
+## Shots of `at` from the nearest road: FAR then NEAR metres back along it
+## (and with `top`, from up above, for ones the roads don't come near).
 func _approach(name: String, at: Vector3, setup: Callable) -> void:
 	for d in [FAR, NEAR]:
 		var first: bool = d == FAR
 		_steps.append([name + "_%dm" % int(d), func() -> void:
 			if first:
 				setup.call()
+			_drive_view()
 			_place_car(at, d), 150 if first else 50])
+	if _top:
+		_steps.append([name + "_top", func() -> void:
+			_cam.current = true
+			_cam.global_position = at + Vector3(0.0, 14.0, 10.0)
+			_cam.look_at(at), 40])
+
+
+func _drive_view() -> void:
+	(_world.get_node("CameraRig/Camera3D") as Camera3D).current = true
 
 
 func _place_car(at: Vector3, back: float) -> void:
@@ -159,6 +174,9 @@ func _process(_delta: float) -> bool:
 			MapData.shared().wait()
 			_main.get_node("HUD").call("hide_help")
 			_m = _main.find_child("Mystery", true, false)
+			_cam = Camera3D.new()
+			_cam.fov = 70.0
+			_world.add_child(_cam)
 			# No act title card over the shots.
 			var people := _main.find_child("StoryPeople", true, false)
 			if people:
