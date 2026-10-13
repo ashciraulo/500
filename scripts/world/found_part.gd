@@ -14,12 +14,16 @@ const WALK_RADIUS := 2.2
 @export var part_id := ""
 ## Only taken on foot, not by stopping the car near it.
 @export var on_foot := false
+## What it's left on so it shows from the road (found_parts.json `on`; see
+## MysteryProps.build_stand), or "" for the ground.
+@export var stand := ""
 
 var _visual: Node3D
 var _car: Node3D
 var _player: Node
 var _check := 0.0
 var _grounded := false
+var _stand_body: CollisionObject3D
 
 
 ## The found-only parts and where they are, from DATA_PATH.
@@ -41,6 +45,12 @@ func _ready() -> void:
 		if not ResourceLoader.exists(model_path):
 			# Parts made per body family (roof racks): show the modern one.
 			model_path = CarController.PART_MODEL_PATH % (part.visual + "_modern")
+	var top := 0.0
+	var base := MysteryProps.build_stand(stand)
+	if base:
+		_visual.add_child(base)
+		top = float(base.get_meta("top", 0.0))
+		_stand_body = base.get_node(^"Body") as CollisionObject3D
 	if part and part.slot == &"plate":
 		_visual.add_child(_plate(part.visual))
 	elif model_path != "" and ResourceLoader.exists(model_path):
@@ -62,14 +72,15 @@ func _ready() -> void:
 			model.position.y = 0.06
 		elif part.slot == &"gear_knob":
 			model.position.y = 0.05
+			model.scale = Vector3.ONE * 1.5  # a bit bigger than life, so it reads
 		else:
 			model.position.y = 0.15 if part.slot != &"roof" else 0.25
-	var glint := OmniLight3D.new()
-	glint.light_color = Color(1.0, 0.92, 0.75)
-	glint.light_energy = 0.6
-	glint.omni_range = 3.0
-	glint.position.y = 0.8
-	_visual.add_child(glint)
+	for child in _visual.get_children():
+		if child != base:
+			(child as Node3D).position.y += top
+	var marker := FindableMarker.new()
+	marker.height = top + (1.3 if part and part.slot == &"roof" else 1.0)
+	_visual.add_child(marker)
 	_refresh()
 
 
@@ -136,6 +147,8 @@ func _can_reach(player: Node3D) -> bool:
 		skip.append((player as CollisionObject3D).get_rid())
 	if _car is CollisionObject3D:
 		skip.append((_car as CollisionObject3D).get_rid())
+	if _stand_body:
+		skip.append(_stand_body.get_rid())
 	query.exclude = skip
 	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
@@ -144,8 +157,12 @@ func _can_reach(player: Node3D) -> bool:
 ## under a shed roof: the tailpipe sits on the Kensington shed's bench).
 func _snap_to_ground() -> void:
 	var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 2.0, global_position + Vector3.DOWN * 12.0, 1)
+	var skip: Array[RID] = []
 	if _car is CollisionObject3D:
-		query.exclude = [(_car as CollisionObject3D).get_rid()]
+		skip.append((_car as CollisionObject3D).get_rid())
+	if _stand_body:
+		skip.append(_stand_body.get_rid())
+	query.exclude = skip
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit:
 		global_position = hit.position
