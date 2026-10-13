@@ -290,6 +290,7 @@ func open_picker() -> void:
 	_picker.layer = 8
 	_picker.process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().root.add_child(_picker)  # on the window, not in the lo-fi world view
+	UiStyle.close_keys(_picker, close_picker)  # Esc, or F as it opened
 	var dim := UiStyle.backdrop()
 	_picker.add_child(dim)
 	var card: Array = UiStyle.centred_card(dim, Vector2(440, 0))
@@ -346,12 +347,6 @@ func close_picker() -> void:
 
 func is_picking() -> bool:
 	return _picker != null
-
-
-func _input(event: InputEvent) -> void:
-	if _picker and event.is_action_pressed("pause"):
-		close_picker()
-		get_viewport().set_input_as_handled()
 
 
 ## The player and the crate, for OnFoot.

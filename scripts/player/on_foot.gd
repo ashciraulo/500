@@ -534,6 +534,7 @@ func get_in() -> void:
 	if not _car or in_car or _busy:
 		return
 	_busy = true
+	velocity = Vector3.ZERO  # Stopped at the door (no more footsteps).
 	var side := _driver_side()
 	_swing_door(side, true)
 	_car_sound("door", [true, false, 0])
@@ -652,6 +653,7 @@ func _fits(feet: Vector3, radius := RADIUS) -> bool:
 
 func _set_body_active(on: bool) -> void:
 	visible = on
+	velocity = Vector3.ZERO
 	_shape.disabled = not on or noclip
 	set_physics_process(on)
 

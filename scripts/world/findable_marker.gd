@@ -28,6 +28,7 @@ const SPEED := 0.5
 var _light: OmniLight3D
 var _sparkle: MeshInstance3D
 var _pool: ShaderMaterial
+var _sparkle_material: ShaderMaterial
 
 
 func _ready() -> void:
@@ -50,6 +51,7 @@ func _ready() -> void:
 	material.set_shader_parameter(&"far", far)
 	material.set_shader_parameter(&"speed", SPEED)
 	_sparkle.material_override = material
+	_sparkle_material = material
 	_sparkle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# The shader grows it with distance; don't let the quad's own box cull it.
 	_sparkle.custom_aabb = AABB(Vector3(-4, -4, -4), Vector3(8, 8, 8))
@@ -80,3 +82,4 @@ func _process(_delta: float) -> void:
 	_light.visible = dark > 0.01
 	_light.light_energy = lerpf(energy.x, energy.y, breath) * dark
 	_pool.set_shader_parameter(&"energy", 1.1 * dark)
+	_sparkle_material.set_shader_parameter(&"day", 1.0 - dark)
