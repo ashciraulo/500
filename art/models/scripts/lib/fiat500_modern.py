@@ -494,12 +494,12 @@ def _front(ref, M, spec, abarth):
         bar = []
         for i in range(13):
             x = 0.072 + 0.29 * i / 12
-            half = 0.013 * (1 - (i / 12) ** 3 * 0.75)
+            half = 0.019 * (1 - (i / 12) ** 3 * 0.7)
             z = 0.672 + (x - 0.07) * 0.035
             bar.append((sx * x, z + half))
         for i in reversed(range(13)):
             x = 0.072 + 0.29 * i / 12
-            half = 0.013 * (1 - (i / 12) ** 3 * 0.75)
+            half = 0.019 * (1 - (i / 12) ** 3 * 0.7)
             z = 0.672 + (x - 0.07) * 0.035
             bar.append((sx * x, z - half))
         if sx < 0:
@@ -532,8 +532,8 @@ def _front(ref, M, spec, abarth):
             ledge = [(sx * (0.23 + 0.39 * i / 10), 0.468 + 0.03 * (i / 10) ** 2) for i in range(11)]
             out.append(K.project_line("bumper_strip", ref, ledge, K.front_frame(), 0.018, chrome, offset=0.006))
         # black lower lip across the bottom of the bumper
-        lip = [(-0.50, 0.24), (0.50, 0.24), (0.54, 0.265), (0.52, 0.30), (-0.52, 0.30), (-0.54, 0.265)]
-        out.append(K.project_poly("bumper_lip", ref, lip, K.front_frame(), M["trim"], offset=0.006, cuts=6))
+        lip = [(-0.48, 0.25), (0.48, 0.25), (0.52, 0.272), (0.50, 0.305), (-0.50, 0.305), (-0.52, 0.272)]
+        out.append(K.project_poly("bumper_lip", ref, lip, K.front_frame(), M["trim"], offset=0.01, cuts=10))
     pz = 0.36 if abarth else 0.48
     out.append(K.stick_box("plate_holder", K.on_front(ref, 0, pz), (0.42, 0.16, 0.03), M["trim"], proud=0.02))
     plate = K.stick_box("plate_f", K.on_front(ref, 0, pz), (0.372, 0.134, 0.01), M["plate"], proud=0.05)
