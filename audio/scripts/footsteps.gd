@@ -26,6 +26,10 @@ const SURFACE_ALIAS := {
 	"wood": "timber", "rumble": "concrete",
 }
 
+## Loudest a landing gets (x a step's level): a long drop is a firmer step,
+## not a thump that hits the Effects limiter.
+const LANDING_MAX := 1.1
+
 ## Metres per step at a walk, and at a run (strides lengthen with speed).
 @export var stride_walk := 0.7
 @export var stride_run := 1.15
@@ -62,7 +66,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var on_floor := _body.is_on_floor()
 	if on_floor and not _was_on_floor and _fall_speed > 2.5:
-		_step(clampf(_fall_speed / 6.0, 0.6, 1.4))  # landing
+		_step(clampf(_fall_speed / 6.0, 0.6, LANDING_MAX))  # landing
 		_travel = 0.0
 	_was_on_floor = on_floor
 	_fall_speed = maxf(-_body.velocity.y, 0.0) if not on_floor else 0.0
