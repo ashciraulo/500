@@ -24,8 +24,8 @@ func _on_node_added(node: Node) -> void:
 		var button := node as BaseButton
 		button.focus_entered.connect(func() -> void:
 			if Time.get_ticks_msec() - _nav_at < 250:
-				UiStyle.sound("ui_menu_move", -12.0))
-		button.pressed.connect(func() -> void: UiStyle.sound("ui_menu_select", -10.0))
+				UiStyle.click("ui_menu_move", -12.0, UiStyle.CLICK_MOVE))
+		button.pressed.connect(func() -> void: UiStyle.click("ui_menu_select", -10.0, UiStyle.CLICK_PRESS))
 		# The mouse takes the focus with it, so only one row looks picked.
 		button.mouse_entered.connect(_hover_focus.bind(button))
 
