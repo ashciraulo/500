@@ -22,20 +22,36 @@ signal player_driving_changed(driving: bool)
 
 const ROOT := "res://audio"
 
-## Bus name -> parent bus. Created in this order if they don't already exist.
+## Bus name -> parent bus, in order (a bus sends only to one before it).
+## Under Master are the four Sound sliders: Your car, Music and radio,
+## Surroundings and Effects. Every sound goes through one of them, so each
+## slider turns down its own sounds and nothing else (tools/sound_check.gd).
 const BUSES := [
-	["Music", "Master"],
-	["UI", "Master"],
-	["Radio", "Master"],
-	["Cabin", "Master"],     # inside-the-car sounds that are never muffled
-	["World", "Master"],     # everything outside the cabin; muffled when inside
-	["Engine", "World"],
-	["Vehicles", "World"],   # other people's cars, buses and trains
-	["Tyres", "World"],
-	["SFX", "World"],
-	["Ambience", "World"],
-	["Weather", "World"],
+	["Car", "Master"],         # Your car slider
+	["MusicRadio", "Master"],  # Music and radio slider
+	["Ambient", "Master"],     # Surroundings slider
+	["Effects", "Master"],     # Effects slider
+	["Cabin", "Car"],          # in the cabin: indicator, wipers, key, belts (never muffled)
+	["Engine", "Car"],
+	["Tyres", "Car"],
+	["Body", "Car"],           # your car from outside: horn, doors, knocks and crashes
+	["Music", "MusicRadio"],   # menu and job music, stings, the record player
+	["Radio", "MusicRadio"],
+	["MyMusic", "Radio"],      # your own songs, levelled on the way in (radio.gd)
+	["Ambience", "Ambient"],   # zone beds and places
+	["Weather", "Ambient"],
+	["Vehicles", "Ambient"],   # other people's cars, buses and trains
+	["Outdoors", "Ambient"],   # life out in the world: birds, people, the city
+	["Roof", "Ambient"],       # rain on your car's roof and windscreen (never muffled)
+	["SFX", "Effects"],        # everything else in the world
+	["UI", "Effects"],         # menus and notices
 ]
+## Each bus's own level in the mix (dB); the rest sit at 0. Cabin, Roof, UI,
+## Ambience and Weather are set as you move about (_apply_inside()).
+const BUS_DB := {"Engine": -3.0, "Tyres": -3.0, "Vehicles": -3.0, "Music": -3.0, "Radio": -2.0}
+## Heard muffled from inside the car (a low-pass and a little low-end lift,
+## the way a closed cabin sounds): everything outside it.
+const MUFFLED := ["Engine", "Tyres", "Body", "Ambience", "Weather", "Vehicles", "Outdoors", "SFX"]
 
 var radio: Node
 var hooks: Node
@@ -60,12 +76,8 @@ var _last_variant := {}
 var _inside := false
 var _indoors := false
 var _driving := false
-var _base_db := {}          # mixed levels of the buses set_indoors() turns down
-var _effects_db := 0.0      # the Effects slider, which also covers the Cabin and UI buses
-var _car_db := 0.0          # the Your car slider: Engine, Tyres, Cabin
-var _surround_db := 0.0     # the Weather and street slider: Ambience, Weather, Vehicles
-var _world_lp: AudioEffectLowPassFilter
-var _world_shelf: AudioEffectEQ6
+var _muffles := {}          # bus -> [low-pass, shelf] switched on inside the car
+var _indoor_lps := {}       # bus -> the low-pass that dulls it through the townhouse walls
 var _radio_lp: AudioEffectLowPassFilter
 var _engine_comp: AudioEffectCompressor
 var _music_player: AudioStreamPlayer
@@ -167,107 +179,114 @@ func listener() -> Node3D:
 # ---------------------------------------------------------------------------
 
 func _build_buses() -> void:
-	# default_bus_layout.tres already holds this layout; this keeps the game
-	# working if that file is missing or out of date.
-	for pair in BUSES:
-		var idx := AudioServer.get_bus_index(pair[0])
-		if idx == -1:
-			AudioServer.add_bus()
-			idx = AudioServer.bus_count - 1
-			AudioServer.set_bus_name(idx, pair[0])
-		if AudioServer.get_bus_send(idx) != pair[1]:
-			AudioServer.set_bus_send(idx, pair[1])
+	# The whole layout is built here (default_bus_layout.tres holds the same
+	# buses for the editor), so an old or edited layout file can't leave a
+	# bus missing, sending somewhere else or with its effects in another order.
+	AudioServer.bus_count = 1 + BUSES.size()
+	for i in BUSES.size():
+		AudioServer.set_bus_name(i + 1, "_bus_%d" % i)  # names must be free to take
+	for i in BUSES.size():
+		var idx := i + 1
+		AudioServer.set_bus_name(idx, BUSES[i][0])
+		AudioServer.set_bus_send(idx, BUSES[i][1])
+		AudioServer.set_bus_volume_db(idx, BUS_DB.get(BUSES[i][0], 0.0))
+		AudioServer.set_bus_mute(idx, false)
+		while AudioServer.get_bus_effect_count(idx) > 0:
+			AudioServer.remove_bus_effect(idx, 0)
 	var master := AudioServer.get_bus_index("Master")
 	if AudioServer.get_bus_effect_count(master) == 0:
 		var lim := AudioEffectHardLimiter.new()
 		lim.ceiling_db = -1.0
 		AudioServer.add_bus_effect(master, lim)
-	# World: muffled when the listener is inside the car (low-pass plus a
-	# little low-end lift, the way a closed cabin sounds).
-	var world := AudioServer.get_bus_index("World")
-	if AudioServer.get_bus_effect_count(world) == 0:
-		_world_lp = AudioEffectLowPassFilter.new()
-		_world_lp.cutoff_hz = 1400.0
-		_world_lp.resonance = 0.6
-		AudioServer.add_bus_effect(world, _world_lp)
-		_world_shelf = AudioEffectEQ6.new()
-		_world_shelf.set_band_gain_db(0, 4.0)   # 32 Hz
-		_world_shelf.set_band_gain_db(1, 3.0)   # 100 Hz
-		_world_shelf.set_band_gain_db(4, -3.0)  # 3.2 kHz
-		_world_shelf.set_band_gain_db(5, -6.0)  # 10 kHz
-		AudioServer.add_bus_effect(world, _world_shelf)
-	else:
-		_world_lp = AudioServer.get_bus_effect(world, 0) as AudioEffectLowPassFilter
-	for bus in ["Vehicles", "Tyres", "Engine"]:
-		_base_db[bus] = AudioServer.get_bus_volume_db(AudioServer.get_bus_index(bus))
 	# Engine: the loops run from about -45 LUFS at idle to -22 pulling hard,
 	# so a compressor evens them out: the idle comes up over the rain and
 	# cruising stays under the radio. The tone still says how hard it's working.
-	var eng := AudioServer.get_bus_index("Engine")
-	if AudioServer.get_bus_effect_count(eng) == 0:
-		_engine_comp = AudioEffectCompressor.new()
-		_engine_comp.threshold = ENGINE_COMP_THRESHOLD_DB
-		_engine_comp.ratio = ENGINE_COMP_RATIO
-		_engine_comp.gain = ENGINE_COMP_GAIN_DB
-		_engine_comp.attack_us = 5000.0
-		_engine_comp.release_ms = 300.0
-		AudioServer.add_bus_effect(eng, _engine_comp)
-	else:
-		_engine_comp = AudioServer.get_bus_effect(eng, 0) as AudioEffectCompressor
+	_engine_comp = AudioEffectCompressor.new()
+	_engine_comp.threshold = ENGINE_COMP_THRESHOLD_DB
+	_engine_comp.ratio = ENGINE_COMP_RATIO
+	_engine_comp.gain = ENGINE_COMP_GAIN_DB
+	_engine_comp.attack_us = 5000.0
+	_engine_comp.release_ms = 300.0
+	AudioServer.add_bus_effect(AudioServer.get_bus_index("Engine"), _engine_comp)
 	# Tyres: the roar sits at its cap close up, but layers, road joints and cat's
 	# eyes stack on it at speed; this holds the bus near the cruising level so
 	# the radio stays on top. Kerbs and bumps still punch through (5 ms attack).
-	var tyres := AudioServer.get_bus_index("Tyres")
-	if AudioServer.get_bus_effect_count(tyres) == 0:
-		var comp := AudioEffectCompressor.new()
-		comp.threshold = TYRES_COMP_THRESHOLD_DB
-		comp.ratio = TYRES_COMP_RATIO
-		comp.attack_us = 5000.0
-		comp.release_ms = 300.0
-		AudioServer.add_bus_effect(tyres, comp)
-	# Ambience and Weather: dulled through the walls when you're indoors at home.
+	var comp := AudioEffectCompressor.new()
+	comp.threshold = TYRES_COMP_THRESHOLD_DB
+	comp.ratio = TYRES_COMP_RATIO
+	comp.attack_us = 5000.0
+	comp.release_ms = 300.0
+	AudioServer.add_bus_effect(AudioServer.get_bus_index("Tyres"), comp)
+	# Dulled through the walls when you're indoors at home (first on the bus:
+	# the tests look for it there).
 	for bus in INDOOR_DULLED:
+		var lp := AudioEffectLowPassFilter.new()
+		lp.cutoff_hz = 800.0
+		lp.resonance = 0.5
+		AudioServer.add_bus_effect(AudioServer.get_bus_index(bus), lp, 0)
+		_indoor_lps[bus] = lp
+	# Heard from inside the car.
+	for bus in MUFFLED:
 		var i := AudioServer.get_bus_index(bus)
-		if AudioServer.get_bus_effect_count(i) == 0:
-			var lp := AudioEffectLowPassFilter.new()
-			lp.cutoff_hz = 800.0
-			lp.resonance = 0.5
-			AudioServer.add_bus_effect(i, lp)
+		var lp := AudioEffectLowPassFilter.new()
+		lp.cutoff_hz = 1400.0
+		lp.resonance = 0.6
+		var shelf := AudioEffectEQ6.new()
+		shelf.set_band_gain_db(0, 4.0)   # 32 Hz
+		shelf.set_band_gain_db(1, 3.0)   # 100 Hz
+		shelf.set_band_gain_db(4, -3.0)  # 3.2 kHz
+		shelf.set_band_gain_db(5, -6.0)  # 10 kHz
+		AudioServer.add_bus_effect(i, lp)
+		AudioServer.add_bus_effect(i, shelf)
+		_muffles[bus] = [lp, shelf]
+	# My Music: the radio listens to each song here to level it (radio.gd).
+	var cap := AudioEffectCapture.new()
+	cap.buffer_length = 0.5
+	AudioServer.add_bus_effect(AudioServer.get_bus_index("MyMusic"), cap)
 	# Radio: a small car stereo. Band-limited, a touch of drive, compressed.
 	var r := AudioServer.get_bus_index("Radio")
-	if AudioServer.get_bus_effect_count(r) == 0:
-		var hpf := AudioEffectHighPassFilter.new()
-		hpf.cutoff_hz = 140.0
-		AudioServer.add_bus_effect(r, hpf)
-		_radio_lp = AudioEffectLowPassFilter.new()
-		_radio_lp.cutoff_hz = 7500.0
-		AudioServer.add_bus_effect(r, _radio_lp)
-		var eq := AudioEffectEQ6.new()
-		eq.set_band_gain_db(1, 2.5)   # 100 Hz door-speaker thump
-		eq.set_band_gain_db(3, 2.0)   # 1 kHz honk
-		eq.set_band_gain_db(5, -8.0)  # 10 kHz
-		AudioServer.add_bus_effect(r, eq)
-		var dist := AudioEffectDistortion.new()
-		dist.mode = AudioEffectDistortion.MODE_CLIP
-		dist.pre_gain = 2.0
-		dist.drive = 0.08
-		dist.post_gain = -2.0
-		AudioServer.add_bus_effect(r, dist)
-		var comp := AudioEffectCompressor.new()
-		comp.threshold = -18.0
-		comp.ratio = 3.0
-		AudioServer.add_bus_effect(r, comp)
-	else:
-		_radio_lp = AudioServer.get_bus_effect(r, 1) as AudioEffectLowPassFilter
+	var hpf := AudioEffectHighPassFilter.new()
+	hpf.cutoff_hz = 140.0
+	AudioServer.add_bus_effect(r, hpf)
+	_radio_lp = AudioEffectLowPassFilter.new()
+	_radio_lp.cutoff_hz = 7500.0
+	AudioServer.add_bus_effect(r, _radio_lp)
+	var eq := AudioEffectEQ6.new()
+	eq.set_band_gain_db(1, 2.5)   # 100 Hz door-speaker thump
+	eq.set_band_gain_db(3, 2.0)   # 1 kHz honk
+	eq.set_band_gain_db(5, -8.0)  # 10 kHz
+	AudioServer.add_bus_effect(r, eq)
+	var dist := AudioEffectDistortion.new()
+	dist.mode = AudioEffectDistortion.MODE_CLIP
+	dist.pre_gain = 2.0
+	dist.drive = 0.08
+	dist.post_gain = -2.0
+	AudioServer.add_bus_effect(r, dist)
+	# Slow enough to ride the song rather than each beat: with a fast attack
+	# it clamped every kick drum and loud songs pumped. The make-up gain keeps
+	# the stations where they were with the old fast one.
+	var rcomp := AudioEffectCompressor.new()
+	rcomp.threshold = -18.0
+	rcomp.ratio = 3.0
+	rcomp.attack_us = RADIO_COMP_ATTACK_US
+	rcomp.release_ms = 250.0
+	rcomp.gain = RADIO_COMP_GAIN_DB
+	AudioServer.add_bus_effect(r, rcomp)
 	_apply_inside()
 
 
 ## Volume sliders from the Settings autoload, 0..1 on top of the mix's own
-## bus levels (so 1 = as mixed, not 0 dB).
+## bus levels (so 1 = as mixed, not 0 dB), each on its own bus under Master.
 const SETTINGS_BUSES := {
-	"volume_master": ["Master", 0.0], "volume_music": ["Music", -3.0],
-	"volume_radio": ["Radio", -2.0], "volume_effects": ["World", 0.0],
+	"volume_master": "Master", "volume_music": "MusicRadio",
+	"volume_ambient": "Ambient", "volume_effects": "Effects",
 }
+## Your car goes louder than the mix: half way (CAR_AS_MIXED, its default)
+## is as mixed and all the way up is CAR_MAX_DB over that, enough for your
+## engine to sit clearly over the radio (sound_check). Settings.VOLUME_CAR_DEFAULT
+## matches CAR_AS_MIXED.
+const CAR_AS_MIXED := 0.5
+const CAR_MAX_DB := 12.0
 
 
 func apply_volume_settings() -> void:
@@ -275,23 +294,21 @@ func apply_volume_settings() -> void:
 	if settings == null:
 		return
 	for key in SETTINGS_BUSES:
-		var idx := AudioServer.get_bus_index(SETTINGS_BUSES[key][0])
+		var idx := AudioServer.get_bus_index(SETTINGS_BUSES[key])
 		if idx >= 0:
-			var v := clampf(float(settings.get(key)), 0.0, 1.0)
-			AudioServer.set_bus_volume_db(idx, SETTINGS_BUSES[key][1] + linear_to_db(maxf(v, 0.0001)))
-	# Cabin sounds (rain on the roof, wipers, indicator, key) and menu sounds
-	# are effects too, but skip World so they aren't muffled with the street:
-	# _apply_inside() adds the Effects slider to their buses' own levels, and
-	# the Your car / Weather and street sliders to the buses under it.
-	_effects_db = _slider_db(settings, "volume_effects")
-	_car_db = _slider_db(settings, "volume_car")
-	_surround_db = _slider_db(settings, "volume_surroundings")
-	_apply_inside()
+			AudioServer.set_bus_volume_db(idx, _slider_db(settings, key))
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Car"), car_slider_db(settings.get("volume_car")))
 
 
 static func _slider_db(settings: Node, key: String) -> float:
 	var v = settings.get(key)
 	return linear_to_db(maxf(clampf(float(v) if v != null else 1.0, 0.0, 1.0), 0.0001))
+
+
+## The Car bus level (dB) for the Your car slider at v (0..1).
+static func car_slider_db(v) -> float:
+	var x := clampf(float(v) if v != null else CAR_AS_MIXED, 0.0, 1.0)
+	return CAR_MAX_DB + 2.0 * linear_to_db(maxf(x, 0.0001)) if x > 0.0 else -80.0
 
 
 ## The Engine bus compressor (see _build_buses): where it starts, how hard it
@@ -302,6 +319,10 @@ const ENGINE_COMP_GAIN_DB := 9.0
 ## The Tyres bus compressor: where the roar stops growing with speed.
 const TYRES_COMP_THRESHOLD_DB := -30.0
 const TYRES_COMP_RATIO := 3.0
+## The Radio bus compressor's attack (10 ms: it rides the song, not each
+## beat) and the make-up gain that keeps the stations at their old level.
+const RADIO_COMP_ATTACK_US := 10000.0
+const RADIO_COMP_GAIN_DB := -3.0
 
 
 ## Settings menu hook: linear volume 0..1 for a bus ("Master", "Music", "Radio", ...).
@@ -318,8 +339,9 @@ func get_bus_volume(bus: String) -> float:
 
 ## Buses heard through the townhouse walls (low-passed indoors), and how far
 ## down each one goes. SFX stays as it is: the house's own sounds are on it.
-const INDOOR_DULLED := ["Ambience", "Weather"]
-const INDOOR_DB := {"Ambience": -10.0, "Weather": -6.0, "Vehicles": -12.0, "Tyres": -12.0, "Engine": -8.0}
+const INDOOR_DULLED := ["Ambience", "Weather", "Outdoors"]
+const INDOOR_DB := {"Ambience": -10.0, "Weather": -6.0, "Outdoors": -8.0, "Vehicles": -12.0,
+		"Tyres": -12.0, "Engine": -8.0, "Body": -8.0}
 
 
 func set_player_inside(inside: bool) -> void:
@@ -369,11 +391,11 @@ func is_indoors() -> bool:
 
 
 ## Menu clicks and notices: the files are mastered hot, so the UI bus sits
-## down here to match the game around it (still under the Effects slider).
+## down here to match the game around it (under the Effects slider).
 const UI_DB := -14.0
 
-## Cabin bus level in the car and heard from outside it, before the Effects
-## slider. In the car it sits under the radio.
+## Cabin (and Roof) bus level in the car and heard from outside it. In the
+## car it sits under the radio.
 const CABIN_DB := -6.0
 const CABIN_OUT_DB := -20.0
 ## At the wheel in the chase view: the radio's trim and tone, and how far the
@@ -385,9 +407,10 @@ const CHASE_AMBIENCE_DB := -6.0
 
 
 func _apply_inside() -> void:
-	var world := AudioServer.get_bus_index("World")
-	AudioServer.set_bus_effect_enabled(world, 0, _inside)
-	AudioServer.set_bus_effect_enabled(world, 1, _inside)
+	for bus in _muffles:
+		var i := AudioServer.get_bus_index(bus)
+		for fx in _muffles[bus]:
+			_set_effect(i, fx, _inside)
 	# Out of the car the radio is faint and dull, coming through the glass;
 	# at the wheel in the chase view only a little duller.
 	var chase := _driving and not _inside
@@ -395,24 +418,30 @@ func _apply_inside() -> void:
 		_radio_lp.cutoff_hz = 7500.0 if _inside else (CHASE_RADIO_LP_HZ if chase else 1200.0)
 	# Cabin sounds (indicator, wipers, rain on the roof) are distant from outside.
 	# The radio applies its own trim (radio.gd asks radio_trim_db() on the signals).
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Cabin"), (CABIN_DB if _inside else CABIN_OUT_DB) + _effects_db + _car_db)
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("UI"), UI_DB + _effects_db)
+	var levels := {"Cabin": CABIN_DB if _inside else CABIN_OUT_DB, "Roof": CABIN_DB if _inside else CABIN_OUT_DB,
+			"UI": UI_DB, "Outdoors": 0.0, "Body": 0.0}
 	# Inside, the street and the weather drop well under the radio and engine.
-	var levels := {"Ambience": -9.0 if _inside else (CHASE_AMBIENCE_DB if chase else 0.0), "Weather": -18.0 if _inside else (CHASE_WEATHER_DB if chase else -4.0),
-			"Vehicles": _base_db.get("Vehicles", 0.0), "Tyres": _base_db.get("Tyres", 0.0),
-			"Engine": _base_db.get("Engine", 0.0)}
+	levels["Ambience"] = -9.0 if _inside else (CHASE_AMBIENCE_DB if chase else 0.0)
+	levels["Weather"] = -18.0 if _inside else (CHASE_WEATHER_DB if chase else -4.0)
+	for bus in ["Vehicles", "Tyres", "Engine"]:
+		levels[bus] = BUS_DB[bus]
 	# Indoors at home the street is through the walls: dull and well down.
 	var home := _indoors and not _inside
 	for bus in INDOOR_DB:
 		levels[bus] += INDOOR_DB[bus] if home else 0.0
-	for bus in ["Engine", "Tyres"]:
-		levels[bus] += _car_db
-	for bus in ["Ambience", "Weather", "Vehicles"]:
-		levels[bus] += _surround_db
 	for bus in levels:
 		AudioServer.set_bus_volume_db(AudioServer.get_bus_index(bus), levels[bus])
-	for bus in INDOOR_DULLED:
-		AudioServer.set_bus_effect_enabled(AudioServer.get_bus_index(bus), 0, home)
+	for bus in _indoor_lps:
+		_set_effect(AudioServer.get_bus_index(bus), _indoor_lps[bus], home)
+
+
+## Switches one of this script's effects on a bus, wherever it sits (the late
+## city adds its own after them).
+static func _set_effect(bus_idx: int, fx: AudioEffect, on: bool) -> void:
+	for e in AudioServer.get_bus_effect_count(bus_idx):
+		if AudioServer.get_bus_effect(bus_idx, e) == fx:
+			AudioServer.set_bus_effect_enabled(bus_idx, e, on)
+			return
 
 
 # ---------------------------------------------------------------------------

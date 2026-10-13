@@ -408,7 +408,7 @@ func _update_roar() -> void:
 		_roar = AudioStreamPlayer3D.new()
 		_roar.name = "Crowd"
 		_roar.stream = audio.stream("traffic/traffic_crowd_roar_loop", true)
-		_roar.bus = &"SFX" if AudioServer.get_bus_index(&"SFX") >= 0 else &"Master"
+		_roar.bus = &"Outdoors" if AudioServer.get_bus_index(&"Outdoors") >= 0 else &"Master"
 		_roar.unit_size = 60.0
 		_roar.max_distance = 1500.0
 		_roar.volume_db = 4.0
@@ -420,4 +420,4 @@ func _update_roar() -> void:
 func _sound(sound_name: String, p: Vector3, db: float) -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("has") and audio.has(sound_name):
-		audio.play_at(sound_name, p, db, "SFX")
+		audio.play_at(sound_name, p, db, "Outdoors")

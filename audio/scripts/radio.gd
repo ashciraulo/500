@@ -17,6 +17,10 @@ extends Node
 ## subfolder becomes a playlist, and "All music" plays everything. Files are
 ## read at runtime, so no import step. Track names come from the file's tags
 ## when present, otherwise from the file name ("Artist - Title.mp3").
+## Songs come mastered at all sorts of levels (most far louder than the
+## stations), so each one is levelled to the stations as it plays: the
+## MyMusic bus measures it, and the level is kept for next time
+## (user://my_music_levels.cfg), so a song heard once starts right.
 ##
 ## Controls for the dash / steering-wheel buttons:
 ##   next_station(), previous_station(), set_station(id), turn_off()
@@ -63,6 +67,37 @@ var _pips_playing := false
 var _current_title := ""
 var _current_artist := ""
 
+## My Music levelling: what the songs measure on the MyMusic bus's meter
+## (_measure(), about 1 dB over their LUFS) when they sit with the stations
+## (whose songs are mastered to -16 LUFS), a first guess for a song not
+## heard before (most are mastered about this much louder than that), how
+## far a song may be turned up or down, and how long to listen before
+## settling on a level.
+const MY_MUSIC_TARGET_DB := -15.0
+const MY_MUSIC_GUESS_DB := -7.0
+const MY_MUSIC_TRIM_RANGE := Vector2(-20.0, 8.0)
+const LEVEL_FIRST_S := 6.0
+const LEVEL_SURE_S := 25.0
+const LEVEL_FIRST_UP_DB := 3.0
+const LEVEL_ENOUGH_S := 120.0    # listening longer than this changes nothing
+const LEVELS_PATH := "user://my_music_levels.cfg"
+const BLOCK_S := 0.4
+var _mm_trim := 0.0              # dB on the current song
+var _mm_trim_tween: Tween
+var _mm_key := ""                # the current song's key in the levels file
+var _mm_known := false           # its level came from the file
+var _mm_settled := 0             # 0 guessing, 1 first level set, 2 sure
+var _capture: AudioEffectCapture
+var _blocks := PackedFloat32Array()   # mean square per BLOCK_S, the song's own (trim taken off)
+var _block_sum := 0.0
+var _block_n := 0
+var _kw := PackedFloat64Array([0, 0, 0, 0, 0, 0, 0, 0])  # K-weighting filter state, left and right
+## K-weighting at 48 kHz (BS.1770): the shelf, then the high-pass (b = 1, -2, 1).
+const K_B1 := [1.53512485958697, -2.69169618940638, 1.19839281085285]
+const K_A1 := [1.0, -1.69065929318241, 0.73248077421585]
+const K_A2 := [1.0, -1.99004745483398, 0.99007225036621]
+var _levels: ConfigFile
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -73,6 +108,10 @@ func _ready() -> void:
 	_static = AudioStreamPlayer.new()
 	_static.bus = "Radio"
 	add_child(_static)
+	var mm := AudioServer.get_bus_index("MyMusic")
+	for e in (AudioServer.get_bus_effect_count(mm) if mm >= 0 else 0):
+		if AudioServer.get_bus_effect(mm, e) is AudioEffectCapture:
+			_capture = AudioServer.get_bus_effect(mm, e)
 	ensure_music_folder()
 	var audio := get_parent()
 	if audio and audio.has_method("radio_trim_db"):
@@ -90,6 +129,11 @@ func _update_trim() -> void:
 
 func _process(delta: float) -> void:
 	_clock += delta
+	if _capture:
+		if _player.playing and _player.bus == &"MyMusic" and _blocks.size() * BLOCK_S < LEVEL_ENOUGH_S:
+			_measure()
+		else:
+			_capture.clear_buffer()
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +189,7 @@ func set_station(id: String) -> void:
 func turn_off() -> void:
 	if station_index < 0:
 		return
+	_keep_level()
 	station_index = -1
 	_player.stop()
 	Audio.play_2d("car/car_radio_off", "Cabin")
@@ -160,6 +205,7 @@ func toggle_power() -> void:
 
 
 func _tune(index: int, with_static := true) -> void:
+	_keep_level()
 	station_index = index
 	_player.stop()
 	_pips_playing = false
@@ -192,8 +238,9 @@ func _start_station() -> void:
 			return
 		_play_my_music(maxi(_pos, 0))
 	elif id == MIDNIGHT_ID:
+		_player.bus = &"Radio"
 		_player.stream = Audio.variant("oddity/odd_midnight_station")
-		_player.volume_db = volume_db + _outside_trim + _duck_db
+		_player.volume_db = _level()
 		_player.play()
 		now_playing.emit(id, "", "")
 	else:
@@ -215,7 +262,13 @@ func _set_duck(db: float) -> void:
 
 func _apply_volume() -> void:
 	if _player:
-		_player.volume_db = volume_db + _outside_trim + _duck_db
+		_player.volume_db = _level()
+
+
+## The radio player's level: the radio's own, where you hear it from, the
+## duck under job music and, on My Music, the song's levelling.
+func _level() -> float:
+	return volume_db + _outside_trim + _duck_db + (_mm_trim if _player.bus == &"MyMusic" else 0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -320,8 +373,9 @@ func _play_broadcast(id: String) -> void:
 	var st := _catch_up(id)
 	if st.is_empty():
 		return
+	_player.bus = &"Radio"
 	_player.stream = Audio.stream(st.item)
-	_player.volume_db = volume_db + _outside_trim + _duck_db
+	_player.volume_db = _level()
 	_player.play(clampf(_clock - st.started, 0.0, maxf(st.length - 0.05, 0.0)))
 	_announce(id, st.item)
 
@@ -399,7 +453,7 @@ func _on_finished() -> void:
 				_last_pips = hour
 				_pips_playing = true
 				_player.stream = Audio.stream("music/mus_radio_pips")
-				_player.volume_db = volume_db + _outside_trim + _duck_db
+				_player.volume_db = _level()
 				_player.play()
 				_announce(id, "mus_radio_pips")
 				return
@@ -525,13 +579,136 @@ func _play_my_music(index: int, tries := 0) -> void:
 		push_warning("Radio: couldn't play %s, skipping" % path)
 		_play_my_music((_pos + 1) % _order.size(), tries + 1)
 		return
+	_keep_level()
+	_player.bus = &"MyMusic"
 	_player.stream = s
-	_player.volume_db = volume_db + _outside_trim + _duck_db
+	_start_level(path)
+	_player.volume_db = _level()
 	_player.play()
 	var tags := read_tags(path)
 	_current_title = tags.title
 	_current_artist = tags.artist
 	now_playing.emit("mymusic", _current_title, _current_artist)
+
+
+# ---------------------------------------------------------------------------
+# My Music levelling
+# ---------------------------------------------------------------------------
+
+func _start_level(path: String) -> void:
+	if _levels == null:
+		_levels = ConfigFile.new()
+		_levels.load(LEVELS_PATH)
+	_mm_key = "%s_%d" % [path.sha1_text().left(16), _file_size(path)]
+	_mm_known = _levels.has_section_key("levels", _mm_key)
+	_set_trim(MY_MUSIC_TARGET_DB - float(_levels.get_value("levels", _mm_key)) if _mm_known else MY_MUSIC_GUESS_DB, 0.0)
+	_mm_settled = 2 if _mm_known else 0
+	_blocks.clear()
+	_block_sum = 0.0
+	_block_n = 0
+	if _capture:
+		_capture.clear_buffer()
+
+
+static func _file_size(path: String) -> int:
+	var f := FileAccess.open(path, FileAccess.READ)
+	return f.get_length() if f else 0
+
+
+## Reads what the MyMusic bus heard since last frame: K-weighted, the way a
+## loudness meter hears (ITU-R BS.1770: a lift above 2 kHz and the deep bass
+## taken out), mean square per BLOCK_S, with the player's level at the time
+## taken back off, so a block says how loud the song itself is there.
+func _measure() -> void:
+	var frames := _capture.get_frames_available()
+	if frames <= 0:
+		return
+	var buf := _capture.get_buffer(frames)
+	var block := int(BLOCK_S * AudioServer.get_mix_rate())
+	var off := db_to_linear(-2.0 * _player.volume_db) if _player.volume_db > -60.0 else 0.0
+	var k := _kw
+	for i in buf.size():
+		var e := 0.0
+		for c in 2:
+			var x: float = buf[i].x if c == 0 else buf[i].y
+			var o := c * 4
+			# shelf
+			var y1: float = K_B1[0] * x + k[o]
+			k[o] = K_B1[1] * x - K_A1[1] * y1 + k[o + 1]
+			k[o + 1] = K_B1[2] * x - K_A1[2] * y1
+			# high-pass
+			var y2: float = y1 + k[o + 2]
+			k[o + 2] = -2.0 * y1 - K_A2[1] * y2 + k[o + 3]
+			k[o + 3] = y1 - K_A2[2] * y2
+			e += y2 * y2
+		_block_sum += e
+		_block_n += 1
+		if _block_n >= block:
+			if off > 0.0:
+				_blocks.append(_block_sum / _block_n * off)
+			_block_sum = 0.0
+			_block_n = 0
+	_kw = k
+	var heard := _blocks.size() * BLOCK_S
+	if _mm_settled == 0 and heard >= LEVEL_FIRST_S:
+		# A song's first seconds are often its quiet intro, so this first
+		# look only turns it up a little; down (a loud master) it goes now.
+		_mm_settled = 1
+		_set_trim(minf(MY_MUSIC_TARGET_DB - song_level(_blocks), _mm_trim + LEVEL_FIRST_UP_DB), 2.0)
+	elif _mm_settled == 1 and heard >= LEVEL_SURE_S:
+		_mm_settled = 2
+		var want := MY_MUSIC_TARGET_DB - song_level(_blocks)
+		if absf(want - _mm_trim) > 1.5:
+			_set_trim(want, 3.0)
+
+
+## How loud a song is from its blocks (dB): the mean of the blocks that
+## aren't near-silence or well under the rest (the quiet bits of a song
+## shouldn't make it louder), like a loudness meter's gating.
+static func song_level(blocks: PackedFloat32Array) -> float:
+	var sum := 0.0
+	var n := 0
+	for e in blocks:
+		if e > 1e-7:  # -70 dB
+			sum += e
+			n += 1
+	if n == 0:
+		return MY_MUSIC_TARGET_DB - MY_MUSIC_GUESS_DB
+	var gate := sum / n * 0.1  # 10 dB under the mean
+	sum = 0.0
+	n = 0
+	for e in blocks:
+		if e > maxf(gate, 1e-7):
+			sum += e
+			n += 1
+	return 10.0 * log(sum / maxf(n, 1)) / log(10.0) if n > 0 else MY_MUSIC_TARGET_DB - MY_MUSIC_GUESS_DB
+
+
+func _set_trim(db: float, fade_s: float) -> void:
+	db = clampf(db, MY_MUSIC_TRIM_RANGE.x, MY_MUSIC_TRIM_RANGE.y)
+	if _mm_trim_tween:
+		_mm_trim_tween.kill()
+	if fade_s <= 0.0:
+		_mm_trim = db
+		_apply_volume()
+		return
+	_mm_trim_tween = create_tween()
+	_mm_trim_tween.tween_method(func(v: float) -> void:
+		_mm_trim = v
+		_apply_volume(), _mm_trim, db, fade_s)
+
+
+## Keeps the level of the song that was playing, once enough of it was
+## heard (the whole song counts, so it's better than the first guess).
+func _keep_level() -> void:
+	if _mm_key == "" or _blocks.size() * BLOCK_S < LEVEL_SURE_S:
+		return
+	var level := song_level(_blocks)
+	if _mm_known:
+		level = lerpf(float(_levels.get_value("levels", _mm_key, level)), level, 0.5)
+	_levels.set_value("levels", _mm_key, snappedf(level, 0.1))
+	_levels.save(LEVELS_PATH)
+	_blocks.clear()
 
 
 ## Load an MP3, OGG or WAV from anywhere on disk. Returns null if unreadable.

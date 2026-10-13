@@ -1,127 +1,334 @@
-[gd_resource type="AudioBusLayout" load_steps=9 format=3 uid="uid://cmosj6kyvqg4y"]
+[gd_resource type="AudioBusLayout" load_steps=38 format=3]
 
 [sub_resource type="AudioEffectHardLimiter" id="Master_limiter"]
 resource_name = "HardLimiter"
 ceiling_db = -1.0
 
-[sub_resource type="AudioEffectHighPassFilter" id="Radio_highpass"]
-resource_name = "HighPassFilter"
+[sub_resource type="AudioEffectHighPassFilter" id="AudioEffectHighPassFilter_y846v"]
 cutoff_hz = 140.0
 
-[sub_resource type="AudioEffectLowPassFilter" id="Radio_lowpass"]
-resource_name = "LowPassFilter"
-cutoff_hz = 7500.0
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_5m13e"]
+cutoff_hz = 1200.0
 
-[sub_resource type="AudioEffectEQ6" id="Radio_eq"]
-resource_name = "EQ6"
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_tcwrh"]
 band_db/100_hz = 2.5
 band_db/1000_hz = 2.0
 band_db/10000_hz = -8.0
 
-[sub_resource type="AudioEffectDistortion" id="Radio_drive"]
-resource_name = "Distortion"
-mode = 1
+[sub_resource type="AudioEffectDistortion" id="AudioEffectDistortion_20kh3"]
 pre_gain = 2.0
 drive = 0.08
 post_gain = -2.0
 
-[sub_resource type="AudioEffectCompressor" id="Radio_compressor"]
-resource_name = "Compressor"
+[sub_resource type="AudioEffectCompressor" id="AudioEffectCompressor_guudo"]
 threshold = -18.0
 ratio = 3.0
+gain = -3.0
+attack_us = 10000.0
 
-[sub_resource type="AudioEffectLowPassFilter" id="World_lowpass"]
-resource_name = "LowPassFilter"
+[sub_resource type="AudioEffectAmplify" id="AudioEffectAmplify_mn70s"]
+
+[sub_resource type="AudioEffectPitchShift" id="AudioEffectPitchShift_pvwi7"]
+
+[sub_resource type="AudioEffectCapture" id="AudioEffectCapture_0j3cd"]
+buffer_length = 0.5
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_74n3f"]
+cutoff_hz = 800.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_ktkrc"]
 cutoff_hz = 1400.0
 resonance = 0.6
 
-[sub_resource type="AudioEffectEQ6" id="World_cabin_eq"]
-resource_name = "EQ6"
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_2ebvp"]
 band_db/32_hz = 4.0
 band_db/100_hz = 3.0
 band_db/3200_hz = -3.0
 band_db/10000_hz = -6.0
 
+[sub_resource type="AudioEffectAmplify" id="AudioEffectAmplify_6k84e"]
+
+[sub_resource type="AudioEffectPitchShift" id="AudioEffectPitchShift_sqk04"]
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_uyf70"]
+cutoff_hz = 800.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_or5t2"]
+cutoff_hz = 1400.0
+resonance = 0.6
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_4j82t"]
+band_db/32_hz = 4.0
+band_db/100_hz = 3.0
+band_db/3200_hz = -3.0
+band_db/10000_hz = -6.0
+
+[sub_resource type="AudioEffectAmplify" id="AudioEffectAmplify_57v82"]
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_s33fo"]
+cutoff_hz = 1400.0
+resonance = 0.6
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_ywsvq"]
+band_db/32_hz = 4.0
+band_db/100_hz = 3.0
+band_db/3200_hz = -3.0
+band_db/10000_hz = -6.0
+
+[sub_resource type="AudioEffectAmplify" id="AudioEffectAmplify_ulec6"]
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_75wcj"]
+cutoff_hz = 800.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_80pwc"]
+cutoff_hz = 1400.0
+resonance = 0.6
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_iej0w"]
+band_db/32_hz = 4.0
+band_db/100_hz = 3.0
+band_db/3200_hz = -3.0
+band_db/10000_hz = -6.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_wcsra"]
+cutoff_hz = 1400.0
+resonance = 0.6
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_qtomw"]
+band_db/32_hz = 4.0
+band_db/100_hz = 3.0
+band_db/3200_hz = -3.0
+band_db/10000_hz = -6.0
+
+[sub_resource type="AudioEffectAmplify" id="AudioEffectAmplify_2kkey"]
+
+[sub_resource type="AudioEffectPitchShift" id="AudioEffectPitchShift_p78dr"]
+
+[sub_resource type="AudioEffectCompressor" id="AudioEffectCompressor_prvg4"]
+threshold = -34.0
+ratio = 3.0
+gain = 9.0
+attack_us = 5000.0
+release_ms = 300.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_ajikk"]
+cutoff_hz = 1400.0
+resonance = 0.6
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_0xokx"]
+band_db/32_hz = 4.0
+band_db/100_hz = 3.0
+band_db/3200_hz = -3.0
+band_db/10000_hz = -6.0
+
+[sub_resource type="AudioEffectCompressor" id="AudioEffectCompressor_2o68t"]
+threshold = -30.0
+ratio = 3.0
+attack_us = 5000.0
+release_ms = 300.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_p2h3u"]
+cutoff_hz = 1400.0
+resonance = 0.6
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_ut7px"]
+band_db/32_hz = 4.0
+band_db/100_hz = 3.0
+band_db/3200_hz = -3.0
+band_db/10000_hz = -6.0
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_5ujej"]
+cutoff_hz = 1400.0
+resonance = 0.6
+
+[sub_resource type="AudioEffectEQ6" id="AudioEffectEQ6_ioll5"]
+band_db/32_hz = 4.0
+band_db/100_hz = 3.0
+band_db/3200_hz = -3.0
+band_db/10000_hz = -6.0
+
+[sub_resource type="AudioEffectAmplify" id="AudioEffectAmplify_oxw08"]
+
 [resource]
 bus/0/effect/0/effect = SubResource("Master_limiter")
 bus/0/effect/0/enabled = true
-bus/1/name = &"Music"
+bus/1/name = &"Car"
 bus/1/solo = false
 bus/1/mute = false
 bus/1/bypass_fx = false
-bus/1/volume_db = -3.0
+bus/1/volume_db = -0.0411998
 bus/1/send = &"Master"
-bus/2/name = &"UI"
+bus/2/name = &"MusicRadio"
 bus/2/solo = false
 bus/2/mute = false
 bus/2/bypass_fx = false
 bus/2/volume_db = 0.0
 bus/2/send = &"Master"
-bus/3/name = &"Radio"
+bus/3/name = &"Ambient"
 bus/3/solo = false
 bus/3/mute = false
 bus/3/bypass_fx = false
-bus/3/volume_db = -2.0
+bus/3/volume_db = 0.0
 bus/3/send = &"Master"
-bus/3/effect/0/effect = SubResource("Radio_highpass")
-bus/3/effect/0/enabled = true
-bus/3/effect/1/effect = SubResource("Radio_lowpass")
-bus/3/effect/1/enabled = true
-bus/3/effect/2/effect = SubResource("Radio_eq")
-bus/3/effect/2/enabled = true
-bus/3/effect/3/effect = SubResource("Radio_drive")
-bus/3/effect/3/enabled = true
-bus/3/effect/4/effect = SubResource("Radio_compressor")
-bus/3/effect/4/enabled = true
-bus/4/name = &"Cabin"
+bus/4/name = &"Effects"
 bus/4/solo = false
 bus/4/mute = false
 bus/4/bypass_fx = false
-bus/4/volume_db = -3.0
+bus/4/volume_db = 0.0
 bus/4/send = &"Master"
-bus/5/name = &"World"
+bus/5/name = &"Cabin"
 bus/5/solo = false
 bus/5/mute = false
 bus/5/bypass_fx = false
-bus/5/volume_db = 0.0
-bus/5/send = &"Master"
-bus/5/effect/0/effect = SubResource("World_lowpass")
-bus/5/effect/0/enabled = false
-bus/5/effect/1/effect = SubResource("World_cabin_eq")
-bus/5/effect/1/enabled = false
+bus/5/volume_db = -20.0
+bus/5/send = &"Car"
 bus/6/name = &"Engine"
 bus/6/solo = false
 bus/6/mute = false
 bus/6/bypass_fx = false
 bus/6/volume_db = -3.0
-bus/6/send = &"World"
+bus/6/send = &"Car"
+bus/6/effect/0/effect = SubResource("AudioEffectCompressor_prvg4")
+bus/6/effect/0/enabled = true
+bus/6/effect/1/effect = SubResource("AudioEffectLowPassFilter_ajikk")
+bus/6/effect/1/enabled = false
+bus/6/effect/2/effect = SubResource("AudioEffectEQ6_0xokx")
+bus/6/effect/2/enabled = false
 bus/7/name = &"Tyres"
 bus/7/solo = false
 bus/7/mute = false
 bus/7/bypass_fx = false
 bus/7/volume_db = -3.0
-bus/7/send = &"World"
-bus/8/name = &"SFX"
+bus/7/send = &"Car"
+bus/7/effect/0/effect = SubResource("AudioEffectCompressor_2o68t")
+bus/7/effect/0/enabled = true
+bus/7/effect/1/effect = SubResource("AudioEffectLowPassFilter_p2h3u")
+bus/7/effect/1/enabled = false
+bus/7/effect/2/effect = SubResource("AudioEffectEQ6_ut7px")
+bus/7/effect/2/enabled = false
+bus/8/name = &"Body"
 bus/8/solo = false
 bus/8/mute = false
 bus/8/bypass_fx = false
 bus/8/volume_db = 0.0
-bus/8/send = &"World"
-bus/9/name = &"Ambience"
+bus/8/send = &"Car"
+bus/8/effect/0/effect = SubResource("AudioEffectLowPassFilter_5ujej")
+bus/8/effect/0/enabled = false
+bus/8/effect/1/effect = SubResource("AudioEffectEQ6_ioll5")
+bus/8/effect/1/enabled = false
+bus/9/name = &"Music"
 bus/9/solo = false
 bus/9/mute = false
 bus/9/bypass_fx = false
-bus/9/volume_db = 0.0
-bus/9/send = &"World"
-bus/10/name = &"Weather"
+bus/9/volume_db = -3.0
+bus/9/send = &"MusicRadio"
+bus/9/effect/0/effect = SubResource("AudioEffectAmplify_oxw08")
+bus/9/effect/0/enabled = true
+bus/10/name = &"Radio"
 bus/10/solo = false
 bus/10/mute = false
 bus/10/bypass_fx = false
-bus/10/volume_db = -4.0
-bus/10/send = &"World"
-bus/11/name = &"Vehicles"
+bus/10/volume_db = -2.0
+bus/10/send = &"MusicRadio"
+bus/10/effect/0/effect = SubResource("AudioEffectHighPassFilter_y846v")
+bus/10/effect/0/enabled = true
+bus/10/effect/1/effect = SubResource("AudioEffectLowPassFilter_5m13e")
+bus/10/effect/1/enabled = true
+bus/10/effect/2/effect = SubResource("AudioEffectEQ6_tcwrh")
+bus/10/effect/2/enabled = true
+bus/10/effect/3/effect = SubResource("AudioEffectDistortion_20kh3")
+bus/10/effect/3/enabled = true
+bus/10/effect/4/effect = SubResource("AudioEffectCompressor_guudo")
+bus/10/effect/4/enabled = true
+bus/10/effect/5/effect = SubResource("AudioEffectAmplify_mn70s")
+bus/10/effect/5/enabled = true
+bus/10/effect/6/effect = SubResource("AudioEffectPitchShift_pvwi7")
+bus/10/effect/6/enabled = false
+bus/11/name = &"MyMusic"
 bus/11/solo = false
 bus/11/mute = false
 bus/11/bypass_fx = false
-bus/11/volume_db = -3.0
-bus/11/send = &"World"
+bus/11/volume_db = 0.0
+bus/11/send = &"Radio"
+bus/11/effect/0/effect = SubResource("AudioEffectCapture_0j3cd")
+bus/11/effect/0/enabled = true
+bus/12/name = &"Ambience"
+bus/12/solo = false
+bus/12/mute = false
+bus/12/bypass_fx = false
+bus/12/volume_db = 0.0
+bus/12/send = &"Ambient"
+bus/12/effect/0/effect = SubResource("AudioEffectLowPassFilter_74n3f")
+bus/12/effect/0/enabled = false
+bus/12/effect/1/effect = SubResource("AudioEffectLowPassFilter_ktkrc")
+bus/12/effect/1/enabled = false
+bus/12/effect/2/effect = SubResource("AudioEffectEQ6_2ebvp")
+bus/12/effect/2/enabled = false
+bus/12/effect/3/effect = SubResource("AudioEffectAmplify_6k84e")
+bus/12/effect/3/enabled = true
+bus/12/effect/4/effect = SubResource("AudioEffectPitchShift_sqk04")
+bus/12/effect/4/enabled = false
+bus/13/name = &"Weather"
+bus/13/solo = false
+bus/13/mute = false
+bus/13/bypass_fx = false
+bus/13/volume_db = -4.0
+bus/13/send = &"Ambient"
+bus/13/effect/0/effect = SubResource("AudioEffectLowPassFilter_uyf70")
+bus/13/effect/0/enabled = false
+bus/13/effect/1/effect = SubResource("AudioEffectLowPassFilter_or5t2")
+bus/13/effect/1/enabled = false
+bus/13/effect/2/effect = SubResource("AudioEffectEQ6_4j82t")
+bus/13/effect/2/enabled = false
+bus/13/effect/3/effect = SubResource("AudioEffectAmplify_57v82")
+bus/13/effect/3/enabled = true
+bus/14/name = &"Vehicles"
+bus/14/solo = false
+bus/14/mute = false
+bus/14/bypass_fx = false
+bus/14/volume_db = -3.0
+bus/14/send = &"Ambient"
+bus/14/effect/0/effect = SubResource("AudioEffectLowPassFilter_s33fo")
+bus/14/effect/0/enabled = false
+bus/14/effect/1/effect = SubResource("AudioEffectEQ6_ywsvq")
+bus/14/effect/1/enabled = false
+bus/14/effect/2/effect = SubResource("AudioEffectAmplify_ulec6")
+bus/14/effect/2/enabled = true
+bus/15/name = &"Outdoors"
+bus/15/solo = false
+bus/15/mute = false
+bus/15/bypass_fx = false
+bus/15/volume_db = 0.0
+bus/15/send = &"Ambient"
+bus/15/effect/0/effect = SubResource("AudioEffectLowPassFilter_75wcj")
+bus/15/effect/0/enabled = false
+bus/15/effect/1/effect = SubResource("AudioEffectLowPassFilter_80pwc")
+bus/15/effect/1/enabled = false
+bus/15/effect/2/effect = SubResource("AudioEffectEQ6_iej0w")
+bus/15/effect/2/enabled = false
+bus/16/name = &"Roof"
+bus/16/solo = false
+bus/16/mute = false
+bus/16/bypass_fx = false
+bus/16/volume_db = -20.0
+bus/16/send = &"Ambient"
+bus/17/name = &"SFX"
+bus/17/solo = false
+bus/17/mute = false
+bus/17/bypass_fx = false
+bus/17/volume_db = 0.0
+bus/17/send = &"Effects"
+bus/17/effect/0/effect = SubResource("AudioEffectLowPassFilter_wcsra")
+bus/17/effect/0/enabled = false
+bus/17/effect/1/effect = SubResource("AudioEffectEQ6_qtomw")
+bus/17/effect/1/enabled = false
+bus/17/effect/2/effect = SubResource("AudioEffectAmplify_2kkey")
+bus/17/effect/2/enabled = true
+bus/17/effect/3/effect = SubResource("AudioEffectPitchShift_p78dr")
+bus/17/effect/3/enabled = false
+bus/18/name = &"UI"
+bus/18/solo = false
+bus/18/mute = false
+bus/18/bypass_fx = false
+bus/18/volume_db = -14.0
+bus/18/send = &"Effects"

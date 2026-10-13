@@ -83,7 +83,7 @@ func setup(manager: Node, traffic_graph: TrafficGraph) -> void:
 func _sound(sound_name: String, p: Vector3, db: float) -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("has") and audio.has(sound_name):
-		audio.play_at(sound_name, p, db, "SFX")
+		audio.play_at(sound_name, p, db, "Outdoors")
 
 
 func _clock() -> Node:
@@ -567,7 +567,7 @@ func add_food_van(spot: Dictionary) -> Dictionary:
 	var van := { "spot": spot, "node": node, "food": pick[0], "queue": [] }
 	# The generator and fridges, and the customers.
 	for sound in [["traffic/traffic_food_van_hum_loop", Vector3(0, 1.0, 1.5), 0.0], ["traffic/traffic_food_van_chatter_loop", Vector3(-2.0, 1.5, 0.0), -3.0]]:
-		var player := TrafficNight.loop_player(self, sound[0], &"SFX", 6.0, 60.0, sound[2])
+		var player := TrafficNight.loop_player(self, sound[0], &"Outdoors", 6.0, 60.0, sound[2])
 		if player:
 			player.position = sound[1]
 			node.add_child(player)

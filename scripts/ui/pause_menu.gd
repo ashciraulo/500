@@ -238,13 +238,16 @@ func _build() -> void:
 		Settings.mouse_sensitivity = v)
 
 	var sound_head := _section(left, "Sound")
-	for pair in [["volume_master", "Everything"], ["volume_effects", "Effects"],
-			["volume_car", "Your car"], ["volume_surroundings", "Weather and street"],
-			["volume_music", "Music"], ["volume_radio", "Radio"]]:
+	for pair in [["volume_master", "Everything", ""],
+			["volume_car", "Your car", "Engine, tyres, horn and doors (past half for a louder car)"],
+			["volume_music", "Music and radio", "The radio, My Music and the game's music"],
+			["volume_ambient", "Surroundings", "Birds, the street, traffic and the weather"],
+			["volume_effects", "Effects", "Menus and everything else"]]:
 		var key: String = pair[0]
 		_volumes[key] = _slider(left, pair[1], 0.0, 1.0, 0.05, func(v: float) -> void:
 			Settings.set(key, v)
 			Settings.apply())
+		_volumes[key].tooltip_text = pair[2]
 	# The My Music folder button sits at the end of the Sound heading, to keep
 	# the menu short without crowding a slider.
 	var folder := _button(sound_head, "My Music folder", func() -> void:
