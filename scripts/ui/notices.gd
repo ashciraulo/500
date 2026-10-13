@@ -149,7 +149,29 @@ func post(text: String, kind := "", sound := "", heading := "", bus := "", pictu
 	for q in _queue:
 		if q.text == text:
 			return
-	_queue.append(n)
+	for q in _held_back:
+		if q.text == text:
+			return
+	_offer(n)
+
+
+## Cards something else gets a say on: a node in the "notice_screens" group
+## with notice_verdict(card) -> PASS, HOLD (ask again next frame) or DROP.
+## First day uses it to keep the cards its steps already cover out of the way.
+const PASS := 0
+const HOLD := 1
+const DROP := 2
+var _held_back: Array[Dictionary] = []
+
+
+func _offer(n: Dictionary) -> void:
+	var verdict := PASS
+	for node in get_tree().get_nodes_in_group(&"notice_screens"):
+		verdict = maxi(verdict, int(node.notice_verdict(n)))
+	if verdict == HOLD:
+		_held_back.append(n)
+	elif verdict == PASS:
+		_queue.append(n)
 
 
 ## Every card currently waiting, oldest first (for tests).
@@ -165,6 +187,7 @@ func showing() -> Dictionary:
 ## Drop everything waiting and on screen (tests, starting a new game).
 func clear() -> void:
 	_queue.clear()
+	_held_back.clear()
 	_current = {}
 	_fade = 0.0
 	_card.visible = false
@@ -184,6 +207,11 @@ func _held() -> bool:
 
 
 func _process(delta: float) -> void:
+	if not _held_back.is_empty():
+		var waiting := _held_back
+		_held_back = []
+		for n in waiting:
+			_offer(n)
 	if _jobs_told:
 		_check_phone()
 	var held := _held()
