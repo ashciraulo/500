@@ -241,7 +241,10 @@ func _valiant(parent: Node3D) -> void:
 		return
 	var model := (load(VALIANT) as PackedScene).instantiate() as Node3D
 	model.name = "Valiant"
-	PS1Model.apply(model)
+	# Olive tops wash out pale in full sun without a little top shading.
+	var paint := PS1Model.apply(model).get("Paint") as ShaderMaterial
+	if paint:
+		paint.set_shader_parameter("top_shade", 0.45)
 	parent.add_child(model)
 	model.global_position = _ground(_h(VALIANT_AT))
 	# Front is -Z and the kerb side -X: nose towards -x in the house's frame,
