@@ -8,8 +8,8 @@ extends SceneTree
 ##   - Continue hands the game over: the engine turns over then, and Side A's
 ##     card shows a few seconds into play.
 ##   - With --no-save a save on disk isn't offered (New game just starts, no
-##     "start again?"), delete_save() leaves the file alone, and closing the
-##     settings doesn't write settings.cfg.
+##     "start again?"), delete_save() leaves the file alone, closing the
+##     settings doesn't write settings.cfg, and photos don't go in user://photos.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/title_test.gd -- --no-save
 ##
@@ -133,6 +133,14 @@ func _files_left_alone() -> void:
 	settings.set("strange_things", keep)
 	var after := FileAccess.get_file_as_string(cfg) if FileAccess.file_exists(cfg) else "<none>"
 	_check(before == after, "--no-save: saving the settings leaves settings.cfg alone")
+
+	var activities: Node = root.get_node("Activities")
+	var image := Image.create(4, 4, false, Image.FORMAT_RGB8)
+	var entry: Dictionary = activities.call("add_photo", image)
+	var photo := String(entry.get("file", ""))
+	_check(not photo.begins_with(String(activities.get("PHOTO_DIR")) + "/"), "--no-save: a photo doesn't go in user://photos")
+	if photo != "":
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(photo))
 
 
 func _check(ok: bool, what: String) -> void:

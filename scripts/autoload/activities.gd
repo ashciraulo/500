@@ -30,10 +30,16 @@ func _ready() -> void:
 
 # --- photos ----------------------------------------------------------------------
 
+## Where photos go: PHOTO_DIR, or with --no-save a folder of their own, so
+## a test run's day-1 photos never overwrite yours.
+func photo_dir() -> String:
+	return PHOTO_DIR if SaveGame.enabled else PHOTO_DIR + "_no_save"
+
+
 ## Save an image to the album. `spot` is the photo spot it was taken at, if any.
 func add_photo(image: Image, spot: Node = null) -> Dictionary:
-	DirAccess.make_dir_recursive_absolute(PHOTO_DIR)
-	var file := "%s/day%03d_%s_%d.png" % [PHOTO_DIR, GameClock.day, GameClock.time_string().replace(":", ""), Time.get_ticks_msec() % 100000]
+	DirAccess.make_dir_recursive_absolute(photo_dir())
+	var file := "%s/day%03d_%s_%d.png" % [photo_dir(), GameClock.day, GameClock.time_string().replace(":", ""), Time.get_ticks_msec() % 100000]
 	if image:
 		image.save_png(file)
 	var entry := {"file": file, "day": GameClock.day, "time": GameClock.time_string(), "spot": ""}

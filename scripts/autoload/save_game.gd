@@ -11,7 +11,8 @@ extends Node
 ## The save is JSON at user://save_<slot>.json, written on demand, every few
 ## minutes while driving, and when the game closes. Run with `-- --no-save`
 ## to neither load, write nor delete saves (the tests and PC checks do this,
-## so they never touch a real save; Settings doesn't write either).
+## so they never touch a real save; Settings doesn't write either, and
+## photos go to their own folder, see Activities.photo_dir()).
 
 signal saved(path: String)
 signal loaded(path: String)
