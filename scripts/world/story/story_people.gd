@@ -21,7 +21,7 @@ const CHECK_AT := 2.0 + 40.0 / 60.0
 const CHECK_WINDOW := 0.75
 ## The porch check waits at least this long (h) after the message.
 const CHECK_AFTER := 20.0
-## Seconds into a new game before Side A's card.
+## Seconds of play (after the title screen) before Side A's card.
 const FIRST_CARD := 6.0
 
 var messages: Array = []
@@ -65,10 +65,14 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
-	_since_start += delta
 	if _home == null or not is_instance_valid(_home):
 		_find_home()
 	_update_porch(delta)
+	# Nothing of the story happens behind the title screen: the clock for
+	# Side A's card starts when you choose to play.
+	if TitleScreen.is_showing(get_tree()):
+		return
+	_since_start += delta
 	_check -= delta
 	if _check > 0.0:
 		return

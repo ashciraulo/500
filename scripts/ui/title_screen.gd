@@ -166,7 +166,7 @@ func _build() -> void:
 	_root = art
 	add_child(art)
 
-	var has_save := SaveGame.enabled and SaveGame.has_save()
+	var has_save := SaveGame.has_save()
 	_menu = art.add_group()
 	_continue = art.add_button("Continue", _continue_game, true, _menu)
 	_continue.visible = has_save

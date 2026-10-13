@@ -175,6 +175,17 @@ jobs:
             exit 1
           fi
 
+      - name: Title test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/title_test.gd -- --no-save 2>&1 \
+            | tee title.log | grep -E "ok |FAIL|TITLE|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" title.log; then
+            echo "::error::GDScript errors in the title test"
+            exit 1
+          fi
+
       - name: Kerb test
         if: env.ALREADY_TESTED != 'true'
         run: |

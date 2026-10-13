@@ -3,7 +3,8 @@ extends Node
 ##
 ## Holds the choices made in the pause menu and pushes them into the systems
 ## that use them (GameClock, Weather, RenderSettings, the player's car).
-## Loaded on start, saved whenever the pause menu closes.
+## Loaded on start, saved whenever the pause menu closes (never with
+## `-- --no-save`, so tests and checks leave your settings as they were).
 
 signal changed
 
@@ -124,6 +125,8 @@ func use_lofi_preset(index: int) -> void:
 
 
 func save_settings() -> void:
+	if OS.get_cmdline_user_args().has("--no-save"):
+		return
 	var config := ConfigFile.new()
 	for key in _keys():
 		config.set_value("settings", key, get(key))
