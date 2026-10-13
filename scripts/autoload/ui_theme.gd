@@ -26,6 +26,19 @@ func _on_node_added(node: Node) -> void:
 			if Time.get_ticks_msec() - _nav_at < 250:
 				UiStyle.sound("ui_menu_move", -12.0))
 		button.pressed.connect(func() -> void: UiStyle.sound("ui_menu_select", -10.0))
+		# The mouse takes the focus with it, so only one row looks picked.
+		button.mouse_entered.connect(_hover_focus.bind(button))
+
+
+func _hover_focus(button: BaseButton) -> void:
+	if button.focus_mode == Control.FOCUS_NONE or button.disabled or not button.is_visible_in_tree():
+		return
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		return  # mid-drag on a slider
+	var focused := button.get_viewport().gui_get_focus_owner()
+	if focused is LineEdit or focused is TextEdit:
+		return  # don't pull you out of typing
+	button.grab_focus()
 
 
 func _input(event: InputEvent) -> void:
