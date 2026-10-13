@@ -28,10 +28,10 @@ const SODIUM := Color(1.0, 0.7, 0.4)
 ## How far (m) from a late-city place its presence reaches, from act 3.
 const PLACE_RADIUS := 260.0
 ## Buses that go quiet when an event takes the street's sound away. Engine,
-## Tyres and Cabin (your own car) and UI stay.
-const MUTE_BUSES := ["Ambience", "Weather", "Vehicles", "SFX", "Music", "Radio"]
+## Tyres, Body and Cabin (your own car), Roof and UI stay.
+const MUTE_BUSES := ["Ambience", "Weather", "Vehicles", "Outdoors", "SFX", "Music", "Radio"]
 ## Buses that go to tape (a little flat, wobbling) while the look is on.
-const TAPE_BUSES := ["Ambience", "SFX", "Radio"]
+const TAPE_BUSES := ["Ambience", "Outdoors", "SFX", "Radio"]
 const SHIMMER_SHADER := preload("res://shaders/late_city_shimmer.gdshader")
 ## Recordings dropped in here by the audio thread replace the made-up sounds.
 const SOUND_START := "late/late_tape_start"

@@ -1028,7 +1028,7 @@ static func call_sound(id: String) -> String:
 func _sound(sound_name: String, p: Vector3, db: float) -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("play_at") and (not audio.has_method("has") or audio.has(sound_name)):
-		audio.play_at(sound_name, p, db, "SFX")
+		audio.play_at(sound_name, p, db, "Outdoors")
 
 
 # --- props ------------------------------------------------------------------------------------------

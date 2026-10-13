@@ -135,20 +135,20 @@ func _new_3d(node_name: String, unit: float, max_d: float, db: float) -> AudioSt
 func _on_train_arrived(pos: Vector3) -> void:
 	# The tail of the arrival (brakes, the stop and the air) as it stops,
 	# then the doors.
-	var a := Audio.play_at("traffic/traffic_train_arrive", pos, -2.0, "SFX", 0.0, 12.0, 300.0)
+	var a := Audio.play_at("traffic/traffic_train_arrive", pos, -2.0, "Outdoors", 0.0, 12.0, 300.0)
 	if a:
 		a.seek(6.0)
-	Audio.play_at("traffic/traffic_train_doors", pos, -4.0, "SFX", 0.0)
+	Audio.play_at("traffic/traffic_train_doors", pos, -4.0, "Outdoors", 0.0)
 
 
 func _on_train_departed(pos: Vector3) -> void:
-	Audio.play_at("traffic/traffic_train_depart", pos, -2.0, "SFX", 0.0, 12.0, 300.0)
+	Audio.play_at("traffic/traffic_train_depart", pos, -2.0, "Outdoors", 0.0, 12.0, 300.0)
 
 
 func _on_ferry_departed(pos: Vector3) -> void:
 	# The wake reaches the shore a little after the ferry pulls away.
 	get_tree().create_timer(6.0).timeout.connect(func() -> void:
-		Audio.play_at("traffic/traffic_ferry_wake_loop", pos, -6.0, "SFX", 0.0))
+		Audio.play_at("traffic/traffic_ferry_wake_loop", pos, -6.0, "Outdoors", 0.0))
 
 
 func _dress_bike(body: Node3D, is_bike: bool) -> void:

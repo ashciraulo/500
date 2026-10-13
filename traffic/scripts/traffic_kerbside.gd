@@ -856,7 +856,7 @@ func _make_body(type: StringName) -> StaticBody3D:
 func _sound(sound_name: String, p: Vector3, db: float) -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("has") and audio.has(sound_name):
-		audio.play_at(sound_name, p, db, "SFX")
+		audio.play_at(sound_name, p, db, "Outdoors")
 
 
 ## A quiet hazard relay ticking on a double-parked van.
@@ -870,7 +870,7 @@ func _hazard_ticks(node: Node3D) -> void:
 	var tick := AudioStreamPlayer3D.new()
 	tick.name = "Hazards"
 	tick.stream = audio.stream("traffic/traffic_hazard_tick_loop", true)
-	tick.bus = &"SFX" if AudioServer.get_bus_index(&"SFX") >= 0 else &"Master"
+	tick.bus = &"Outdoors" if AudioServer.get_bus_index(&"Outdoors") >= 0 else &"Master"
 	tick.unit_size = 2.0
 	tick.max_distance = 12.0
 	tick.position = Vector3(0, 1.0, -1.5)
