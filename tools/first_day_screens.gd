@@ -21,6 +21,8 @@ var _steps: Array = []
 var _step := -1
 var _frames := 0
 var _failed := 0
+## Every card Notices put on screen, as "kind: text".
+var _seen: Array[String] = []
 
 
 func _initialize() -> void:
@@ -54,11 +56,17 @@ func _press(action: StringName) -> void:
 
 func _build_steps() -> void:
 	# [name, call at the start, frames to wait, shoot]
-	_steps.append(["fd_01_side_a", func() -> void: pass, 6 * 60 + 60, true])
+	_steps.append(["fd_00_start", func() -> void: pass, 120, true])
+	_steps.append(["fd_01_side_a", func() -> void: pass, 5 * 60, true])
 	_steps.append(["fd_02_first_card", func() -> void:
 		_check(_title() == "", "nothing until Side A's card has gone"), 9 * 60, true])
 	_steps.append(["fd_03_get_out", func() -> void:
 		_check(_title() == "Something on the step", "first card: the step (%s)" % _title())
+		# The opening's steps say these already; the home street's cards wait.
+		var crowd := _seen.filter(func(t: String) -> bool:
+			return t.begins_with("jobs:") or t.contains("answering machine") \
+				or t.begins_with("place:") or t.begins_with("progress:"))
+		_check(crowd.is_empty(), "no phone, machine, street or Wandering cards ahead of it %s" % [crowd])
 		_check(String(_first.challenge_card().line).begins_with("Get out"), "in the car it says get out")
 		_player.call("get_out"), 150, false])
 	_steps.append(["fd_04_at_the_step", func() -> void:
@@ -108,6 +116,13 @@ func _build_steps() -> void:
 		var plate: Node3D = _first.get("_plate")
 		_cam.global_position = plate.global_position - _home.global_basis.x * 0.9 + Vector3.UP * 0.6
 		_cam.look_at(plate.global_position), 20, true])
+	_steps.append(["fd_09c_story_moment", func() -> void:
+		(_player.get("_camera") as Camera3D).current = true
+		_check(root.get_node("LateCity").begin(&"first_day_test"), "a story moment starts")
+		_check(_title() == "", "the card steps aside for it"), 30, true])
+	_steps.append(["fd_09d_after_it", func() -> void:
+		root.get_node("LateCity").end(&"first_day_test")
+		_check(_title() == "Rent's coming", "and comes back after (%s)" % _title()), 30, false])
 	_steps.append(["fd_10_phone", func() -> void:
 		(_player.get("_camera") as Camera3D).current = true
 		root.get_node("Notices").clear()
@@ -155,6 +170,12 @@ func _process(_delta: float) -> bool:
 		_frames = -1
 		return false
 	_frames += 1
+	var shown: Dictionary = root.get_node("Notices").showing()
+	if not shown.is_empty():
+		var line := "%s: %s" % [shown.kind, shown.text]
+		if not _seen.has(line):
+			_seen.append(line)
+			print("card ", line)
 	if _step == -1:
 		_home = get_first_node_in_group(&"home_base")
 		_first = _main.find_child("FirstDay", true, false)

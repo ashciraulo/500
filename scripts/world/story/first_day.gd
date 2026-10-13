@@ -34,8 +34,8 @@ const STEP_OFFSET := Vector2(0.55, -0.32)
 const BAR_SPOTS := [Vector2(0.0, 0.3), Vector2(0.0, -0.3), Vector2(0.4, 0.0), Vector2(-0.6, 0.0)]
 const PLATE_WHITE := Color(0.93, 0.91, 0.86)
 const PLATE_BLUE := Color(0.2, 0.32, 0.6)
-const BISCUIT := Color(0.93, 0.7, 0.38)
-const BISCUIT_DARK := Color(0.82, 0.56, 0.27)
+const BISCUIT := Color(0.96, 0.63, 0.2)
+const BISCUIT_DARK := Color(0.8, 0.44, 0.12)
 const NOTE := Color(0.96, 0.94, 0.88)
 
 var step := PLATE
@@ -58,6 +58,7 @@ func _ready() -> void:
 	name = "FirstDay"
 	add_to_group(&"challenges")
 	add_to_group(&"interactables")
+	add_to_group(&"notice_screens")
 	_plate = _build_plate()
 	_plate.visible = false
 	SaveGame.register("first_day", self)
@@ -72,6 +73,13 @@ func _process(delta: float) -> void:
 	# Not behind the title screen: Continue may be about to load a game.
 	if get_tree().paused or SaveGame.hold or TitleScreen.is_showing(get_tree()):
 		return
+	if not _checked:
+		_checked = true
+		# A game from before this, or one well under way.
+		if not _loaded and (GameClock.day > 1 or Progression.get_stat("deliveries") > 0.0
+				or Wallet.total_earned > 0 or Story.heard(&"kostas_welcome")):
+			step = DONE
+			_place_plate()
 	if _home == null or not is_instance_valid(_home):
 		_home = get_tree().get_first_node_in_group(&"home_base") as HomeBase
 		if _home == null:
@@ -80,13 +88,6 @@ func _process(delta: float) -> void:
 	if _day != GameClock.day:
 		_day = GameClock.day
 		_place_plate()
-	if not _checked:
-		_checked = true
-		# A game from before this, or one well under way.
-		if not _loaded and (GameClock.day > 1 or Progression.get_stat("deliveries") > 0.0
-				or Wallet.total_earned > 0 or Story.heard(&"kostas_welcome")):
-			step = DONE
-			_place_plate()
 	if step == DONE:
 		return
 	if _wait < 0.0:
@@ -144,6 +145,10 @@ func _on_foot() -> bool:
 func challenge_card() -> Dictionary:
 	if step == DONE or _wait < AFTER_CARD:
 		return {}
+	# Out of the way while the story has the screen (the late city, an act's
+	# card); it's back once that's over.
+	if LateCity.active() or (_people and not _card_done()):
+		return {}
 	var shown := step
 	if shown < JOB and not _near_home():
 		shown = JOB
@@ -166,6 +171,28 @@ func challenge_card() -> Dictionary:
 
 func _card(title: String, line: String, detail := "") -> Dictionary:
 	return {"tag": "First day", "icon": "star", "title": title, "line": line, "detail": detail}
+
+
+# --- Notices ------------------------------------------------------------------
+
+## Notices asks before showing a card. The opening's own steps already say
+## what the "look on your phone" and "message on the machine" cards would, so
+## those wait out their steps, and the home street's "Discovered" and
+## Wandering cards don't crowd the first seconds. Until it's known whether
+## this is a new game, everything waits.
+func notice_verdict(n: Dictionary) -> int:
+	if not _checked:
+		return Notices.HOLD
+	if step == DONE:
+		return Notices.PASS
+	var kind := String(n.get("kind", ""))
+	if kind == "jobs" and step < JOB:
+		return Notices.DROP
+	if String(n.get("heading", "")) == "Answering machine" and step <= MACHINE:
+		return Notices.DROP
+	if (kind == "place" or kind == "progress") and _wait < AFTER_CARD:
+		return Notices.DROP
+	return Notices.PASS
 
 
 # --- The plate ------------------------------------------------------------------
