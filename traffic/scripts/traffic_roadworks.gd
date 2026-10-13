@@ -223,7 +223,7 @@ func _build(site: Dictionary) -> void:
 		var noise := AudioStreamPlayer3D.new()
 		noise.name = "WorksNoise"
 		noise.stream = audio.stream(loop_name, true)
-		noise.bus = &"SFX" if AudioServer.get_bus_index(&"SFX") >= 0 else &"Master"
+		noise.bus = &"Outdoors" if AudioServer.get_bus_index(&"Outdoors") >= 0 else &"Master"
 		noise.unit_size = 10.0
 		noise.max_distance = 120.0
 		noise.autoplay = true

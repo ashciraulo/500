@@ -818,4 +818,4 @@ func _find_lane(road_key: String, fwd: bool, k: int) -> TrafficGraph.Lane:
 func _sound(sound_name: String, p: Vector3, db: float) -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("has") and audio.has(sound_name):
-		audio.play_at(sound_name, p, db, "SFX")
+		audio.play_at(sound_name, p, db, "Outdoors")

@@ -44,7 +44,7 @@ func _ready() -> void:
 			_car.connect("car_changed", _on_car_changed)
 		if "car_id" in _car:
 			_on_car_changed(String(_car.car_id))
-	_horn = _player("SFX", 9.0)
+	_horn = _player("Body", 9.0)
 	_wipers = _player("Cabin", 2.0)
 	_indicator = _player("Cabin", 2.0)
 	_buffet = _player("Weather", 4.0)
@@ -135,7 +135,7 @@ func horn(down: bool) -> void:
 		_horn.play()
 	elif _horn.playing and style == "modern":
 		_horn.stop()
-		Audio.play_at("car/car_horn_modern_tap", global_position, -12.0)  # release tail
+		Audio.play_at("car/car_horn_modern_tap", global_position, -12.0, "Body")  # release tail
 
 
 ## Wipers follow the rain: off, slow, fast. Call set_wipers() to override.
@@ -190,7 +190,7 @@ func door(open: bool, slam := false, heard_inside := -1) -> void:
 	if not Audio.has(sound):
 		sound = "car/car_door_%s_%s" % ["open" if open else "close", "classic" if style == "classic" else "modern"]
 	Audio.play_at(sound, _seat_pos(), (3.0 if slam else 0.0) - (2.0 if inside else 0.0),
-			"Cabin" if inside else "SFX")
+			"Cabin" if inside else "Body")
 
 
 ## Seatbelt: on = the tongue clicks into the buckle, off = the button,

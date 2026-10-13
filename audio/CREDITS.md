@@ -36,7 +36,7 @@ Licence for every row: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.
 | highway_wa | Afternoon Highway.wav (Western Australia) | Kalaji | https://freesound.org/s/418097/ | amb_freeway_night |
 | freeway | Traffic passing by on freeway | nickeverest69 | https://freesound.org/s/795499/ | amb_freeway_day |
 | lawnmower | lawnmower mowing lawn drive around property far distant and close passes.flac | kyles | https://freesound.org/s/637653/ | amb_suburbs_day |
-| sprinkler | BlaccardSprinklerLoop.wav | blaccard | https://freesound.org/s/347025/ | amb_suburbs_day, amb_suburbs_night |
+| sprinkler | BlaccardSprinklerLoop.wav | blaccard | https://freesound.org/s/347025/ | place_retic_loop |
 | dogs_far | Distant Dogs | IENBA | https://freesound.org/s/820267/ | amb_dog_bark_far_01..03; amb_suburbs_day, amb_suburbs_night |
 | dog_far2 | dog-distant barking.wav | alberto59 | https://freesound.org/s/615258/ | amb_dog_bark_far_01..03 (pool); amb_suburbs_day, amb_suburbs_night |
 | beach_day | Beach Atmos Australia Day | DeppStudios1977 | https://freesound.org/s/790724/ | amb_beach_day; place_beach; place_surf |

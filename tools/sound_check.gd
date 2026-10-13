@@ -9,22 +9,24 @@ extends SceneTree
 ##   just past it.
 ## - Nothing out in the world plays as a flat (2D) sound except the zone
 ##   beds and the weather, which are everywhere by nature.
-## - With the Effects, Music and Radio sliders down, nothing can still be
-##   heard, menu sounds included (nothing bypasses them straight to Master);
-##   under Effects, Your car and Weather and street each turn down only their
-##   own sounds (your engine is yours, traffic engines are the street's).
+## - Every sound goes through one of the four Sound sliders (Your car, Music
+##   and radio, Surroundings, Effects), menu sounds included: with all four
+##   down nothing can still be heard, and each one turns down only its own
+##   sounds (your engine is yours, traffic engines and birds are the
+##   surroundings', menu clicks are effects).
 ## - Sirens: none sprinkled into the ambience, a few emergency calls per
 ##   in-game day (most of them far off), and a drive-by's siren stops once
 ##   it has gone past.
 ## - In a storm, in the car (interior view) with the radio on, the radio sits
 ##   well over the rain on the roof, the wipers and the storm outside at
-##   default levels; turning Effects down turns all of that down as heard
-##   (after the World bus, which the Weather bus feeds) and leaves the radio.
+##   default levels; turning Surroundings down turns the storm down as heard
+##   (after the Ambient bus, which the Weather bus feeds) and leaves the radio.
 ##   At the wheel in the chase view the radio still sits over the storm. In
 ##   both views the idling engine is heard over the rain.
 ## - Driving at city speeds (50 km/h in both views, 62 in the chase view)
 ##   with the radio on, the radio sits over your own engine and tyres at
-##   default levels.
+##   default levels, and with Your car all the way up your engine sits
+##   clearly over the radio.
 ## - Menu clicks (opening the pause menu) sit with the game, not over it.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/sound_check.gd -- --no-save
@@ -37,8 +39,11 @@ const FPS := 60
 const MIN_DROP_DB := 10.0
 ## Emergency calls allowed per in-game day, on average over a few days.
 const MAX_SIRENS_PER_DAY := 5.0
-## Buses that are "out in the world" (muffled inside the car).
-const WORLD_BUSES := [&"World", &"Engine", &"Vehicles", &"Tyres", &"SFX", &"Ambience", &"Weather"]
+## Buses that are "out in the world" (and the buses under them).
+const WORLD_BUSES := [&"Engine", &"Tyres", &"Body", &"SFX", &"Ambient"]
+## The Sound sliders: setting key -> [bus under Master, menu label].
+const SLIDERS := {"volume_car": ["Car", "Your car"], "volume_music": ["MusicRadio", "Music and radio"],
+		"volume_ambient": ["Ambient", "Surroundings"], "volume_effects": ["Effects", "Effects"]}
 ## In a storm in the car, how far under the radio the cabin (rain on the roof,
 ## wipers) and the rain and wind outside must sit at loud moments (dB, 90th
 ## percentile of the meters over 8 s; thunder aside). The rain and wind loops
@@ -60,6 +65,8 @@ const STORM_LOUDEST := {"rain_heavy_out": 20.0, "wind": 8.0, "rain_heavy_roof": 
 ## Cruising with the radio on, how far your engine and your tyres must each
 ## sit under the radio (dB, mean of the meters; measured about 6-10 dB under).
 const CAR_UNDER_RADIO_DB := 4.0
+## With Your car all the way up, how far your engine must sit over the radio.
+const ENGINE_OVER_RADIO_AT_MAX_DB := 2.0
 ## The runs: view and speed (km/h). The chase view at 60+ is where the tyres
 ## used to creep up on the radio.
 const CRUISES := [["interior", 50.0], ["chase", 50.0], ["chase", 62.0]]
@@ -144,7 +151,7 @@ func _check_falloff() -> void:
 	AudioServer.set_bus_name(_probe_bus, "Probe")
 	AudioServer.set_bus_send(_probe_bus, "Master")
 	# Everything else quiet, so the master limiter can't squash the probe.
-	for b in ["Music", "UI", "Radio", "Cabin", "World"]:
+	for b in ["Car", "MusicRadio", "Ambient", "Effects"]:
 		AudioServer.set_bus_mute(AudioServer.get_bus_index(b), true)
 	_probe = AudioStreamPlayer3D.new()
 	_probe.stream = _tone()
@@ -171,7 +178,7 @@ func _check_falloff() -> void:
 		_check(near - half >= MIN_DROP_DB, "%s gets quieter with distance (%.1f dB down at %.0f m)" % [_label(p), near - half, p.max_distance * 0.5])
 		_check(past < -80.0, "%s is silent past its reach (%.0f dB at %.0f m)" % [_label(p), past, p.max_distance * 1.05])
 	_probe.stop()
-	for b in ["Music", "UI", "Radio", "Cabin", "World"]:
+	for b in ["Car", "MusicRadio", "Ambient", "Effects"]:
 		AudioServer.set_bus_mute(AudioServer.get_bus_index(b), false)
 
 
@@ -210,55 +217,78 @@ static func _tone() -> AudioStreamWAV:
 # Volume sliders
 # ---------------------------------------------------------------------------
 
-## With the Effects, Music and Radio sliders all the way down, nothing may
-## still be heard, menu sounds included: everything must go through a bus one
-## of those sliders turns down, not straight to Master (or a missing bus).
-## Under Effects, Your car turns down exactly the player's car (engine, tyres,
-## cabin) and Weather and street exactly the street, traffic and weather.
+## With all four Sound sliders down nothing may still be heard, menu sounds
+## included: everything goes through one of their buses, not straight to
+## Master (or a missing bus). Each slider then turns down its own sounds and
+## leaves every other sound exactly where it was.
 func _check_sliders() -> void:
 	var players: Array = []
 	players.append_array(_players_3d(root))
 	players.append_array(_players_2d(root))
-	var low := await _gains_with(players, {"volume_effects": 0.0, "volume_music": 0.0, "volume_radio": 0.0})
+	var all_down := {}
+	for key in SLIDERS:
+		all_down[key] = 0.0
+	var low := await _gains_with(players, all_down)
 	players = players.filter(func(p) -> bool: return low.has(p))
 	var loud: Array[String] = []
+	var no_slider: Array[String] = []
 	for p in players:
+		var chain := _bus_chain(p.bus)
 		if low[p] > -60.0:
-			loud.append("%s (%s)" % [_label(p), " > ".join(_bus_chain(p.bus))])
-	_check(loud.is_empty(), "every sound, menus included, turns down with the Effects, Music or Radio slider"
-			+ _first(loud))
+			loud.append("%s (%s)" % [_label(p), " > ".join(chain)])
+		if SLIDERS.values().filter(func(v) -> bool: return chain.has(v[0])).size() != 1:
+			no_slider.append("%s (%s)" % [_label(p), " > ".join(chain)])
+	_check(loud.is_empty(), "every sound, menus included, turns down with the Sound sliders" + _first(loud))
+	_check(no_slider.is_empty(), "every sound is under exactly one Sound slider" + _first(no_slider))
 	var ui: Array = players.filter(func(p) -> bool: return _bus_chain(p.bus).has("UI"))
-	_check(not ui.is_empty() and ui.all(func(p) -> bool: return low[p] <= -60.0), "menu sounds follow the Effects slider")
+	_check(not ui.is_empty() and ui.all(func(p) -> bool: return _bus_chain(p.bus).has("Effects")), "menu sounds follow the Effects slider")
 	# The player's engine plays on Engine (Your car); traffic engines on Vehicles.
 	var car: Node = _world.get_node("Car")
 	var mine: Array = players.filter(func(p) -> bool: return p is AudioStreamPlayer3D and car.is_ancestor_of(p) and "engine_set" in p.get_parent())
 	var traffic_engines: Array = players.filter(func(p) -> bool: return "engine_set" in p.get_parent() and not car.is_ancestor_of(p))
-	_check(not mine.is_empty() and mine.all(func(p) -> bool: return p.bus == &"Engine"), "your car's engine plays on the Engine bus")
-	_check(not traffic_engines.is_empty() and traffic_engines.all(func(p) -> bool: return p.bus == &"Vehicles"),
-			"traffic engines play on the Vehicles bus, not your car's")
-	await _check_sub_slider(players, "volume_car", ["Engine", "Tyres", "Cabin"], "Your car")
-	await _check_sub_slider(players, "volume_surroundings", ["Ambience", "Weather", "Vehicles"], "Weather and street")
+	_check(not mine.is_empty() and mine.all(func(p) -> bool: return p.bus == &"Engine" and _bus_chain(p.bus).has("Car")),
+			"your car's engine plays on the Engine bus, under Your car")
+	_check(not traffic_engines.is_empty() and traffic_engines.all(func(p) -> bool: return p.bus == &"Vehicles" and _bus_chain(p.bus).has("Ambient")),
+			"traffic engines play on the Vehicles bus, under Surroundings")
+	var radio: Node = _audio.radio
+	_check(_bus_chain(radio._player.bus).has("MusicRadio"), "the radio follows the Music and radio slider")
+	for key in SLIDERS:
+		await _check_one_slider(players, key, SLIDERS[key][0], SLIDERS[key][1])
+	# Room for a louder car: all the way up is well over the mix.
+	var settings: Node = root.get_node("Settings")
+	var car_bus := AudioServer.get_bus_index("Car")
+	var at_default := AudioServer.get_bus_volume_db(car_bus)
+	var keep: float = settings.volume_car
+	settings.volume_car = 1.0
+	settings.apply()
+	var at_max := AudioServer.get_bus_volume_db(car_bus)
+	settings.volume_car = keep
+	settings.apply()
+	_check(absf(at_default) < 0.1 and at_max >= 10.0,
+			"Your car is as mixed by default (%.1f dB) and goes %.1f dB louder at the top" % [at_default, at_max])
 
 
-## A slider under Effects at 0 silences the sounds on `buses` and leaves
-## every other sound exactly where it was.
-func _check_sub_slider(players: Array, key: String, buses: Array, label: String) -> void:
+## A slider at 0 silences the sounds under `bus` and leaves every other
+## sound exactly where it was.
+func _check_one_slider(players: Array, key: String, bus: String, label: String) -> void:
 	var before := await _gains_with(players, {})
 	var bus_before := {}
 	for p in before:
 		bus_before[p] = p.bus
 	var after := await _gains_with(players, {key: 0.0})
 	var wrong: Array[String] = []
+	var count := 0
 	for p in players:
 		if not (before.has(p) and after.has(p)):
 			continue  # a one-shot that finished meanwhile
 		if p.bus != bus_before[p]:
 			continue  # a pooled one-shot player picked up another sound on another bus
 		var chain := _bus_chain(p.bus)
-		var under := buses.any(func(b) -> bool: return chain.has(b))
+		var under := chain.has(bus)
+		count += 1 if under else 0
 		if (under and after[p] > -60.0) or (not under and absf(after[p] - before[p]) > 0.1):
 			wrong.append("%s (%s, %.0f to %.0f dB)" % [_label(p), " > ".join(chain), before[p], after[p]])
-	_check(wrong.is_empty(), "the %s slider turns down %s and nothing else" % [label, ", ".join(buses)]
+	_check(count > 0 and wrong.is_empty(), "the %s slider turns down its own %d sounds and nothing else" % [label, count]
 			+ _first(wrong))
 
 
@@ -347,8 +377,8 @@ func _on_world_bus(bus: StringName) -> bool:
 # ---------------------------------------------------------------------------
 
 ## Sits in the car in the interior view, then the chase view, in a storm with
-## the radio on, and compares what each bus sends on. Weather feeds World, so it is heard after
-## the World fader (the one the Effects slider moves); its own meter is not.
+## the radio on, and compares what each bus sends on as heard: a bus's meter
+## is after its own fader but before the slider bus it feeds (_heard()).
 func _check_storm_in_car() -> void:
 	var weather: Node = root.get_node("Weather")
 	weather.set_state(weather.State.STORM, true)
@@ -361,33 +391,33 @@ func _check_storm_in_car() -> void:
 	_check(_audio.is_player_inside(), "the interior view puts the player in the car")
 	_storm_at_loudest()
 	var loud: Dictionary = await _bus_levels(8.0)
-	var radio: float = loud["Radio"]
-	var cabin: float = loud["Cabin"]
-	var storm: float = loud["Weather"] + AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
+	var radio: float = _heard(loud, "Radio")
+	var cabin: float = maxf(_heard(loud, "Cabin"), _heard(loud, "Roof"))
+	var storm: float = _heard(loud, "Weather")
 	print("storm in the car: radio %.1f dB, cabin %.1f dB, storm outside %.1f dB" % [radio, cabin, storm])
 	_check(radio - cabin >= CABIN_UNDER_RADIO_DB,
 			"in a storm the rain on the roof and the wipers sit under the radio (%.1f dB under)" % (radio - cabin))
 	_check(radio - storm >= STORM_UNDER_RADIO_DB,
 			"in a storm the rain and wind outside the car sit under the radio (%.1f dB under)" % (radio - storm))
-	var engine: float = loud["Engine"] + AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
+	var engine: float = _heard(loud, "Engine")
 	print("  engine idling in the car: %.1f dB" % engine)
 	_check(engine - maxf(cabin, storm) >= ENGINE_OVER_STORM_DB,
 			"in a storm the idling engine is heard over the rain in the car (%.1f dB over)" % (engine - maxf(cabin, storm)))
 	var settings: Node = root.get_node("Settings")
-	var keep: float = settings.volume_effects
-	settings.volume_effects = 0.1
+	var keep: float = settings.volume_ambient
+	settings.volume_ambient = 0.1
 	settings.apply()
 	await _wait(1.0)
 	var low: Dictionary = await _bus_levels(4.0)
-	settings.volume_effects = keep
+	settings.volume_ambient = keep
 	settings.apply()
 	var drops := {}
-	for b in ["Radio", "Cabin", "World"]:
+	for b in ["Radio", "Ambient", "Car"]:
 		drops[b] = loud[b] - low[b]
-	print("Effects at 10%%: radio %.1f dB down, cabin %.1f dB down, world (storm, engine, street) %.1f dB down" % [drops["Radio"], drops["Cabin"], drops["World"]])
-	_check(drops["Cabin"] >= 12.0 and drops["World"] >= 12.0,
-			"Effects at 10%% turns the storm and the wipers down in the car (%.1f and %.1f dB)" % [drops["World"], drops["Cabin"]])
-	_check(absf(drops["Radio"]) < 2.0, "Effects leaves the radio alone (%.1f dB)" % drops["Radio"])
+	print("Surroundings at 10%%: radio %.1f dB down, the storm and street %.1f dB down, your car %.1f dB down" % [drops["Radio"], drops["Ambient"], drops["Car"]])
+	_check(drops["Ambient"] >= 12.0, "Surroundings at 10%% turns the storm down in the car (%.1f dB)" % drops["Ambient"])
+	_check(absf(drops["Radio"]) < 2.0 and absf(drops["Car"]) < 2.0,
+			"Surroundings leaves the radio and your car alone (%.1f and %.1f dB)" % [drops["Radio"], drops["Car"]])
 	# Back to the chase view, still at the wheel: the street sounds like
 	# outside again, but the storm ducks under the radio.
 	rig.toggle_mode()
@@ -396,11 +426,12 @@ func _check_storm_in_car() -> void:
 			"the chase view hears the car from outside, at the wheel")
 	_storm_at_loudest()
 	var chase: Dictionary = await _bus_levels(8.0)
-	var chase_storm: float = chase["Weather"] + AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
-	print("storm in the chase view: radio %.1f dB, storm %.1f dB" % [chase["Radio"], chase_storm])
-	_check(chase["Radio"] - chase_storm >= CHASE_STORM_UNDER_RADIO_DB,
-			"in a storm in the chase view the rain and wind sit under the radio (%.1f dB under)" % (chase["Radio"] - chase_storm))
-	var chase_engine: float = chase["Engine"] + AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
+	var chase_storm: float = _heard(chase, "Weather")
+	var chase_radio: float = _heard(chase, "Radio")
+	print("storm in the chase view: radio %.1f dB, storm %.1f dB" % [chase_radio, chase_storm])
+	_check(chase_radio - chase_storm >= CHASE_STORM_UNDER_RADIO_DB,
+			"in a storm in the chase view the rain and wind sit under the radio (%.1f dB under)" % (chase_radio - chase_storm))
+	var chase_engine: float = _heard(chase, "Engine")
 	print("  engine idling in the chase view: %.1f dB" % chase_engine)
 	_check(chase_engine - chase_storm >= ENGINE_OVER_STORM_DB,
 			"in a storm in the chase view the idling engine is heard over the rain (%.1f dB over)" % (chase_engine - chase_storm))
@@ -437,8 +468,8 @@ func _check_menu_clicks() -> void:
 
 ## Drives the car down a long straight road near home with the radio on, at
 ## each of CRUISES (view and speed), and compares
-## the radio with your own engine and tyres as heard (Engine and Tyres feed
-## World, so the World fader counts).
+## the radio with your own engine and tyres as heard (_heard()), then works
+## out the engine with Your car all the way up.
 func _check_radio_over_car(traffic: Node) -> void:
 	var car: RigidBody3D = _world.get_node("Car")
 	var settings: Node = root.get_node("Settings")
@@ -481,10 +512,9 @@ func _check_radio_over_car(traffic: Node) -> void:
 		_audio.radio._player.play(RADIO_AT)
 		var levels: Dictionary = await _cruise(car, a, dir, kmh, 3.0)  # get settled
 		levels = await _cruise(car, a, dir, kmh, 6.0)
-		var wf := AudioServer.get_bus_volume_db(AudioServer.get_bus_index("World"))
-		var radio: float = levels["Radio"]
-		var engine: float = levels["Engine"] + wf
-		var tyres: float = levels["Tyres"] + wf
+		var radio: float = _heard(levels, "Radio")
+		var engine: float = _heard(levels, "Engine")
+		var tyres: float = _heard(levels, "Tyres")
 		print("cruising in the %s view at %.0f km/h: radio %.1f dB, engine %.1f dB, tyres %.1f dB"
 				% [view, levels["kmh"], radio, engine, tyres])
 		_check(levels["kmh"] > kmh - 15.0 and levels["kmh"] < kmh + 10.0,
@@ -492,6 +522,12 @@ func _check_radio_over_car(traffic: Node) -> void:
 		_check(radio - engine >= CAR_UNDER_RADIO_DB and radio - tyres >= CAR_UNDER_RADIO_DB,
 				"at %.0f km/h in the %s view the radio is heard over your engine and tyres (%.1f and %.1f dB over)"
 				% [kmh, view, radio - engine, radio - tyres])
+		# Your car all the way up: the Car fader comes after the engine's
+		# compressor, so the engine is that much louder as heard.
+		var boost: float = _audio.car_slider_db(1.0) - _audio.car_slider_db(settings.volume_car)
+		_check(engine + boost - radio >= ENGINE_OVER_RADIO_AT_MAX_DB,
+				"at %.0f km/h in the %s view with Your car all the way up, your engine is over the radio (%.1f dB over)"
+				% [kmh, view, engine + boost - radio])
 	for action in ["accelerate", "steer_left", "steer_right"]:
 		Input.action_release(action)
 	settings.automatic_gearbox = auto
@@ -538,6 +574,17 @@ func _cruise(car: RigidBody3D, a: Vector3, dir: Vector3, target: float, seconds:
 	for b in sums:
 		out[b] = linear_to_db(maxf(sums[b] / maxf(n, 1), 1e-5))
 	return out
+
+
+## A bus's level as heard: its meter reading (after its own fader) plus the
+## faders of the buses it feeds, short of Master.
+func _heard(levels: Dictionary, bus: String) -> float:
+	var db: float = levels[bus]
+	var idx := AudioServer.get_bus_index(AudioServer.get_bus_send(AudioServer.get_bus_index(bus)))
+	while idx > 0:
+		db += AudioServer.get_bus_volume_db(idx)
+		idx = AudioServer.get_bus_index(AudioServer.get_bus_send(idx))
+	return db
 
 
 ## Each bus's level at loud moments over `seconds` of real time: the 90th

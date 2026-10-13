@@ -974,10 +974,8 @@ def suburbs_day():
     mow = texture(src("lawnmower", True), dur, 93, chunk=25, avoid_peaks_db=5)
     env = env_window(n, 10, 70, 4, 6)
     B.add(S.circ_lp(mow, 2500) * env[:, None], -33)
-    # reticulation: impact sprinkler ticking a couple of yards over
-    sp = texture(src("sprinkler", True), dur, 94, chunk=9.0, xf=0.3)
-    env2 = env_window(n, 60, 45, 2, 2)
-    B.add(S.circ_lp(sp, 4000) * env2[:, None], -43)
+    # (no reticulation: it's heard from the parks, place_retic, and never
+    # by day in Perth)
     B.scatter(bird_pools(), 7, gain_db=(-20, -9), dist=(0.25, 0.8))
     B.scatter(raven_pool(), 2, gain_db=(-22, -16), dist=(0.5, 0.85))
     wg = snips("wagtail1", 2000, 8000, thresh_db=14, min_len=0.6, max_len=3.0, gap=0.35)
@@ -997,9 +995,6 @@ def suburbs_night():
     B.add(texture(src("crickets_sub", True), dur, 101, chunk=17, region=(22.5, 82)), -31)
     B.add(S.circ_lp(texture(src("traffic_night", True), dur, 102, chunk=20), 1800), -38)
     B.add(gum_wind(n, 103, gust_rate=0.03, crisp=0.5), -45)
-    sp = texture(src("sprinkler", True), dur, 104, chunk=9.0, xf=0.3)
-    env = env_window(n, 30, 50, 1.5, 1.5)
-    B.add(S.circ_lp(sp, 3500) * env[:, None], -40)
     B.scatter(dog_pool(), 4, gain_db=(-24, -17), dist=(0.7, 0.95), room=2.0)
     # ravens settling at dusk, far off
     B.scatter(raven_pool(), 2, gain_db=(-26, -20), dist=(0.75, 0.9), room=2.0)
@@ -1639,9 +1634,6 @@ def suburbs_dawn():
     B.add(S.circ_lp(texture(src("traffic_night", True), dur, 23022, chunk=20), 1600), -41)
     B.add(gum_wind(n, 23023, gust_rate=0.04, crisp=0.6), -43)
     B.add(city_hum(n, 23024, 30, 200), -44)
-    # the retic comes on at dawn a couple of yards over
-    sp = texture(src("sprinkler", True), dur, 23025, chunk=9.0, xf=0.3)
-    B.add(S.circ_lp(sp, 4000) * env_window(n, 15, 40, 2, 2)[:, None], -42)
     B.scatter(bird_pools(), 16, gain_db=(-17, -5), dist=(0.2, 0.8))
     wg = snips("wagtail1", 2000, 8000, thresh_db=14, min_len=0.6, max_len=3.0, gap=0.35)
     B.scatter(wg, 4, gain_db=(-20, -13), dist=(0.25, 0.55))
@@ -3164,6 +3156,39 @@ def place_riverside_night():
             B.put(distant(bonk[int(B.r.integers(len(bonk)))], 0.4, B.r.uniform(-0.7, 0.7), k * 10 + j, room=1.0), tt, -15)
             tt += secs(B.r.uniform(0.5, 1.3))
     place_save("place_riverside_night_loop", B.x)
+
+
+@builder("place_retic")
+def place_retic():
+    """A park's reticulation, heard from the sprinkler: the solenoid clunks,
+    an impact sprinkler ticks round for half a minute with the spray
+    hissing on the grass, then the station shuts off and it drips. Played
+    quietly and only in Perth's watering hours (ambience_manager.gd)."""
+    dur = 60
+    B = Bed(dur, 3701)
+    n = B.n
+    run = env_window(n, 6, 34, 1.2, 2.5)
+    sp = texture(src("sprinkler", True), dur, 37011, chunk=9.0, xf=0.3)
+    B.add(S.circ_lp(sp, 6000) * run[:, None], -30)
+    # the spray on the grass, swelling as the head swings past
+    sweep = 0.55 + 0.45 * np.clip(np.sin(2 * np.pi * np.arange(n) / secs(9.0)), 0, 1) ** 2
+    hiss = np.stack([S.circ_bp(S.noise(n, 37012 + c), 1800, 7000, 1) for c in range(2)], axis=1)
+    B.add(hiss * (run * sweep)[:, None], -40)
+    # the valve opening and closing under the lawn
+    for at in (5.6, 40.6):
+        L = secs(0.4)
+        tk = S.t_axis(L)
+        clunk = np.sin(2 * np.pi * 85 * tk) * np.exp(-tk / 0.05) + 0.3 * S.bp(B.r.standard_normal(L), 200, 1500, 2) * np.exp(-tk / 0.02)
+        B.put(distant(S.fade(clunk, 0.001, 0.1), 0.5, 0.0, int(at * 10)), secs(at), -26)
+    # drips off the head and the leaves once it's off
+    for k, at in enumerate(B.times(14, 0.9)):
+        if secs(6) < at < secs(42):
+            continue
+        L = secs(0.12)
+        tk = S.t_axis(L)
+        drip = np.sin(2 * np.pi * B.r.uniform(900, 1600) * tk * (1 + 2 * tk)) * np.exp(-tk / 0.02)
+        B.put(distant(drip, B.r.uniform(0.2, 0.5), B.r.uniform(-0.5, 0.5), k), at, -34)
+    place_save("place_retic_loop", B.x)
 
 
 @builder("place_carpark")

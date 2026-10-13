@@ -147,7 +147,7 @@ func _on_job_stage(job: Dictionary) -> void:
 			# Loaded up: the cargo goes in the back.
 			_ui("ui_checkpoint")
 			if _car:
-				Audio.play_at("car/car_boot_close", _car.global_position, -4.0)
+				Audio.play_at("car/car_boot_close", _car.global_position, -4.0, "Body")
 		"racing":
 			if int(job.get("checkpoint", 0)) <= 1:
 				_ui("ui_countdown_tick_final")
@@ -163,7 +163,7 @@ func _on_job_completed(job: Dictionary, pay: int, _summary: String) -> void:
 		if is_equal_approx(float(record.get("best", -1.0)), float(job.get("elapsed", -2.0))):
 			_ui("ui_new_best_time")
 	elif _car:
-		Audio.play_at("car/car_boot_open", _car.global_position, -4.0)
+		Audio.play_at("car/car_boot_open", _car.global_position, -4.0, "Body")
 	if pay > 0:
 		get_tree().create_timer(0.8).timeout.connect(func() -> void: Audio.ui("ui_money_earned"))
 

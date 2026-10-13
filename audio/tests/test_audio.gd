@@ -38,6 +38,7 @@ func _ready() -> void:
 		quit(1)
 		return
 	_test_buses()
+	_test_volume_sliders(audio)
 	_test_index(audio)
 	_test_engines(audio)
 	await _test_engine_node(audio)
@@ -66,9 +67,40 @@ func _place(amb: Node, type: String, pos: Vector3) -> float:
 
 func _test_buses() -> void:
 	print("buses")
-	for b in ["Music", "UI", "Radio", "Cabin", "World", "Engine", "Tyres", "SFX", "Ambience", "Weather"]:
+	for b in ["Car", "MusicRadio", "Ambient", "Effects", "Music", "UI", "Radio", "MyMusic", "Cabin",
+			"Engine", "Tyres", "Body", "SFX", "Ambience", "Weather", "Vehicles", "Outdoors", "Roof"]:
 		check(AudioServer.get_bus_index(b) >= 0, "bus " + b)
-	check(AudioServer.get_bus_send(AudioServer.get_bus_index("Engine")) == "World", "Engine sends to World")
+	for pair in [["Engine", "Car"], ["Radio", "MusicRadio"], ["MyMusic", "Radio"], ["Weather", "Ambient"],
+			["Outdoors", "Ambient"], ["UI", "Effects"], ["SFX", "Effects"]]:
+		check(AudioServer.get_bus_send(AudioServer.get_bus_index(pair[0])) == pair[1], "%s sends to %s" % pair)
+	# Each bus sends to one before it (the mixer only sends that way).
+	var order_ok := true
+	for i in range(1, AudioServer.bus_count):
+		order_ok = order_ok and AudioServer.get_bus_index(AudioServer.get_bus_send(i)) < i
+	check(order_ok, "every bus sends to one before it")
+
+
+func _test_volume_sliders(audio: Node) -> void:
+	print("volume sliders")
+	var settings: Node = root.get_node("Settings")
+	check(absf(audio.car_slider_db(settings.VOLUME_CAR_DEFAULT)) < 0.1, "Your car is as mixed by default")
+	check(audio.car_slider_db(1.0) >= 10.0, "and has room to go louder (%.1f dB)" % audio.car_slider_db(1.0))
+	# Settings saved with the old sliders keep what each sound was heard at.
+	var keep := {}
+	for key in ["volume_car", "volume_music", "volume_ambient", "volume_effects"]:
+		keep[key] = settings.get(key)
+	var old := ConfigFile.new()
+	for pair in [["volume_effects", 0.5], ["volume_car", 1.0], ["volume_surroundings", 0.8],
+			["volume_music", 1.0], ["volume_radio", 0.6]]:
+		old.set_value("settings", pair[0], pair[1])
+	settings._volumes_from_old_sliders(old)
+	check(absf(audio.car_slider_db(settings.volume_car) - linear_to_db(0.5)) < 0.2,
+			"an old Your car setting under Effects keeps the car's level (%.1f dB)" % audio.car_slider_db(settings.volume_car))
+	check(absf(settings.volume_ambient - 0.4) < 0.01, "the old Weather and street under Effects becomes Surroundings")
+	check(absf(settings.volume_music - 0.6) < 0.01, "Music and radio takes the old Radio slider")
+	for key in keep:
+		settings.set(key, keep[key])
+	settings.apply()
 
 
 func _test_index(audio: Node) -> void:
@@ -202,6 +234,21 @@ func _test_my_music(audio: Node) -> void:
 	await create_timer(0.6).timeout
 	check(radio.current_station_id() == "mymusic", "tuned to My Music")
 	check(radio._player.playing, "My Music is playing")
+	check(radio._player.bus == &"MyMusic", "My Music plays through its own bus, to be levelled")
+	check(absf(radio._mm_trim - radio.MY_MUSIC_GUESS_DB) < 0.01, "a song not heard before starts at the first guess")
+	# Levelling: quiet stretches don't count, and a song heard once starts right.
+	var blocks := PackedFloat32Array()
+	for i in 70:
+		blocks.append(0.01 if i % 7 else 1e-9)
+	check(absf(radio.song_level(blocks) - (-20.0)) < 0.1, "a song's level leaves out its silences (%.1f dB)" % radio.song_level(blocks))
+	radio._blocks = blocks
+	var path: String = radio._order[radio._pos]
+	radio._keep_level()
+	radio._start_level(path)
+	check(radio._mm_known and absf(radio._mm_trim - (radio.MY_MUSIC_TARGET_DB + 20.0)) < 0.2,
+			"a song heard before starts at its own level (%.1f dB)" % radio._mm_trim)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(radio.LEVELS_PATH))
+	radio._levels = null
 	var first: String = radio._order[radio._pos]
 	radio.next_track()
 	check(radio._order[radio._pos] != first, "next track")
@@ -212,6 +259,8 @@ func _test_my_music(audio: Node) -> void:
 	radio.set_station("cinquecento")
 	await create_timer(0.6).timeout
 	check(radio._player.playing or not audio.has("music/mus_cinquecento_01"), "Radio Cinquecento plays")
+	check(radio._player.bus == &"Radio" and radio._level() == radio.volume_db + radio._outside_trim + radio._duck_db,
+			"the stations play as they are, without My Music's levelling")
 	radio.turn_off()
 	# Clean up the test files.
 	for f in radio.playlists["All music"]:
@@ -219,11 +268,56 @@ func _test_my_music(audio: Node) -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(dir + "/Test Playlist"))
 
 
+## Reticulation in the parks: on in Perth's watering hours only, heard from
+## the sprinkler, close up, and gone in the rain.
+func _test_retic(amb: Node) -> void:
+	print("retic")
+	check(amb.retic_count() > 1000, "the map's parks have sprinklers (%d)" % amb.retic_count())
+	var spot: Vector3 = Vector3.INF
+	for cell in amb._retic:
+		spot = amb._retic[cell][0]
+		break
+	var hours_on := 0.0
+	var by_day: Array[String] = []
+	for d in 7:
+		for q in 96:
+			var hrs := q * 0.25
+			if amb.retic_running(spot, d, hrs):
+				hours_on += 0.25
+				if hrs >= 9.0 and hrs < 18.0:
+					by_day.append("day %d %.2f" % [d, hrs])
+	check(by_day.is_empty(), "no retic by day" + (" (%s)" % ", ".join(by_day) if by_day else ""))
+	check(absf(hours_on - amb.RETIC_DAYS * amb.RETIC_HOURS) < 0.01, "a sprinkler runs %.1f h a week" % hours_on)
+	# Find when it runs, and hear it there.
+	var when := Vector2(-1, -1)
+	for d in 7:
+		for q in 96:
+			if when.x < 0 and amb.retic_running(spot, d, q * 0.25):
+				when = Vector2(d, q * 0.25)
+	var keep := [amb.day, amb.time_of_day, amb.rain]
+	amb.day = int(when.x)
+	amb.time_of_day = when.y
+	amb.rain = 0.0
+	var near := spot + Vector3(6, 0, 0)
+	amb.update_places(near)
+	check(amb._place_near.has("retic") and amb.place_level("retic", near) > 0.0, "the retic is heard beside it")
+	var far := spot + Vector3(amb.RETIC_RADIUS * amb.PLACE_REACH + 15.0, 0, 0)
+	amb.update_places(far)
+	check(amb.place_level("retic", far) == 0.0, "and not from across the park")
+	amb.rain = 0.5
+	amb.update_places(near)
+	check(not amb._place_near.has("retic"), "not in the rain")
+	amb.day = keep[0]
+	amb.time_of_day = keep[1]
+	amb.rain = keep[2]
+
+
 func _test_ambience(audio: Node) -> void:
 	print("ambience")
 	var amb: Node = audio.ambience
 	amb.set_zone("kingspark")
 	amb.set_weather(0.8, 1.0)
+	_test_retic(amb)
 	audio.set_player_inside(true)
 	for i in 20:
 		await process_frame
@@ -246,11 +340,11 @@ func _test_ambience(audio: Node) -> void:
 	audio.set_player_inside(false)
 	check(true, "weather and lightning without errors")
 	# Place layers: every outdoor type has day and night loops (the shops and
-	# the 3 am cockatoos have one, used at any hour); a place fades in as you
+	# the 3 am cockatoos and the retic have one, used at any hour); a place fades in as you
 	# get near it and out as you leave; a "poi" node counts as a place.
 	for type in amb.PLACE_TYPES:
 		var both: bool = audio.has("amb/place/place_%s_loop" % type) and audio.has("amb/place/place_%s_night_loop" % type)
-		var one_only: bool = type in ["tackle_shop", "photo_lab", "wrong_cockatoos"] and amb.place_sound(type) != ""
+		var one_only: bool = type in ["tackle_shop", "photo_lab", "wrong_cockatoos", "retic"] and amb.place_sound(type) != ""
 		check(both or one_only, "place %s has its loops" % type)
 	amb.set_time_of_day(12.0)
 	amb.add_place("beach", Vector3(1000, 0, 0), 100.0)
@@ -432,9 +526,9 @@ func _test_hooks(audio: Node) -> void:
 	var settings: Node = root.get_node("Settings")
 	settings.volume_music = 0.5
 	settings.apply()
-	var music := AudioServer.get_bus_index("Music")
-	check(absf(AudioServer.get_bus_volume_db(music) - (-3.0 + linear_to_db(0.5))) < 0.1,
-			"music slider sets the Music bus")
+	var music := AudioServer.get_bus_index("MusicRadio")
+	check(absf(AudioServer.get_bus_volume_db(music) - linear_to_db(0.5)) < 0.1,
+			"the Music and radio slider sets its bus")
 	settings.volume_music = 1.0
 	settings.apply()
 	audio.radio.set_station("cinquecento")
