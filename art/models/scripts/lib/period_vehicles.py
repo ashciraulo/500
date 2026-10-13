@@ -175,15 +175,15 @@ WR = 0.722                           # roof edge half width (tumblehome)
 FIL_F, FIL_R = 0.036, 0.024           # end fillet radii
 
 _W = K.pchip([Y0, -2.15, -1.8, -1.4, 1.6, 1.95, 2.2, Y1],
-             [HW - 0.012, HW - 0.006, HW - 0.002, HW, HW, HW - 0.004, HW - 0.014, HW - 0.035])
+             [HW - 0.012, HW - 0.006, HW - 0.002, HW, HW, HW - 0.003, HW - 0.01, HW - 0.022])
 _ZB = K.pchip([Y0, -2.15, -1.85, -1.5, 1.9, 2.1, Y1], [0.46, 0.38, 0.34, 0.33, 0.33, 0.37, 0.45])
 # the shoulder crease: low at the nose, up to the belt, a level crest along the fins
 _ZC = K.pchip([Y0, -2.0, -1.6, -1.29, 0.5, 0.86, 1.2, 1.6, Y1],
-              [0.952, 0.953, 0.948, 0.942, 0.936, 0.915, 0.885, 0.858, 0.84])
+              [0.92, 0.93, 0.938, 0.942, 0.936, 0.915, 0.885, 0.858, 0.84])
 # deck edge: the bonnet runs flush with the fender tops, the boot lid sits
 # down between the fins
 _ZD_F = K.pchip([0.86, 1.2, 1.6, Y1], [0.912, 0.882, 0.855, 0.836])
-_ZD_R = K.pchip([Y0, -2.15, -1.8, -1.4], [0.9, 0.91, 0.918, 0.924])
+_ZD_R = K.pchip([Y0, -2.15, -1.8, -1.4], [0.872, 0.89, 0.914, 0.936])
 _CROWN = 0.014
 
 
@@ -208,15 +208,15 @@ def _controls(y):
             # the peak fades out towards the bonnet's front edge
             c = 0.02 + 0.012 * min(1.0, max(0.0, (Y1 - 0.06 - y) / 0.25))
         else:
-            c = 0.022
+            c = 0.03
         edge = [(w - 0.04, zd + 0.004), (w - 0.08, zd + 0.15 * c), (w - 0.11, zd + 0.25 * c)]
         f = min(1.0, max(0.0, (-1.45 - y) / 0.4)) if y < 0 else 0.0
         if f > 0:
-            # towards the tail the fender tops become rounded pods as wide
-            # as the lamps they end in, standing just proud of the lid, which
-            # meets them in a soft valley at the panel edge
-            pts[4:7] = [(w - 0.001, zc - 0.07), (w - 0.004 * f, zc - 0.03), (w - 0.022, zc - 0.002 * f)]
-            pod = [(w - 0.06, zc - 0.006), (w - 0.105, zc - 0.03), (PANEL_X - 0.015, zd + 0.006)]
+            # towards the tail the side runs straight up (no flare) to a crisp
+            # crest along the outer edge: the fin. Its top falls away inboard
+            # to the boot lid's edge, a few cm lower.
+            pts[4:7] = [(w - 0.001, zc - 0.075), (w - 0.004 * f, zc - 0.03), (w - 0.016, zc - 0.005 * f)]
+            pod = [(w - 0.038, zc), (w - 0.08, zc - 0.014), (PANEL_X - 0.012, zd + 0.008)]
             edge = [(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f) for a, b in zip(edge, pod)]
         pts += edge + [(0.42 * w, zd + mid * c), (0.0, zd + c)]
         return pts
@@ -371,10 +371,10 @@ DLO_Z0, DLO_Z1 = ZB + 0.018, ZR - 0.078
 # side glass openings (y, z): front door glass back to the B pillar, rear
 # door glass back to its slanted rear edge; round top corners
 SIDE_FRONT = _round_poly([(_a_line(DLO_Z0) - 0.05, DLO_Z0), (0.005, DLO_Z0), (0.005, DLO_Z1),
-                          (_a_line(DLO_Z1) - 0.05, DLO_Z1)], 0.05)
+                          (_a_line(DLO_Z1) - 0.05, DLO_Z1)], 0.03)
 REAR_GLASS_Y = -0.8                # the rear door glass's back edge at the belt
 SIDE_REAR = _round_poly([(-0.07, DLO_Z0), (REAR_GLASS_Y, DLO_Z0), (REAR_GLASS_Y + 0.04, DLO_Z1),
-                         (-0.07, DLO_Z1)], 0.05)
+                         (-0.07, DLO_Z1)], 0.03)
 # screens in plan (x, y)
 WINDSCREEN = _round_poly([(-0.745, WS_B - 0.022), (0.745, WS_B - 0.022), (WR - 0.058, WS_T + 0.03),
                           (-(WR - 0.058), WS_T + 0.03)], 0.07)
@@ -383,6 +383,14 @@ BACKLIGHT = _round_poly([(-0.71, BL_B + 0.03), (-(WR - 0.11), BL_T - 0.035), (WR
 GRILLE_X, GRILLE_Z0, GRILLE_Z1, GRILLE_D = HW - 0.076, 0.478, 0.8, 0.075
 PANEL_X, PANEL_D = 0.735, 0.04
 LID_EDGE = 0.725                         # the boot lid's lower edge, over the rear panel
+
+
+def _grille_outline():
+    """The grille opening (x, z): full width, its bottom edge stepping down
+    round each headlamp."""
+    z0, zs = GRILLE_Z0, GRILLE_Z0 + 0.035
+    return _round_poly([(-GRILLE_X, z0), (-0.57, z0), (-0.53, zs), (0.53, zs), (0.57, z0), (GRILLE_X, z0),
+                        (GRILLE_X, GRILLE_Z1), (-GRILLE_X, GRILLE_Z1)], 0.06, 4)
 
 
 def _side_place(sx):
@@ -417,13 +425,12 @@ def _shell(M):
             C.apply_transform(arch)
             _cut(body, _fix_normals(arch))
     # grille opening at the front, the rear panel set in between the fins
-    g = [(-GRILLE_X, GRILLE_Z0), (GRILLE_X, GRILLE_Z0), (GRILLE_X, GRILLE_Z1), (-GRILLE_X, GRILLE_Z1)]
-    _cut(body, _cutter("grille_cut", _round_poly(g, 0.03, 3), lambda u, v, d: (u, d, v),
+    _cut(body, _cutter("grille_cut", _grille_outline(), lambda u, v, d: (u, d, v),
                        Y1 - GRILLE_D, Y1 + 1.0, "Under"))
     # (y, z) outline of what comes off between the fins: the rear panel face,
     # rolling forward over the boot lid's rounded trailing edge
-    r = 0.06
-    zl = _ZD_R(Y0 + PANEL_D + r) + 0.022          # the lid's crown at its rear edge
+    r = 0.085
+    zl = _ZD_R(Y0 + PANEL_D + r) + 0.03          # the lid's crown at its rear edge
     lid = [(Y0 + PANEL_D + r - r * math.cos(math.radians(a)), zl - r + r * math.sin(math.radians(a)))
            for a in range(0, 91, 10)]
     pnl = [(Y0 - 1.0, 0.47), (Y0 + PANEL_D, 0.47)] + lid + [(Y0 + PANEL_D + r, 1.3), (Y0 - 1.0, 1.3)]
@@ -432,6 +439,10 @@ def _shell(M):
     step = [(Y0 - 1.0, 0.47), (Y0 + PANEL_D + 0.012, 0.47), (Y0 + PANEL_D + 0.012, LID_EDGE),
             (Y0 - 1.0, LID_EDGE)]
     _cut(body, _cutter("panel_step", step, lambda u, v, d: (d, u, v), -PANEL_X + 0.012, PANEL_X - 0.012, "Paint"))
+    # each tail lamp sits deep in a recess in its fin's end
+    for sx in (-1, 1):
+        _cut(body, _cutter("lamp_pocket", _tail_frame(sx)[0], lambda u, v, d: (u, d, v), Y0 - 0.5, Y0 + 0.032,
+                           "Under"))
     # a copy of the uncut greenhouse to lay the glass and the frames on
     ref = body.copy()
     ref.data = body.data.copy()
@@ -486,13 +497,8 @@ def _nose(M):
     for i in range(12):
         z = GRILLE_Z0 + 0.03 + i * (GRILLE_Z1 - GRILLE_Z0 - 0.06) / 11
         p.append(bx((-0.6, yb + 0.012, z - 0.003), (0.6, yb + 0.04, z + 0.003), M["chrome"]))
-    for x in (-0.3, 0.0, 0.3):
-        p.append(bx((x - 0.0015, yb, GRILLE_Z0 + 0.02), (x + 0.0015, yb + 0.012, GRILLE_Z1 - 0.02), M["dark"]))
     # chrome lip round the opening
-    def rect(i):
-        return _round_poly([(-GRILLE_X + i, GRILLE_Z0 + i), (GRILLE_X - i, GRILLE_Z0 + i),
-                            (GRILLE_X - i, GRILLE_Z1 - i), (-GRILLE_X + i, GRILLE_Z1 - i)], 0.03 - i * 0.5, 3)
-    g, gi = rect(-0.006), rect(0.016)
+    g, gi = K.offset_poly(_grille_outline(), -0.006), K.offset_poly(_grille_outline(), 0.016)
     p.append(_ring("grille_lip", [(x, Y1 + 0.012, z) for x, z in g], [(x, Y1 + 0.012, z) for x, z in gi],
                    M["chrome"]))
     # its outer edge turns back into the opening, so the lip stands proud
@@ -500,14 +506,16 @@ def _nose(M):
                    M["chrome"]))
     for sx in (-1, 1):
         x = sx * 0.69
-        p.append(cyl(0.104, 0.02, (x, yb + 0.004, 0.655), M["dark"], segs=24, axis="Y"))
+        pocket = _round_poly([(x - 0.115, 0.545), (x + 0.115, 0.545), (x + 0.115, 0.77), (x - 0.115, 0.77)],
+                             0.05, 4)
+        p.append(_prism("lamp_pocket", pocket, "y", yb, yb + 0.03, M["dark"]))
         # a short chrome cup the lamp sits in, its rim standing proud
-        p.append(K.revolve("lamp_cup", [(0.102, yb + 0.01), (0.104, Y1 + 0.0), (0.096, Y1 + 0.012)], 28,
+        p.append(K.revolve("lamp_cup", [(0.102, yb + 0.01), (0.104, Y1 - 0.024), (0.096, Y1 - 0.014)], 28,
                            lambda i: M["chrome"]))
         p[-1].rotation_euler = (0, 0, math.radians(90))
         p[-1].location = (x, 0, 0.655)
         ring = CB.torus_rim("bezel", 0.094, 0.011, 28, M["chrome"], ts=6)
-        ring.location = (x, Y1 + 0.01, 0.655)
+        ring.location = (x, Y1 - 0.016, 0.655)
         p.append(ring)
     return p
 
@@ -545,13 +553,13 @@ def _trim(M, body):
     for sx in (-1, 1):
         fr = K.side_frame(sx)
         p.append(_line("spear", body, [(Y0 + 0.12, 0.79), (Y1 - 0.2, 0.79)], fr, 0.016, M["chrome"], 0.004))
-        p.append(_line("drip", body, [(BL_T - 0.08, ZR - 0.06), (WS_T + 0.05, ZR - 0.06)], fr, 0.013,
+        p.append(_line("drip", body, [(BL_T + 0.02, ZR - 0.06), (WS_T - 0.02, ZR - 0.06)], fr, 0.013,
                                 M["chrome"], 0.007))
         # doors: front door from the A pillar base to the B pillar, rear door
         # round the arch
         # the rear door's back edge drops straight from behind its glass to
         # the arch, then follows the arch down
-        yd = REAR_GLASS_Y - 0.04
+        yd = REAR_GLASS_Y - 0.1
         a0 = math.degrees(math.acos((yd - AXLE_R) / 0.395))
         arch = [(AXLE_R + 0.395 * math.cos(math.radians(a)), TYRE_R + 0.395 * math.sin(math.radians(a)))
                 for a in [a0] + list(range(int(a0) // 10 * 10, 9, -10))]
@@ -616,7 +624,7 @@ def _tail(M):
     p.append(bx((-PANEL_X + 0.012, yp - 0.004, LID_EDGE - 0.014), (PANEL_X - 0.012, yp + 0.012, LID_EDGE),
                 M["chrome"]))
     # a blade: flat face, crisp top edge, rolled under at the bottom
-    prof = _BLADE(0.385)
+    prof = _BLADE(0.36, 1.18)
     plan = [(0.0, YR, 1), (0.45, YR + 0.006, 1), (0.72, YR + 0.016, 1), (0.82, YR + 0.045, 0.96),
             (HW - 0.004, YR + 0.12, 0.88), (HW + 0.002, YR + 0.22, 0.75), (HW - 0.006, YR + 0.32, 0.5)]
     p.append(_sweep("bumper_r", plan, prof, (0.0, YR + 1.0), M["chrome"]))
@@ -624,27 +632,29 @@ def _tail(M):
         x = sx * 0.66
         p.append(bx((x - 0.07, YR + 0.008, 0.44), (x + 0.07, YR + 0.02, 0.485), M["amber"]))
     p.append(bx((-0.19, YR - 0.01, 0.405), (0.19, YR - 0.002, 0.535), M["plate"]))
-    p.append(cyl(0.025, 0.2, (-0.45, YR + 0.05, 0.3), M["dark"], segs=8, axis="Y"))
+    p.append(cyl(0.024, 0.2, (-0.45, YR + 0.14, 0.3), M["dark"], segs=8, axis="Y"))
     return p
 
 
-def _BLADE(z0):
+def _BLADE(z0, h=1.0):
     """Bumper section (out, z) from its bottom edge z0: tucked under at the
     bottom, the face leaning out up to a rolled lip that stands proud."""
-    return [(-0.075, z0 + 0.004), (-0.05, z0), (-0.04, z0 + 0.008), (-0.028, z0 + 0.025), (-0.01, z0 + 0.075),
-            (0.0, z0 + 0.125), (0.006, z0 + 0.143), (0.002, z0 + 0.158), (-0.018, z0 + 0.167),
-            (-0.075, z0 + 0.17)]
+    return [(d, z0 + h * z) for d, z in ((-0.075, 0.004), (-0.05, 0.0), (-0.04, 0.008), (-0.028, 0.025),
+                                          (-0.01, 0.075), (0.0, 0.125), (0.006, 0.143), (0.002, 0.158),
+                                          (-0.018, 0.167), (-0.075, 0.17))]
 
 
 def _front_bumper(M):
     p = []
     yf = YF - 0.11
-    prof = _BLADE(0.395)
+    prof = _BLADE(0.36, 1.18)
     # (the vee in plan comes from _vee); the ends sweep back round the fenders
     plan = [(0.0, YF, 1), (0.45, YF - 0.004, 1), (0.72, YF - 0.012, 1), (0.82, YF - 0.04, 0.96),
             (HW - 0.004, YF - 0.12, 0.88), (HW + 0.002, YF - 0.22, 0.75), (HW - 0.006, YF - 0.32, 0.5)]
     p.append(_sweep("bumper_f", plan, prof, (0.0, YF - 1.0), M["chrome"]))
     p.append(bx((-0.19, YF + 0.004, 0.42), (0.19, YF + 0.012, 0.55), M["plate"]))
+    for sx in (-1, 1):
+        p.append(bx((sx * 0.55 - 0.072, YF - 0.065, 0.398), (sx * 0.55 + 0.072, YF - 0.014, 0.452), M["chrome"]))
     return p
 
 
@@ -708,42 +718,73 @@ def _vesica(cx, cz, a, b, n=8):
     return right + left
 
 
+def _tail_frame(sx):
+    """(outer, inner) outlines (x, z) of a tail lamp's chrome frame: tall,
+    filling the fin's end, with a round top under its crest."""
+    # a hair inboard of the fin end's middle, clear of its rounded outer edge
+    x = sx * ((PANEL_X + _W(Y0)) / 2 - 0.008)
+    zt, a, r = _ZC(Y0) - 0.048, 0.048, 0.044
+    # straight sides from just above the bumper, a semicircular top
+    outer = [(x - a + 0.012 - 0.012 * math.cos(math.radians(t)), 0.57 + 0.012 - 0.012 * math.sin(math.radians(t)))
+             for t in range(0, 91, 30)]
+    outer += [(x + a - 0.012 + 0.012 * math.sin(math.radians(t)), 0.57 + 0.012 - 0.012 * math.cos(math.radians(t)))
+              for t in range(0, 91, 30)]
+    outer += [(x + a, zt - r - 0.02)]
+    outer += [(x + r * math.cos(math.radians(t)), zt - r + r * math.sin(math.radians(t))) for t in range(0, 181, 15)]
+    outer += [(x - a, zt - r - 0.02)]
+    if sx < 0:
+        outer = [(px, pz) for px, pz in reversed(outer)]
+    inner = K.offset_poly(outer, 0.011)
+    return outer, inner
+
+
 def _lamps(M):
     out = []
     yb = Y1 - GRILLE_D
     for name, sx in (("HeadL", -1), ("HeadR", 1)):
         x = sx * 0.69
-        out.append((name, [cyl(0.088, 0.016, (x, Y1 - 0.008, 0.655), M["head"], segs=24, axis="Y"),
-                           cyl(0.06, 0.01, (x, Y1 + 0.002, 0.655), M["head"], segs=18, axis="Y")],
+        out.append((name, [cyl(0.088, 0.016, (x, Y1 - 0.03, 0.655), M["head"], segs=24, axis="Y"),
+                           cyl(0.06, 0.01, (x, Y1 - 0.022, 0.655), M["head"], segs=18, axis="Y")],
                     None, None))
     for name, sx in (("ParkL", -1), ("ParkR", 1)):
         x = sx * 0.55
-        out.append((name, [bx((x - 0.07, YF - 0.04, 0.428), (x + 0.07, YF - 0.016, 0.462), M["park"])],
+        out.append((name, [bx((x - 0.065, YF - 0.06, 0.405), (x + 0.065, YF - 0.01, 0.445), M["park"])],
                     None, None))
     for name, sx in (("TailL", -1), ("TailR", 1)):
-        x = sx * (PANEL_X + _W(Y0)) / 2
-        # a chrome frame filling the end of the fender pod, narrowing a
-        # little to its rounded top, round a slender pointed lens
-        bez = _round_poly([(x - 0.047, 0.585), (x + 0.047, 0.585), (x + 0.04, _ZC(Y0) - 0.022),
-                           (x - 0.04, _ZC(Y0) - 0.022)], 0.032, 4)
-        lens = _teardrop(x, 0.603, _ZC(Y0) - 0.036, 0.031, p=3.5)
-        parts = [_smoothed(_prism("bezel", bez, "y", Y0 - 0.012, Y0 + 0.014, M["chrome"]), 45),
-                 _prism("lens", lens, "y", Y0 - 0.017, Y0 - 0.01, M["tail"]),
-                 cyl(0.015, 0.012, (x, Y0 - 0.02, 0.76), M["chrome"], segs=12, axis="Y"),
-                 cyl(0.01, 0.01, (x, Y0 - 0.026, 0.76), M["amber"], segs=10, axis="Y")]
+        x = sx * ((PANEL_X + _W(Y0)) / 2 - 0.008)
+        # a chrome frame round the recess, chrome lining it, the red lens at
+        # its back with a chrome oblong ring on it
+        outer, inner = _tail_frame(sx)
+        yf, yl = Y0 - 0.003, Y0 + 0.026
+        o_ring = _round_poly([(x - 0.014, 0.66), (x + 0.014, 0.66), (x + 0.014, 0.74), (x - 0.014, 0.74)], 0.013, 4)
+        parts = [_ring("bezel", [(px, yf, pz) for px, pz in outer], [(px, yf, pz) for px, pz in inner],
+                       M["chrome"]),
+                 _ring("bezel_sleeve", [(px, yf, pz) for px, pz in inner], [(px, yl, pz) for px, pz in inner],
+                       M["chrome"]),
+                 _prism("lens", inner, "y", yl, yl + 0.004, M["tail"]),
+                 _ring("lens_ring", [(px, yl - 0.003, pz) for px, pz in o_ring],
+                       [(px, yl - 0.003, pz) for px, pz in K.offset_poly(o_ring, 0.004)], M["chrome"])]
         out.append((name, parts, None, None))
     return out
 
 
-VEE = 0.045
+VEE = 0.03
+CORNER_R = 0.03
 
 
 def _vee(objs):
-    """Draw the front into a shallow vee in plan: the centre stays put, the
-    corners come back by VEE, fading out behind the front wheels."""
+    """Draw the front into a shallow vee in plan, its outer corners rounded
+    off on a radius CORNER_R (a quarter circle meets the sides tangent): the
+    centre stays put, fading out ahead of the front wheel arches."""
+    y0 = 1.98
+
     def s(y):
-        t = min(1.0, max(0.0, (y - 1.75) / (Y1 - 0.1 - 1.75)))
+        t = min(1.0, max(0.0, (y - y0) / (Y1 - 0.06 - y0)))
         return t * t * (3 - 2 * t)
+
+    def back(x):
+        e = max(0.0, abs(x) - (HW - CORNER_R))
+        return VEE * min(1.0, (x / HW) ** 2) + CORNER_R - math.sqrt(max(0.0, CORNER_R ** 2 - e * e))
     seen = set()
     for o in objs:
         if o.type != "MESH" or o.data.name in seen:
@@ -753,8 +794,8 @@ def _vee(objs):
         C.apply_transform(o)
         for v in o.data.vertices:
             x, y = v.co.x, v.co.y
-            if y > 1.75:
-                v.co.y = y - VEE * min(1.0, (x / HW) ** 2) * s(y)
+            if y > y0:
+                v.co.y = y - back(x) * s(y)
 
 
 def valiant():
