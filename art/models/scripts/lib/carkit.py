@@ -109,14 +109,14 @@ def shell_object(name, verts, faces, tags, uvs=None):
     return obj
 
 
-def cut_arches(body, axles, radius, x_inner, hub_z):
+def cut_arches(body, axles, radius, x_inner, hub_z, segs=14):
     """Boolean the wheel arches out of the shell (both sides, each axle).
 
     x_inner is the inner wall of the wheel tubs: one value, or one per axle
     (the front tubs need to be deeper so the steered wheels clear them)."""
     xs = x_inner if isinstance(x_inner, (tuple, list)) else [x_inner] * len(axles)
     for y, x_in in zip(axles, xs):
-        cutter = C.cylinder("arch", radius, 2.4, segs=14, axis="X", loc=(0, y, hub_z))
+        cutter = C.cylinder("arch", radius, 2.4, segs=segs, axis="X", loc=(0, y, hub_z))
         inner = C.box("arch_keep", (2 * x_in, 1.0, 1.0), (0, y, hub_z))
         # cutter minus the middle keeps the cabin floor intact
         C.boolean(cutter, inner, "DIFFERENCE")
