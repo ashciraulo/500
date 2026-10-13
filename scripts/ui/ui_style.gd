@@ -576,6 +576,31 @@ static func fit_scroll(scroll: ScrollContainer, list: Control, max_height: float
 	fit.call_deferred()
 
 
+## Lets keys shut a menu: Esc, plus F for one opened with F at a spot. Put it
+## on the menu's own layer on the window; a node in the lo-fi world view hears
+## no keys while the game is paused.
+static func close_keys(menu: Node, close: Callable, actions: Array[StringName] = [&"pause", &"interact"]) -> void:
+	var keys := _CloseKeys.new()
+	keys.close = close
+	keys.actions = actions
+	keys.process_mode = Node.PROCESS_MODE_ALWAYS
+	menu.add_child(keys)
+
+
+class _CloseKeys extends Node:
+	var close: Callable
+	var actions: Array[StringName] = []
+
+	func _input(event: InputEvent) -> void:
+		if event.is_echo():
+			return
+		for action in actions:
+			if event.is_action_pressed(action):
+				get_viewport().set_input_as_handled()
+				close.call()
+				return
+
+
 ## A title bar for a card: icon, serif title, a subtitle under it, and a
 ## close button on the right. Returns [title Label, subtitle Label, close Button, row].
 static func header(parent: Node, title: String, icon_name := "", subtitle := "", close_text := "Close") -> Array:

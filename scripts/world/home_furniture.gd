@@ -245,6 +245,7 @@ func open_catalogue(spot_id := "") -> void:
 	_panel.layer = 8
 	_panel.process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().root.add_child(_panel)  # on the window, not in the lo-fi world view
+	UiStyle.close_keys(_panel, close_catalogue)  # Esc, or F as it opened
 	var dim := UiStyle.backdrop()
 	_panel.add_child(dim)
 	var card: Array = UiStyle.centred_card(dim, Vector2(520, 0))
@@ -338,12 +339,6 @@ func _button(parent: Control, text: String, action: Callable) -> Button:
 		b.pressed.connect(action)
 	parent.add_child(b)
 	return b
-
-
-func _input(event: InputEvent) -> void:
-	if _panel and event.is_action_pressed("pause"):
-		close_catalogue()
-		get_viewport().set_input_as_handled()
 
 
 class _Spot extends Node3D:

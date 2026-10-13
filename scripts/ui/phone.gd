@@ -23,11 +23,16 @@ func _ready() -> void:
 	Jobs.offers_changed.connect(_refresh)
 
 
+## Closing comes first, before the buttons see the key: Tab is also Godot's
+## "next button" key, so a focused button would otherwise take it.
+func _input(event: InputEvent) -> void:
+	if _panel.visible and (event.is_action_pressed("phone") or event.is_action_pressed("pause")):
+		_set_open(false)
+		get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("phone"):
-		toggle()
-		get_viewport().set_input_as_handled()
-	elif _panel.visible and event.is_action_pressed("pause"):
 		toggle()
 		get_viewport().set_input_as_handled()
 
