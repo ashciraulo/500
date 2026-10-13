@@ -127,12 +127,14 @@ func _sweep_node(node: Node) -> void:
 
 func _on_node_added(node: Node) -> void:
 	if node is GeometryInstance3D:
-		_check_added.call_deferred(node)
+		_check_added.call_deferred(node.get_instance_id())
 
 
-func _check_added(node: GeometryInstance3D) -> void:
-	if not is_instance_valid(node) or not node.is_inside_tree() or node.layers & OtherHouse.LAYER_1979 \
-			or not _inside(node):
+## By instance id: the node may be freed before the deferred call lands (a
+## freed node as the argument errors "Cannot convert argument 1 from Object to Object").
+func _check_added(id: int) -> void:
+	var node := instance_from_id(id) as GeometryInstance3D
+	if node == null or not node.is_inside_tree() or node.layers & OtherHouse.LAYER_1979 or not _inside(node):
 		return
 	for skip in [get_node_or_null(^"House"), get_node_or_null(^"Site")]:
 		if skip and skip.is_ancestor_of(node):

@@ -134,6 +134,8 @@ static var _materials := {}
 ## Guards the two caches: warm() fills them from a worker thread.
 static var _lock := Mutex.new()
 static var _warm_task := -1
+## Set while finish_warming() waits: the worker stops after the species in hand.
+static var _stop := false
 
 
 ## Let go of the cached meshes and materials (on quit: static vars outlive
@@ -152,6 +154,8 @@ static func warm(species_list: Array) -> void:
 		return
 	_warm_task = WorkerThreadPool.add_task(func() -> void:
 		for species: Dictionary in species_list:
+			if _stop:
+				return
 			var id := String(species.get("id", "bird"))
 			_lock.lock()
 			var built := _cache.has(id)
@@ -173,11 +177,15 @@ static func is_built(id: String) -> bool:
 	return built or (_warm_task != -1 and WorkerThreadPool.is_task_completed(_warm_task))
 
 
-## Waits for warm() to finish, if it's running.
+## Stops warm() after the species it's building and waits for it. Must run
+## before the engine tears down: a build still going while the scripts unload
+## errors ("Nonexistent float constructor") and can hang the exit.
 static func finish_warming() -> void:
 	if _warm_task != -1:
+		_stop = true
 		WorkerThreadPool.wait_for_task_completion(_warm_task)
 		_warm_task = -1
+		_stop = false
 
 
 ## A bird for this species entry (from FieldJournal.bird(id)).
