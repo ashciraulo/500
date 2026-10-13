@@ -6,7 +6,11 @@ extends SceneTree
 ##     thud, Side A's card doesn't show however long the menu sits there, and
 ##     at night the classic idling at the end of the lane doesn't start, and
 ##     no menu clicks at launch (the phone and journal being built aren't
-##     menus opening). Opening the phone afterwards still clicks.
+##     menus opening).
+##   - Each menu opened or closed makes exactly one click: Settings on the
+##     title and Esc back out of it, the phone on Tab, the pause menu on Esc
+##     (not the button, the card and the pause all at once, and no map
+##     rustle with the phone).
 ##   - Continue hands the game over: the engine turns over then, and Side A's
 ##     card shows a few seconds into play.
 ##   - With --no-save a save on disk isn't offered (New game just starts, no
@@ -37,8 +41,14 @@ var _engine_ran := false
 var _thud := false
 var _card_seen := false
 var _lane_idle := false
-## Menu clicks heard (ui_menu_*), and since when we're listening.
+## Menu clicks heard (ui_menu_*, ui_map_*), and since when we're listening.
 var _clicks := 0
+## Frames each open or close gets before its clicks are counted.
+const CLICK_STEP_FRAMES := 20
+## [what, how] pairs run one after another, each expected to click once.
+var _click_steps: Array = []
+var _click_step := 0
+var _after_clicks := 0
 
 
 func _process(_delta: float) -> bool:
@@ -66,26 +76,77 @@ func _process(_delta: float) -> bool:
 			_check(not _card_seen, "Side A's card waits behind the title screen")
 			_check(not _lane_idle, "the lane idle doesn't start behind the title screen")
 			_check(_clicks == 0, "no menu clicks at launch (heard %d)" % _clicks)
+			_click_steps = [
+				["Settings on the title", func() -> void: _title_button("Settings").pressed.emit()],
+				["Esc out of the settings over the title", func() -> void: _key(KEY_ESCAPE)],
+			]
+			_start_clicks(1)
+		1:
 			_title.call("_continue_game")
 			_card_seen = false
 			_frames = 0
-			_stage = 1
-		1:
+			_stage = 2
+		2:
 			if _frames == 30:
 				_check(bool(_engine.get("running")), "the engine turns over on Continue")
-				_clicks = 0
-				_main.get_node("Phone").call("toggle")
-			if _frames == 40:
-				_check(_clicks > 0, "opening the phone still clicks")
-				_main.get_node("Phone").call("toggle")
-			if _frames < PLAY_FRAMES and (not _card_seen or _frames <= 40):
+			if _frames < PLAY_FRAMES and (not _card_seen or _frames <= 30):
 				return false
 			_check(_card_seen, "Side A's card shows once you're playing")
 			_check(_people != null and int(_people.get("card_act")) == 1, "Side A's card is marked shown")
+			_click_steps = [
+				["the phone opening on Tab", func() -> void: _key(KEY_TAB)],
+				["the phone closing on Tab", func() -> void: _key(KEY_TAB)],
+				["the pause menu opening on Esc", func() -> void: _key(KEY_ESCAPE)],
+				["the pause menu closing on Esc", func() -> void: _key(KEY_ESCAPE)],
+			]
+			_start_clicks(3)
+		3:
 			if not root.get_node("SaveGame").get("enabled"):
 				_files_left_alone()
 			return _finish()
+		99:
+			_run_clicks()
 	return false
+
+
+## Run _click_steps, then carry on at stage `next`.
+func _start_clicks(next: int) -> void:
+	_click_step = 0
+	_after_clicks = next
+	_frames = 0
+	_stage = 99
+
+
+func _run_clicks() -> void:
+	if _click_step >= _click_steps.size():
+		_frames = 0
+		_stage = _after_clicks
+		return
+	var step: Array = _click_steps[_click_step]
+	if _frames == 1:
+		_clicks = 0
+		(step[1] as Callable).call()
+	elif _frames >= CLICK_STEP_FRAMES:
+		_check(_clicks == 1, "one click for %s (heard %d)" % [step[0], _clicks])
+		_click_step += 1
+		_frames = 0
+
+
+func _title_button(text: String) -> Button:
+	for b: Node in _title.find_children("*", "Button", true, false):
+		if (b as Button).text == text:
+			return b
+	return null
+
+
+## A real key press and release, as the keyboard sends it.
+func _key(code: Key) -> void:
+	for down in [true, false]:
+		var e := InputEventKey.new()
+		e.keycode = code
+		e.physical_keycode = code
+		e.pressed = down
+		Input.parse_input_event(e)
 
 
 ## Keep an eye on the engine, the tyres and the act card every frame.
@@ -100,7 +161,7 @@ func _watch() -> void:
 			_engine_ran = true
 	for p: Node in root.find_children("*", "AudioStreamPlayer", true, false):
 		var s: AudioStream = p.get("stream")
-		if p.get("playing") and s and s.resource_path.contains("ui_menu_") \
+		if p.get("playing") and s and (s.resource_path.contains("ui_menu_") or s.resource_path.contains("ui_map_")) \
 				and not p.has_meta(&"title_test_heard"):
 			p.set_meta(&"title_test_heard", true)
 			_clicks += 1
