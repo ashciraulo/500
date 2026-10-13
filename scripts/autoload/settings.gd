@@ -31,7 +31,9 @@ var color_levels := 64.0
 var dither_strength := 0.35
 var affine_strength := 0.0
 var softness := 0.5
-var show_help := true
+## The full controls card (F1). Not saved: each run starts with the short
+## hint instead, which gets out of the way once you start playing.
+var show_help := false
 var fullscreen := false
 ## Index into UI_SIZES: how big the menus and HUD are drawn.
 var ui_size := 1
@@ -174,7 +176,7 @@ func _keys() -> PackedStringArray:
 		"automatic_gearbox", "mouse_sensitivity", "day_length_minutes", "weather_choice",
 		"clock_frozen", "lofi_enabled", "lofi_target_height", "dither_enabled",
 		"vertex_snap_scale", "lofi_preset", "color_levels", "dither_strength", "affine_strength",
-		"softness", "show_help", "fullscreen", "ui_size", "cozy_mode", "strange_things",
+		"softness", "fullscreen", "ui_size", "cozy_mode", "strange_things",
 		"volume_master", "volume_music", "volume_ambient", "volume_effects",
 		"volume_car", "route_guide",
 	])

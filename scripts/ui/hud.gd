@@ -47,6 +47,17 @@ const HELP := [
 		["F1", "", "Hide this card"],
 	]]],
 ]
+## The short hint a run starts with: [keys, pad buttons, what, what on a pad].
+const STARTER := [
+	["W / S", "RT / LT", "Drive"],
+	["A / D", "L stick", "Steer"],
+	["Hold F", "Hold A", "Get out"],
+	["F", "A", "Use, open"],
+	["Tab", "X", "Phone"],
+	["M", "Start", "Map", "Pause"],
+]
+## How long the short hint stays once you start playing (s).
+const STARTER_STAYS := 8.0
 
 var _car: CarController
 var _root: Control
@@ -62,6 +73,9 @@ var _weather_lock: TextureRect
 var _weather_key := ""
 var _help: PanelContainer
 var _help_pad := false
+var _starter: PanelContainer
+var _starter_pad := false
+var _starter_left := -1.0  # counts down once you start playing; -1 until then
 var _challenge: ChallengeCard
 var _night := 0.0
 var _minimap: Minimap
@@ -93,6 +107,8 @@ func _ready() -> void:
 	_challenge.place_top_right()
 	_build_help()
 	_help.visible = Settings.show_help
+	_build_starter()
+	_starter.visible = not _help.visible
 	add_to_group(&"hud")
 	if _car:
 		_car.fuel_low.connect(func() -> void: toast("Fuel's low. Find a servo."))
@@ -104,9 +120,10 @@ func _ready() -> void:
 				"oil": "Oil change due"}.get(item, "Something's due for a service")))
 
 
-## Tuck the controls card away (screenshot tools).
+## Tuck the controls card and the short hint away (screenshot tools).
 func hide_help() -> void:
 	_help.visible = false
+	_starter.visible = false
 
 
 ## Show a message for a few seconds (a Notices card). Messages queue up.
@@ -116,7 +133,9 @@ func toast(text: String) -> void:
 
 ## The controls card's right edge while it's up, else 0 (Notices sits clear of it).
 func help_right() -> float:
-	return _help.position.x + _help.size.x if _help.visible else 0.0
+	if _help.visible:
+		return _help.position.x + _help.size.x
+	return _starter.position.x + _starter.size.x if _starter.visible else 0.0
 
 
 ## Where the job and challenge card is, or an empty rect while it's hidden.
@@ -128,8 +147,10 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("toggle_help"):
 		_help.visible = not _help.visible
 		Settings.show_help = _help.visible
+		_starter.visible = false  # done with: F1 is the way back to the full card
 	if _help.visible and _help_pad != UiStyle.using_pad:
 		_fill_help()
+	_update_starter(delta)
 	_update_strip()
 	if not _car:
 		_dash.visible = false
@@ -239,6 +260,77 @@ func _update_strip() -> void:
 		_weather_key = key
 		_weather_icon.texture = UiStyle.icon(key, 22, UiStyle.INK, Vector2.ZERO,
 			UiStyle.SUN if key in ["sun", "moon"] else UiStyle.TEAL)
+
+
+# --- the short hint a run starts with -----------------------------------------------------
+
+func _build_starter() -> void:
+	_starter = PanelContainer.new()
+	_starter.theme_type_variation = &"ChipPanel"
+	_starter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_starter.position = Vector2(16, 16)
+	_root.add_child(_starter)
+	_fill_starter()
+
+
+func _fill_starter() -> void:
+	_starter_pad = UiStyle.using_pad
+	for child in _starter.get_children():
+		_starter.remove_child(child)
+		child.queue_free()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	_starter.add_child(box)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 4)
+	box.add_child(grid)
+	for i in STARTER.size():
+		var entry: Array = STARTER[i]
+		var caps := HBoxContainer.new()
+		caps.add_theme_constant_override("separation", 3)
+		caps.alignment = BoxContainer.ALIGNMENT_END
+		for k in String(entry[1] if _starter_pad else entry[0]).split(" / "):
+			caps.add_child(UiStyle.keycap(k, 11))
+		grid.add_child(caps)
+		var what := UiStyle.label(grid, entry[3] if _starter_pad and entry.size() > 3 else entry[2], "", 13)
+		what.autowrap_mode = TextServer.AUTOWRAP_OFF
+		if i % 2 == 0:
+			what.custom_minimum_size.x = 70
+	if not _starter_pad:
+		var more := HBoxContainer.new()
+		more.add_theme_constant_override("separation", 6)
+		box.add_child(more)
+		more.add_child(UiStyle.keycap("F1", 11))
+		var note := UiStyle.label(more, "All the controls", "NoteLabel", 12)
+		note.autowrap_mode = TextServer.AUTOWRAP_OFF
+
+
+## The hint waits for you to start playing, stays a little while, then fades.
+func _update_starter(delta: float) -> void:
+	if not _starter.visible:
+		return
+	if _starter_pad != UiStyle.using_pad:
+		_fill_starter()
+	if _starter_left < 0.0 or get_tree().paused:
+		return
+	_starter_left -= delta
+	if _starter_left <= 0.0:
+		_starter_left = -1.0
+		var tween := _starter.create_tween()
+		tween.tween_property(_starter, "modulate:a", 0.0, 0.8)
+		tween.tween_callback(func() -> void:
+			_starter.visible = false
+			_starter.modulate.a = 1.0)
+
+
+func _input(event: InputEvent) -> void:
+	# The first key or button you press while playing starts the hint's clock.
+	if _starter_left >= 0.0 or not _starter.visible or not visible or get_tree().paused:
+		return
+	if (event is InputEventKey or event is InputEventJoypadButton) and event.is_pressed() and not event.is_echo():
+		_starter_left = STARTER_STAYS
 
 
 # --- the controls card --------------------------------------------------------------------

@@ -24,6 +24,7 @@ func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(_shots)
 	# [name, setup, frames to wait, teardown]
 	_steps = [
+		["hud_start", func() -> void: _set_time(10.0), 90, Callable()],
 		["hud_driving", _hud_driving, 90, Callable()],
 		["hud_help", func() -> void: _hud().get("_help").visible = true, 20,
 			func() -> void: _hud().get("_help").visible = false],
@@ -158,7 +159,7 @@ func _set_time(hours: float) -> void:
 func _hud_driving() -> void:
 	_set_time(10.0)
 	root.get_node("Settings").set("show_help", false)
-	_hud().get("_help").visible = false
+	_hud().hide_help()
 	_car.set("rpm", 3400.0)
 
 
