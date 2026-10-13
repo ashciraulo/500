@@ -560,12 +560,46 @@ static func animate(panel: Control) -> void:
 			(func() -> void:
 				if is_instance_valid(panel) and panel.get_meta(&"ui_shown", false) \
 						and int(panel.get_meta(&"ui_shown_frame", -1)) == frame:
-					sound("ui_menu_select")).call_deferred()
+					click("ui_menu_select", -8.0, CLICK_OPEN)).call_deferred()
 		else:
 			panel.modulate.a = 1.0
 			panel.scale = Vector2.ONE
 			if int(panel.get_meta(&"ui_shown_frame", frame)) != frame:
-				sound("ui_menu_back"))
+				click("ui_menu_back", -8.0, CLICK_OPEN))
+
+
+## Menu clicks (a card opening or closing, a button pressed, focus moving,
+## the game pausing) all come through here, so one press makes one click:
+## the requests of a frame are gathered, the most important one plays at the
+## end of the frame, and anything asked for in the next couple of frames
+## (a pause noticed a frame late) is dropped. Settings on the title used to
+## be three clicks at once: the button, its card and the pause.
+const CLICK_MOVE := 0
+const CLICK_PRESS := 1
+const CLICK_PAUSE := 1
+const CLICK_OPEN := 2
+## Frames after a click during which other menu clicks are part of it.
+const CLICK_FRAMES := 2
+static var _click_pending: Array = []  # [sound, volume_db, priority]
+static var _click_frame := -100
+
+
+static func click(sound_name: String, volume_db := -8.0, priority := CLICK_PRESS) -> void:
+	if Engine.get_process_frames() - _click_frame <= CLICK_FRAMES:
+		return
+	if _click_pending.is_empty():
+		_flush_click.call_deferred()
+	if _click_pending.is_empty() or priority > int(_click_pending[2]):
+		_click_pending = [sound_name, volume_db, priority]
+
+
+static func _flush_click() -> void:
+	if _click_pending.is_empty():
+		return
+	var c := _click_pending
+	_click_pending = []
+	_click_frame = Engine.get_process_frames()
+	sound(String(c[0]), float(c[1]))
 
 
 ## A quiet UI sound from the audio thread's set (audio/ui), if audio is up.
