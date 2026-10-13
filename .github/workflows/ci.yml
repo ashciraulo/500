@@ -262,6 +262,17 @@ jobs:
             exit 1
           fi
 
+      - name: Menu keys test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/menu_keys_test.gd -- --no-save 2>&1 \
+            | tee menu_keys.log | grep -E "PASS|FAIL|menu keys|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" menu_keys.log; then
+            echo "::error::GDScript errors while opening and closing menus"
+            exit 1
+          fi
+
       - name: Sound check
         if: env.ALREADY_TESTED != 'true'
         run: |
