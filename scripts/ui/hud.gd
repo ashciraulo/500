@@ -58,6 +58,8 @@ const STARTER := [
 ]
 ## How long the short hint stays once you start playing (s).
 const STARTER_STAYS := 8.0
+## Keys that don't count as starting to play (alt-tabbing back in, say).
+const MODIFIERS := [KEY_ALT, KEY_CTRL, KEY_SHIFT, KEY_META]
 
 var _car: CarController
 var _root: Control
@@ -329,7 +331,9 @@ func _input(event: InputEvent) -> void:
 	# The first key or button you press while playing starts the hint's clock.
 	if _starter_left >= 0.0 or not _starter.visible or not visible or get_tree().paused:
 		return
-	if (event is InputEventKey or event is InputEventJoypadButton) and event.is_pressed() and not event.is_echo():
+	if not event.is_pressed() or event.is_echo():
+		return
+	if event is InputEventJoypadButton or (event is InputEventKey and not MODIFIERS.has((event as InputEventKey).keycode)):
 		_starter_left = STARTER_STAYS
 
 
