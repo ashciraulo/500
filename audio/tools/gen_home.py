@@ -240,6 +240,38 @@ def internal_door_close():
     return fade(room(x, 0.3, 0.14, 4500, 10705), fout=0.05)
 
 
+def gate_open():
+    """Timber picket gate, outdoors: a thumb lifts the steel drop latch (a
+    thin clink and scrape), the light frame knocks free of the post and the
+    strap hinges creak a little as it swings. Barely any room around it."""
+    r = rng(10900)
+    lift = add(modal(0.12, [(r.uniform(2400, 2700), 0.03, 0.35), (r.uniform(4100, 4500), 0.02, 0.2), (r.uniform(6100, 6600), 0.012, 0.1)], 10901),
+               bp(burst(0.02, 0.0015, 10902), 2000, 9000) * 0.3)
+    scrape = bp(noise(secs(0.09), 10903), 1500, 6000) * np.hanning(secs(0.09)) * 0.06
+    knock = add(lp(burst(0.12, 0.01, 10904), 600) * 0.8,
+                modal(0.2, [(r.uniform(320, 360), 0.03, 0.5), (r.uniform(610, 680), 0.02, 0.3), (r.uniform(1100, 1250), 0.012, 0.15)], 10905))
+    creak = stick_slip(0.45, lambda t: 140 + 80 * np.sin(np.pi * t / 0.45), [(700, 6, 1.0), (1500, 8, 0.4)], 10906)
+    creak *= np.hanning(len(creak)) * 0.06
+    x = mix(1.0, [(0.02, lift, 1.0), (0.05, scrape, 1.0), (0.12, knock, 0.7), (0.2, creak, 1.0)])
+    return fade(room(x, 0.12, 0.05, 6000, 10907), fout=0.05)
+
+
+def gate_close():
+    """Timber picket gate swinging shut: the frame slaps the post (pickets
+    rattle a touch) and the drop latch falls into its keeper with a clank."""
+    r = rng(11000)
+    slap = add(lp(burst(0.18, 0.014, 11001), 500) * 1.3,
+               modal(0.3, [(r.uniform(260, 300), 0.04, 0.7), (r.uniform(520, 580), 0.025, 0.4), (r.uniform(950, 1050), 0.015, 0.2)], 11002, 0.001))
+    rattle = np.zeros(secs(0.2))
+    for k in range(4):
+        place(rattle, modal(0.04, [(r.uniform(700, 900), 0.01, 1.0), (r.uniform(1500, 1800), 0.006, 0.4)], 11010 + k) * 0.15 * 0.65 ** k,
+              secs(k * r.uniform(0.025, 0.045)))
+    clank = add(modal(0.25, [(r.uniform(2100, 2300), 0.05, 0.5), (r.uniform(3500, 3800), 0.03, 0.3), (r.uniform(5600, 6000), 0.015, 0.15)], 11003),
+                bp(burst(0.02, 0.0012, 11004), 2000, 10000) * 0.5)
+    x = mix(0.9, [(0.02, slap, 1.0), (0.03, rattle, 1.0), (0.06, clank, 0.8)])
+    return fade(room(x, 0.12, 0.05, 6000, 11005), fout=0.05)
+
+
 def door_creak_slow():
     """Oddity: a door creaking slowly open on dry hinges (~3.5 s): the slip
     rate drifts so the pitch wanders and catches, then it bumps the wall."""
@@ -773,7 +805,8 @@ def day_ends():
 
 
 NEW = {
-    "home_record_needle_lift": needle_lift,
+    "home_gate_open": gate_open,
+    "home_gate_close": gate_close,
 }
 
 
@@ -791,6 +824,8 @@ def main(argv=()):
     save(f"{OUT}/home_front_door_close", front_door_close())
     save(f"{OUT}/home_internal_door_open", internal_door_open())
     save(f"{OUT}/home_internal_door_close", internal_door_close())
+    save(f"{OUT}/home_gate_open", gate_open())
+    save(f"{OUT}/home_gate_close", gate_close())
     save(f"{OUT}/home_fridge_hum", fridge_hum(), norm="amb")
     save(f"{OUT}/home_fridge_open", fridge_open())
     save(f"{OUT}/home_fridge_close", fridge_close())
