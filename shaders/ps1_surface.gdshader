@@ -86,6 +86,9 @@ uniform float grid_size = 0.0;
 uniform vec4 grid_line_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 uniform vec4 grid_alt_color : source_color = vec4(1.0);
 uniform float vertex_snap : hint_range(0.0, 1.0) = 1.0;
+// Darkens faces that look at the sky, so a mid-tone paint keeps its colour
+// on a roof or bonnet in full sun instead of washing out pale (0 = off).
+uniform float top_shade : hint_range(0.0, 1.0) = 0.0;
 // Car livery. 0 = none, 1 = twin stripes, 2 = chequered roof, 3 = scorpion
 // (gold sill band and pinstripes), 4 = side stripe, 5 = two-tone roof.
 // livery_space takes world space to the car's model space (X right, Y up,
@@ -209,6 +212,10 @@ void fragment() {
 
 	float wet = ps1_wetness * wet_response;
 	ALBEDO = color * mix(1.0, 0.55, wet);
+	if (top_shade > 0.0) {
+		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y;
+		ALBEDO *= 1.0 - top_shade * smoothstep(0.2, 0.9, up);
+	}
 	ROUGHNESS = mix(roughness, 0.12, wet);
 	METALLIC = metallic;
 	SPECULAR = mix(0.15, 0.8, wet);
