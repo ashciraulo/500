@@ -1,9 +1,10 @@
 class_name CuttingSpot
 extends Node3D
 ## A rare plant growing somewhere in the city (data/world/cuttings.json): the
-## grown, flowering plant with a soft light on it at night. Walk up and press
-## F to take a cutting home (discovery "cutting/<id>"); it shows up on the
-## dining table, and HomeLife grows it from there.
+## grown, flowering plant with the findable sparkle over it (FindableMarker)
+## until you've had a cutting. Walk up and press F to take a cutting home
+## (discovery "cutting/<id>"); it shows up on the dining table, and HomeLife
+## grows it from there.
 
 const WALK_REACH := 2.4
 
@@ -12,7 +13,7 @@ const WALK_REACH := 2.4
 
 var _grounded := false
 var _check := 0.0
-var _glow: OmniLight3D
+var _marker: FindableMarker
 
 
 func _ready() -> void:
@@ -26,12 +27,9 @@ func _ready() -> void:
 				(child as Node3D).visible = child.name == "Stage_3"
 		plant.scale = Vector3.ONE * 1.6  # the parent plant is bigger than yours will be
 		add_child(plant)
-	_glow = OmniLight3D.new()
-	_glow.light_color = Color(1.0, 0.9, 0.75)
-	_glow.light_energy = 0.5
-	_glow.omni_range = 3.0
-	_glow.position.y = 1.2
-	add_child(_glow)
+	_marker = FindableMarker.new()
+	_marker.height = 1.7
+	add_child(_marker)
 
 
 func _process(delta: float) -> void:
@@ -39,7 +37,7 @@ func _process(delta: float) -> void:
 	if _check > 0.0:
 		return
 	_check = 0.5
-	_glow.visible = GameClock.daylight() < 0.5
+	_marker.visible = not taken()
 	if not _grounded:
 		var car := get_tree().get_first_node_in_group(&"player_car") as Node3D
 		if car and car.global_position.distance_to(global_position) < 150.0:

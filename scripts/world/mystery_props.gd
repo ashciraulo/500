@@ -53,6 +53,72 @@ static func build(kind: String) -> Node3D:
 	return root
 
 
+## What a clue is left on out in the city, so it sits up where you can see
+## it from the road (mystery.json `on`): a park bench, a timber bollard, a
+## parking meter, a low limestone wall or a length of railing. Origin on the
+## ground, the side you'd come up to toward -Z. Returns the stand with its
+## top height (m) in the "top" meta and its collider as "Body"; "" or unknown
+## gives null.
+static func build_stand(kind: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Stand"
+	var timber := Color(0.46, 0.33, 0.21)
+	var iron := Color(0.16, 0.2, 0.17)
+	var top := 0.0
+	var solid := Vector3.ZERO
+	match kind:
+		"bench":
+			for x in [-0.68, 0.68]:
+				_box(root, Vector3(0.06, 0.45, 0.42), Vector3(x, 0.225, 0.0), iron)
+				_box(root, Vector3(0.06, 0.42, 0.05), Vector3(x, 0.66, 0.2), iron)
+			for i in 3:
+				_box(root, Vector3(1.6, 0.04, 0.12), Vector3(0, 0.47, -0.14 + i * 0.14), timber)
+			for i in 2:
+				_box(root, Vector3(1.6, 0.1, 0.03), Vector3(0, 0.62 + i * 0.16, 0.22), timber)
+			top = 0.49
+			solid = Vector3(1.6, 0.85, 0.5)
+		"post":
+			_box(root, Vector3(0.18, 0.9, 0.18), Vector3(0, 0.45, 0), timber.darkened(0.15))
+			_box(root, Vector3(0.22, 0.03, 0.22), Vector3(0, 0.915, 0), timber.darkened(0.3))
+			top = 0.93
+			solid = Vector3(0.22, 0.93, 0.22)
+		"meter":
+			_cylinder(root, 0.035, 0.04, 1.1, Vector3(0, 0.55, 0), Color(0.3, 0.32, 0.33))
+			_box(root, Vector3(0.24, 0.34, 0.16), Vector3(0, 1.27, 0), Color(0.55, 0.58, 0.6))
+			_box(root, Vector3(0.16, 0.12, 0.01), Vector3(0, 1.32, -0.081), Color(0.85, 0.85, 0.75))
+			_box(root, Vector3(0.26, 0.03, 0.18), Vector3(0, 1.455, 0), Color(0.4, 0.42, 0.44))
+			top = 1.47
+			solid = Vector3(0.26, 1.47, 0.18)
+		"wall":
+			var stone := Color(0.8, 0.74, 0.58)
+			_box(root, Vector3(1.8, 0.55, 0.36), Vector3(0, 0.275, 0), stone)
+			_box(root, Vector3(1.86, 0.06, 0.42), Vector3(0, 0.58, 0), stone.darkened(0.1))
+			top = 0.61
+			solid = Vector3(1.86, 0.61, 0.42)
+		"rail":
+			var steel := Color(0.55, 0.57, 0.56)
+			for x in [-0.9, 0.0, 0.9]:
+				_cylinder(root, 0.025, 0.025, 1.0, Vector3(x, 0.5, 0), steel)
+			_cylinder(root, 0.03, 0.03, 1.9, Vector3(0, 0.5, 0), steel, Vector3(0, 0, PI * 0.5))
+			_box(root, Vector3(1.95, 0.05, 0.14), Vector3(0, 1.02, 0), timber)
+			top = 1.045
+			solid = Vector3(1.95, 1.05, 0.14)
+		_:
+			return null
+	root.set_meta("top", top)
+	var body := StaticBody3D.new()
+	body.name = "Body"
+	body.set_meta("surface", &"concrete")
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = solid
+	shape.shape = box
+	shape.position.y = solid.y * 0.5
+	body.add_child(shape)
+	root.add_child(body)
+	return root
+
+
 const SHED_MODEL := "res://art/models/home/mystery/shed_reveal.glb"
 
 

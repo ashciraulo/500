@@ -29,6 +29,8 @@ const SHOW_RADIUS := 220.0
 const PICKUP_CAR := 7.0
 const PICKUP_FOOT := 2.2
 const REVEAL_RADIUS := 1.8
+## How much bigger than life a clue is out in the city, so it reads.
+const CLUE_SCALE := 1.6
 const REWARD := "trinket_night_drive_tape"
 
 var clues: Array = []
@@ -241,16 +243,23 @@ func _place_waiting(id: String, at: Vector3) -> void:
 	_waiting.name = "Clue_" + id
 	add_child(_waiting)
 	_waiting.global_position = _ground(at)
+	_waiting.rotation.y = float(clue(id).get("yaw", 0.0))
+	# Up on something you can see from the road (a bench, a post, a meter),
+	# bigger than life so it reads at the PS1 resolution.
+	var stand := MysteryProps.build_stand(String(clue(id).get("on", "")))
+	var top := 0.0
+	if stand:
+		_waiting.add_child(stand)
+		top = float(stand.get_meta("top", 0.0))
 	var kind := String(clue(id).get("cupboard", ""))
 	var thing := MysteryProps.for_clue(id, "key" if id == "shed_key" else kind)
+	thing.scale = Vector3.ONE * CLUE_SCALE
+	thing.position = Vector3(0.0, top, -0.05 if stand else 0.0)
+	thing.rotation.y = 0.35
 	_waiting.add_child(thing)
-	# A faint glow so it can be seen from the car at night.
-	var glow := OmniLight3D.new()
-	glow.light_color = Color(0.85, 0.9, 1.0)
-	glow.light_energy = 0.8
-	glow.omni_range = 3.5
-	glow.position.y = 0.4
-	_waiting.add_child(glow)
+	var marker := FindableMarker.new()
+	marker.height = top + 0.9
+	_waiting.add_child(marker)
 	var hum := _loop_player("oddity/odd_mystery_bed_loop", 6.0, -10.0)
 	_waiting.add_child(hum)
 
