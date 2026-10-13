@@ -69,7 +69,8 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
-	if get_tree().paused or SaveGame.hold:
+	# Not behind the title screen: Continue may be about to load a game.
+	if get_tree().paused or SaveGame.hold or TitleScreen.is_showing(get_tree()):
 		return
 	if _home == null or not is_instance_valid(_home):
 		_home = get_tree().get_first_node_in_group(&"home_base") as HomeBase
