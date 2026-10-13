@@ -30,7 +30,7 @@ const SURFACE_ALIAS := {
 @export var stride_walk := 0.7
 @export var stride_run := 1.15
 @export var run_speed := 4.5
-@export var volume_db := -4.0
+@export var volume_db := -7.5  # the step files peak near 0 dBFS; the Effects limiter is for pile-ups
 @export var default_surface := "concrete"
 
 var surface := ""            # last surface stepped on

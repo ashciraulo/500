@@ -19,6 +19,8 @@ extends Node3D
 const STAY_DAYS := 3
 const CONE_STEP := 4.5
 const TAPER := 22.0
+## A new cone settling onto the road for this long isn't a knock (ms).
+const CONE_SETTLE_MS := 1000
 
 var graph: TrafficGraph
 ## road key -> site Dictionary (see _make_site).
@@ -261,6 +263,7 @@ func _cone(site: Dictionary, p: Vector3) -> void:
 	var cone := TrafficModels.cone_body()
 	cone.position = p
 	cone.collision_layer = _manager.TRAFFIC_LAYER
+	cone.set_meta("born", Time.get_ticks_msec())
 	_add(site, cone)
 	site.cones.append(cone)
 
@@ -271,7 +274,12 @@ func _check_cones() -> void:
 		for cone in sites[key].cones:
 			if cone.sleeping or cone.get_meta("hit", false):
 				continue
-			if cone.linear_velocity.length() > 1.5:
+			# Settling onto the road just after it's put out isn't a knock either.
+			if Time.get_ticks_msec() - int(cone.get_meta("born", 0)) < CONE_SETTLE_MS:
+				continue
+			# Knocked sideways, not just dropping onto the road.
+			var v: Vector3 = cone.linear_velocity
+			if Vector2(v.x, v.z).length() > 1.5:
 				cone.set_meta("hit", true)
 				var audio := get_node_or_null("/root/Audio")
 				if audio and audio.has_method("play_at"):

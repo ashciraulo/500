@@ -364,6 +364,8 @@ func _run_step() -> bool:
 				_check(_mark.in_works == 0, "nobody drives through the cones (%d frames)" % _mark.in_works)
 				_check(_mark.past_works.size() >= 2, "traffic gets past the roadworks (%d cars)" % _mark.past_works.size())
 				_check(site.nodes.size() > 10, "the works have cones, a barrier, a sign and a ute (%d pieces)" % site.nodes.size())
+				var bonked: int = site.cones.filter(func(c: Node) -> bool: return c.get_meta("hit", false)).size()
+				_check(bonked == 0, "cones settling as they're put out don't bonk (%d of %d)" % [bonked, site.cones.size()])
 				var rw = _traffic.roadworks
 				rw.site_chance = 0.06
 				var days_on := 0
