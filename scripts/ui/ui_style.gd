@@ -536,13 +536,18 @@ static func centred_card(parent: Node, min_size: Vector2, variation := "") -> Ar
 
 ## Menus pop in (a quick fade and a small grow from the centre) and make a
 ## soft sound as they open and close. centred_card() does this for you.
+## Only a real open makes a sound: a menu shown and hidden again in the same
+## frame (built visible, then put away, as the phone and the journal are at
+## launch) stays silent.
 static func animate(panel: Control) -> void:
 	panel.visibility_changed.connect(func() -> void:
 		var shown := panel.is_inside_tree() and panel.is_visible_in_tree()
 		if shown == bool(panel.get_meta(&"ui_shown", false)):
 			return  # not a real open or close (being built, or a parent toggling twice)
 		panel.set_meta(&"ui_shown", shown)
+		var frame := Engine.get_process_frames()
 		if shown:
+			panel.set_meta(&"ui_shown_frame", frame)
 			panel.pivot_offset = panel.size * 0.5
 			panel.modulate.a = 0.0
 			panel.scale = Vector2(0.97, 0.97)
@@ -551,11 +556,16 @@ static func animate(panel: Control) -> void:
 			tween.tween_property(panel, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			# The size settles a frame later; keep growing from the middle.
 			tween.tween_callback(func() -> void: panel.pivot_offset = panel.size * 0.5).set_delay(0.01)
-			sound("ui_menu_select")
+			# Click at the end of the frame, if it's still open by then.
+			(func() -> void:
+				if is_instance_valid(panel) and panel.get_meta(&"ui_shown", false) \
+						and int(panel.get_meta(&"ui_shown_frame", -1)) == frame:
+					sound("ui_menu_select")).call_deferred()
 		else:
 			panel.modulate.a = 1.0
 			panel.scale = Vector2.ONE
-			sound("ui_menu_back"))
+			if int(panel.get_meta(&"ui_shown_frame", frame)) != frame:
+				sound("ui_menu_back"))
 
 
 ## A quiet UI sound from the audio thread's set (audio/ui), if audio is up.
