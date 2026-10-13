@@ -43,9 +43,7 @@ var _last_fuel := -1.0
 var _last_dirt := -1.0
 var _last_look := {}         # the car's paint, livery and finish, to hear the spray shop
 var _was_paused := false
-var _phone: Node
 var _workshop: Node
-var _phone_open := false
 var _workshop_open := false
 var _room_tone: AudioStreamPlayer
 var traffic: Node            # traffic_audio.gd, once the city's TrafficManager turns up
@@ -246,8 +244,6 @@ func _find_nodes() -> void:
 				_car.fuel_low.connect(func() -> void:
 					Audio.play_at("car/car_dash_chime", _car.global_position, -6.0, "Cabin"))
 	var scene_root := get_tree().root
-	if not is_instance_valid(_phone):
-		_phone = scene_root.find_child("Phone", true, false)
 	if not is_instance_valid(_workshop):
 		_workshop = scene_root.find_child("Workshop", true, false)
 	if not is_instance_valid(_map):
@@ -452,15 +448,13 @@ func _update_pause() -> void:
 	var paused := get_tree().paused
 	if paused != _was_paused:
 		_was_paused = paused
-		# Soft: most screens that pause also pop a card that clicks (UiStyle.animate).
-		Audio.ui("ui_menu_select" if paused else "ui_menu_back", -12.0)
+		# Only heard when nothing else clicked for it: most screens that pause
+		# pop a card that clicks (UiStyle.animate), and that click wins.
+		UiStyle.click("ui_menu_select" if paused else "ui_menu_back", -12.0, UiStyle.CLICK_PAUSE)
 
 
 func _update_panels() -> void:
-	var phone_open: bool = is_instance_valid(_phone) and _phone.has_method("is_open") and _phone.is_open()
-	if phone_open != _phone_open:
-		_phone_open = phone_open
-		Audio.ui("ui_map_open" if phone_open else "ui_map_close", -4.0)
+	# (The phone's card clicks as it opens and closes; no map rustle on top.)
 	var shop_open: bool = is_instance_valid(_workshop) and _workshop.has_method("is_open") and _workshop.is_open()
 	if shop_open != _workshop_open:
 		_workshop_open = shop_open
