@@ -21,6 +21,11 @@ extends SceneTree
 ##     the lookouts answering, the station knowing where you are, the repeat
 ##     street, looking out of the window (1979, then nothing), and the house
 ##     through the door in act 3 (abandoned, with the tape on the stairs).
+##   - Act 4: the house turns, a different one each time: the darkroom (a
+##     print of somewhere you haven't been goes in your album), the river,
+##     the lane (stepping in puts you down the lane; walking home ends it)
+##     and the shed (stepping in puts you in the shed; its door brings you
+##     back to the hall).
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/story_test.gd -- --no-save
 ##
@@ -229,6 +234,9 @@ func _process(_delta: float) -> bool:
 				story.act_override = 0
 				_next()
 		5:
+			if _act_4(story, clock):
+				_next()
+		6:
 			return _finish()
 	return false
 
@@ -323,6 +331,97 @@ func _people(story: Node, clock: Node) -> void:
 ## flash, the stopped clock, the minimap passenger, the lookouts answering,
 ## the station knowing where you are, the repeat street finding a street,
 ## and looking out of the window.
+## Act 4: the house turns. True when it's done.
+func _act_4(story: Node, clock: Node) -> bool:
+	var front: Vector3 = _home.spawn_transform(&"Spawn_Front").origin
+	var door_x: float = _home.to_local(front).x
+	var hall: Vector3 = _home.to_global(_H79.at(Vector3(2.5, 3.0, 0.2)))
+	var doorway: Vector3 = _home.to_global(_H79.at(Vector3(door_x, 0.4, 0.05)))
+	var acts := root.get_node("Activities")
+	match _frames:
+		1:
+			story.act_override = 4
+			clock.set_time(1.0)
+			_put_player(front + Vector3.UP * 0.1)
+		20:
+			_other.force = true
+			_other.force_form = &"darkroom"
+			_home.toggle_door(&"Door_Front")
+			var room: Node = _home.find_child("HouseDarkroom", false, false)
+			_check(_other.is_active() and _other.form == &"darkroom" and room != null, "act 4: the darkroom ('%s')" % _other.form)
+			_check(room != null and room.takeable.size() == room.UNSEEN, "with prints of places you haven't been (%d)" % (room.takeable.size() if room else -1))
+			_check(story.has_night(&"other_house_darkroom") and _retinted() > 0, "it's in the Nights log, and the walls have turned")
+			_put_player(hall)
+		60:
+			_check(_other.portal_mode == 2, "all darkroom once you're inside (mode %d)" % _other.portal_mode)
+			_check(_other.interact_hint() == "Take the print", "a print can be taken ('%s')" % _other.interact_hint())
+			var had: int = acts.photos.size()
+			_other.interact()
+			_check(acts.photos.size() == had + 1 and story.flag(&"darkroom_print"), "it goes in the album (%d to %d)" % [had, acts.photos.size()])
+			_check(story.has_night(&"darkroom_print"), "and in the Nights log")
+			_put_player(front + Vector3.UP * 0.1)
+		70:
+			_home.toggle_door(&"Door_Front")
+		120:
+			_check(not _other.is_active() and _home.find_child("HouseDarkroom", false, false) == null and _retinted() == 0, "door shut: your house again")
+			_other.force_form = &"river"
+			_home.toggle_door(&"Door_Front")
+			var river: Node = _home.find_child("HouseRiver", false, false)
+			_check(_other.is_active() and river != null and river.birds.size() == 5, "the river, birds on the rail (%d)" % (river.birds.size() if river else -1))
+			_check(_other.interact_hint() == "" and story.has_night(&"other_house_river"), "nothing to take, and it's in the Nights log")
+		130:
+			_home.toggle_door(&"Door_Front")
+		180:
+			_check(not _other.is_active() and _home.find_child("HouseRiver", false, false) == null, "and shut again")
+			_other.force_form = &"lane"
+			_home.toggle_door(&"Door_Front")
+			_check(_other.is_active() and _retinted() == 0 and _other.portal_mode == 0, "the lane: from outside the house is only itself")
+			_put_player(doorway)
+		220:
+			var away: float = _player.global_position.distance_to(front)
+			_check(_other._moved and absf(away - _OH.LANE_ALONG) < 6.0, "stepping in puts you down the lane (%.0f m from the door)" % away)
+			_check(not _home.is_door_open(&"Door_Front") and story.has_night(&"other_house_lane"), "the door's shut behind you, and it's in the Nights log")
+			_check(_other.is_active(), "and it holds while you're there")
+			_put_player(front + Vector3.UP * 0.1)
+		240:
+			_check(not _other.is_active() and story.has_night(&"lane_again"), "walking back to the front door ends it")
+			_other.force_form = &"shed"
+			_home.toggle_door(&"Door_Front")
+			_put_player(doorway)
+		280:
+			var stand := _home.find_child("Shed_Ending", true, false) as Node3D
+			var sheet := _home.find_child("Shed_Sheeted", true, false) as Node3D
+			var d: float = _player.global_position.distance_to(stand.global_position)
+			_check(_other._moved and d < 1.0, "stepping in puts you in the shed (%.1f m from the table)" % d)
+			_check(not sheet.visible and _home.find_child("ShedNight", false, false) != null, "the sheet's off the table")
+			_check(_other.interact_hint() == "Go back out" and story.has_night(&"other_house_shed"), "its door goes back out ('%s')" % _other.interact_hint())
+			_player.face(_home.find_child("Shed_Door", true, false).global_position + Vector3.UP * 1.0)
+		282:
+			var t: Array = _player._target()
+			_check(t[0] == "thing" and t[1] == _other, "looking at the shed door, it's the way out, not the lock (%s)" % [t[0]])
+			var sheet := _home.find_child("Shed_Sheeted", true, false) as Node3D
+			_player.interact()
+			_check(not _other.is_active() and sheet.visible, "and out you come, the shed as it was")
+			_check(_other._in_box(_player.global_position, 0.0), "into your own hall")
+		290:
+			_check(_home.find_child("ShedNight", false, false) == null, "the shed's things are gone")
+			_other.force = false
+			_other.force_form = &""
+			_other.last_form = &"river"
+			var picked := {}
+			for i in 40:
+				var f: StringName = _other._pick_form()
+				picked[f] = true
+			_check(not picked.has(&"river") and picked.size() == 3, "never the same one twice running (%s)" % [picked.keys()])
+			var saved: Dictionary = _other.save_state()
+			_other.last_form = &""
+			_other.load_state(saved)
+			_check(_other.last_form == &"river", "the last one is saved")
+			story.act_override = 0
+			return true
+	return false
+
+
 func _later_events(story: Node, late: Node, clock: Node) -> void:
 	var events := {}
 	for n in ["StoppedClock", "RepeatStreet", "MinimapPassenger", "LookoutSignal", "StationVoice", "LookingOut"]:
