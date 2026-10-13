@@ -56,6 +56,9 @@ def _mats():
         "chrome": _m("VC_Chrome", "#dfe2e3", 0.15, 0.95),
         "grille": _m("VC_GrilleBack", "#141516", 0.7),
         "dark": _m("VC_Dark", "#1c1d1f", 0.8),
+        # shut lines: a deep olive, not black, so a line thinner than a pixel
+        # far off fades into the paint instead of breaking into black dots
+        "shut": _m("VC_Shut", "#3b4a33", 0.7),
         "head": _m("VC_HeadLamp", "#e4ebe8", 0.04, 0.45),
         "park": _m("VC_Parker", "#efe2c2", 0.25),
         "tail": _m("VC_TailLamp", "#a3171a", 0.25),
@@ -475,15 +478,15 @@ def _glass_and_frames(M, ref, body):
         fr = K.side_frame(sx)
         for poly in (SIDE_FRONT, SIDE_REAR):
             p.append(K.project_poly("glass", ref, K.offset_poly(poly, -0.012), fr, M["glass"], offset=-0.006))
-            ring = K.project_poly("frame", body, K.offset_poly(poly, -0.022), fr, None, offset=0.002,
+            ring = K.project_poly("frame", body, K.offset_poly(poly, -0.022), fr, None, offset=0.004,
                                   border=0.013, border_mat=M["chrome"])
             p.append(ring)
     for x0, x1 in ((-0.62, -0.1), (0.04, 0.56)):
         p.append(K.project_line("wiper", ref, _dense([(x0, WS_B - 0.05), (x1, WS_B - 0.035)]), top, 0.01,
-                                M["dark"], offset=0.006))
+                                M["trim"], offset=0.006))
     for poly in (WINDSCREEN, BACKLIGHT):
         p.append(K.project_poly("glass", ref, K.offset_poly(poly, -0.012), top, M["glass"], offset=-0.006))
-        p.append(K.project_poly("frame", body, K.offset_poly(poly, -0.024), top, None, offset=0.002,
+        p.append(K.project_poly("frame", body, K.offset_poly(poly, -0.024), top, None, offset=0.004,
                                 border=0.015, border_mat=M["chrome"]))
     return p
 
@@ -553,7 +556,7 @@ def _trim(M, body):
     for sx in (-1, 1):
         fr = K.side_frame(sx)
         p.append(_line("spear", body, [(Y0 + 0.12, 0.79), (Y1 - 0.2, 0.79)], fr, 0.016, M["chrome"], 0.004))
-        p.append(_line("drip", body, [(BL_T + 0.02, ZR - 0.06), (WS_T - 0.02, ZR - 0.06)], fr, 0.013,
+        p.append(_line("drip", body, [(BL_T + 0.02, ZR - 0.06), (WS_T - 0.02, ZR - 0.06)], fr, 0.016,
                                 M["chrome"], 0.007))
         # doors: front door from the A pillar base to the B pillar, rear door
         # round the arch
@@ -569,7 +572,7 @@ def _trim(M, body):
             [(yd, ZB - 0.006)],
         ]
         for ln in lines:
-            p.append(_line("shut", body, ln, fr, 0.004, M["dark"], 0.002))
+            p.append(_line("shut", body, ln, fr, 0.006, M["shut"], 0.004))
         for y in (0.1, -0.69):
             p.append(K.project_poly("handle", body, _round_poly([(y - 0.065, 0.874), (y + 0.065, 0.874),
                                                                  (y + 0.065, 0.89), (y - 0.065, 0.89)], 0.007, 2),
@@ -578,13 +581,13 @@ def _trim(M, body):
     for sx in (-1, 1):
         # bonnet edges along the fender tops, boot lid edges inside the fins
         p.append(_line("shut", body, [(sx * (HW - 0.062), 0.88), (sx * (HW - 0.062), Y1 - 0.005)],
-                                top, 0.004, M["dark"], 0.002))
+                                top, 0.006, M["shut"], 0.004))
         p.append(_line("shut", body, [(sx * (PANEL_X - 0.003), -1.36), (sx * (PANEL_X - 0.003), Y0 + 0.045)],
-                                top, 0.004, M["dark"], 0.002))
-    p.append(_line("shut", body, [(-(HW - 0.062), 0.88), (HW - 0.062, 0.88)], top, 0.004, M["dark"], 0.002))
-    p.append(_line("shut", body, [(-PANEL_X, -1.36), (PANEL_X, -1.36)], top, 0.004, M["dark"], 0.002))
+                                top, 0.006, M["shut"], 0.004))
+    p.append(_line("shut", body, [(-(HW - 0.062), 0.88), (HW - 0.062, 0.88)], top, 0.006, M["shut"], 0.004))
+    p.append(_line("shut", body, [(-PANEL_X, -1.36), (PANEL_X, -1.36)], top, 0.006, M["shut"], 0.004))
     p.append(K.project_poly("cowl", body, _round_poly([(-0.5, 0.858), (0.5, 0.858), (0.5, 0.868), (-0.5, 0.868)],
-                                                      0.004, 2), top, M["dark"], offset=0.002, cuts=1))
+                                                      0.004, 2), top, M["shut"], offset=0.004, cuts=1))
     # round chrome mirror on the driver's door, aerial on the driver's fender
     p.append(cyl(0.008, 0.07, (HW + 0.012, 0.74, ZB + 0.03), M["chrome"], segs=8))
     p.append(cyl(0.048, 0.02, (HW + 0.024, 0.74, ZB + 0.075), M["chrome"], segs=16, axis="X"))
