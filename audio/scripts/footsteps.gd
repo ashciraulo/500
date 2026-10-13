@@ -34,7 +34,11 @@ const LANDING_MAX := 1.1
 @export var stride_walk := 0.7
 @export var stride_run := 1.15
 @export var run_speed := 4.5
-@export var volume_db := -7.5  # the step files peak near 0 dBFS; the Effects limiter is for pile-ups
+## The step files peak near 0 dBFS, and at the feet, 1.6 m under your ears,
+## the 3D falloff adds about 7 dB: -12 puts a walking step at about -6 dBFS
+## and a run or a landing at about -4, under the Effects limiter (-3), which
+## is for pile-ups.
+@export var volume_db := -12.0
 @export var default_surface := "concrete"
 
 var surface := ""            # last surface stepped on
