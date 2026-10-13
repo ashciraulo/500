@@ -369,7 +369,9 @@ func _listen() -> void:
 			post("%s. A good spot for a photo (P)." % (spot.title if spot else "A photo spot"), "photo", "", "Discovered")
 		elif id.begins_with("badge/"):
 			post("%d of %d found" % [Collectible.found_count(), Collectible.TOTAL], "badge"))
-	Discoveries.discovered.connect(func(_id: String) -> void: _on_stat("discoveries", 0.0))
+	Discoveries.discovered.connect(func(id: String) -> void:
+		if Progression.is_place(id):
+			_on_stat("discoveries", 0.0))
 	GameClock.hour_changed.connect(_on_hour)
 
 
