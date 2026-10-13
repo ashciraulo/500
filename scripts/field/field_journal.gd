@@ -172,6 +172,12 @@ func _ready() -> void:
 	SaveGame.register("field_journal", self)
 
 
+## The last word before the scripts unload: whatever happened to the game
+## scene, the bird models' worker is done.
+func _exit_tree() -> void:
+	BirdModels.finish_warming()
+
+
 func _process(_delta: float) -> void:
 	# Build the world side once the game scene (with the player's car) is up.
 	if _world != null and is_instance_valid(_world):
