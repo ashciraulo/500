@@ -21,6 +21,8 @@ static, purr, rain on windows) at -24 LUFS; the clock loop peaks at -1 dBTP.
 | home_front_door_close | no | Heavy front door close | P2 | Solid-core slab thud (~75-90 Hz), heavy latch, letterbox flap rattle, hallway ring |
 | home_internal_door_open | no | Internal door open | P2 | Light handle click, latch tongue, short hinge squeak, swing swish |
 | home_internal_door_close | no | Internal hollow-core door close | P2 | Hollow 'thock' (150-750 Hz skin/frame modes) + latch click |
+| home_gate_open | no | Timber gate open (front gate, courtyard gate) | P2 | Steel drop latch lifted (clink, scrape), frame knocks off the post, strap hinge creak; outdoors, almost dry |
+| home_gate_close | no | Timber gate swings shut | P2 | Frame slaps the post, pickets rattle, drop latch clanks into its keeper |
 | home_fridge_hum | yes | Fridge running as room tone (20 s) | P2 | 50 Hz mains motor hum harmonics with slow beating, condenser fan, quiet room |
 | home_clock_tick | yes | Mechanical wall clock, 1 tick/s (4 s) | P2 | Alternating tick/tock escapement clicks with wooden case ring |
 | home_kettle_boil | no | Electric kettle boiling to switch-off (~21 s) | P2 | Element ticks, rising 'singing' roar + cavitation crackle, rolling-boil bubble plops, switch snap at 19.2 s |

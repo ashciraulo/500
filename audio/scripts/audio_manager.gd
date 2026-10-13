@@ -239,6 +239,11 @@ func _build_buses() -> void:
 		AudioServer.add_bus_effect(i, lp)
 		AudioServer.add_bus_effect(i, shelf)
 		_muffles[bus] = [lp, shelf]
+	# Effects: doors, gates, footsteps and knocked cones can land together;
+	# this keeps the pile-up under EFFECTS_CEILING_DB, off the Master limiter.
+	var fx_lim := AudioEffectHardLimiter.new()
+	fx_lim.ceiling_db = EFFECTS_CEILING_DB
+	AudioServer.add_bus_effect(AudioServer.get_bus_index("Effects"), fx_lim)
 	# My Music: the radio listens to each song here to level it (radio.gd).
 	var cap := AudioEffectCapture.new()
 	cap.buffer_length = 0.5
@@ -313,6 +318,8 @@ static func car_slider_db(v) -> float:
 
 ## The Engine bus compressor (see _build_buses): where it starts, how hard it
 ## holds the loud end down, and the make-up gain that lifts the idle.
+## Ceiling of the Effects bus limiter (dB): the world's one-shots summed.
+const EFFECTS_CEILING_DB := -3.0
 const ENGINE_COMP_THRESHOLD_DB := -34.0
 const ENGINE_COMP_RATIO := 3.0
 const ENGINE_COMP_GAIN_DB := 9.0

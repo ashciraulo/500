@@ -10,11 +10,17 @@ var _shots := "/tmp/story"
 var _only := PackedStringArray()
 var _main: Node
 var _world: Node3D
-var _car: CarController
+var _car  # CarController
 var _player: Node3D
-var _home: HomeBase
-var _other: OtherHouse
-var _road: EmptyRoad
+var _home  # HomeBase
+var _other  # OtherHouse
+var _road  # EmptyRoad
+## The late-city scripts, loaded once the autoloads they use are up (naming
+## their classes here would compile them before that and log errors).
+var _H79: GDScript
+var _ER: GDScript
+var _HA: GDScript
+var _RS: GDScript
 var _cam: Camera3D
 var _route := PackedVector3Array()
 var _door_x := 1.0
@@ -39,7 +45,7 @@ func _want(what: String) -> bool:
 
 ## The house's own frame (x across, y back from the street, z up) to world.
 func _h(x: float, y: float, z: float) -> Vector3:
-	return _home.to_global(House1979.at(Vector3(x, y, z)))
+	return _home.to_global(_H79.at(Vector3(x, y, z)))
 
 
 func _build_steps() -> void:
@@ -105,7 +111,7 @@ func _road_steps() -> void:
 		_road.force = true
 		_road._maybe_offer()
 		var md := MapData.shared()
-		_route = md.routes.find(Vector3(-912.0, 67.0, 926.0), Vector2.ZERO, EmptyRoad.DROPOFF).get("points", PackedVector3Array()), 200, null, false])
+		_route = md.routes.find(Vector3(-912.0, 67.0, 926.0), Vector2.ZERO, _ER.DROPOFF).get("points", PackedVector3Array()), 200, null, false])
 	_steps.append(["road_1_may_drive_before", func() -> void:
 		_drive_view()
 		_on_route(1100.0), 300])
@@ -117,19 +123,19 @@ func _road_steps() -> void:
 		print("road starts: ", _road.start(), " ", _road.refused), 230])
 	_steps.append(["road_3_only_the_road", func() -> void: pass, 200])
 	_steps.append(["road_4_from_above", func() -> void:
-		var back := -_car.global_transform.basis.z
+		var back: Vector3 = -_car.global_transform.basis.z
 		_look(_car.global_position - back * 14.0 + Vector3.UP * 9.0, _car.global_position + back * 30.0), 30])
 	_steps.append(["road_5_the_house", func() -> void:
 		var house := _road.find_child("LateHouse", true, false) as Node3D
 		var at := _point_back(32.0)
-		_look(at + Vector3.UP * 1.5, house.global_position + Vector3.UP * 1.6 if house else EmptyRoad.DROPOFF), 30])
+		_look(at + Vector3.UP * 1.5, house.global_position + Vector3.UP * 1.6 if house else _ER.DROPOFF), 30])
 	_steps.append(["road_6_the_letterbox", func() -> void:
 		var at := _point_back(7.0)
-		_look(at + Vector3.UP * 1.3, EmptyRoad.DROPOFF + Vector3.UP * 0.6), 30])
+		_look(at + Vector3.UP * 1.3, _ER.DROPOFF + Vector3.UP * 0.6), 30])
 	_steps.append(["road_7_off_the_road", func() -> void:
 		_creep = false
 		_drive_view()
-		var right := _car.global_transform.basis.x
+		var right: Vector3 = _car.global_transform.basis.x
 		_car.teleport(Transform3D(_car.global_transform.basis, _car.global_position + right * 20.0 + Vector3.UP * 0.5)), 80])
 	_steps.append(["road_8_city_back", func() -> void: pass, 240])
 
@@ -206,7 +212,7 @@ func _empty_steps() -> void:
 	_steps.append(["empty_08_stairs_stain_tape", func() -> void:
 		_look(_h(0.6, 10.6, 1.5), _h(0.4, 7.5, 1.0)), 30])
 	_steps.append(["empty_09_tape_close", func() -> void:
-		_look(_h(0.9, 9.1, 1.2), _h(HouseAbandoned.TAPE_AT.x, HouseAbandoned.TAPE_AT.y, HouseAbandoned.TAPE_AT.z)), 30])
+		_look(_h(0.9, 9.1, 1.2), _h(_HA.TAPE_AT.x, _HA.TAPE_AT.y, _HA.TAPE_AT.z)), 30])
 	_steps.append(["empty_10_upstairs_robyn", func() -> void:
 		_look(_h(2.8, 8.8, 3.16 + 1.55), _h(1.0, 10.4, 3.16 + 0.4)), 30])
 	_steps.append(["empty_11_upstairs_front", func() -> void:
@@ -230,7 +236,7 @@ func _empty_steps() -> void:
 
 
 func _out_steps() -> void:
-	var looking := func() -> LookingOut: return _main.find_child("LookingOut", true, false) as LookingOut
+	var looking := func() -> Node: return _main.find_child("LookingOut", true, false)
 	var lounge := func() -> void: _look(_h(3.5, 2.4, 1.65), _h(3.3, -9.0, 1.0))
 	var balcony := func() -> void: _look(_h(1.2, 1.6, 3.16 + 1.6), _h(2.6, -10.0, 1.4))
 	_steps.append(["out_0_setup", func() -> void:
@@ -274,6 +280,12 @@ func _out_steps() -> void:
 
 func _drive_steps() -> void:
 	var events := {}
+	_steps.append(["drive_0a_in_the_car", func() -> void:
+		# After the house groups you're on foot, and the road events only run
+		# while you're driving.
+		if _player.get("in_car") == false:
+			_put_player(_car.global_position + _car.global_transform.basis.x * -1.6)
+			_player.call("get_in"), 240, null, false])
 	_steps.append(["drive_0_setup", func() -> void:
 		_hour(1.0)
 		_main.find_child("StoryPeople", true, false).card_act = 5
@@ -290,18 +302,18 @@ func _drive_steps() -> void:
 	_steps.append(["drive_01_repeat_street_ahead", func() -> void:
 		_car.headlights_on = true
 		_car._update_lights()
-		var rs: RepeatStreet = events.RepeatStreet
+		var rs = events.RepeatStreet
 		rs.force = true
 		_creep = true
 		print("repeat begins: ", rs._ready_to_start(), " ", rs.begin(), " on ", rs.street), 90])
 	_steps.append(["drive_02_the_three", func() -> void:
-		var rs: RepeatStreet = events.RepeatStreet
+		var rs = events.RepeatStreet
 		var at := TrafficGraph.point_at(rs._path, rs._cum, rs._three_s - 22.0)
 		var to := TrafficGraph.point_at(rs._path, rs._cum, rs._three_s)
 		_look(at + Vector3.UP * 1.3, to + Vector3.UP * 1.5)
 		rs._show(true), 60])
 	_steps.append(["drive_03_the_three_close", func() -> void:
-		var rs: RepeatStreet = events.RepeatStreet
+		var rs = events.RepeatStreet
 		var man := rs._three.get_node_or_null(^"Man") as Node3D
 		var lamp := rs._three.get_node(^"Lamp") as Node3D
 		_look(lamp.global_position + (man.global_position - lamp.global_position) * 0.5 + Vector3.UP * 1.6 - rs._three.global_basis.z * -9.0, lamp.global_position + Vector3.UP * 1.5), 30])
@@ -319,7 +331,7 @@ func _drive_steps() -> void:
 		var t := TrafficGraph.tangent_at(path, cum, end)
 		_car.teleport(Transform3D(Basis.looking_at(Vector3(t.x, 0.0, t.z).normalized(), Vector3.UP), TrafficGraph.point_at(path, cum, end) + Vector3.UP)), 60, null, false])
 	_steps.append(["drive_06_minimap_passenger", func() -> void:
-		var mp: MinimapPassenger = events.MinimapPassenger
+		var mp = events.MinimapPassenger
 		# A trail every 2 m along the street, as if just driven, up to the car.
 		var path: PackedVector3Array = events.path
 		var cum := TrafficGraph.cumulative(path)
@@ -338,7 +350,7 @@ func _drive_steps() -> void:
 		events.MinimapPassenger.force = false
 		events.MinimapPassenger.finish()
 		_hour(2.7)
-		var sc: StoppedClock = events.StoppedClock
+		var sc = events.StoppedClock
 		sc.force = true
 		sc.begin()
 		_hour(3.6), 90])
@@ -348,7 +360,12 @@ func _drive_steps() -> void:
 	_steps.append(["drive_09_station_here", func() -> void:
 		root.get_node("Story").act_override = 3
 		events.StationVoice.force = true
-		root.get_node("Activities").say("Under the static, the calm voice: \"...%s...\"" % events.StationVoice.here_line()), 60])
+		# The line first: its first time is a discovery, and that card would
+		# hurry it off. Then shown straight away, not queued behind the
+		# clock's notice.
+		var line: String = events.StationVoice.here_line()
+		root.get_node("Notices").clear()
+		root.get_node("Activities").say("Under the static, the calm voice: \"...%s...\"" % line), 120])
 	for k in 2:
 		_steps.append(["drive_%d0_lookout" % (k + 1), func() -> void:
 			root.get_node("Story").act_override = 0
@@ -364,12 +381,12 @@ func _drive_steps() -> void:
 			var edge: Vector3 = at + dir * [60.0, 100.0][k]
 			var q := PhysicsRayQueryParameters3D.create(edge + Vector3.UP * 60.0, edge + Vector3.DOWN * 60.0, ~MapTileLoader.LAYER_WATER)
 			q.exclude = [_car.get_rid()]
-			var hit := _car.get_world_3d().direct_space_state.intersect_ray(q)
+			var hit: Dictionary = _car.get_world_3d().direct_space_state.intersect_ray(q)
 			if not hit.is_empty():
 				edge.y = hit.position.y
 			_look(edge + Vector3.UP * 1.6, l.lights), 30])
 		_steps.append(["drive_%d2_lookout_answers" % (k + 1), func() -> void:
-			var ls: LookoutSignal = events.LookoutSignal
+			var ls = events.LookoutSignal
 			ls.force = true
 			ls._here = ls.LOOKOUTS[k]
 			ls.begin()
@@ -381,16 +398,16 @@ func _drive_steps() -> void:
 ## A long straight-on residential street within a couple of km of home.
 func _long_street() -> Dictionary:
 	var g := MapData.shared().routes
-	var home := _home.global_position
+	var home: Vector3 = _home.global_position
 	var best := {}
 	for r in g.road_pts.size():
-		if not g.road_kinds[r] in RepeatStreet.KINDS or g.road_names[r] == "":
+		if not g.road_kinds[r] in _RS.KINDS or g.road_names[r] == "":
 			continue
 		var p := g.road_pts[r][0]
 		if p.distance_to(home) > 1500.0:
 			continue
 		var t := TrafficGraph.tangent_at(g.road_pts[r], g.road_cum[r], 1.0)
-		var found := RepeatStreet.street_ahead(p, Vector2(t.x, t.z))
+		var found: Dictionary = _RS.street_ahead(p, Vector2(t.x, t.z))
 		if found.is_empty():
 			continue
 		var cum := TrafficGraph.cumulative(found.points)
@@ -402,6 +419,10 @@ func _long_street() -> Dictionary:
 func _process(_delta: float) -> bool:
 	if _main == null:
 		_main = load("res://scenes/main.tscn").instantiate()
+		_H79 = load("res://scripts/world/late_city/house_1979.gd")
+		_ER = load("res://scripts/world/late_city/empty_road.gd")
+		_HA = load("res://scripts/world/late_city/house_abandoned.gd")
+		_RS = load("res://scripts/world/late_city/repeat_street.gd")
 		root.add_child(_main)
 		_world = _main.get_node("LoFi/SubViewport/World")
 		_car = _world.get_node("Car")
@@ -413,15 +434,15 @@ func _process(_delta: float) -> bool:
 	_frames += 1
 	if _creep:
 		# Rolling along at walking pace (standing still lets the road go).
-		var fwd := -_car.global_transform.basis.z
+		var fwd: Vector3 = -_car.global_transform.basis.z
 		_car.linear_velocity = Vector3(fwd.x * 1.4, _car.linear_velocity.y, fwd.z * 1.4)
 	if _step == -1:
 		if _frames > 0:
 			MapData.shared().wait()
 			_main.get_node("HUD").call("hide_help")
-			_home = get_first_node_in_group(&"home_base") as HomeBase
-			_other = _main.find_child("OtherHouse", true, false) as OtherHouse
-			_road = _main.find_child("EmptyRoad", true, false) as EmptyRoad
+			_home = get_first_node_in_group(&"home_base")
+			_other = _main.find_child("OtherHouse", true, false)
+			_road = _main.find_child("EmptyRoad", true, false)
 			_cam = Camera3D.new()
 			_cam.fov = 70.0
 			_world.add_child(_cam)
@@ -481,8 +502,8 @@ func _on_route(back: float) -> void:
 	_hour(1.0)
 	var cum := TrafficGraph.cumulative(_route)
 	var total := cum[cum.size() - 1]
-	var s := total - EmptyRoad.MIN_ROUTE - 20.0
-	while s - 20.0 > total - back and MapData.shared().street_at(_point_at(cum, s - 20.0), 12.0) == EmptyRoad.STREET:
+	var s: float = total - _ER.MIN_ROUTE - 20.0
+	while s - 20.0 > total - back and MapData.shared().street_at(_point_at(cum, s - 20.0), 12.0) == _ER.STREET:
 		s -= 20.0
 	var i := 1
 	while i < cum.size() - 1 and cum[i] < s:
