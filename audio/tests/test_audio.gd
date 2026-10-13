@@ -78,6 +78,12 @@ func _test_buses() -> void:
 	for i in range(1, AudioServer.bus_count):
 		order_ok = order_ok and AudioServer.get_bus_index(AudioServer.get_bus_send(i)) < i
 	check(order_ok, "every bus sends to one before it")
+	var fx := AudioServer.get_bus_index("Effects")
+	var fx_lim: AudioEffectHardLimiter = null
+	for e in AudioServer.get_bus_effect_count(fx):
+		if AudioServer.get_bus_effect(fx, e) is AudioEffectHardLimiter:
+			fx_lim = AudioServer.get_bus_effect(fx, e)
+	check(fx_lim != null and fx_lim.ceiling_db <= -3.0, "Effects pile-ups are limited under the Master limiter")
 
 
 func _test_volume_sliders(audio: Node) -> void:
@@ -888,6 +894,7 @@ func _test_field(audio: Node) -> void:
 		var sound: String = audio.hooks.restore_sound(stage.id)
 		check(audio.has(sound), "restoration stage %s -> %s" % [stage.id, sound])
 	check(audio.hooks.restore_sound("engine") == "engine/classic/eng_classic_startup", "the twin coughs into life")
+	check(audio.has("home/home_gate_open") and audio.has("home/home_gate_close"), "the timber gates have their own sounds")
 	# The record player
 	check(audio.has("home/home_record_needle") and audio.has("home/home_record_needle_lift")
 			and audio.stream("home/home_record_crackle", true) != null, "record needle, lift and crackle")

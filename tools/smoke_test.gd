@@ -371,6 +371,15 @@ func _run_step() -> bool:
 			elif _frame == 30:
 				_check(progression.get_stat("badges") == _mark.badges + 1, "driving through a badge collects it")
 				_check(progression.get_stat("discoveries") == _mark.places, "badges don't count as places")
+				root.get_node("Discoveries").discover("oddity/station_knows")
+				_check(progression.get_stat("discoveries") == _mark.places, "nor do the odd things")
+				var wandering := {"id": "t1_discover", "stat": "discoveries", "target": 8}
+				var was_done: bool = progression.is_done(wandering)
+				progression._completed["t1_discover"] = 1
+				progression.check()
+				_check(progression.is_done(wandering), "a Wandering already finished stays finished")
+				if not was_done:
+					progression._completed.erase("t1_discover")
 				_car.odometer_km += 30.0
 				progression.check()
 				_check(progression.rewards.has("trinket_fluffy_dice"), "25 km earns the fluffy dice")

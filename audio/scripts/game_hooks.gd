@@ -429,9 +429,13 @@ func _home_pos() -> Vector3:
 func _on_home_door(door_name: StringName, open: bool) -> void:
 	var door := (_home as Node).find_child(String(door_name), true, false) as Node3D
 	var pos := door.global_position if door else _home_pos()
-	# The heavy front door has its own sound; the gates latch like the inside doors.
+	# The heavy front door and the timber gates have their own sounds.
+	var how := "open" if open else "close"
+	if String(door_name).ends_with("Gate"):
+		Audio.play_at("home/home_gate_" + how, pos, -4.0)
+		return
 	var kind := "front" if door_name == &"Door_Front" else "internal"
-	Audio.play_at("home/home_%s_door_%s" % [kind, "open" if open else "close"], pos, -2.0)
+	Audio.play_at("home/home_%s_door_%s" % [kind, how], pos, -2.0)
 
 
 func _on_slept(_day: int) -> void:
