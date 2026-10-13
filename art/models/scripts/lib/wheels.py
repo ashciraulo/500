@@ -34,24 +34,31 @@ def _tyre(r, rim):
 
 @style("pop_trim", 0.178, 0.29, 0.175)
 def _pop_trim(r, t, rim):
-    """Pop 14" steel wheel under a silver plastic cover with a ring of round holes."""
+    """Pop 14" steel wheel under a silver plastic cover: ten rounded slots in
+    scalloped dimples near the edge, a raised plain middle and a round cap."""
     c = _tyre(r, rim)
     if c:
         return c
     rr = r / rim
-    if rr > 0.94:
-        return (0.42, 0.43, 0.45)
+    if rr > 0.95:
+        return (0.40, 0.41, 0.43)
+    ang = 2 * math.pi / 10
+    a = (t + ang / 2) % ang - ang / 2
+    # each slot is a capsule running out along the radius, in a dimple
+    w = rr * math.sin(a)
+    along = rr * math.cos(a)
+    d = math.hypot(w, along - min(max(along, 0.70), 0.80))
+    if d < 0.065:
+        return (0.07, 0.07, 0.08)
+    if d < 0.11:
+        return (0.58, 0.59, 0.61)
     if rr < 0.20:
-        return (0.10, 0.10, 0.11) if rr < 0.15 else (0.55, 0.56, 0.58)
-    # ten round holes on a ring, small dimples on an inner ring
-    for ring_r, hole_r, n in ((0.66, 0.11, 10), (0.36, 0.05, 5)):
-        ang = 2 * math.pi / n
-        a = (t + ang / 2) % ang - ang / 2
-        dx = rr * math.cos(a) - ring_r
-        dy = rr * math.sin(a)
-        if dx * dx + dy * dy < hole_r * hole_r:
-            return (0.08, 0.08, 0.09)
-    shade = 0.80 if rr > 0.82 else 0.74
+        return (0.70, 0.71, 0.73)
+    if rr < 0.235:
+        return (0.30, 0.30, 0.32)          # the cap's ring
+    if 0.47 < rr < 0.51:
+        return (0.52, 0.53, 0.55)          # step down from the raised middle
+    shade = 0.80 if rr < 0.47 else 0.74
     return (shade, shade + 0.01, shade + 0.03)
 
 
@@ -232,15 +239,20 @@ def _cromodora(r, t, rim):
     return (0.75, 0.75, 0.76) if a < 30 else (0.06, 0.06, 0.06)
 
 
+# styles drawn rounder: (segments, face texture size)
+FINE = {"pop_trim": (24, 128)}
+
+
 def build(name, style_name, parent=None, loc=(0, 0, 0), right=False, segs=14):
     rim, R, w, fn = STYLES[style_name]
+    segs, tex = FINE.get(style_name, (segs, 64))
     h = w / 2
     img = None
     key = "wheel_" + style_name
     import bpy
     img = bpy.data.images.get(key)
     if img is None:
-        img = K.radial_texture(key, 64, lambda r, t: fn(r, t, rim / R))
+        img = K.radial_texture(key, tex, lambda r, t: fn(r, t, rim / R))
     face = C.mat("Wheel_" + style_name, image=img, rough=0.5, metal=0.2)
     tread = C.mat("Tyre", "#141414", rough=0.95)
     profile = [

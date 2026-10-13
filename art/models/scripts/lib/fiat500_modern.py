@@ -66,13 +66,14 @@ def materials(spec, st):
         # smoked lenses (Abarth 500e) keep the LampTail name so they still glow in game
         "tail": C.mat("LampTail", "#4a0c10" if spec.get("smoked_tail") else "#a8121a",
                       rough=0.3, emit="#ff1a10", emit_strength=0.0),
+        "tail_dark": C.mat("LampTailInner", "#6e0a10", rough=0.3),
         "amber": C.mat("LampAmber", "#e08a20", rough=0.3),
         "e_panel": C.mat("EPanel", spec.get("e_panel", "#dcdcd8"), rough=0.5) if spec.get("e_front") else None,
         "fabric": C.mat("RoofFabric", image=TX.fabric("roof_canvas", spec.get("fabric", "#2a2826"), seed=31,
                                                       seams=False), rough=1.0) if cab else None,
         "fabric_seam": C.mat("RoofFabricSeam", "#0e0e0e", rough=1.0) if cab else None,
         "white": C.mat("LampClear", "#e6e6e6", rough=0.2),
-        "badge": C.mat("BadgeRed", "#a0101a", rough=0.4),
+        "badge": C.mat("BadgeRed", "#74121c", rough=0.35),
         "dark": C.mat("Grille", "#0c0c0d", rough=0.8),
         "plate": C.mat("Plate", image=TX.plate(spec.get("plate", "1CIN-500")), rough=0.6),
         "mirror": C.mat("MirrorCap", spec.get("mirror_color", paint), rough=0.35),
@@ -337,16 +338,16 @@ def _windows(ref, M):
     for sx in (1, -1):
         fr = K.side_frame(sx)
         doors[sx] = {"panes": [_pane("door_glass", ref, door_poly, fr, M)],
-                     "seals": [_seal("door_seal", ref, door_poly, fr, M, border=0.032)]}
+                     "seals": [_seal("door_seal", ref, door_poly, fr, M, border=0.018)]}
         body["panes"].append(K.project_poly("quarter_glass", ref,
                                             S.clip_y(K.offset_poly(quarter, -0.015), lo=S.B_PILLAR[1] + 0.026),
                                             fr, M["glass"], offset=-0.012, cuts=2))
-        body["seals"].append(_seal("quarter_seal", ref, quarter, fr, M))
+        body["seals"].append(_seal("quarter_seal", ref, quarter, fr, M, border=0.028))
         body["seals"].append(K.project_poly("b_pillar", ref, pillar, fr, M["trim"], offset=0.005, cuts=2))
     for name, poly, fr in (("windscreen", S.WINDSCREEN, K.top_frame()),
                            ("rear_window", S.REAR_WINDOW, K.rear_frame())):
         body["panes"].append(_pane(name, ref, poly, fr, M))
-        body["seals"].append(_seal(name + "_seal", ref, poly, fr, M, border=0.035))
+        body["seals"].append(_seal(name + "_seal", ref, poly, fr, M, border=0.025))
     return body, doors
 
 
@@ -391,85 +392,130 @@ def _mirror(ref, sx, M):
     return C.join([arm, cap, glass], "Mirror")
 
 
-HEAD_X, HEAD_Z, HEAD_R = 0.555, 0.775, 0.098   # big round lamps at the bonnet's front corners
-DRL_X, DRL_Z, DRL_R = 0.650, 0.545, 0.05       # small round lamps in the bumper below them
+HEAD_X, HEAD_Z, HEAD_R = 0.555, 0.775, 0.108   # big round lamps at the bonnet's front corners
+DRL_X, DRL_Z, DRL_R = 0.655, 0.545, 0.057      # smaller round lamps in the bumper below them
+
+
+def _smooth_path(pts, step, passes=6):
+    """Points every ~`step` metres along the polyline through pts, eased
+    with a few moving-average passes (ends fixed): rounds the joins without
+    the overshoot a spline gives where the control points bunch up."""
+    pts = [Vector(p) for p in pts]
+    out = []
+    for a, b in zip(pts, pts[1:]):
+        n = max(1, int((b - a).length / step + 0.999))
+        out += [a.lerp(b, k / n) for k in range(n)]
+    out.append(pts[-1])
+    for _ in range(passes):
+        out = [out[0]] + [(out[i - 1] + out[i] * 2 + out[i + 1]) / 4 for i in range(1, len(out) - 1)] + [out[-1]]
+    return out
+
+
+def _surface_ribbon(name, ref, ctrl, width, material, offset=0.004, step=0.01):
+    """Strip along a smooth curve through `ctrl` (points on or near the
+    surface), each sample pulled onto the surface, so it reads as one clean
+    line instead of stepping across the shell's facets."""
+    hits = []
+    for p in _smooth_path(ctrl, step):
+        ok, loc, nor, _ = ref.closest_point_on_mesh(p)
+        if ok:
+            hits.append((loc, nor))
+    verts, faces = [], []
+    for i, (p, n) in enumerate(hits):
+        a = hits[max(i - 1, 0)][0]
+        b = hits[min(i + 1, len(hits) - 1)][0]
+        side = n.cross(b - a).normalized() * width / 2
+        verts += [tuple(p - side + n * offset), tuple(p + side + n * offset)]
+    for i in range(len(hits) - 1):
+        faces.append((2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1))
+    o = C.mesh_obj(name, verts, faces, material)
+    material.use_backface_culling = False
+    return o
 
 
 def _bonnet_line(ref, M):
-    """Clamshell bonnet shut line: across the nose at headlamp-centre height,
-    up over each lamp, then back along the top of the wings to the base of
-    the A-pillars."""
-    rays = []
-    fr = K.front_frame()
+    """Clamshell bonnet shut line, as on Ash's car: across the nose just
+    above headlamp-centre height, over the top of each lamp along its rim,
+    then back along the top of the wing, rising to the base of the A-pillar."""
+    r = HEAD_R + 0.003
 
-    def wing(sx, ys):
-        # measured off the side photo: drops from the A-pillar base, then
-        # runs nearly level over the front wheel
-        for y in ys:
+    def lamp(sx, a):
+        return K.on_front(ref, sx * (HEAD_X + r * math.cos(math.radians(a))),
+                          HEAD_Z + r * math.sin(math.radians(a)))[0]
+
+    def wing(sx):
+        # rises from the lamp's outer shoulder to the A-pillar base, nearly
+        # level over the front wheel
+        # (from just behind the lamp: further forward on the Abarth's longer nose)
+        y0 = K.on_front(ref, HEAD_X, HEAD_Z)[0].y + 0.16
+        pts = []
+        for y in [y0 + (-1.27 - y0) * k / 2 for k in range(2)] + [-1.27, -1.16, -1.06, -0.99, -0.94]:
             t = min(1.0, max(0.0, (y + 1.10) / 0.16))
-            z = 0.835 + (0.99 - 0.835) * t * t - 0.02 * max(0.0, (-1.25 - y) / 0.25)
-            rays.append(((sx * 3, y, z), (-sx, 0, 0)))
+            z = 0.835 + (0.99 - 0.835) * t * t - 0.02 * max(0.0, (-1.27 - y) / 0.21)
+            pts.append(K.on_side(ref, sx, y, z)[0])
+        return pts
 
-    def over_lamp(sx):
-        # starts on the lamp's outer shoulder, level with the end of the wing run
-        r = HEAD_R + 0.008
-        for a in [160 - 20 * i for i in range(9)]:
-            u = sx * HEAD_X + r * math.cos(math.radians(a))
-            v = HEAD_Z + r * math.sin(math.radians(a))
-            rays.append(fr(u, v))
-    # the wing run ends just behind the lamp (further forward on the
-    # Abarth's longer nose)
-    lamp_y = K.on_front(ref, HEAD_X, HEAD_Z)[0].y
-    end = lamp_y + 0.185
-    ys = [-0.94 + (end + 0.94) * i / 11 for i in range(12)]
-    wing(-1, ys)
-    over_lamp(-1)
-    half = HEAD_X - HEAD_R - 0.008
-    for i in range(1, 12):
-        x = -half + i * half / 6
-        rays.append(fr(x, HEAD_Z + 0.055 * (1 - (x / half) ** 2)))
-    over_lamp(1)
-    wing(1, list(reversed(ys)))
-    # four rays per step, so the strip follows the surface between the
-    # measured points instead of cutting through the facets in dashes
-    fine = []
-    for (o0, d0), (o1, d1) in zip(rays, rays[1:]):
-        for k in range(4):
-            t = k / 4
-            fine.append((tuple(a + (b - a) * t for a, b in zip(o0, o1)),
-                         tuple(a + (b - a) * t for a, b in zip(d0, d1))))
-    fine.append(rays[-1])
-    return S.ribbon("bonnet_line", ref, fine, 0.009, M["seam"], offset=0.005)
+    inner = HEAD_X - r * math.cos(math.radians(20))
+    nose = [K.on_front(ref, x, HEAD_Z + r * math.sin(math.radians(160)) + 0.018 * (1 - (x / inner) ** 2))[0]
+            for x in [-inner + 2 * inner * i / 8 for i in range(9)]]
+    left = [lamp(1, a) for a in range(160, 19, -20)]          # inner shoulder over the top to the outside
+    right = [lamp(-1, a) for a in range(20, 161, 20)]
+    ctrl = list(reversed(wing(-1))) + right + nose[1:-1] + left + wing(1)
+    return _surface_ribbon("bonnet_line", ref, ctrl, 0.009, M["seam"], offset=0.004)
 
 
 def _front(ref, M, spec, abarth):
     out = [_bonnet_line(ref, M)]
     chrome = M["chrome"] if spec.get("chrome", False) else M["satin"]
     for sx in (1, -1):
-        # big round headlamps set into the bonnet's corners, small round lamps below
+        # big round headlamps set into the bonnet's corners: a thin chrome
+        # bezel round a clear lens over a chrome bowl, the bulb's projector
+        # ring toward the inner top; smaller round lamps below in the bumper
         w = K.on_front(ref, sx * HEAD_X, HEAD_Z)
-        h = K.stick_disc("head", ref, w, HEAD_R - 0.01, 0.04, M["head"], segs=28, proud=-0.002)
+        out.append(K.stick_disc("head_ring", ref, w, HEAD_R, 0.03, M["chrome"], segs=32, proud=-0.004))
+        out.append(K.stick_disc("head_bowl", ref, w, HEAD_R - 0.012, 0.03, M["reflector"], segs=32,
+                                proud=-0.002))
+        h = K.stick_disc("head", ref, w, HEAD_R - 0.03, 0.03, M["head"], segs=28, proud=0.0)
         h["lamp"] = "head"
-        out.append(K.stick_disc("head_ring", ref, w, HEAD_R, 0.03, M["chrome"], segs=28, proud=-0.004))
-        out.append(K.stick_disc("head_reflector", ref, w, 0.05, 0.04, M["reflector"], segs=20, proud=0.0))
+        wp = K.on_front(ref, sx * (HEAD_X - 0.018), HEAD_Z + 0.012)
+        out.append(K.stick_disc("head_projector", ref, wp, 0.042, 0.03, M["reflector"], segs=20, proud=0.003))
+        out.append(K.stick_disc("head_projector_lens", ref, wp, 0.03, 0.03, M["chrome"], segs=16, proud=0.005))
         wl = K.on_front(ref, sx * DRL_X, DRL_Z)
-        lo = K.stick_disc("drl", ref, wl, DRL_R - 0.008, 0.04, M["head"], segs=16, proud=0.004)
+        out.append(K.stick_disc("drl_ring", ref, wl, DRL_R, 0.03, M["insert"], segs=24))
+        lo = K.stick_disc("drl", ref, wl, DRL_R - 0.009, 0.04, M["head"], segs=20, proud=0.004)
         lo["lamp"] = "head"
-        out.append(K.stick_disc("drl_ring", ref, wl, DRL_R, 0.03, M["insert"], segs=16))
+        out.append(K.stick_disc("drl_bowl", ref, wl, DRL_R - 0.03, 0.03, M["reflector"], segs=16, proud=0.008))
         out += [h, lo]
         if abarth:
             continue
-        # moustache: one unbroken bar either side of the badge, rising
-        # slightly and tapering toward its outer end
+        # moustache: one bar either side of the badge, flat-ended at the
+        # badge and tapering to a point at its outer end, rising slightly
         fr = K.front_frame()
-        wh = [fr(sx * x, 0.668 + (x - 0.06) * 0.03) for x in [0.06 + 0.3 * i / 12 for i in range(13)]]
-        out.append(S.ribbon("whisker", ref, wh, 0.016, chrome, offset=0.006))
+        bar = []
+        for i in range(13):
+            x = 0.072 + 0.29 * i / 12
+            half = 0.019 * (1 - (i / 12) ** 3 * 0.7)
+            z = 0.672 + (x - 0.07) * 0.035
+            bar.append((sx * x, z + half))
+        for i in reversed(range(13)):
+            x = 0.072 + 0.29 * i / 12
+            half = 0.019 * (1 - (i / 12) ** 3 * 0.7)
+            z = 0.672 + (x - 0.07) * 0.035
+            bar.append((sx * x, z - half))
+        if sx < 0:
+            bar.reverse()
+        out.append(K.project_poly("whisker", ref, bar, fr, chrome, offset=0.007, cuts=1))
     if abarth:
         out += _abarth_front(ref, M)
     else:
-        out.append(K.stick_disc("badge", ref, K.on_front(ref, 0, 0.672), 0.040, 0.03, M["badge"], segs=12))
-        out.append(K.stick_disc("badge_ring", ref, K.on_front(ref, 0, 0.672), 0.046, 0.02, M["chrome"], segs=12))
-        grille = [(-0.42, 0.30), (0.42, 0.30), (0.47, 0.33), (0.46, 0.43), (-0.46, 0.43), (-0.47, 0.33)]
+        # round badge in a chrome ring (plain: no maker's script)
+        out.append(K.stick_disc("badge_ring", ref, K.on_front(ref, 0, 0.672), 0.05, 0.03, M["chrome"], segs=20,
+                                proud=0.004))
+        out.append(K.stick_disc("badge", ref, K.on_front(ref, 0, 0.672), 0.04, 0.03, M["badge"], segs=20,
+                                proud=0.008))
+        # mesh intake below the plate, with a recess either side
+        grille = [(-0.40, 0.31), (0.40, 0.31), (0.43, 0.33), (0.43, 0.41), (0.41, 0.43), (-0.41, 0.43),
+                  (-0.43, 0.41), (-0.43, 0.33)]
         if spec.get("e_front"):
             # 2013 500e: the intake blanked off with a pale panel and a band of small holes
             out.append(K.project_poly("e_panel", ref, grille, K.front_frame(), M["e_panel"], offset=0.006, cuts=5))
@@ -481,9 +527,13 @@ def _front(ref, M, spec, abarth):
                                                M["dark"], proud=0.003))
         else:
             out.append(K.project_poly("grille", ref, grille, K.front_frame(), M["dark"], offset=0.006, cuts=5))
+        # bright strip along the bumper's ledge, from the plate out to the corners
+        for sx in (1, -1):
+            ledge = [(sx * (0.23 + 0.39 * i / 10), 0.468 + 0.03 * (i / 10) ** 2) for i in range(11)]
+            out.append(K.project_line("bumper_strip", ref, ledge, K.front_frame(), 0.018, chrome, offset=0.006))
         # black lower lip across the bottom of the bumper
-        lip = [(-0.50, 0.24), (0.50, 0.24), (0.54, 0.265), (0.52, 0.30), (-0.52, 0.30), (-0.54, 0.265)]
-        out.append(K.project_poly("bumper_lip", ref, lip, K.front_frame(), M["trim"], offset=0.006, cuts=6))
+        lip = [(-0.48, 0.25), (0.48, 0.25), (0.52, 0.272), (0.50, 0.305), (-0.50, 0.305), (-0.52, 0.272)]
+        out.append(K.project_poly("bumper_lip", ref, lip, K.front_frame(), M["trim"], offset=0.01, cuts=10))
     pz = 0.36 if abarth else 0.48
     out.append(K.stick_box("plate_holder", K.on_front(ref, 0, pz), (0.42, 0.16, 0.03), M["trim"], proud=0.02))
     plate = K.stick_box("plate_f", K.on_front(ref, 0, pz), (0.372, 0.134, 0.01), M["plate"], proud=0.05)
@@ -507,23 +557,48 @@ def _densify(pts, step):
     return out + [pts[-1]]
 
 
+def _fillet(poly, r, segs=4):
+    """Round every corner of a closed outline with radius ~r."""
+    out = []
+    n = len(poly)
+    for i in range(n):
+        p0, p1, p2 = (Vector(poly[(i + k) % n]) for k in (-1, 0, 1))
+        a = p1 + (p0 - p1).normalized() * min(r, (p0 - p1).length / 2)
+        b = p1 + (p2 - p1).normalized() * min(r, (p2 - p1).length / 2)
+        for k in range(segs + 1):
+            t = k / segs
+            q = a * (1 - t) ** 2 + p1 * 2 * t * (1 - t) + b * t * t
+            out.append((q.x, q.y))
+    return out
+
+
 def _tail_lamp(ref, sx, M):
-    """Tall rounded lamp on the rear corner: red above, clear below with the
-    round reversing lamp, in a white rim."""
+    """Tall rounded lamp on the rear corner, as on Ash's car: a white-rimmed
+    shield (straight outer edge, inner edge leaning out toward the top) in a
+    thin chrome bezel; red over the outer two thirds, clear inner strip with
+    the round reversing lamp at its foot."""
     centre = Vector((sx * 0.645, 1.43, 0.875))
     normal = Vector((sx * 0.50, 0.866, 0))
     fr = S.plane_frame(centre, normal)
-    outline = S.rounded_rect(0.165, 0.265, 0.055)
-    rim = K.project_poly("tail_rim", ref, outline, fr, None, offset=0.006, cuts=1, border=0.013,
-                         border_mat=M["white"])
-    red = [(u, v + 0.035) for u, v in S.rounded_rect(0.14, 0.175, 0.045)]
-    lens = K.project_poly("tail_red", ref, red, fr, M["tail"], offset=0.008, cuts=2)
+    o = -sx          # plane_frame's u runs toward the car's middle on the left lamp
+
+    def local(pts):
+        return [(o * u, v) for u, v in pts] if o > 0 else [(o * u, v) for u, v in reversed(pts)]
+    # (outward, up) outlines, counter-clockwise for the left lamp
+    shield = _fillet([(-0.115, -0.135), (0.08, -0.135), (0.08, 0.135), (-0.075, 0.135)], 0.04)
+    bezel = K.project_poly("tail_rim", ref, local(shield), fr, M["white"], offset=0.006, cuts=2, border=0.008,
+                           border_mat=M["chrome"])
+    red = _fillet([(-0.035, -0.118), (0.064, -0.118), (0.064, 0.118), (-0.012, 0.118)], 0.03)
+    lens = K.project_poly("tail_red", ref, local(red), fr, M["tail"], offset=0.009, cuts=2)
     lens["lamp"] = "tail"
-    clear = [(u, v - 0.088) for u, v in S.rounded_rect(0.14, 0.064, 0.028)]
-    clear = K.project_poly("tail_clear", ref, clear, fr, M["white"], offset=0.007, cuts=1)
-    loc, nor = K.hit(ref, fr(0, -0.088)[0], fr(0, -0.088)[1])
-    rev = K.stick_disc("reverse", ref, (loc, nor), 0.022, 0.02, M["reflector"], segs=8, proud=0.006)
-    return [rim, lens, clear, rev]
+    ring = [(0.015 + 0.035 * math.cos(math.radians(a)), -0.02 + 0.035 * math.sin(math.radians(a)))
+            for a in range(0, 360, 30)]
+    inner = K.project_poly("tail_ring", ref, local(ring), fr, None, offset=0.011, cuts=1,
+                           border=0.008, border_mat=M["tail_dark"])
+    u, v = o * -0.072, -0.085
+    loc, nor = K.hit(ref, fr(u, v)[0], fr(u, v)[1])
+    rev = K.stick_disc("reverse", ref, (loc, nor), 0.026, 0.02, M["reflector"], segs=14, proud=0.008)
+    return [bezel, lens, inner, rev]
 
 
 def _rear(ref, M, spec, abarth):
@@ -588,7 +663,7 @@ def _sides(ref, M, spec, abarth=False):
     for sx in (1, -1):
         if abarth:
             # side skirt between the arches
-            skirt = [(-0.80, 0.215), (0.80, 0.215), (0.80, 0.285), (-0.80, 0.285)]
+            skirt = [(-0.78, 0.215), (0.78, 0.215), (0.78, 0.285), (-0.78, 0.285)]
             out.append(K.project_poly("skirt", ref, skirt, K.side_frame(sx), M["trim"], offset=0.008, cuts=3))
         out.append(K.stick_box("side_ind", K.on_side(ref, sx, -0.90, 0.80), (0.045, 0.022, 0.01), M["white"]))
         if spec.get("chrome"):
@@ -636,15 +711,33 @@ def _spoiler(ref, M, abarth=False):
 
 
 def _side_stripes(ref, M, door_bits):
-    """Stripe along the bottom of the doors, split at the shut lines so the
-    door part swings with the door."""
+    """Stripe along the bottom of the doors, rising with the door's bottom
+    edge and split along the shut lines so the door part swings with the door."""
     out = []
-    z0, z1 = 0.36, 0.43
+    h = 0.07
+
+    def z0(y):
+        return 0.385 + (y + 0.75) * 0.04
+
+    def meet(front, dz, gap):
+        # where the stripe's edge (z0 + dz) crosses the shut line, less the gap
+        y = DOOR_Y0 if front else DOOR_Y1
+        for _ in range(8):
+            y = S.door_edge_y(z0(y) + dz, front)
+        return y + gap
+
+    def band(ya0, ya1, yb0, yb1):
+        # bottom from ya0 to yb0, top from ya1 to yb1 (ya*, yb* at bottom/top)
+        return [(ya0, z0(ya0)), (yb0, z0(yb0)), (yb1, z0(yb1) + h), (ya1, z0(ya1) + h)]
     for sx in (1, -1):
         fr = K.side_frame(sx)
-        for y0, y1, dst in ((-0.80, DOOR_Y0 - 0.006, out), (DOOR_Y0 + 0.006, DOOR_Y1 - 0.006, door_bits[sx]),
-                            (DOOR_Y1 + 0.006, 0.80, out)):
-            poly = [(y0, z0), (y1, z0), (y1, z1), (y0, z1)]
+        pieces = (
+            (band(-0.80, -0.80, meet(True, 0, -0.006), meet(True, h, -0.006)), out),
+            (band(meet(True, 0, 0.006), meet(True, h, 0.006), meet(False, 0, -0.006), meet(False, h, -0.006)),
+             door_bits[sx]),
+            (band(meet(False, 0, 0.006), meet(False, h, 0.006), 0.80, 0.80), out),
+        )
+        for poly, dst in pieces:
             dst.append(K.project_poly("stripe_side", ref, poly, fr, M["stripe"], offset=0.006, cuts=3))
     return out
 
