@@ -78,8 +78,8 @@ func take(car: Node3D = null, click := false) -> void:
 		image = await _render(car)
 	var file := ""
 	if image and not image.is_empty() and is_inside_tree():
-		DirAccess.make_dir_recursive_absolute(Activities.PHOTO_DIR)
-		file = "%s/day%03d_back_seat_raw.png" % [Activities.PHOTO_DIR, GameClock.day]
+		DirAccess.make_dir_recursive_absolute(Activities.photo_dir())
+		file = "%s/day%03d_back_seat_raw.png" % [Activities.photo_dir(), GameClock.day]
 		image.save_png(file)
 	FieldJournal.took_back_seat(file)
 	_busy = false

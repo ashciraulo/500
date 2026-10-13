@@ -35,6 +35,7 @@ extends Node3D
 ## Turbo spool and blow-off (automatic for T-Jet and TwinAir sets).
 @export var turbo := -1.0
 ## Play the start-up sound when the scene starts (otherwise already running).
+## Behind the title screen it waits until you choose to play.
 @export var start_on_ready := true
 ## Swap engine_set when the car's engine or exhaust part changes (the car's
 ## parts_changed signal; see ENGINE_PARTS and EXHAUST_PARTS).
@@ -118,9 +119,21 @@ func _ready() -> void:
 	build()
 	if _vehicle:
 		if start_on_ready:
-			start_engine.call_deferred()
+			_start_when_playing.call_deferred()
 		else:
 			start_running()
+
+
+## Turn over once the game is being played: behind the title screen the car
+## sits parked and silent until Continue or New game.
+func _start_when_playing() -> void:
+	if not is_inside_tree():
+		return
+	var title := get_tree().get_first_node_in_group(&"title_screen")
+	if title and title.has_signal(&"started"):
+		title.connect(&"started", start_engine, CONNECT_ONE_SHOT)
+	else:
+		start_engine()
 
 
 ## vehicle_path if set, else the nearest ancestor with get_telemetry().

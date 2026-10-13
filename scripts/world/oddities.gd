@@ -73,6 +73,10 @@ func _radio() -> Object:
 func _process(delta: float) -> void:
 	if _follower:
 		_move_follower(delta)
+	# Nothing odd starts behind the title screen (the lane idle was already
+	# going at night before you'd chosen to play).
+	if TitleScreen.is_showing(get_tree()):
+		return
 	_check -= delta
 	if _check > 0.0:
 		return

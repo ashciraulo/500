@@ -91,9 +91,12 @@ func _set_level(p: AudioStreamPlayer3D, w: float, pitch := 1.0) -> void:
 
 
 var _airborne := false
+## Seconds after spawning while the car settles onto the ground: its drop
+## isn't a landing, so no thud (it played on every launch).
+var _settle := 1.0
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _vehicle and _vehicle.has_method("get_telemetry"):
 		var t: Dictionary = _vehicle.get_telemetry()
 		speed_kmh = absf(float(t.get("speed_kmh", 0.0)))
@@ -102,13 +105,14 @@ func _process(_delta: float) -> void:
 		wheel_slip = clampf(float(t.get("tire_slip", 0.0)), 0.0, 1.0)
 		wet = float(t.get("wetness", 0.0)) > 0.25
 		var grounded := int(t.get("grounded_wheels", 4))
-		if grounded == 0:
+		_settle -= delta
+		if grounded == 0 and _settle <= 0.0:
 			_airborne = true
 		elif _airborne:
 			_airborne = false
 			speed_bump()  # landing thud
-		if grounded == 0:
-			speed_kmh = 0.0  # wheels in the air make no road noise
+		if grounded == 0 or _settle > 0.0:
+			speed_kmh = 0.0  # wheels in the air (or still settling) make no road noise
 	elif _vehicle:
 		if "speed_kmh" in _vehicle:
 			speed_kmh = absf(float(_vehicle.speed_kmh))
