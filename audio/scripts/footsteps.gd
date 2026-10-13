@@ -53,6 +53,13 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if _body == null:
 		return
+	# A hidden body isn't walking (the player sat in the car): its velocity is
+	# left as it was when it stopped moving, so don't keep stepping on it.
+	if not _body.is_visible_in_tree():
+		_travel = 0.0
+		_was_on_floor = true
+		_fall_speed = 0.0
+		return
 	var on_floor := _body.is_on_floor()
 	if on_floor and not _was_on_floor and _fall_speed > 2.5:
 		_step(clampf(_fall_speed / 6.0, 0.6, 1.4))  # landing
