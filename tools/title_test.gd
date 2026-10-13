@@ -4,7 +4,9 @@ extends SceneTree
 ##   - Behind the title screen nothing of the game starts: the car's engine
 ##     stays off (no start-up), the car settling onto the ground makes no
 ##     thud, Side A's card doesn't show however long the menu sits there, and
-##     at night the classic idling at the end of the lane doesn't start.
+##     at night the classic idling at the end of the lane doesn't start, and
+##     no menu clicks at launch (the phone and journal being built aren't
+##     menus opening). Opening the phone afterwards still clicks.
 ##   - Continue hands the game over: the engine turns over then, and Side A's
 ##     card shows a few seconds into play.
 ##   - With --no-save a save on disk isn't offered (New game just starts, no
@@ -35,6 +37,8 @@ var _engine_ran := false
 var _thud := false
 var _card_seen := false
 var _lane_idle := false
+## Menu clicks heard (ui_menu_*), and since when we're listening.
+var _clicks := 0
 
 
 func _process(_delta: float) -> bool:
@@ -61,6 +65,7 @@ func _process(_delta: float) -> bool:
 			_check(not _thud, "no tyre thud as the car settles at launch")
 			_check(not _card_seen, "Side A's card waits behind the title screen")
 			_check(not _lane_idle, "the lane idle doesn't start behind the title screen")
+			_check(_clicks == 0, "no menu clicks at launch (heard %d)" % _clicks)
 			_title.call("_continue_game")
 			_card_seen = false
 			_frames = 0
@@ -68,7 +73,12 @@ func _process(_delta: float) -> bool:
 		1:
 			if _frames == 30:
 				_check(bool(_engine.get("running")), "the engine turns over on Continue")
-			if _frames < PLAY_FRAMES and (not _card_seen or _frames <= 30):
+				_clicks = 0
+				_main.get_node("Phone").call("toggle")
+			if _frames == 40:
+				_check(_clicks > 0, "opening the phone still clicks")
+				_main.get_node("Phone").call("toggle")
+			if _frames < PLAY_FRAMES and (not _card_seen or _frames <= 40):
 				return false
 			_check(_card_seen, "Side A's card shows once you're playing")
 			_check(_people != null and int(_people.get("card_act")) == 1, "Side A's card is marked shown")
@@ -88,6 +98,14 @@ func _watch() -> void:
 			_thud = true
 		if p.get("playing") and s and s.resource_path.contains("_startup") and _stage == 0:
 			_engine_ran = true
+	for p: Node in root.find_children("*", "AudioStreamPlayer", true, false):
+		var s: AudioStream = p.get("stream")
+		if p.get("playing") and s and s.resource_path.contains("ui_menu_") \
+				and not p.has_meta(&"title_test_heard"):
+			p.set_meta(&"title_test_heard", true)
+			_clicks += 1
+		elif not p.get("playing") and p.has_meta(&"title_test_heard"):
+			p.remove_meta(&"title_test_heard")
 	var odd := _main.find_child("Oddities", true, false)
 	if odd and odd.get("_idle") != null:
 		_lane_idle = true
