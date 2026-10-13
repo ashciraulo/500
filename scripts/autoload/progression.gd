@@ -99,14 +99,23 @@ func add_stat(stat: String, amount := 1.0) -> void:
 	check()
 
 
+## Whether a discovery counts as a place found ("discoveries"). Badges,
+## barn finds and photo spots have their own stats, and the odd things
+## (oddity/*: the station knowing where you are, the plant turned to the
+## door) aren't places.
+static func is_place(id: String) -> bool:
+	for prefix in ["badge/", "barn/", "photo/", "oddity/"]:
+		if id.begins_with(prefix):
+			return false
+	return true
+
+
 func get_stat(stat: String) -> float:
 	match stat:
 		"earned":
 			return Wallet.total_earned
 		"discoveries":
-			# Places only: badges, barn finds and photo spots have their own stats.
-			return Array(Discoveries.all()).filter(func(id: String) -> bool:
-				return not (id.begins_with("badge/") or id.begins_with("barn/") or id.begins_with("photo/"))).size()
+			return Array(Discoveries.all()).filter(is_place).size()
 		"km_driven":
 			return Garage.lifetime_km(_car())
 		"km_tier_car":

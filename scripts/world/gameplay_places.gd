@@ -57,6 +57,8 @@ func _ready() -> void:
 	var people := StoryPeople.new()
 	people.name = "StoryPeople"
 	add_child(people)
+	# A new game's first few minutes: the plate on the step, the machine, a job.
+	add_child(FirstDay.new())
 	# More of the late city (story batch 3): at home, on the road, on the radio.
 	for event: Node in [LookingOut.new(), StoppedClock.new(), RepeatStreet.new(),
 			MinimapPassenger.new(), LookoutSignal.new(), StationVoice.new()]:
