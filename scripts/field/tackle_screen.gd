@@ -63,7 +63,9 @@ func close() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if visible and (event.is_action_pressed("pause") or event.is_action_pressed("phone")):
+	# F shuts the counter as it opened it.
+	if visible and (event.is_action_pressed("pause") or event.is_action_pressed("phone") \
+			or (event.is_action_pressed("interact") and not event.is_echo())):
 		close()
 		get_viewport().set_input_as_handled()
 

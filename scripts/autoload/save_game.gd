@@ -10,7 +10,9 @@ extends Node
 ##
 ## The save is JSON at user://save_<slot>.json, written on demand, every few
 ## minutes while driving, and when the game closes. Run with `-- --no-save`
-## to neither load nor write saves (the smoke test does this).
+## to neither load, write nor delete saves (the tests and PC checks do this,
+## so they never touch a real save; Settings doesn't write either, and
+## photos go to their own folder, see Activities.photo_dir()).
 
 signal saved(path: String)
 signal loaded(path: String)
@@ -105,8 +107,10 @@ func save_path() -> String:
 	return "user://save_%d.json" % slot
 
 
+## Whether there's a save to continue. Never with --no-save: the one on disk
+## wasn't loaded, so there's nothing of it to continue or start again over.
 func has_save() -> bool:
-	return FileAccess.file_exists(save_path())
+	return enabled and FileAccess.file_exists(save_path())
 
 
 ## When the save on this slot was written (system time), or "" if none.
@@ -167,10 +171,11 @@ func load_from(path: String) -> bool:
 	return true
 
 
-## Forget everything and start a new game on this slot.
+## Forget everything and start a new game on this slot. With --no-save the
+## file on disk stays as it is.
 func delete_save() -> void:
 	_pending = {}
-	if has_save():
+	if enabled and FileAccess.file_exists(save_path()):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path()))
 
 

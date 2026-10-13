@@ -34,6 +34,7 @@ var _stuck := 0.0
 var _was := Vector3.ZERO
 var _wait := 0.0
 var _opened: Array[StringName] = []
+var _steps_in := 0
 
 
 func _process(delta: float) -> bool:
@@ -265,8 +266,10 @@ func _process(delta: float) -> bool:
 			if _t > 0.6 and _t - delta <= 0.6:
 				_check(_player._target() == ["car", null], "the car is in reach")
 				_shot("09_back_to_car")
+				_player.velocity = _player.global_basis * Vector3(0, 0, -1.4)  # still walking when F goes down
 				_player.interact()
 			if _t > 0.9 and _t - delta <= 0.9:
+				_steps_in = _player.get_node("FootstepAudio").steps
 				var body := _car.get_node("Body")
 				_check(not body.has_method("is_door_open") or body.is_door_open("R"), "the door opens to get in")
 				_check(not _car.player_controlled, "the car waits for the key")
@@ -276,6 +279,8 @@ func _process(delta: float) -> bool:
 				_check(_player.in_car, "got back in")
 				_check(_car.player_controlled, "the car drives again")
 				_check(_rig_cam.current, "the driving camera is back")
+				var steps: int = _player.get_node("FootstepAudio").steps - _steps_in
+				_check(steps == 0, "no footsteps once you're getting in (%d)" % steps)
 				return _finish()
 	return false
 

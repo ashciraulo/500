@@ -3,6 +3,6 @@
 	"cuttings": [
 		{"id": "kangaroo_paw", "name": "Kangaroo paw", "near": "photo:kings_park_fraser", "offset": [-8.95, 0.0, -10.13], "rumour": "A clump of red-and-green kangaroo paw grows by the path off Fraser Avenue in Kings Park. Nobody would miss one cutting."},
 		{"id": "geraldton_wax", "name": "Geraldton wax", "near": "site:fremantle_markets", "offset": [-8.0, 0.0, 6.0], "rumour": "The little nursery by the Fremantle Markets lets you snip a bit of their Geraldton wax if you ask."},
-		{"id": "frangipani", "name": "Frangipani", "near": "photo:bulwer_street", "offset": [-13.26, 0.0, 3.47], "rumour": "A frangipani has gone wild on a neglected verge along Bulwer Street. A stick of it would root in a pot."}
+		{"id": "frangipani", "name": "Frangipani", "near": "photo:bulwer_street", "offset": [-16.61, 0.0, 9.61], "rumour": "A frangipani has gone wild on a neglected verge along Bulwer Street. A stick of it would root in a pot."}
 	]
 }

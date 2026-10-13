@@ -175,6 +175,17 @@ jobs:
             exit 1
           fi
 
+      - name: Title test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/title_test.gd -- --no-save 2>&1 \
+            | tee title.log | grep -E "ok |FAIL|TITLE|  - |SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" title.log; then
+            echo "::error::GDScript errors in the title test"
+            exit 1
+          fi
+
       - name: Kerb test
         if: env.ALREADY_TESTED != 'true'
         run: |
@@ -259,6 +270,17 @@ jobs:
             | tee minimap.log | grep -E "ok |FAIL|MINIMAP|  - |SCRIPT ERROR"
           if grep -q "SCRIPT ERROR" minimap.log; then
             echo "::error::GDScript errors in the minimap or the full map"
+            exit 1
+          fi
+
+      - name: Menu keys test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/menu_keys_test.gd -- --no-save 2>&1 \
+            | tee menu_keys.log | grep -E "PASS|FAIL|menu keys|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" menu_keys.log; then
+            echo "::error::GDScript errors while opening and closing menus"
             exit 1
           fi
 
