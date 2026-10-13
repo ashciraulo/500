@@ -749,6 +749,12 @@ func _test_footsteps(audio: Node) -> void:
 	get_tree().physics_frame.disconnect(walk)
 	check(fs.steps >= 4 and fs.steps <= 8, "about one step per 0.7 m at a walk (%d in ~4 m)" % fs.steps)
 	check(fs.surface == "timber", "tagged floor surface 'wood' walks as timber (%s)" % fs.surface)
+	# Sat in the car: the body is hidden with its walking velocity left on it.
+	var steps_seen: int = fs.steps
+	body.velocity = Vector3(1.4, 0, 0)
+	body.visible = false
+	await create_timer(1.5).timeout
+	check(fs.steps == steps_seen, "no footsteps from a hidden body (%d)" % (fs.steps - steps_seen))
 	world.queue_free()
 	# The townhouse's trimesh floors map to surfaces through their materials.
 	var home: Node = load("res://scenes/home/shenton.tscn").instantiate()
