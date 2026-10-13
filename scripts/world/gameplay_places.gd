@@ -135,6 +135,7 @@ func _place_found_parts() -> void:
 		node.position = at + Vector3(o[0], o[1], o[2])
 		node.rotation.y = float(entry.get("yaw", 0.0))
 		node.on_foot = bool(entry.get("on_foot", false))
+		node.stand = String(entry.get("on", ""))
 		add_child(node)
 
 

@@ -47,6 +47,9 @@ func _ready() -> void:
 		_add_tarp(model)
 	elif tarp:
 		_add_cover()
+	var marker := FindableMarker.new()
+	marker.height = 2.1
+	_visual.add_child(marker)
 	_refresh()
 
 

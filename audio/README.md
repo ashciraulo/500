@@ -162,17 +162,31 @@ start swapping in your own recordings, regenerate only what you need.
 - **Changing car**: `EngineAudio.CAR_SETS` maps each car in
   `data/cars/cars.json` to its engine set, and the horn style follows (classic
   meep, Abarth blare, modern).
-- **Volume settings**: `Settings.volume_master`, `volume_effects`,
-  `volume_car`, `volume_surroundings`, `volume_music` and `volume_radio`
-  (0..1, sliders in the pause menu's Sound section: Everything, Effects,
-  Your car, Weather and street, Music, Radio, with a "My Music folder"
-  button on the Music row). Effects covers every sound but music and the radio:
-  the world, the car's cabin sounds (rain on the roof, wipers, indicator)
-  and the menus. Under it, Your car turns down the Engine, Tyres and Cabin
-  buses and Weather and street the Ambience, Weather and Vehicles buses
-  (traffic engines play on Vehicles; `EngineAudio.bus`).
+- **Volume settings**: `Settings.volume_master`, `volume_car`,
+  `volume_music`, `volume_ambient` and `volume_effects` (0..1, sliders in
+  the pause menu's Sound section: Everything, Your car, Music and radio,
+  Surroundings, Effects, with a "My Music folder" button). Each of the four
+  under Everything is its own bus under Master, and every sound goes through
+  exactly one of them:
+  - **Car** (Your car): Engine, Tyres, Cabin (indicator, wipers, belts,
+    radio clicks) and Body (your car from outside: horn, doors, boot,
+    knocks and crashes). Half way is as mixed (`Audio.CAR_AS_MIXED`) and the
+    top is `Audio.CAR_MAX_DB` (+12 dB) over that, so your engine can sit
+    clearly over the radio.
+  - **MusicRadio** (Music and radio): Music (menu and job music, stings, the
+    record player) and Radio, with MyMusic under it (your own songs,
+    levelled to the stations as they play: `radio.gd`).
+  - **Ambient** (Surroundings): Ambience (zone beds, places), Weather,
+    Vehicles (traffic engines play there; `EngineAudio.bus`), Outdoors
+    (birds, people, roadworks, trains, the city's goings-on) and Roof (rain
+    on your car's roof and windscreen).
+  - **Effects**: SFX (everything else) and UI (menus and notices).
+
+  Settings saved before these sliders are carried over by
+  `Settings._volumes_from_old_sliders()` so every sound keeps its level.
   `tools/sound_check.gd` fails if anything bypasses the sliders straight
-  to Master, if a slider reaches the wrong sounds, and if in a storm the
+  to Master or sits under two, if a slider reaches the wrong sounds, if
+  Your car at the top doesn't put your engine over the radio, and if in a storm the
   rain, wind and wipers aren't well under the radio or the idling engine
   isn't heard over the rain, in either view. The storm readings start the
   rain and wind loops at their loudest 8 s and last 8 s of real time, so
@@ -220,12 +234,20 @@ The game makes a `Music` folder next to the save files:
 - macOS: `~/Library/Application Support/Godot/app_userdata/500/Music`
 - Linux: `~/.local/share/godot/app_userdata/500/Music`
 
-(the "My Music folder" button on the pause menu's Music row opens it.) Drop MP3, OGG or WAV files in. Each
+(the "My Music folder" button in the pause menu's Sound section opens it.) Drop MP3, OGG or WAV files in. Each
 subfolder becomes a playlist; "All music" plays everything. Tune the radio to
 My Music: tracks play through the car-stereo filter, shuffle by default, and
 carry on faintly when you step out. Track names come from the files' tags, or
 from file names like `Artist - Title.mp3`. Spotify was ruled out in the plan, so
 the folder is the way.
+
+Songs are levelled to the stations (about -16 LUFS) as they play: the
+MyMusic bus measures each one K-weighted, like a loudness meter, and turns
+it down (most are mastered 6-10 dB hotter) or up. A song not heard before
+starts 7 dB down, settles after 6 s and again after 25 s, and its level is
+kept in `user://my_music_levels.cfg`, so next time it starts right. The
+radio's compressor has a 10 ms attack, so it rides a song rather than
+clamping each kick drum (with the old fast one, loud songs pumped).
 
 ## Tests
 

@@ -86,7 +86,7 @@ const HOME_RADIUS := 90.0
 ## MapStreamer.get_pois() by Audio.hooks), from nodes in the "poi" group with
 ## meta "poi_type" (and optionally "radius", metres), or from add_place().
 const PLACE_TYPES := ["beach", "surf", "lookout", "bush", "quay", "riverside", "carpark", "jetty", "groyne",
-		"tackle_shop", "photo_lab", "wrong_cockatoos", "servo", "cafe", "restaurant", "bar", "pub"]
+		"tackle_shop", "photo_lab", "wrong_cockatoos", "servo", "cafe", "restaurant", "bar", "pub", "retic"]
 const PLACE_RADIUS := 120.0
 ## The servos you can fill up at (MapStreamer builds them from this file):
 ## each one's forecourt is a "servo" place. The map's other servo POIs (the
@@ -95,6 +95,23 @@ const PLACE_RADIUS := 120.0
 const SERVOS_PATH := "res://data/world/servos.json"
 const SERVO_RADIUS := 40.0
 const SERVO_NEAR := 250.0
+## Reticulation in the parks: sprinkler spots on the map's lawns (written by
+## audio/tools/find_retic.gd). Each runs a few days a week for an hour and
+## a half in Perth's watering hours (early morning or evening, never by day),
+## and not in the rain; spots in the same few hundred metres share a
+## controller, so a park comes on together (retic_running()). Heard close
+## up only, and well under the other places (PLACE_TRIM_DB).
+const RETIC_PATH := "res://audio/data/retic.json"
+const RETIC_RADIUS := 25.0
+const RETIC_CELL := 200.0
+const RETIC_CONTROLLER := 300.0
+const RETIC_DAYS := 3
+const RETIC_HOURS := 1.5
+var _retic := {}               # Vector2i cell -> PackedVector3Array of spots
+var _retic_loaded := false
+var day := 1                   # game day (from GameClock), for the retic roster
+## Places heard quieter than the rest (dB).
+const PLACE_TRIM_DB := {"retic": -6.0}
 ## Full volume inside this fraction of the radius, falling away with
 ## distance past it and silent a little past the radius (PLACE_REACH).
 const PLACE_FULL := 0.35
@@ -187,20 +204,20 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	_bed_a = _new_player("Ambience")
 	_bed_b = _new_player("Ambience")
-	# Weather layers. Outside beds go through World (muffled inside the car);
-	# roof beds go to Cabin and are only heard inside.
+	# Weather layers. Outside beds are muffled inside the car; roof beds go
+	# to Roof and are only heard inside. All of it is Surroundings.
 	_layer("rain_light_out", "weather/weather_rain_light_outside", "Weather")
 	_layer("rain_heavy_out", "weather/weather_rain_heavy_outside", "Weather")
-	_layer("rain_light_roof", "weather/weather_rain_light_roof_metal", "Cabin")
-	_layer("rain_heavy_roof", "weather/weather_rain_heavy_roof_metal", "Cabin")
-	_layer("rain_light_fabric", "weather/weather_rain_light_roof_fabric", "Cabin")
-	_layer("rain_heavy_fabric", "weather/weather_rain_heavy_roof_fabric", "Cabin")
-	_layer("rain_screen", "weather/weather_rain_windscreen", "Cabin")
+	_layer("rain_light_roof", "weather/weather_rain_light_roof_metal", "Roof")
+	_layer("rain_heavy_roof", "weather/weather_rain_heavy_roof_metal", "Roof")
+	_layer("rain_light_fabric", "weather/weather_rain_light_roof_fabric", "Roof")
+	_layer("rain_heavy_fabric", "weather/weather_rain_heavy_roof_fabric", "Roof")
+	_layer("rain_screen", "weather/weather_rain_windscreen", "Roof")
 	_layer("wind", "weather/weather_wind_bed", "Weather")
 	_layer("cicadas", "weather/weather_cicadas", "Ambience")
-	# Indoors at home: rain on the windows (on SFX, so the walls don't dull it
-	# twice: the recording is already heard through them).
-	_layer("rain_windows", "home/home_rain_windows", "SFX")
+	# Indoors at home: rain on the windows (straight on Ambient, so the walls
+	# don't dull it twice: the recording is already heard through them).
+	_layer("rain_windows", "home/home_rain_windows", "Ambient")
 	call_deferred("_update_bed", true)
 
 
@@ -295,7 +312,67 @@ func update_places(pos: Vector3) -> void:
 		if rel < 1.0 and rel < best.get(type, INF):
 			best[type] = rel
 			near[type] = [p[1], r]
+	if not near.has("retic") and rain < RAIN_WET_OFF:
+		var spot := nearest_retic(pos)
+		if spot != Vector3.INF and retic_running(spot, day, time_of_day):
+			near["retic"] = [spot, RETIC_RADIUS]
 	_place_near = near
+
+
+## The nearest sprinkler spot within earshot of pos (Vector3.INF if none).
+func nearest_retic(pos: Vector3) -> Vector3:
+	if not _retic_loaded:
+		_load_retic()
+	var cell := Vector2i(floori(pos.x / RETIC_CELL), floori(pos.z / RETIC_CELL))
+	var best := Vector3.INF
+	var best_d := RETIC_RADIUS * PLACE_REACH
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			for spot in _retic.get(cell + Vector2i(dx, dz), PackedVector3Array()):
+				var d := Vector2(pos.x - spot.x, pos.z - spot.z).length()
+				if d < best_d:
+					best_d = d
+					best = spot
+	return best
+
+
+## Whether the retic at spot is on, on game day `on_day` at `hours`: its
+## controller's days of the week, and an hour and a half from its start
+## (between 04:00 and 07:30, or 18:30 and 21:00).
+static func retic_running(spot: Vector3, on_day: int, hours: float) -> bool:
+	var h := hash(Vector2i(floori(spot.x / RETIC_CONTROLLER), floori(spot.z / RETIC_CONTROLLER))) & 0x7fffffff
+	var first := h % 7
+	var weekday := posmod(on_day, 7)
+	if not range(RETIC_DAYS).any(func(k: int) -> bool: return (first + k * 2) % 7 == weekday):
+		return false
+	var start := 4.0 + ((h >> 4) % 8) * 0.5 if (h >> 3) % 2 == 0 else 18.5 + ((h >> 4) % 6) * 0.5
+	return hours >= start and hours < start + RETIC_HOURS
+
+
+func _load_retic() -> void:
+	_retic_loaded = true
+	if not FileAccess.file_exists(RETIC_PATH):
+		return
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(RETIC_PATH))
+	if not data is Dictionary:
+		return
+	for p in data.get("spots", []):
+		if p is Array and p.size() == 3:
+			var v := Vector3(p[0], p[1], p[2])
+			var cell := Vector2i(floori(v.x / RETIC_CELL), floori(v.z / RETIC_CELL))
+			if not _retic.has(cell):
+				_retic[cell] = PackedVector3Array()
+			_retic[cell].append(v)
+
+
+## How many sprinkler spots the map has (tests).
+func retic_count() -> int:
+	if not _retic_loaded:
+		_load_retic()
+	var n := 0
+	for cell in _retic:
+		n += _retic[cell].size()
+	return n
 
 
 ## How loud each place type is at pos (0..1): what the 3D falloff of its
@@ -307,7 +384,7 @@ func place_level(type: String, pos: Vector3) -> float:
 	var r: float = _place_near[type][1]
 	var d := at.distance_to(pos)
 	var unit := r * PLACE_FULL
-	return minf(1.0, unit / maxf(d, 0.001)) * maxf(0.0, 1.0 - d / (r * PLACE_REACH))
+	return minf(1.0, unit / maxf(d, 0.001)) * maxf(0.0, 1.0 - d / (r * PLACE_REACH)) * db_to_linear(PLACE_TRIM_DB.get(type, 0.0))
 
 
 func place_sound(type: String) -> String:
@@ -336,9 +413,10 @@ func _update_place_layers(delta: float) -> void:
 		var sound := place_sound(type)
 		if sound == "":
 			continue
+		var trim: float = PLACE_TRIM_DB.get(type, 0.0)
 		if p.stream == null or _place_night.get(type, false) != (sound.ends_with("_night_loop")):
 			# Swap day/night while it's quiet, or with a short dip if it isn't.
-			if p.playing and db_to_linear(p.volume_db) > 0.05:
+			if p.playing and db_to_linear(p.volume_db - trim) > 0.05:
 				amount = 0.0
 			else:
 				p.stop()
@@ -346,7 +424,7 @@ func _update_place_layers(delta: float) -> void:
 				_place_night[type] = sound.ends_with("_night_loop")
 		# The distance falloff is the 3D player's; this only fades a place
 		# in and out when it comes into reach or swaps day for night.
-		var cur := db_to_linear(p.volume_db) if p.playing else 0.0
+		var cur := db_to_linear(p.volume_db - trim) if p.playing else 0.0
 		var v := lerpf(cur, amount, 1.0 - exp(-delta / 1.5))
 		if v < 0.002 and amount < 0.002:
 			if p.playing:
@@ -356,7 +434,7 @@ func _update_place_layers(delta: float) -> void:
 			p.volume_db = -60.0
 			p.play(randf() * p.stream.get_length())
 			v = 0.001
-		p.volume_db = linear_to_db(maxf(v, 0.001))
+		p.volume_db = linear_to_db(maxf(v, 0.001)) + trim
 
 
 func _new_place_player() -> AudioStreamPlayer3D:
@@ -498,6 +576,7 @@ func _poll_source() -> void:
 			weather.connect("lightning", _on_weather_lightning)
 	var clock := get_node_or_null("/root/GameClock")
 	if clock:
+		day = int(clock.day)
 		set_time_of_day(float(clock.time_of_day))
 	if weather or clock:
 		_refresh_bed()

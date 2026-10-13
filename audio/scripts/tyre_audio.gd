@@ -212,12 +212,12 @@ func impact(impulse: float, material := "metal") -> void:
 	else:
 		sound = "impact/impact_heavy"
 	var vol := volume_db + clampf(linear_to_db(impulse / 8.0), -12.0, 0.0)
-	Audio.play_at(sound, global_position, vol, "SFX")
+	Audio.play_at(sound, global_position, vol, "Body")
 	if material == "glass" or impulse > 9.0:
-		Audio.play_at("impact/impact_glass_crack", global_position, vol - 3.0, "SFX")
+		Audio.play_at("impact/impact_glass_crack", global_position, vol - 3.0, "Body")
 
 
 ## Street furniture the car knocks over: "wheelie_bin", "traffic_cone",
 ## "mesh_fence", "signpost", "shopping_trolley".
 func hit_object(kind: String, pos := Vector3.INF) -> void:
-	Audio.play_at("impact/impact_" + kind, global_position if pos == Vector3.INF else pos, volume_db, "SFX")
+	Audio.play_at("impact/impact_" + kind, global_position if pos == Vector3.INF else pos, volume_db, "Body")

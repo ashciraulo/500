@@ -41,15 +41,18 @@ var cozy_mode := false
 ## How strange the story's late-city events get: "full", or "gentle" (the
 ## scariest forms swap for softer ones; the story is the same).
 var strange_things := "full"
-## Volume sliders, 0..1 (1 = as mixed). The Audio autoload applies them.
+## Volume sliders, 0..1 (1 = as mixed). The Audio autoload applies them,
+## each to its own sounds: Everything, then your car (engine, tyres, horn,
+## doors, the cabin), music and the radio (My Music too), the surroundings
+## (birds, the street, traffic, the weather) and effects (menus and the rest).
 var volume_master := 1.0
 var volume_music := 1.0
-var volume_radio := 1.0
+var volume_ambient := 1.0
 var volume_effects := 1.0
-## Under Effects: your own car (engine, tyres, the sounds in the cabin) and
-## the surroundings (the street, traffic and the weather).
-var volume_car := 1.0
-var volume_surroundings := 1.0
+## Your car has room to go louder than the mix: as mixed half way (the
+## Audio autoload's CAR_AS_MIXED), clearly over the radio at the top.
+const VOLUME_CAR_DEFAULT := 0.5
+var volume_car := VOLUME_CAR_DEFAULT
 ## Suggested routes to where you're going: 0 off, 1 on the minimap and the
 ## full map, 2 on the maps and as arrows on the road ahead.
 var route_guide := 2
@@ -133,6 +136,8 @@ func load_settings() -> void:
 		return
 	for key in _keys():
 		set(key, config.get_value("settings", key, get(key)))
+	if not config.has_section_key("settings", "volume_ambient"):
+		_volumes_from_old_sliders(config)
 	if not config.has_section_key("settings", "lofi_preset"):
 		# Saved before the filter strengths: the old look was harsh, so
 		# start from the softer default rather than keep it.
@@ -143,12 +148,30 @@ func load_settings() -> void:
 	affine_strength = RenderSettings.PRESETS[lofi_preset].affine_strength
 
 
+## Saved before the four Sound sliders: Effects used to turn down the car and
+## the street as well, with Your car and Weather and street under it, and
+## Music and Radio were apart. Keep what each sound was heard at: the car and
+## the surroundings take Effects times their old slider, and Music and radio
+## takes the radio's (what plays while driving).
+func _volumes_from_old_sliders(config: ConfigFile) -> void:
+	if not config.has_section_key("settings", "volume_effects"):
+		return
+	var effects := clampf(float(config.get_value("settings", "volume_effects", 1.0)), 0.0, 1.0)
+	var car := clampf(float(config.get_value("settings", "volume_car", 1.0)), 0.0, 1.0)
+	var street := clampf(float(config.get_value("settings", "volume_surroundings", 1.0)), 0.0, 1.0)
+	volume_ambient = effects * street
+	volume_music = clampf(float(config.get_value("settings", "volume_radio", volume_music)), 0.0, 1.0)
+	# The car slider is twice as steep in dB as the old one (as mixed at
+	# VOLUME_CAR_DEFAULT), hence the square root.
+	volume_car = VOLUME_CAR_DEFAULT * sqrt(effects * car)
+
+
 func _keys() -> PackedStringArray:
 	return PackedStringArray([
 		"automatic_gearbox", "mouse_sensitivity", "day_length_minutes", "weather_choice",
 		"clock_frozen", "lofi_enabled", "lofi_target_height", "dither_enabled",
 		"vertex_snap_scale", "lofi_preset", "color_levels", "dither_strength", "affine_strength",
 		"softness", "show_help", "fullscreen", "ui_size", "cozy_mode", "strange_things",
-		"volume_master", "volume_music", "volume_radio", "volume_effects",
-		"volume_car", "volume_surroundings", "route_guide",
+		"volume_master", "volume_music", "volume_ambient", "volume_effects",
+		"volume_car", "route_guide",
 	])
