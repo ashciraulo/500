@@ -2,7 +2,9 @@
 // a soft four-point star that always faces you and breathes slowly. It never
 // shrinks below a few pixels however far off you are, so it reads from the
 // road, and fades out past `far` so it doesn't give itself away across the
-// city. Unshaded: it shows the same by day and by night.
+// city. Unshaded, so it reads the same at any hour; by day (`day`) its halo
+// deepens toward violet so it still stands out against pale paving and
+// walls in the sun.
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, blend_mix;
 
@@ -15,6 +17,10 @@ uniform float min_angle = 0.09;
 uniform float far = 160.0;
 /// Breaths per second.
 uniform float speed = 0.5;
+/// 0 at night, 1 in full sun (set by FindableMarker).
+uniform float day = 0.0;
+/// What the halo deepens to by day.
+uniform vec3 deep : source_color = vec3(0.4, 0.16, 0.8);
 
 varying float v_fade;
 varying float v_pulse;
@@ -37,7 +43,8 @@ void fragment() {
 	float ray_x = exp(-abs(p.y) * 14.0) * max(1.0 - abs(p.x), 0.0);
 	float ray_y = exp(-abs(p.x) * 14.0) * max(1.0 - abs(p.y), 0.0);
 	float rays = max(ray_x, ray_y) * (0.6 + 0.4 * v_pulse);
-	float a = clamp(core * 1.5 + halo + rays, 0.0, 1.0);
-	ALBEDO = mix(colour.rgb, vec3(1.0), clamp(core - 0.35, 0.0, 1.0));
+	float a = clamp(core * 1.5 + halo * (1.0 + 0.5 * day) + rays, 0.0, 1.0);
+	vec3 tint = mix(colour.rgb, deep, day * 0.75 * (1.0 - core));
+	ALBEDO = mix(tint, vec3(1.0), clamp(core - 0.35, 0.0, 1.0));
 	ALPHA = a * colour.a * v_fade;
 }
