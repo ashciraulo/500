@@ -616,31 +616,41 @@ func _refresh_cars() -> void:
 			continue
 		_heading(_cars_list, "Tier %d%s" % [tier + 1, "" if Progression.tier_index >= tier else "   (locked)"])
 		for car in for_sale:
-			var row := HBoxContainer.new()
-			var text := VBoxContainer.new()
-			text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			var name_label := Label.new()
-			name_label.text = "%s (%s)   %d kW   $%s" % [car.name, car.years, car.power_kw, _number(car.price)]
-			text.add_child(name_label)
-			var blurb := Label.new()
-			blurb.text = car.blurb
-			blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			blurb.add_theme_font_size_override("font_size", 13)
-			blurb.add_theme_color_override("font_color", UiStyle.INK_2)
-			text.add_child(blurb)
-			row.add_child(text)
-			var button := Button.new()
-			button.custom_minimum_size.x = 170
-			var blocker := Garage.car_blocker(car.id)
-			button.text = "Buy it" if blocker == "" else blocker[0].to_upper() + blocker.substr(1)
-			button.disabled = blocker != ""
-			var id: String = car.id
-			button.pressed.connect(func() -> void:
-				if Garage.buy_car(id, _car):
-					_change.text = "Bought the %s. Your old car's waiting at home." % CarCatalogue.get_car(id).name
-				_refresh_after_action())
-			row.add_child(button)
-			_cars_list.add_child(row)
+			_car_for_sale(car)
+	# Rare cars only show once they're on the lot (after the story shows them).
+	var rare := CarCatalogue.rare().filter(func(c: Dictionary) -> bool: return CarCatalogue.on_the_lot(c))
+	if not rare.is_empty():
+		_heading(_cars_list, "Just in")
+		for car in rare:
+			_car_for_sale(car)
+
+
+func _car_for_sale(car: Dictionary) -> void:
+	var row := HBoxContainer.new()
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var name_label := Label.new()
+	name_label.text = "%s (%s)   %d kW   $%s" % [car.name, car.years, car.power_kw, _number(car.price)]
+	text.add_child(name_label)
+	var blurb := Label.new()
+	blurb.text = car.blurb
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	blurb.add_theme_font_size_override("font_size", 13)
+	blurb.add_theme_color_override("font_color", UiStyle.INK_2)
+	text.add_child(blurb)
+	row.add_child(text)
+	var button := Button.new()
+	button.custom_minimum_size.x = 170
+	var blocker := Garage.car_blocker(car.id)
+	button.text = "Buy it" if blocker == "" else blocker[0].to_upper() + blocker.substr(1)
+	button.disabled = blocker != ""
+	var id: String = car.id
+	button.pressed.connect(func() -> void:
+		if Garage.buy_car(id, _car):
+			_change.text = "Bought the %s. Your old car's waiting at home." % CarCatalogue.get_car(id).name
+		_refresh_after_action())
+	row.add_child(button)
+	_cars_list.add_child(row)
 
 
 func _refresh_restore() -> void:

@@ -91,8 +91,33 @@ var owned_cars: PackedStringArray = [CarCatalogue.STARTER]
 var cars := {}
 
 
+## The car yard rings about a rare car (CarCatalogue.rare) the morning after
+## it first turns up in the story: [car id, message id, caller, what they say].
+const LOT_CALLS := [
+	["valiant_vc", &"yard_valiant", "Gaz, the car yard in Northbridge",
+		"Hi, it's Gaz from the car yard in Northbridge. Funny one. An old olive Valiant came in this morning, a sixty-six, bench seat and all. The bloke who dropped it off said to ring you first. Didn't leave a name. It's on the lot if you want it."],
+]
+## Office hours for the call.
+const LOT_CALL_HOURS := Vector2i(9, 17)
+
+
 func _ready() -> void:
 	SaveGame.register("garage", self)
+	GameClock.hour_changed.connect(_on_hour)
+
+
+## A rare car that's on the lot and not yours yet gets a call on the
+## answering machine, in office hours (the story leaves it in Story.messages,
+## so it's only ever left once).
+func _on_hour(hour: int) -> void:
+	if hour < LOT_CALL_HOURS.x or hour > LOT_CALL_HOURS.y:
+		return
+	for call: Array in LOT_CALLS:
+		var car := CarCatalogue.get_car(call[0])
+		if car.is_empty() or owns_car(call[0]) or not CarCatalogue.on_the_lot(car) or Story.has_message(call[1]):
+			continue
+		if Story.leave_message(call[1], call[2], call[3]):
+			Notices.post("A new message on the answering machine at home.", "info", "ui/ui_phone_notify", "Answering machine")
 
 
 ## True for stock parts, parts you've bought for this car, and anything
@@ -269,7 +294,12 @@ func car_blocker(id: String) -> String:
 			return "found, not bought"
 		"secret":
 			return "a secret"
-	if Progression.tier_index < int(car.tier):
+		"seen":
+			if not CarCatalogue.on_the_lot(car):
+				return "not on the lot"
+	# A rare car on the lot is for sale whatever the tier (its tier is the
+	# class it races in).
+	if car.unlock != "seen" and Progression.tier_index < int(car.tier):
 		return "unlocks at tier %d" % (int(car.tier) + 1)
 	if not CarCatalogue.is_drivable(car):
 		return "not ready yet"
@@ -324,7 +354,7 @@ func km_in_tier(tier: int, car: CarController) -> float:
 	var best := 0.0
 	for id in owned_cars:
 		var info := CarCatalogue.get_car(id)
-		if info.is_empty() or int(info.tier) != tier or info.ladder == "classic":
+		if info.is_empty() or int(info.tier) != tier or info.ladder in ["classic", "period"]:
 			continue
 		var km: float = car.odometer_km if car and car.car_id == id else float(cars.get(id, {}).get("odometer_km", 0.0))
 		best = maxf(best, km)

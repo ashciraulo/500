@@ -122,7 +122,7 @@ func _test_index(audio: Node) -> void:
 
 func _test_engines(audio: Node) -> void:
 	print("engine sets")
-	for fam in ["fire12", "fire14", "twinair", "tjet", "classic", "classicflat", "classicabarth", "electric",
+	for fam in ["fire12", "fire14", "twinair", "tjet", "classic", "classicflat", "classicabarth", "slant6", "electric",
 			"electric2020", "abarthe"]:
 		var names: PackedStringArray = audio.names_in("engine/" + fam)
 		var on := 0
@@ -136,7 +136,7 @@ func _test_engines(audio: Node) -> void:
 		if fam.begins_with("classic"):
 			check(audio.names_in("engine/%smegaphone" % fam).size() >= 2 * on,
 					"%s has the Abarth megaphone set" % fam)
-		if not fam.begins_with("electric") and not fam == "abarthe" and fam != "classicflat":
+		if not fam.begins_with("electric") and not fam in ["abarthe", "classicflat", "slant6"]:
 			for v in ["sport", "straight"]:
 				var vn := 0
 				for n in audio.names_in("engine/" + fam + v):
@@ -493,10 +493,13 @@ func _test_car_scene(audio: Node) -> void:
 		check(cs.push_start and cs.electric and cs.door_family == "modern", "New 500e: push start, modern doors")
 		car.apply_car("abarth_500e")
 		check(engine.engine_set == "abarthe" and cs.door_family == "abarth", "Abarth 500e: fake engine note, Abarth doors")
+		car.apply_car("valiant_vc")
+		check(engine.engine_set == "slant6" and not engine.classic_gearbox, "Valiant -> slant6 (got %s)" % engine.engine_set)
+		check(cs.style == "valiant" and cs.door_family == "valiant" and not cs.push_start, "Valiant: its own horn and doors, a key")
 		car.apply_car("pop_12")
 		check(engine.engine_set == "fire12" and not engine.classic_gearbox, "Pop -> fire12 (got %s)" % engine.engine_set)
 	# Doors, belt and key: every family has open, close and slam, inside and out.
-	for fam in ["modern", "abarth", "classic", "suicide"]:
+	for fam in ["modern", "abarth", "classic", "suicide", "valiant"]:
 		for action in ["open", "close", "slam"]:
 			for where in ["", "_in"]:
 				check(audio.has("car/car_door_%s_%s%s" % [action, fam, where]), "door %s %s%s" % [action, fam, where])

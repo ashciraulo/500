@@ -47,8 +47,11 @@ static func fits(part: CarPart, car_id: String) -> bool:
 	var car := CarCatalogue.get_car(car_id)
 	if not part.ladders.is_empty() and not part.ladders.has(String(car.get("ladder", "modern"))):
 		return false
-	# Open-topped cars (the 500C, the Jolly) have nothing to bolt a rack to.
+	# Open-topped cars (the 500C, the Jolly) have nothing to bolt a rack to,
+	# and some cars only take stock parts in some slots (no_parts).
 	if part.slot == &"roof" and car.get("no_roof_rack", false):
+		return part.is_stock()
+	if car.get("no_parts", []).has(String(part.slot)):
 		return part.is_stock()
 	if car.get("electric", false) and COMBUSTION_SLOTS.has(part.slot):
 		return part.is_stock()
@@ -68,7 +71,8 @@ static func fits_phrase(part: CarPart) -> String:
 	return " or ".join(words)
 
 
-const LADDER_WORDS := {"classic": "a classic 500", "modern": "a modern 500", "electric": "the 500e"}
+const LADDER_WORDS := {"classic": "a classic 500", "modern": "a modern 500", "electric": "the 500e",
+	"period": "the Valiant"}
 
 
 ## Parts for one slot that fit a car, cheapest first.

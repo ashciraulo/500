@@ -193,6 +193,14 @@ const FIELD_GEAR_CLASSIC := {
 	&"tackle_box": [Vector3(0.0, -0.23, -0.55), 0.0],
 	&"camera": [Vector3(0.0, -0.03, -0.55), -0.3],
 }
+## The Valiant's long cabin: a bench seat each end, the back one 93 cm behind
+## the front (its own spots, so nothing floats in the gap).
+const FIELD_GEAR_PERIOD := {
+	&"esky": [Vector3(0.0, -0.08, 0.93), 0.0],
+	&"tackle_box": [Vector3(0.02, -0.09, 0.95), 0.2, true],
+	&"binoculars": [Vector3(0.03, -0.08, 0.1), 0.5],
+	&"camera": [Vector3(-0.12, -0.09, 0.0), -0.3],
+}
 ## Soft springs (with a stiff anti-roll bar for the corners) so a wheel keeps
 ## the road over a dip of 11 cm before it lifts. The Pop's wheel markers in its
 ## scene are set for this spring's sag; see `_fit_rig` for other bodies.
@@ -336,6 +344,8 @@ var _wheelbase := 2.3
 var _rig_defaults := {}
 ## The body's size (m); the chase camera frames smaller cars closer.
 const POP_SIZE := Vector3(1.63, 1.49, 3.55)
+## From the DriverSeat marker to the driver's eye (CarCameraRig.eye_offset).
+const EYE_ABOVE_SEAT := Vector3(0.0, 0.15, -0.15)
 var body_size := POP_SIZE
 ## Each wheel's model from the body (its WheelStyle), before any wheel part.
 var _model_wheels := {}
@@ -986,7 +996,8 @@ func _field_gear_spot(body: Node3D, id: StringName) -> Variant:
 	# family so nothing floats or sinks in.
 	var seat := body.find_child("Seat_L", true, false) as Node3D
 	var hip := _in_body_space(body, seat).origin if seat else Vector3(-0.36, 0.55, 0.25)
-	var spots: Dictionary = FIELD_GEAR_CLASSIC if CarCatalogue.get_car(car_id).get("ladder", "") == "classic" else FIELD_GEAR_MODERN
+	var ladder: String = CarCatalogue.get_car(car_id).get("ladder", "")
+	var spots: Dictionary = {"classic": FIELD_GEAR_CLASSIC, "period": FIELD_GEAR_PERIOD}.get(ladder, FIELD_GEAR_MODERN)
 	if not spots.has(id):
 		return null
 	var spot: Array = spots[id]
@@ -1366,6 +1377,8 @@ func _swap_model(model: String) -> void:
 	add_child(body)
 	move_child(body, index)
 	_fit_rig(body)
+	if body.has_method("set_top_shade"):
+		body.set_top_shade(float(CarCatalogue.get_car(car_id).get("paint_top_shade", 0.0)))
 	roof_open = false  # A different car comes with its roof up.
 
 
@@ -1406,7 +1419,23 @@ func _fit_rig(body: Node3D) -> void:
 		_model_wheels[i] = path
 	_wheelbase = absf(_wheels[0].anchor.position.z - _wheels[2].anchor.position.z)
 	_fit_collision(body if fitted else null)
+	_fit_seat(body)
 	_apply_part_visuals()
+
+
+## Cars whose spec says `eye_from_model` (the Valiant, much longer and lower
+## than a 500) put the driver's seat marker under the model's own
+## Cam_Cockpit; the rest keep the scene's.
+func _fit_seat(body: Node3D) -> void:
+	var seat := get_node_or_null("DriverSeat") as Node3D
+	if seat == null:
+		return
+	if not has_meta("seat_rest"):
+		set_meta("seat_rest", seat.position)
+	seat.position = get_meta("seat_rest")
+	var cam := body.find_child("Cam_Cockpit", true, false) as Node3D
+	if cam and CarCatalogue.get_car(car_id).get("eye_from_model", false):
+		seat.position = _in_car_space(body, cam).origin - EYE_ABOVE_SEAT
 
 
 ## Remember the Pop's rig (once), so other bodies can be fitted and undone.
@@ -1481,7 +1510,8 @@ func _apply_part_visuals() -> void:
 		var wheel: Dictionary = _wheels[i]
 		_capture_rig()
 		var path: String = _model_wheels.get(i, _rig_defaults.wheels[i])
-		if wheels and wheels.visual != "":
+		# Stock wheels are the model's own (the Pop's trims are only the Pop's).
+		if wheels and wheels.visual != "" and not wheels.is_stock():
 			var fitted := PART_MODEL_PATH % ("%s_%s" % [wheels.visual, "l" if wheel.left else "r"])
 			if ResourceLoader.exists(fitted):
 				path = fitted

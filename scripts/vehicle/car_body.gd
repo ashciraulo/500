@@ -144,6 +144,12 @@ func reset_paint() -> void:
 	paint.set_shader_parameter("albedo_texture", _stock_wear)
 
 
+## Darken the paint's upward faces a little (0..1): olive washes out pale in
+## full sun without it (the Valiant, as the 1979 lane shows it).
+func set_top_shade(amount: float) -> void:
+	_set_paint_param("top_shade", amount)
+
+
 ## Clear coat: roughness and metallic for the paint, or below zero for the
 ## model's own.
 func set_finish(rough: float, metal: float) -> void:
