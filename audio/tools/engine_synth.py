@@ -504,7 +504,7 @@ FAMILIES: dict[str, Engine] = {
                      rasp_band=(420, 2400), mech=0.07, block_modes=(880, 1850, 3050),
                      valves_per_cyl=2, intake=0.12, intake_band=(380, 1600), whine=0.008,
                      whine_ratio=2.1, body=3.4, body_k=1.6, sharp=0.38, air_hz=5200,
-                     level_curve=0.85, load_db=8.5, drive=2.1, overrun_pops=0.22),
+                     level_curve=0.6, load_db=8.5, drive=2.1, overrun_pops=0.22),
 }
 
 # Plan table names, for the docs.

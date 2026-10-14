@@ -75,7 +75,7 @@ LEAN_ENC = dict(quality=4, rate=32000)
 # loop). Peaks above -1 dBTP are soft-limited.
 LEVEL_FROM = {"classicflat": ("classic", 0.0), "classicabarth": ("classic", 3.0),
               # a worked big six with a big exhaust: well over the Pop's 1.2
-              "slant6": ("fire12", 4.5)}
+              "slant6": ("fire12", 7.0)}
 
 
 # --------------------------------------------------------------------------

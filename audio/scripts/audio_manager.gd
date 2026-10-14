@@ -332,6 +332,15 @@ const RADIO_COMP_ATTACK_US := 10000.0
 const RADIO_COMP_GAIN_DB := -3.0
 
 
+## Where the Engine bus compressor starts for the player's engine (dB). Its
+## 3:1 would squeeze a big engine back to a 500's level on load, so one that
+## should stand out pulling away, the Valiant's worked slant six, starts it
+## higher. (Its make-up gain is applied before it, so it can't do this.)
+func set_engine_threshold(db := ENGINE_COMP_THRESHOLD_DB) -> void:
+	if _engine_comp:
+		_engine_comp.threshold = db
+
+
 ## Settings menu hook: linear volume 0..1 for a bus ("Master", "Music", "Radio", ...).
 func set_bus_volume(bus: String, linear: float) -> void:
 	var idx := AudioServer.get_bus_index(bus)

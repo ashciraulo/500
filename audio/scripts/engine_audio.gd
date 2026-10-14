@@ -56,6 +56,12 @@ const CAR_SETS := {
 	"valiant_vc": "slant6",
 }
 
+## Engine family -> where the Engine bus compressor starts for it (dB;
+## Audio.set_engine_threshold), when it isn't the bus's own: the worked slant
+## six is let through about 5 dB louder than a 500 pulling away. Only for the
+## player's car; traffic plays on Vehicles.
+const COMP_THRESHOLDS_DB := {"slant6": -27.0}
+
 ## Engine part id -> engine family. Parts not listed keep the current family
 ## (an ECU remap or a stock engine sounds like what's fitted).
 const ENGINE_PARTS := {
@@ -189,6 +195,8 @@ func build() -> void:
 	var lim := "engine/%s/eng_%s_limiter" % [engine_set, engine_set]
 	_limiter.stream = Audio.stream(lim) if Audio.has(lim) else null
 	var family := family_of(engine_set)
+	if bus == &"Engine":
+		Audio.set_engine_threshold(COMP_THRESHOLDS_DB.get(family, Audio.ENGINE_COMP_THRESHOLD_DB))
 	if _auto_pops:
 		pops = 1.0 if (engine_set.ends_with("sport") or engine_set.ends_with("straight")
 				or engine_set.ends_with("megaphone") or family in ["tjet", "classicabarth"]) else 0.0
