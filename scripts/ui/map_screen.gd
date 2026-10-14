@@ -148,7 +148,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		var local := _view.get_local_mouse_position() if not UiStyle.using_pad else _view.size * 0.5
 		var to := _view.to_world(local)
 		_set_open(false)
-		_dev_mode().go_to(Vector3(to.x, NAN, to.y), "%.0f, %.0f" % [to.x, to.y])
+		var street := MapData.shared().street_at(Vector3(to.x, 0.0, to.y))
+		_dev_mode().go_to(Vector3(to.x, NAN, to.y), street if street != "" else "%.0f, %.0f" % [to.x, to.y])
 		get_viewport().set_input_as_handled()
 
 

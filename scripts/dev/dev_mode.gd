@@ -303,12 +303,15 @@ func queue(job: Callable) -> void:
 
 
 ## Takes you there: in the car, onto the nearest road (or open ground) by it;
-## on foot, onto the ground there. `at.y` can be NAN when it isn't known. The
-## map builds the ground there while you wait over it for a few frames.
+## on foot, onto the ground at a known spot (a jetty, a gate), or onto the
+## nearest road for a spot whose height isn't known (`at.y` NAN: the map's T,
+## typed x and z), never a roof. On foot you face the way that's most open.
+## The map builds the ground there while you wait over it for a few frames.
 func go_to(at: Vector3, what := "") -> void:
-	if is_nan(at.y):
+	var exact := not is_nan(at.y)
+	if not exact:
 		at.y = _road_height(Vector2(at.x, at.z))
-	_going = {"at": at, "what": what, "frames": GO_FRAMES}
+	_going = {"at": at, "what": what, "frames": GO_FRAMES, "exact": exact}
 
 
 func _step_going() -> void:
@@ -324,6 +327,7 @@ func _step_going() -> void:
 			_player.teleport(hold, hold + _player.global_basis * Vector3.FORWARD)
 		return
 	var what: String = _going.what
+	var exact: bool = _going.exact
 	_going = {}
 	if _player.in_car:
 		var spot := _road_spot(at, 40.0)
@@ -340,18 +344,55 @@ func _step_going() -> void:
 		_place_car(spot)
 	else:
 		var feet := Vector3.INF
-		for offset: Vector3 in [Vector3.ZERO, Vector3(2, 0, 0), Vector3(-2, 0, 0), Vector3(0, 0, 2), Vector3(0, 0, -2),
-				Vector3(5, 0, 0), Vector3(-5, 0, 0), Vector3(0, 0, 5), Vector3(0, 0, -5)]:
-			feet = _ground(at + offset + Vector3.UP * 30.0, 60.0)
-			if feet != Vector3.INF:
-				break
+		var look := -_player.global_basis.z
+		if exact:
+			feet = _ground(at + Vector3.UP * 2.0, 6.0)
+		else:
+			var road := _road_spot(at, 40.0)
+			if road != Transform3D.IDENTITY:
+				feet = road.origin + Vector3.DOWN * 0.6
+				look = -road.basis.z
+		if feet == Vector3.INF:
+			feet = _open_ground(at)
 		if feet == Vector3.INF:
 			_say("No ground found at %s." % what)
 			return
-		_player.teleport(feet + Vector3.UP * 0.05, at + Vector3.UP * 1.2 if feet.distance_to(at) > 1.0 \
-			else feet + _player.global_basis * Vector3.FORWARD * 4.0 + Vector3.UP * 1.5)
+		_player.teleport(feet + Vector3.UP * 0.05, feet + _open_way(feet, look) * 6.0 + Vector3.UP * 1.5)
 	print("[dev] go: %s (%.1f, %.1f, %.1f)" % [what, at.x, at.y, at.z])
 	_say("At %s." % what if what != "" else "There.")
+
+
+## Open ground at or round `at` (not a roof), or Vector3.INF.
+func _open_ground(at: Vector3) -> Vector3:
+	for offset: Vector3 in [Vector3.ZERO, Vector3(3, 0, 0), Vector3(-3, 0, 0), Vector3(0, 0, 3), Vector3(0, 0, -3),
+			Vector3(8, 0, 0), Vector3(-8, 0, 0), Vector3(0, 0, 8), Vector3(0, 0, -8)]:
+		var feet := _ground(at + offset + Vector3.UP * 30.0, 60.0, 0.8, false)
+		if feet != Vector3.INF:
+			return feet
+	return Vector3.INF
+
+
+## The flat direction from `feet` with the most room at eye height,
+## `prefer` if that has a good look ahead.
+func _open_way(feet: Vector3, prefer: Vector3) -> Vector3:
+	prefer.y = 0.0
+	prefer = prefer.normalized() if prefer.length() > 0.1 else Vector3.FORWARD
+	var space := _player.get_world_3d().direct_space_state
+	var eye := feet + Vector3.UP * 1.6
+	var best := prefer
+	var best_room := -1.0
+	for i in 8:
+		var dir := prefer.rotated(Vector3.UP, TAU * i / 8.0)
+		var q := PhysicsRayQueryParameters3D.create(eye, eye + dir * 20.0, 1 | 2)
+		q.exclude = [_car.get_rid(), _player.get_rid()]
+		var hit := space.intersect_ray(q)
+		var room := 20.0 if hit.is_empty() else eye.distance_to(hit.position)
+		if i == 0 and room >= 12.0:
+			return prefer
+		if room > best_room:
+			best_room = room
+			best = dir
+	return best
 
 
 ## The height of the road nearest a map spot, or 30 m (the ground is found
@@ -522,8 +563,9 @@ func _log(key: String, from: Vector3, how: StringName) -> void:
 
 
 ## The first floor straight down from `from`, within `depth` metres: not
-## under water, not on top of a car, and no steeper than `flat` allows.
-func _ground(from: Vector3, depth: float, flat := 0.8) -> Vector3:
+## under water, not on top of a car, no steeper than `flat` allows, and
+## (with `roofs` false) not a building's roof.
+func _ground(from: Vector3, depth: float, flat := 0.8, roofs := true) -> Vector3:
 	var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * depth, 1 | 2 | MapTileLoader.LAYER_WATER)
 	q.exclude = [_car.get_rid(), _player.get_rid()]
 	var hit := _player.get_world_3d().direct_space_state.intersect_ray(q)
@@ -531,6 +573,8 @@ func _ground(from: Vector3, depth: float, flat := 0.8) -> Vector3:
 		return Vector3.INF
 	var body := hit.collider as CollisionObject3D
 	if body == null or body is RigidBody3D or body is CharacterBody3D or body.collision_layer & MapTileLoader.LAYER_WATER:
+		return Vector3.INF
+	if not roofs and body.collision_layer & MapTileLoader.LAYER_BUILDINGS:
 		return Vector3.INF
 	return hit.position
 
