@@ -221,7 +221,7 @@ func _process(delta: float) -> void:
 	_drive_steps()
 
 
-## Footsteps on the few nearest walking pedestrians; crowd walla from the
+## Footsteps on the few nearest walking pedestrians (on foot only); crowd walla from the
 ## middle of the biggest group of people nearby (busy for 8+, small for 3+).
 ## The group is found among the people themselves, so the walla stays where
 ## they are and falls away as you leave, rather than following you.
@@ -230,6 +230,9 @@ func _assign_people(peds) -> void:
 	if not peds is Array or ear == null:
 		return
 	var here := ear.global_position
+	# From the car (at the wheel, either view) you don't hear people's
+	# footsteps over the engine: walkers on the footpath read as your own.
+	var driving: bool = Audio.is_player_driving()
 	var near: Array = []
 	var around: Array[Vector3] = []
 	for ped in peds:
@@ -239,7 +242,7 @@ func _assign_people(peds) -> void:
 		if not pos is Vector3:
 			continue
 		var d: float = here.distance_to(pos)
-		if d < STEP_RADIUS and float(ped.get("speed") if ped.get("speed") != null else 0.0) > 0.3:
+		if d < STEP_RADIUS and not driving and float(ped.get("speed") if ped.get("speed") != null else 0.0) > 0.3:
 			near.append([d, ped])
 		if d < CROWD_RADIUS:
 			around.append(pos)

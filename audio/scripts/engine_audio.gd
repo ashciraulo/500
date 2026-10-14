@@ -62,6 +62,12 @@ const CAR_SETS := {
 ## player's car; traffic plays on Vehicles.
 const COMP_THRESHOLDS_DB := {"slant6": -27.0}
 
+## Engine family -> gearbox whine in the forward gears (x the whine loop),
+## when it isn't the 500s' faint 0.06. The slant six's lazy three-speed
+## doesn't whir: its whine, a 1.2 kHz tone at 60 km/h, rose over the deep
+## engine as it pulled away. Reverse whines on every car.
+const WHINE_IN_GEAR := {"slant6": 0.0}
+
 ## Engine part id -> engine family. Parts not listed keep the current family
 ## (an ECU remap or a stock engine sounds like what's fitted).
 const ENGINE_PARTS := {
@@ -72,6 +78,8 @@ const ENGINE_PARTS := {
 const EXHAUST_PARTS := {
 	"exhaust_stock": "", "exhaust_sport": "sport", "exhaust_twin": "sport",
 	"exhaust_abarth_quad": "straight",
+	# The Valiant's twin pipes.
+	"exhaust_vc_twin": "sport",
 	# The barn-find Abarth megaphone: classics only (modern cars have no
 	# megaphone set, so they keep their stock note).
 	"exhaust_abarth_classic": "megaphone",
@@ -103,6 +111,7 @@ var _pop_timer := 0.0
 var _fade_tween: Tween
 var _was_running := true
 var _base_family := "fire12"
+var _whine_in_gear := 0.06
 var _base_suffix := ""
 var _auto_pops := true
 var _auto_turbo := true
@@ -195,6 +204,7 @@ func build() -> void:
 	var lim := "engine/%s/eng_%s_limiter" % [engine_set, engine_set]
 	_limiter.stream = Audio.stream(lim) if Audio.has(lim) else null
 	var family := family_of(engine_set)
+	_whine_in_gear = WHINE_IN_GEAR.get(family, 0.06)
 	if bus == &"Engine":
 		Audio.set_engine_threshold(COMP_THRESHOLDS_DB.get(family, Audio.ENGINE_COMP_THRESHOLD_DB))
 	if _auto_pops:
@@ -463,7 +473,7 @@ func _extras(delta: float, x: float) -> void:
 		_limiter.stop()
 	# Gearbox whine: faint in gear, loud in reverse, follows road speed.
 	if _whine.stream:
-		var whine_w := (0.5 if gear == -1 else 0.06) * clampf(speed_kmh / 30.0, 0.0, 1.0)
+		var whine_w := (0.5 if gear == -1 else _whine_in_gear) * clampf(speed_kmh / 30.0, 0.0, 1.0)
 		if whine_w > 0.002:
 			if not _whine.playing:
 				_whine.play()

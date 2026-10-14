@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"vc_suspension_stock"
+display_name = "Torsion bars and leaf springs (stock)"
+description = "Soft and floaty. It leans like a boat."
+slot = &"suspension"
+modifiers = {}
+ladders = PackedStringArray("period")

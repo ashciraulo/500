@@ -497,13 +497,15 @@ FAMILIES: dict[str, Engine] = {
     # it hums rather than buzzes; long pipes and a low, strong chamber give
     # the depth, a freer silencer and more drive the growl, and it crackles a
     # little on the overrun. The carb huffs on load; the lifters still tick.
+    # Deep above all: no whine, a soft, low intake and the top end rolled off
+    # (it read as a high whir pulling away).
     "slant6": Engine("slant6", 6, 600, 4400, pipe_ms=(17.5, 10.5), pipe_fb=(0.50, 0.40),
-                     muffler_hz=470, muffler_order=2, chamber_hz=82, chamber_db=9.0,
+                     muffler_hz=400, muffler_order=2, chamber_hz=82, chamber_db=9.0,
                      lowcut_hz=17, pulse_ms=0.85, cyl_gain_spread=0.13, cyl_time_spread=0.045,
-                     jitter_on=0.09, jitter_off=0.36, misfire_off=0.05, rasp=0.09,
-                     rasp_band=(420, 2400), mech=0.07, block_modes=(880, 1850, 3050),
-                     valves_per_cyl=2, intake=0.12, intake_band=(380, 1600), whine=0.008,
-                     whine_ratio=2.1, body=3.4, body_k=1.6, sharp=0.38, air_hz=5200,
+                     jitter_on=0.09, jitter_off=0.36, misfire_off=0.05, rasp=0.06,
+                     rasp_band=(380, 1800), mech=0.07, block_modes=(880, 1850, 3050),
+                     valves_per_cyl=2, intake=0.06, intake_band=(250, 1100), whine=0.0,
+                     whine_ratio=2.1, body=3.4, body_k=1.6, sharp=0.30, air_hz=3600,
                      level_curve=0.6, load_db=8.5, drive=2.1, overrun_pops=0.22),
 }
 

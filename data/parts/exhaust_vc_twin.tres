@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"exhaust_vc_twin"
+display_name = "Twin pipes"
+description = "Split after the extractors into two pipes, side by side out the back. Louder again."
+slot = &"exhaust"
+price = 850
+modifiers = {"torque_mult": 1.04}
+ladders = PackedStringArray("period")
+visual = "exhaust_vc_twin"

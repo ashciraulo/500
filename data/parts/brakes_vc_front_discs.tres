@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"brakes_vc_front_discs"
+display_name = "Front disc conversion"
+description = "Discs and calipers off a later Valiant, and a booster. It stops straight now."
+slot = &"brakes"
+price = 1150
+modifiers = {"brake_mult": 1.25}
+ladders = PackedStringArray("period")
