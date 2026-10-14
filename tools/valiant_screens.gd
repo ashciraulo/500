@@ -9,6 +9,9 @@ extends SceneTree
 ##       -- --no-save shots=/tmp/valiant
 
 const ID := "valiant_vc"
+## Footwell camera and what it looks at, in the car's space.
+const PEDALS_FROM := Vector3(0.55, 0.30, -0.05)
+const PEDALS_AT := Vector3(0.27, 0.08, -0.47)
 
 var _shots := "user://valiant"
 var _main: Node
@@ -26,6 +29,8 @@ var _failed := 0
 var _driving := false
 var _top_kmh := 0.0
 var _top_gear := 0
+var _torch: OmniLight3D
+var _footwell: Image
 ## Every card Notices put on screen, as "kind: text".
 var _seen: Array[String] = []
 
@@ -106,6 +111,41 @@ func _look_in_cab() -> void:
 	var b: Basis = _car.global_basis
 	_look(eye.global_position + b.x * 0.25 + b.z * 0.1, eye.global_position - b.z * 0.75 - b.y * 0.75 - b.x * 0.05)
 	_cam.fov = 70.0
+
+
+## Down in the footwell, from low by the door sill at the front of the bench:
+## the pedals hang well up under the dash, out of sight from the driver's
+## eye. The torch is only so the black rubber reads in the photo.
+func _look_at_pedals() -> void:
+	var g: Transform3D = _car.global_transform
+	_look(g * PEDALS_FROM, g * PEDALS_AT)
+	_cam.fov = 75.0
+	if _torch == null:
+		_torch = OmniLight3D.new()
+		_torch.omni_range = 1.6
+		_torch.light_energy = 1.2
+		_world.add_child(_torch)
+	_torch.visible = true
+	_torch.global_position = g * PEDALS_FROM
+
+
+## The two footwell shots (auto then manual) aren't the same picture where
+## the pedals are.
+func _pedals_differ(manual: Image) -> bool:
+	if _footwell == null:
+		return false
+	var w := manual.get_width()
+	var h := manual.get_height()
+	var diff := 0.0
+	var n := 0
+	for y in range(int(h * 0.3), int(h * 0.85), 4):
+		for x in range(int(w * 0.25), int(w * 0.8), 4):
+			var a := _footwell.get_pixel(x, y)
+			var b := manual.get_pixel(x, y)
+			diff += absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
+			n += 1
+	print("footwell difference %.4f" % (diff / maxf(n, 1)))
+	return diff / maxf(n, 1) > 0.004
 
 
 func _engine_set() -> String:
@@ -231,11 +271,18 @@ func _build_steps() -> void:
 		_rig().toggle_mode(), 60, true])
 	_steps.append(["vd_10c_column_auto", func() -> void:
 		_look_in_cab(), 20, true])
+	_steps.append(["vd_10c2_footwell_auto", func() -> void:
+		_look_at_pedals(), 20, true])
 	_steps.append(["vd_10d_column_manual", func() -> void:
+		_footwell = root.get_texture().get_image()
 		_car.set_transmission(0)
 		_check(_trans_shown() == "Trans_Manual", "manual shows the clutch set (%s)" % _trans_shown())
 		_look_in_cab(), 20, true])
+	_steps.append(["vd_10d2_footwell_manual", func() -> void:
+		_look_at_pedals(), 20, true])
 	_steps.append(["vd_10e_cockpit_manual", func() -> void:
+		_check(_pedals_differ(root.get_texture().get_image()), "and the footwell shows other pedals")
+		_torch.visible = false
 		_drive_view(), 20, true])
 	_steps.append(["vd_10b_in_the_lane", func() -> void:
 		# Out of the carport and along the lane, where the 1979 one parks.
@@ -287,9 +334,22 @@ func _build_steps() -> void:
 		root.get_node("GameClock").set_time(15.0)
 		_car.teleport(Transform3D(_home.global_basis * Basis(Vector3.UP, PI * 0.5), _h(15.0, -6.6, 0.0) + Vector3.UP * 0.8)), 90, false])
 	_steps.append(["vd_14_door_opens", func() -> void:
+		# The driver's door swung wide, from out front on its side.
+		var b: Basis = _car.global_basis
+		_check(_car.get_node("Body").set_door_open("R", true), "the driver's door swings")
+		_look(_car.global_position + b.x * 3.4 - b.z * 2.8 + Vector3.UP * 1.4, _car.global_position + b.x * 0.9 + b.z * 0.1 + Vector3.UP * 0.75), 40, true])
+	_steps.append(["vd_14b_door_from_behind", func() -> void:
+		var b: Basis = _car.global_basis
+		_check(_car.get_node("Body").is_door_open("R"), "and stays open")
+		_look(_car.global_position + b.x * 3.0 + b.z * 3.2 + Vector3.UP * 1.5, _car.global_position + b.x * 0.9 - b.z * 0.2 + Vector3.UP * 0.75), 20, true])
+	_steps.append(["vd_14c_door_shut", func() -> void:
+		_car.get_node("Body").set_door_open("R", false)
+		_drive_view(), 40, false])
+	_steps.append(["vd_14d_getting_out", func() -> void:
+		_check(not _car.get_node("Body").is_door_open("R"), "and shuts")
 		var b: Basis = _car.global_basis
 		_look(_car.global_position + b.x * 3.6 - b.z * 2.6 + Vector3.UP * 1.3, _car.global_position + b.x * 0.6 + Vector3.UP * 0.7)
-		_player.call("get_out"), 22, true])
+		_player.call("get_out"), 2, false])
 	_steps.append(["vd_15_out", func() -> void:
 		var door := _car.find_child("Door_R", true, false) as Node3D
 		_check(door != null, "the Valiant has opening doors"), 120, true])
