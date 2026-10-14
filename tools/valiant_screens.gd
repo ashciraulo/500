@@ -25,6 +25,7 @@ var _frames := 0
 var _failed := 0
 var _driving := false
 var _top_kmh := 0.0
+var _top_gear := 0
 ## Every card Notices put on screen, as "kind: text".
 var _seen: Array[String] = []
 
@@ -88,6 +89,23 @@ func _yard_text() -> String:
 	for l in (_shop.get("_cars_list") as Node).find_children("*", "Label", true, false):
 		out += (l as Label).text + "\n"
 	return out
+
+
+## Which of the gearbox sets (Trans_Manual / Trans_Auto) is showing.
+func _trans_shown() -> String:
+	var shown := ""
+	for n in _car.find_children("Trans_*", "Node3D", true, false):
+		if (n as Node3D).visible:
+			shown += String(n.name)
+	return shown
+
+
+## From the driver's eye, down at the column and the pedals.
+func _look_in_cab() -> void:
+	var eye := _car.find_child("Cam_Cockpit", true, false) as Node3D
+	var b: Basis = _car.global_basis
+	_look(eye.global_position + b.x * 0.25 + b.z * 0.1, eye.global_position - b.z * 0.75 - b.y * 0.75 - b.x * 0.05)
+	_cam.fov = 70.0
 
 
 func _engine_set() -> String:
@@ -208,17 +226,47 @@ func _build_steps() -> void:
 		_look(_car.global_position + b.z * 6.0 - b.x * 2.5 + Vector3.UP * 1.2, _car.global_position + Vector3.UP * 0.4), 20, true])
 	_steps.append(["vd_10_cockpit", func() -> void:
 		_drive_view()
+		_car.set_transmission(1)
+		_check(_trans_shown() == "Trans_Auto", "automatic shows the auto set (%s)" % _trans_shown())
 		_rig().toggle_mode(), 60, true])
+	_steps.append(["vd_10c_column_auto", func() -> void:
+		_look_in_cab(), 20, true])
+	_steps.append(["vd_10d_column_manual", func() -> void:
+		_car.set_transmission(0)
+		_check(_trans_shown() == "Trans_Manual", "manual shows the clutch set (%s)" % _trans_shown())
+		_look_in_cab(), 20, true])
+	_steps.append(["vd_10e_cockpit_manual", func() -> void:
+		_drive_view(), 20, true])
 	_steps.append(["vd_10b_in_the_lane", func() -> void:
 		# Out of the carport and along the lane, where the 1979 one parks.
 		var at := _h(15.0, -6.6, 0.0) + Vector3.UP * 0.8
 		_car.teleport(Transform3D(_home.global_basis * Basis(Vector3.UP, PI * 0.5), at)), 90, true])
+	_steps.append(["vd_10f_manual_off", func() -> void:
+		# Manual first: first gear, off the line, no gear change by itself.
+		_car.set_transmission(0)
+		_car.call("_begin_shift", 1)
+		_driving = true
+		_hold(&"accelerate", true), 50, false])
+	_steps.append(["vd_10g_manual_moving", func() -> void:
+		_hold(&"accelerate", false)
+		_driving = false
+		_check(_top_kmh > 5.0 and _top_gear == 1, "manual pulls away in first and stays there (%.0f km/h, gear %d)" % [_top_kmh, _top_gear])
+		_hold(&"brake", true), 60, false])
+	_steps.append(["vd_10h_back", func() -> void:
+		_hold(&"brake", false)
+		var at := _h(15.0, -6.6, 0.0) + Vector3.UP * 0.8
+		_car.teleport(Transform3D(_home.global_basis * Basis(Vector3.UP, PI * 0.5), at))
+		_car.set_transmission(1)
+		_top_kmh = 0.0
+		_top_gear = 0, 60, false])
 	_steps.append(["vd_11_pulling_away", func() -> void:
 		_driving = true
 		_hold(&"accelerate", true), 100, true])
 	_steps.append(["vd_11b_chase_moving", func() -> void:
-		print("top speed %.1f km/h" % _top_kmh)
-		_check(_top_kmh > 15.0, "it pulls away (%.0f km/h)" % _top_kmh)
+		print("top speed %.1f km/h, gear %d" % [_top_kmh, _top_gear])
+		_check(_top_kmh > 15.0, "automatic pulls away (%.0f km/h)" % _top_kmh)
+		_check(_top_gear >= 2, "and changes up by itself (gear %d)" % _top_gear)
+		_check(_trans_shown() == "Trans_Auto", "with the auto set showing")
 		_rig().toggle_mode(), 20, true])
 	_steps.append(["vd_12_night", func() -> void:
 		_hold(&"accelerate", false)
@@ -263,6 +311,7 @@ func _process(_delta: float) -> bool:
 	_frames += 1
 	if _driving:
 		_top_kmh = maxf(_top_kmh, _car.speed_kmh())
+		_top_gear = maxi(_top_gear, int(_car.gear))
 	var shown: Dictionary = root.get_node("Notices").showing()
 	if not shown.is_empty():
 		var line := "%s: %s" % [shown.kind, shown.text]
