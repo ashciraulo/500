@@ -229,7 +229,7 @@ func swap_in() -> void:
 		return
 	if form == &"river":
 		for bird in (_dressing as HouseRiver).birds:
-			LateCity.add_shimmer(bird, 0.3)
+			LateCity.add_shimmer(bird, 0.15)
 		Discoveries.discover("oddity/other_house_river")
 		Story.log_night(&"other_house_river",
 			"Opened the door onto black water where the floor should be. Birds on the stair rail that shouldn't be there, and the river at night where the back wall was.")
