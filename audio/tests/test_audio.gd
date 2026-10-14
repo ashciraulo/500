@@ -666,6 +666,8 @@ func _test_traffic(audio: Node) -> void:
 			var ped: RefCounted = gs.new()
 			ped.position = ear_pos + Vector3(2.0 + i, 0, 1.0)
 			peds.append(ped)
+		var was_driving: bool = audio.is_player_driving()
+		audio.set_player_driving(false)
 		ta._assign_people(peds)
 		var stepping := 0
 		for voice in ta._steps:
@@ -677,6 +679,17 @@ func _test_traffic(audio: Node) -> void:
 		check(ta._crowd_small.playing and not ta._crowd.playing, "four people get the small walla")
 		ta._assign_people([])
 		check(not ta._crowd_small.playing and ta._steps[0].ped == null, "no people, no walla or steps")
+		# At the wheel the walkers' steps stop (they read as your own, Oct 14).
+		ta._assign_people(peds)
+		audio.set_player_driving(true)
+		ta._assign_people(peds)
+		stepping = 0
+		for voice in ta._steps:
+			if voice.ped != null or voice.player.playing:
+				stepping += 1
+		check(stepping == 0 and ta._crowd.playing, "no walkers' footsteps from the car, the walla stays (%d)" % stepping)
+		audio.set_player_driving(was_driving)
+		ta._assign_people([])
 		ta._on_train_arrived(ear_pos)
 		ta._on_train_departed(ear_pos)
 		check(true, "train arrival and departure sounds play")
