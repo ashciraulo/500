@@ -142,6 +142,17 @@ jobs:
             exit 1
           fi
 
+      - name: Dev menu test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/dev_menu_test.gd -- --no-save 2>&1 \
+            | tee devmenu.log | grep -E "ok |FAIL|DEV MENU|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" devmenu.log; then
+            echo "::error::GDScript errors in the dev menu"
+            exit 1
+          fi
+
       - name: Stuck test
         if: env.ALREADY_TESTED != 'true'
         run: |

@@ -142,6 +142,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).physical_keycode == KEY_DELETE:
 		_remove_selected()
 		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).physical_keycode == KEY_T \
+			and _dev_mode() != null:
+		# Dev mode: go to the spot under the cursor (or the crosshair).
+		var local := _view.get_local_mouse_position() if not UiStyle.using_pad else _view.size * 0.5
+		var to := _view.to_world(local)
+		_set_open(false)
+		_dev_mode().go_to(Vector3(to.x, NAN, to.y), "%.0f, %.0f" % [to.x, to.y])
+		get_viewport().set_input_as_handled()
 
 
 func _process(delta: float) -> void:
@@ -205,6 +213,12 @@ func _view_input(event: InputEvent) -> void:
 		_view.centre -= mm.relative * _view.metres_per_px
 		_clamp_centre()
 		_view.accept_event()
+
+
+## Dev mode (F3), when it's on: its T goes where you point on the map.
+func _dev_mode() -> DevMode:
+	var dev := get_parent().get_node_or_null(^"DevMode") as DevMode if get_parent() else null
+	return dev if dev and dev.enabled else null
 
 
 func _zoom_at(local: Vector2, factor: float) -> void:
@@ -473,6 +487,8 @@ func _fill_hints() -> void:
 		c.queue_free()
 	var hints := [["L stick", "Move"], ["RT / LT", "Zoom"], ["A", "Add a marker"], ["X", "Remove it"], ["Y", "Go there"], ["B", "Close"]] if _hint_pad \
 		else [["Drag", "Move"], ["Wheel", "Zoom"], ["Right-click", "Add a marker"], ["Del", "Remove it"], ["M", "Close"]]
+	if not _hint_pad and _dev_mode() != null:
+		hints.insert(hints.size() - 1, ["T", "Go there (dev)"])
 	for h: Array in hints:
 		_hint_row.add_child(UiStyle.keycap(String(h[0]), 12))
 		var l := UiStyle.label(_hint_row, String(h[1]), "NoteLabel", 13)
