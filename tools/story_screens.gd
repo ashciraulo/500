@@ -642,6 +642,9 @@ func _finale_steps() -> void:
 			story.make_choice(&"porch_light", &"on")
 			fin.call().chose_on = -1])
 	_steps.append(["fin_07_to_car", func() -> void:
+		var ends: Node = _main.find_child("Endings", true, false)
+		ends.call("finish_scene")
+		ends.get("_card").clear()
 		_put_player(_car.global_position + _car.global_basis.x * 1.6 + Vector3.UP * 0.4), 20, null, false])
 	_steps.append(["fin_07_get_in", func() -> void:
 		_player.call("get_in"), 90, null, false])
@@ -653,7 +656,7 @@ func _finale_steps() -> void:
 		root.get_node("Notices").clear()
 		var at: Vector3 = spot.call()
 		_car.teleport(Transform3D(Basis(), at + Vector3.UP * 1.2))
-		_look(at + Vector3(-25.0, 9.0, -8.0), at + Vector3(0.0, 4.0, 70.0)), 300])
+		_look(at + Vector3(-12.0, 16.0, 28.0), at + Vector3(0.0, 5.0, 70.0)), 300])
 	_steps.append(["fin_09_rain_up", func() -> void:
 		var at: Vector3 = spot.call()
 		_look(at + Vector3(-30.0, 3.0, 30.0), at + Vector3(0.0, 7.0, 70.0)), 60])
