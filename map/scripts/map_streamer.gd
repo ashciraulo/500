@@ -57,6 +57,10 @@ var _home: Node3D
 var _settle_frames := 0  # physics frames until new colliders can be checked
 const VOID_FRAMES := 90   # physics frames (0.75 s) with no ground off the map before stepping in
 const SERVOS_PATH := "res://data/world/servos.json"
+## How far the Pop's body reaches behind the carport spawn. A longer car (the
+## Valiant) is moved forward so its tail stops where the Pop's does, clear of
+## the shed door behind the bay.
+const SPAWN_TAIL := 1.735
 var _void_frames := 0
 var _safe_timer := 0
 var _last_safe := Transform3D()
@@ -96,8 +100,10 @@ func _ready() -> void:
 	_place_home()
 	_place_markers()
 	_target = get_node_or_null(target_path) as Node3D
+	if _target and _target.has_signal(&"car_changed"):
+		_target.connect(&"car_changed", _on_target_car_changed)
 	if _target and place_target_at_spawn:
-		_target.global_transform = get_spawn_transform()
+		_target.global_transform = get_spawn_transform(_target)
 		if _target is RigidBody3D:
 			(_target as RigidBody3D).linear_velocity = Vector3.ZERO
 			(_target as RigidBody3D).angular_velocity = Vector3.ZERO
@@ -149,7 +155,7 @@ func _physics_process(_delta: float) -> void:
 		_void_frames = _void_frames + 1 if _ground_below(pos).is_empty() else 0
 		if _void_frames >= VOID_FRAMES:
 			_void_frames = 0
-			_reset_target(_last_safe if _has_last_safe else get_spawn_transform())
+			_reset_target(_last_safe if _has_last_safe else get_spawn_transform(_target))
 		return
 	_void_frames = 0
 	_safe_timer -= 1
@@ -159,12 +165,12 @@ func _physics_process(_delta: float) -> void:
 	if not has_collision_at(pos):
 		_load_now(pos)
 	if pos.y < float(index.tiles[name].get("hmin", -50.0)) - 3.0:
-		_reset_target(get_spawn_transform())  # below the lowest ground here
+		_reset_target(get_spawn_transform(_target))  # below the lowest ground here
 		return
 	if _settle_frames > 0:
 		_settle_frames -= 1
 		if _settle_frames == 0 and _ground_below(pos).is_empty():
-			_reset_target(get_spawn_transform())
+			_reset_target(get_spawn_transform(_target))
 
 
 func _process(delta: float) -> void:
@@ -187,14 +193,38 @@ func _process(delta: float) -> void:
 
 ## Where the player starts: the Pop in the carport behind the townhouse on
 ## Little Shenton Lane (or on the lane outside, if the house isn't loaded).
-func get_spawn_transform() -> Transform3D:
+## Given the car, one longer than the Pop sits further forward (SPAWN_TAIL).
+func get_spawn_transform(car: Node = null) -> Transform3D:
+	var spot: Transform3D
 	var marker := StringName(index.get("home", {}).get("spawn_marker", ""))
 	if _home and _home.has_method(&"has_marker") and _home.has_marker(marker):
 		var t: Transform3D = _home.spawn_transform(marker)
-		return Transform3D(Basis(Vector3.UP, t.basis.get_euler().y), t.origin + Vector3.UP * 0.6)
-	var spawn: Dictionary = index.get("spawn", {})
-	var p: Array = spawn.get("position", [0.0, 1.0, 0.0])
-	return Transform3D(Basis(Vector3.UP, float(spawn.get("yaw", 0.0))), Vector3(p[0], p[1], p[2]))
+		spot = Transform3D(Basis(Vector3.UP, t.basis.get_euler().y), t.origin + Vector3.UP * 0.6)
+	else:
+		var spawn: Dictionary = index.get("spawn", {})
+		var p: Array = spawn.get("position", [0.0, 1.0, 0.0])
+		spot = Transform3D(Basis(Vector3.UP, float(spawn.get("yaw", 0.0))), Vector3(p[0], p[1], p[2]))
+	if car and car.has_method(&"body_bounds"):
+		var tail: float = (car.body_bounds() as AABB).end.z
+		spot.origin -= spot.basis.z * maxf(tail - SPAWN_TAIL, 0.0)
+	return spot
+
+
+## Swapping cars in the carport (a longer one from the workshop, say): stand
+## the new one clear of the shed door too.
+func _on_target_car_changed(_id: String) -> void:
+	var car := _target as RigidBody3D
+	if car == null or not car.has_method(&"teleport") or car.linear_velocity.length() > 1.0:
+		return
+	var bay := get_spawn_transform()
+	var flat := car.global_position - bay.origin
+	flat.y = 0.0
+	if flat.length() > 1.5:
+		return
+	# Slide it along the bay only, as it stands: no drop onto the slab.
+	var slide := (get_spawn_transform(car).origin - car.global_position).dot(-bay.basis.z)
+	if absf(slide) > 0.05:
+		car.teleport(car.global_transform.translated(-bay.basis.z * slide))
 
 
 ## The player's townhouse (a HomeBase), or null.
