@@ -33,6 +33,7 @@ var _indicator: AudioStreamPlayer3D
 var _wiper_speed := 0
 var _handbrake_up := false
 var _squeak_timer := 0.0
+var _at_wheel := false
 
 
 func _ready() -> void:
@@ -85,6 +86,13 @@ func _player(bus: String, unit: float) -> AudioStreamPlayer3D:
 
 
 func _process(delta: float) -> void:
+	# Whether you're at the wheel follows the car both ways: getting out
+	# clears player_controlled, and then nothing below runs to say so (the
+	# walkers' footsteps stayed off on foot).
+	var at_wheel := bool(_car.player_controlled) if _car and "player_controlled" in _car else player_controlled
+	if at_wheel != _at_wheel:
+		_at_wheel = at_wheel
+		Audio.set_player_driving(at_wheel)
 	if player_controlled:
 		_update_inside()
 		if Input.is_action_just_pressed("horn"):
@@ -105,8 +113,6 @@ func _process(delta: float) -> void:
 
 
 func _update_inside() -> void:
-	if _car and "player_controlled" in _car:
-		Audio.set_player_driving(bool(_car.player_controlled))
 	if _car and "is_player_inside" in _car:
 		Audio.set_player_inside(bool(_car.is_player_inside))
 		return
