@@ -1,41 +1,42 @@
 class_name TitleScreen
 extends CanvasLayer
-## The title screen: the game boots behind it, the camera drifts slowly round
-## the parked car, and a quiet menu offers Continue, New game, Settings and
-## Quit. Nothing moves the car or saves until you choose.
+## The title screen, on its own: a still of the Pop in the carport at dusk
+## (art/ui/title_backdrop.png, drawn by tools/title_backdrop.gd) drifting
+## slowly behind a quiet menu of Continue, New game, Settings and Quit.
 ##
-## Behind it the world holds still and says nothing: every sound but the
-## title music and the menu's own clicks is muted (the street, the birds,
-## the sprinklers, the car), and the traffic waits (it used to drive round
-## and honk at a car saved on the road). Both come back when you play.
-##
-## main.gd adds it when the game is run for real (not under a test script,
-## and not after New game restarted the game with `-- --fresh`).
+## The game isn't running behind it. boot.gd shows it before anything of the
+## game is built, and the save is only read for the footer, not loaded: no
+## world, no car, no traffic, no birds or sprinklers. Continue loads the
+## save and New game starts fresh, then boot.gd builds the game. The clock
+## and the weather stand still while it's up, nothing is saved, and only the
+## title music and the menu's clicks are heard (the Audio autoload's street
+## and weather beds start up on their own, world or not).
 
 signal started
 
-## How long one slow lap round the car takes (s).
-const ORBIT_SECONDS := 140.0
-const ORBIT_RADIUS := 5.2
-const ORBIT_HEIGHT := 1.5
+const BACKDROP := "res://art/ui/title_backdrop.png"
+## One slow drift across the backdrop and back (s), and how far in it's
+## zoomed so the drift never shows an edge.
+const DRIFT_SECONDS := 90.0
+const DRIFT_ZOOM := 1.08
 
 var _root: Control
 var _menu: VBoxContainer
 var _confirm: VBoxContainer
 var _continue: Button
 var _new: Button
-var _orbit := 0.0
-var _rig: Node
-var _camera: Camera3D
-var _car: CarController
-var _hud: Node  # a CanvasLayer
-## Buses that stay up behind the title: its music and the menu's clicks
-## (and the buses they go through).
+var _backdrop: TextureRect
+## The backdrop and the menu together, to fade as one.
+var _stage: Control
+var _drift := 0.0
+## The clock's and the weather's locks as they were, put back on leaving.
+var _clock_locked := false
+var _weather_locked := false
+var _left := false
+## Buses that stay up: the title music and the menu's clicks (and the buses
+## they go through). The rest are muted while the menu is up.
 const HEARD_BUSES := [&"Master", &"MusicRadio", &"Music", &"Effects", &"UI"]
-## Buses muted here (left as they were if already muted), and the traffic.
 var _muted: Array[StringName] = []
-var _traffic: Node
-var _traffic_mode := Node.PROCESS_MODE_INHERIT
 
 
 ## True while a title screen is up (other menus stand back).
@@ -46,58 +47,33 @@ static func is_showing(tree: SceneTree) -> bool:
 	return false
 
 
+## Whether the game opens on the title screen: when it's played, not under a
+## test script (`--script`), not a scene run on its own (the editor's Run
+## Current Scene) and not with `-- --no-title`.
+static func wanted() -> bool:
+	if OS.get_cmdline_user_args().has("--no-title"):
+		return false
+	for arg in OS.get_cmdline_args():
+		if arg == "--script" or arg == "-s" or (arg.ends_with(".tscn") and not arg.ends_with("boot.tscn")):
+			return false
+	return true
+
+
 func _ready() -> void:
 	layer = 9
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group(&"title_screen")
 	SaveGame.hold = true
-	_hush_world()
-	_build()
-	_take_over.call_deferred()
-
-
-func _exit_tree() -> void:
-	_wake_world()  # however the title goes (quitting from it, a test freeing it)
-
-
-## Mute everything but the music and the menu, and stop the traffic.
-func _hush_world() -> void:
+	_clock_locked = GameClock.locked
+	_weather_locked = Weather.locked
+	GameClock.locked = true
+	Weather.locked = true
 	for i in AudioServer.bus_count:
 		var bus := AudioServer.get_bus_name(i)
-		if bus in HEARD_BUSES or AudioServer.is_bus_mute(i):
-			continue
-		AudioServer.set_bus_mute(i, true)
-		_muted.append(bus)
-	_traffic = get_tree().get_first_node_in_group(&"traffic")
-	if _traffic:
-		_traffic_mode = _traffic.process_mode
-		_traffic.process_mode = Node.PROCESS_MODE_DISABLED
-
-
-func _wake_world() -> void:
-	for bus in _muted:
-		var i := AudioServer.get_bus_index(bus)
-		if i >= 0:
-			AudioServer.set_bus_mute(i, false)
-	_muted.clear()
-	if is_instance_valid(_traffic):
-		_traffic.process_mode = _traffic_mode
-	_traffic = null
-
-
-func _take_over() -> void:
-	_car = get_tree().get_first_node_in_group(&"player_car") as CarController
-	if _car:
-		_car.player_controlled = false
-		_orbit = _car.global_rotation.y + PI * 0.75
-	_rig = get_tree().root.find_child("CameraRig", true, false)
-	if _rig:
-		_rig.set_process(false)
-		_rig.set_physics_process(false)
-		_camera = _rig.get_node_or_null(^"Camera3D") as Camera3D
-	_hud = get_tree().get_first_node_in_group(&"hud")
-	if _hud:
-		_hud.set(&"visible", false)
+		if bus not in HEARD_BUSES and not AudioServer.is_bus_mute(i):
+			AudioServer.set_bus_mute(i, true)
+			_muted.append(bus)
+	_build()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var audio := get_node_or_null(^"/root/Audio")
 	if audio and audio.has_method("play_music"):
@@ -105,58 +81,49 @@ func _take_over() -> void:
 	(_continue if _continue.visible else _new).grab_focus()
 
 
+func _exit_tree() -> void:
+	if not _left:  # freed without a choice (a test, a screenshot)
+		_hand_back()
+
+
 func _process(delta: float) -> void:
-	if not visible or _camera == null or _car == null:
+	if _backdrop == null:
 		return
-	_orbit += TAU * delta / ORBIT_SECONDS
-	var centre := _car.global_position + Vector3.UP * 0.5
-	var eye := centre + Vector3(sin(_orbit), 0.0, cos(_orbit)) * ORBIT_RADIUS + Vector3.UP * ORBIT_HEIGHT
-	# Keep the eye under the carport roof and out of walls: a little closer
-	# when something is in the way.
-	var space := _car.get_world_3d().direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(centre, eye, 1)
-	query.exclude = [_car.get_rid()]
-	var hit := space.intersect_ray(query)
-	if hit:
-		eye = centre.lerp(hit.position, 0.85)
-	_camera.global_transform = Transform3D(Basis(), eye).looking_at(centre, Vector3.UP)
+	_drift += delta
+	var size := get_viewport().get_visible_rect().size
+	_backdrop.size = size * DRIFT_ZOOM
+	var t := 0.5 - 0.5 * cos(TAU * _drift / DRIFT_SECONDS)
+	_backdrop.position = -(size * (DRIFT_ZOOM - 1.0)) * Vector2(t, 0.5)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Nothing behind the menu reacts while it's up (the phone, the radio, the
-	# car), except the settings when they're open over it.
-	if visible and _root.visible:
+	# Nothing else reacts while the menu is up, except the settings when
+	# they're open over it.
+	if not _left and _root.visible:
 		get_viewport().set_input_as_handled()
 
 
 # --- Choices -------------------------------------------------------------------------
 
 func _continue_game() -> void:
+	SaveGame.load_game()
 	_leave()
 
 
 func _new_game() -> void:
 	if not SaveGame.has_save():
-		_leave()
+		_start_again()
 		return
 	_menu.visible = false
 	_confirm.visible = true
 	(_confirm.get_child(2) as Button).grab_focus()
 
 
-## Start again: forget the save and restart the game fresh, so every system
-## starts from its defaults.
+## Start again: forget the save. Nothing of it was loaded, so everything is
+## already at its defaults.
 func _start_again() -> void:
-	SaveGame.delete_save()
-	SaveGame.enabled = false
-	var args := OS.get_cmdline_args()
-	args.append("--")
-	for a in OS.get_cmdline_user_args():
-		if a != "--fresh":
-			args.append(a)
-	args.append("--fresh")
-	OS.set_restart_on_exit(true, args)
-	SaveGame.quit_cleanly()
+	SaveGame.start_new()
+	_leave()
 
 
 func _settings() -> void:
@@ -176,39 +143,65 @@ func _on_settings_closed() -> void:
 
 
 func _quit() -> void:
-	if not SaveGame.has_save():
-		SaveGame.enabled = false  # nothing played yet, nothing to keep
-	SaveGame.quit_cleanly()
+	SaveGame.quit_cleanly()  # nothing's live yet, so nothing is written
 
 
-## Hand the game over: camera, car and HUD back, the world's sounds and
-## traffic back, music off, saving on.
+## Hand over to the game: clock and weather go again, music off, saving on.
+## boot.gd builds the game when `started` goes. From here it's no longer the
+## title, only a picture over the game's first frames (fade_out()).
 func _leave() -> void:
-	visible = false
-	SaveGame.hold = false
-	if _rig:
-		_rig.set_process(true)
-		_rig.set_physics_process(true)
-	if _car:
-		_car.player_controlled = true
-	if _hud:
-		_hud.set(&"visible", true)
+	remove_from_group(&"title_screen")
+	layer = 100  # over everything the game puts up
+	_menu.visible = false
+	_confirm.visible = false
+	(_root as TitleArt).footer = "Loading..."
+	_hand_back()
 	var audio := get_node_or_null(^"/root/Audio")
 	if audio and audio.has_method("stop_music"):
 		audio.stop_music(2.0)
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	_wake_world()
 	started.emit()
+
+
+## Cover the game's first frames (the camera finding its place, the HUD
+## filling in), then fade away.
+func fade_out() -> void:
+	for i in 12:
+		await get_tree().process_frame
+	var tween := create_tween()
+	tween.tween_property(_stage, ^"modulate:a", 0.0, 0.6)
+	await tween.finished
 	queue_free()
+
+
+func _hand_back() -> void:
+	_left = true
+	SaveGame.hold = false
+	GameClock.locked = _clock_locked
+	Weather.locked = _weather_locked
+	for bus in _muted:
+		var i := AudioServer.get_bus_index(bus)
+		if i >= 0:
+			AudioServer.set_bus_mute(i, false)
+	_muted.clear()
 
 
 # --- Building ------------------------------------------------------------------------
 
 func _build() -> void:
-	# The look (wash, wordmark, buttons) is TitleArt's; the world shows through.
+	_stage = Control.new()
+	_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_stage)
+	_backdrop = TextureRect.new()
+	_backdrop.texture = load(BACKDROP)
+	_backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.add_child(_backdrop)
+	# The look (wash, wordmark, buttons) is TitleArt's, over the backdrop.
 	var art := TitleArt.new()
 	_root = art
-	add_child(art)
+	_stage.add_child(art)
 
 	var has_save := SaveGame.has_save()
 	_menu = art.add_group()
@@ -236,4 +229,7 @@ func _build() -> void:
 func _footer_text(has_save: bool) -> String:
 	if not has_save:
 		return "A new game starts in the carport with the Pop."
-	return "Day %d, %s  ·  $%s" % [GameClock.day, Garage.weekday(), UiStyle.number(Wallet.balance)]
+	# From the save on disk: it isn't loaded until Continue.
+	var day := int(SaveGame.peek("clock").get("day", 1))
+	var money := int(SaveGame.peek("wallet").get("balance", Wallet.STARTING_BALANCE))
+	return "Day %d, %s  ·  $%s" % [day, Garage.WEEKDAYS[(day - 1) % 7], UiStyle.number(money)]
