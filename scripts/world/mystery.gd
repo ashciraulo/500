@@ -113,7 +113,8 @@ func is_night() -> bool:
 func notes() -> PackedStringArray:
 	var lines: PackedStringArray = []
 	if is_solved:
-		lines.append("The shed is open. The transmitter is off. The station still plays after midnight, but it doesn't say anything new.")
+		var finale := get_parent().get_node_or_null(^"Finale") as Finale if get_parent() else null
+		lines.append(finale.notes_line() if finale else "The shed is open. The transmitter's little red light is on.")
 	elif heard != "":
 		lines.append("The midnight station said: " + String(clue(heard).get("broadcast", "")))
 		lines.append("  Go there between midnight and half past three.")

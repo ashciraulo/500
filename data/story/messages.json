@@ -28,6 +28,14 @@
 		{"id": "kostas_robyn", "act": 4, "days": 2, "from": "Thea Kostas, number 11",
 			"text": "Thea here. I was thinking about Robyn, the little girl. She still sends me a card at Christmas, you know. From Fremantle, every year. She'd be fifty-five now. Imagine."},
 		{"id": "robyn_1979", "act": 4, "days": 5, "late": true, "from": "No caller",
-			"text": "A little girl, close to the phone, whispering so nobody hears: \"Is Dad on his way home? Mum says go to sleep, but I can see the porch light from my window.\" Hiss. Click."}
+			"text": "A little girl, close to the phone, whispering so nobody hears: \"Is Dad on his way home? Mum says go to sleep, but I can see the porch light from my window.\" Hiss. Click."},
+		{"id": "kostas_july", "act": 5, "days": 0, "needs": ["flag:eleventh_soon"], "from": "Thea Kostas, number 11",
+			"text": "Thea here. It's nearly the eleventh. You won't remember Skylab, love, you're too young. We all stood out in the lane in our dressing gowns. Except Mick. Mick was in his shed with his radio."},
+		{"id": "dee_skylab", "act": 5, "days": 0, "needs": ["flag:eleventh_soon"], "from": "Dee, Notte FM",
+			"text": "Dee here. I'm doing a show on the night of the eleventh. Skylab, forty-seven years on. Mick Doran was on the air that night too, on his own little station, and nobody's heard him since. Have the radio on."},
+		{"id": "robyn_eleventh", "act": 5, "days": 0, "needs": ["flag:eleventh_soon", "choice:robyn=found"], "from": "Robyn, Fremantle",
+			"text": "It's Robyn. I know what night it is. Every year I tell myself I won't go down to the river. I'm telling you so somebody knows."},
+		{"id": "eleventh_late", "act": 5, "days": 0, "late": true, "needs": ["flag:eleventh_night"], "from": "No caller",
+			"text": "Hiss. A man's voice, very close to the microphone: \"Is this thing on? It's the eleventh. I can see the whole city from here.\" Click."}
 	]
 }

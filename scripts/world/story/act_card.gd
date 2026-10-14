@@ -69,6 +69,15 @@ func show_act(act: int) -> void:
 	LateCity._play_2d(LateCity.SOUND_START, -10.0)
 
 
+## Any label on the card: the endings' ("THE END" / "City of Light").
+func show_text(side: String, title: String) -> void:
+	_side.text = side
+	_title.text = title
+	_t = 0.0
+	visible = true
+	LateCity._play_2d(LateCity.SOUND_START, -10.0)
+
+
 func showing() -> bool:
 	return _t >= 0.0
 

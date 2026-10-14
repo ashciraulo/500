@@ -62,6 +62,9 @@ func _ready() -> void:
 	# Act 4: finding Robyn in Fremantle (choice 3), and the tapes that run ahead.
 	add_child(Robyn.new())
 	add_child(TapeAhead.new())
+	# Act 5: the night of 11 July (choice 4) and the endings.
+	add_child(Finale.new())
+	add_child(Endings.new())
 	# More of the late city (story batch 3): at home, on the road, on the radio.
 	# Act 4: the 1979 street.
 	for event: Node in [LookingOut.new(), StoppedClock.new(), RepeatStreet.new(),

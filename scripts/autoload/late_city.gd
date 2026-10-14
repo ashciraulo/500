@@ -25,6 +25,8 @@ signal event_ended(id: StringName)
 const NIGHT_TO := 4.5
 ## The 1979 sodium streetlamp colour the light shifts to.
 const SODIUM := Color(1.0, 0.7, 0.4)
+## After Lights Out, the days the late city takes to fade.
+const FADE_DAYS := 3
 ## How far (m) from a late-city place its presence reaches, from act 3.
 const PLACE_RADIUS := 260.0
 ## Buses that go quiet when an event takes the street's sound away. Engine,
@@ -181,7 +183,7 @@ func set_hiss(on: bool) -> void:
 ## loading round you, no ordinary job is running, the game isn't paused and
 ## nothing else is happening.
 func allowed_now(after_midnight := true) -> bool:
-	if active() or get_tree().paused:
+	if active() or get_tree().paused or gone():
 		return false
 	var h := GameClock.time_of_day
 	if after_midnight and not (h >= 0.0 and h < NIGHT_TO):
@@ -236,7 +238,20 @@ func presence_at(pos: Vector3) -> float:
 ## through the binoculars, 2 every wrong bird, 3 ordinary birds where the
 ## late city is strong too, 4 the thirteen fly with the car.
 func flicker_level() -> int:
+	if gone():
+		return 0
 	return clampi(Story.act() - 1, 0, 4)
+
+
+## After City of Light the late city is gone; after Lights Out it fades out
+## over FADE_DAYS (STORY.md, the endings).
+func gone() -> bool:
+	match Story.ending():
+		&"city_of_light":
+			return true
+		&"lights_out":
+			return GameClock.day > Story.ending_day() + FADE_DAYS
+	return false
 
 
 ## Keep everything under `node` lit when the world goes dark (the shader's

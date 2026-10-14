@@ -273,7 +273,8 @@ func _check_river(night: bool) -> void:
 	if _river == Vector3.INF:
 		return
 	var d := _car.global_position.distance_to(_river)
-	if night and d < 600.0 and _lights == null:
+	# After City of Light they've gone up for good.
+	if night and d < 600.0 and _lights == null and Story.ending() != &"city_of_light":
 		_lights = _make_lights()
 		add_child(_lights)
 		_lights.global_position = _river

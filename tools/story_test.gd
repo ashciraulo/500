@@ -32,8 +32,22 @@ extends SceneTree
 ##   - The 1979 street: on William Street after midnight the shops get their
 ##     old names and the traffic turns into 1979 cars, and at the end of the
 ##     street it's all now again.
+##   - The finale: the shed opens and its calendar says July 1979; the 11th
+##     comes round a week later (the messages before it, the card, Dee and
+##     Skylab, the river lights and the rain going up); choice 4 at M.'s
+##     table (Half Light, City of Light, Night Drive 13, Lights Out), the
+##     drive into the lights on Riverside Drive (The Late City), and a missed
+##     11th coming round again.
+##   - The endings and what each leaves behind: the regulars' lights and the
+##     late city gone (City of Light), fewer lights (Half Light), Mick's 500 L
+##     at dawn and 1979 every night (Night Drive 13), the late city fading
+##     (Lights Out), and the house in 1979, the credits and always night (The
+##     Late City).
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/story_test.gd -- --no-save
+##
+## `from=N` runs the set-up (stage 0) and then stages N onwards, e.g. from=8
+## for just the finale.
 ##
 ## Exits with code 1 if any check fails.
 
@@ -249,6 +263,12 @@ func _process(_delta: float) -> bool:
 			if _street_1979(story, clock):
 				_next()
 		8:
+			if _finale(story, clock):
+				_next()
+		9:
+			if _endings(story, clock):
+				_next()
+		10:
 			return _finish()
 	return false
 
@@ -611,6 +631,322 @@ func _street_1979(story: Node, clock: Node) -> bool:
 	return false
 
 
+## Act 5: the night of 11 July and choice 4.
+var _fin  # Finale
+var _fin_night := 0
+
+
+func _finale(story: Node, clock: Node) -> bool:
+	var mystery: Node = _main.find_child("Mystery", true, false)
+	var people: Node = _main.find_child("StoryPeople", true, false)
+	match _frames:
+		1:
+			_fin = _main.find_child("Finale", true, false)
+			_check(_fin != null and mystery != null, "the finale is in the world")
+			if _fin == null or mystery == null:
+				return true
+			_check(_fin.night_day == -1 and not _fin.is_night(), "no 11th before the shed's open")
+			story.load_state({})
+			story.act_override = 5
+			clock.set_time(14.0)
+			_car.teleport(_home.spawn_transform(&"Spawn_Car"))
+		30:
+			_player.call("get_out")
+		150:
+			_home.unlock_shed()
+			if not _home.is_door_open(&"Shed_Door"):
+				_home.toggle_door(&"Shed_Door")
+			var centre: Vector3 = mystery._shed_centre()
+			var door := _home.find_child("Shed_Door", true, false) as Node3D
+			var feet := centre + (door.global_position - centre).normalized() * 1.2
+			feet.y = _home.global_position.y + 0.05
+			_player.teleport(feet, centre + Vector3.UP * 0.8)
+		270:
+			_check(mystery.is_solved, "walking into the shed opens it")
+			_check(_fin.night_day == clock.day + _fin.DAYS_TO, "the 11th is a week away (day %d, today %d)" % [_fin.night_day, clock.day])
+			var notes: PackedStringArray = mystery.notes()
+			_check(notes.size() > 0 and "July 1979" in notes[0] and "in 7 days" in notes[0], "the phone says when ('%s')" % (notes[0] if notes.size() else ""))
+			var table: Node = _fin.get("_table")
+			_check(table != null and table.is_in_group(&"interactables"), "M.'s table can be used")
+			if table == null:
+				return true
+			var page: Texture2D = null
+			for mi: MeshInstance3D in mystery._shed_props.find_children("*", "MeshInstance3D", true, false):
+				for i in mi.mesh.get_surface_count():
+					var m := mi.get_active_material(i) as ShaderMaterial
+					if m and m.resource_name.to_lower() == "sr_calendar":
+						page = m.get_shader_parameter("albedo_texture")
+			_check(page != null and page.resource_path == _fin.CALENDAR, "the calendar on the wall is turned to July")
+			# Standing at the table, where the chair would be.
+			var feet: Vector3 = table.to_global(Vector3(0.0, 0.05, -0.75))
+			_player.teleport(feet, table.to_global(table.THINGS[&"mic"]))
+		271:
+			var table: Node = _fin.get("_table")
+			_player.face(table.to_global(table.THINGS[&"mic"]))
+		272:
+			var table: Node = _fin.get("_table")
+			_check(_player._nearest_thing() == table, "the table can be used from in the shed")
+			_check(table.looked_at() == &"mic" and table.interact_hint() == "Microphone", "looking at the microphone ('%s')" % table.interact_hint())
+			_player.face(table.to_global(table.THINGS[&"tx"]))
+		274:
+			var table: Node = _fin.get("_table")
+			_check(table.looked_at() == &"tx" and table.interact_hint() == "Transmitter", "and at the transmitter ('%s')" % table.interact_hint())
+			table.interact()
+			_check(_fin.chose_on == -1 and story.choice(&"eleventh_july") == &"", "not the night yet: nothing happens")
+			# Two days before the 11th, the messages start.
+			_fin_night = _fin.night_day
+			clock.day = _fin_night - 2
+		310:
+			_check(story.flag(&"eleventh_soon"), "two days before the 11th")
+			var by_id := {}
+			for m: Dictionary in people.messages:
+				by_id[m.id] = m
+			_check(people.ready_to_leave(by_id["kostas_july"]) and people.ready_to_leave(by_id["dee_skylab"]),
+				"Thea and Dee leave their messages about the 11th")
+			_check(not people.ready_to_leave(by_id["robyn_eleventh"]), "Robyn's only if you found her")
+			_check(not people.ready_to_leave(by_id["eleventh_late"]), "the late one waits for the night")
+			clock.day = _fin_night
+			clock.set_time(19.0)
+		340:
+			_check(_fin.is_night() and story.flag(&"eleventh_night"), "the evening of the 11th is the night")
+			_check(_fin.get("_card_day") == _fin_night, "a card says it's the 11th")
+			var table: Node = _fin.get("_table")
+			_player.face(table.to_global(table.THINGS[&"mic"]))
+		342:
+			var table: Node = _fin.get("_table")
+			_check(table.interact_hint() == "Microphone: ask the city to leave its lights on", "the microphone ('%s')" % table.interact_hint())
+			_player.face(table.to_global(table.THINGS[&"deck"]))
+		344:
+			var table: Node = _fin.get("_table")
+			_check(table.interact_hint() == "Deck: the record key won't go down", "the deck won't record if the porch light wasn't answered ('%s')" % table.interact_hint())
+			table.interact()
+			table.interact()
+			_check(_fin.chose_on == -1, "and pressing it does nothing")
+			story.make_choice(&"porch_light", &"on")
+			_check(table.interact_hint() == "Deck: record NIGHT DRIVE 13", "answered, it will ('%s')" % table.interact_hint())
+			_player.face(table.to_global(table.THINGS[&"tx"]))
+		346:
+			var table: Node = _fin.get("_table")
+			_check(table.interact_hint() == "Transmitter: switch it off for good", "the transmitter ('%s')" % table.interact_hint())
+			# Lights on with too little of the city lit: Half Light.
+			_check(_fin.lit() < _fin.lit_needed(), "not enough of the city is lit yet (%d of %d)" % [_fin.lit(), _fin.lit_needed()])
+			var need: int = _fin.lit_needed()
+			story.make_choice(&"thirteen", &"buyer")
+			_check(_fin.lit_needed() == need + _fin.LIT_SOLD, "selling the thirteen means more of it needs to be")
+			_fin.use_table(&"mic")
+			_check(_fin.chose_on == -1 and _fin.table_hint(&"mic").begins_with("Again to be sure."), "once asks to be sure")
+			_fin.use_table(&"mic")
+			_check(story.choice(&"eleventh_july") == &"lights_on" and story.ending() == &"half_light", "twice: lights on, Half Light ('%s')" % story.ending())
+			_check(not _fin.done() and _fin.chose_tonight(), "which isn't the end")
+			_fin.use_table(&"tx")
+			_fin.use_table(&"tx")
+			_check(story.ending() == &"half_light", "and only once a night")
+			clock.day = _fin_night + 1
+			clock.set_time(4.0)
+		380:
+			_check(_fin.night_day == _fin_night + _fin.AGAIN and _fin.nights_missed == 0, "after the night the 11th comes round again (day %d)" % _fin.night_day)
+			_check("comes round again" in _fin.notes_line(), "the phone says so ('%s')" % _fin.notes_line())
+			# Missed altogether.
+			_fin_night = _fin.night_day
+			clock.day = _fin_night + 1
+			clock.set_time(4.0)
+		410:
+			_check(_fin.nights_missed == 1 and _fin.night_day == _fin_night + _fin.AGAIN, "a missed 11th comes round again too")
+			_check(story.has_night(StringName("eleventh_missed_%d" % _fin_night)), "and it's in the Nights log")
+			_fin_night = _fin.night_day
+			clock.day = _fin_night
+			clock.set_time(21.0)
+			# Enough of the city lit: City of Light.
+			root.get_node("Progression").add_stat("deliveries", float(_fin.lit_needed()))
+			_fin.choose(&"lights_on")
+			_check(story.ending() == &"city_of_light" and _fin.done(), "lights on with the city lit: City of Light")
+			_check(_fin.table_hint(&"mic") == "" and not _fin.is_night(), "and that's the end of the 11ths")
+			# Night Drive 13.
+			_fin_reset(story)
+			_fin.use_table(&"deck")
+			_fin.use_table(&"deck")
+			_check(story.choice(&"eleventh_july") == &"tape_13" and story.ending() == &"night_drive_13", "recording the tape: Night Drive 13")
+			# Lights Out.
+			_fin_reset(story)
+			_fin.use_table(&"tx")
+			_fin.use_table(&"tx")
+			_check(story.ending() == &"lights_out", "switching it off: Lights Out")
+			var lamps := 0
+			for mi: MeshInstance3D in mystery._shed_props.find_children("*", "MeshInstance3D", true, false):
+				for i in mi.mesh.get_surface_count():
+					var m := mi.get_active_material(i) as ShaderMaterial
+					if m and m.resource_name == "Lamp" and float(m.get_shader_parameter("emission_energy")) > 0.0:
+						lamps += 1
+			_check(lamps == 0, "the red lights go out (%d still lit)" % lamps)
+			_check("static" in mystery.notes()[0], "the phone says so ('%s')" % mystery.notes()[0])
+			# Dee and Skylab.
+			_fin_reset(story)
+			var radio: Object = root.get_node("Audio").get("radio")
+			if radio:
+				radio.call("set_station", "nottefm")
+				_fin._dee(1.0)
+				_fin._dee(10.0)
+				_check(int(_fin.get("_dee_said")) == 1, "Dee talks about Skylab on Notte FM")
+			_fin.skylab()
+			_check(_fin.get("_skylab") != null and root.get_node("Discoveries").has("oddity/skylab"), "Skylab comes down again")
+		440:
+			# Into the lights on Riverside Drive. First with the porch light off.
+			_put_player(_car.global_position + _car.global_basis.x * 1.6 + Vector3.UP * 0.5)
+		450:
+			_player.call("get_in")
+		520:
+			_check(_player.get("in_car") == true, "back in the car")
+			var at: Vector3 = _fin.get("_drive_in")
+			var md: MapData = MapData.shared()
+			md.wait()
+			_check(md.street_at(at) == "Riverside Drive", "the lights come down on Riverside Drive ('%s')" % md.street_at(at))
+			people.porch_light_on = false
+			clock.day = _fin_night + 1
+			clock.set_time(2.8)
+			_car.teleport(Transform3D(Basis(), at + Vector3.UP * 1.2))
+		600:
+			_check(_fin.is_night() and not _fin.drive_in_open() and _fin.get("_road_lights") == null, "porch light off: they stay over the water")
+			var odd: Node = _main.find_child("Oddities", true, false)
+			var lights: Node3D = odd.get("_lights")
+			_check(lights != null and lights.get_node_or_null(^"RainUp") != null, "in act 5 the rain over the river lights falls upwards")
+			var big := 0
+			if lights:
+				for orb in lights.get_children():
+					if orb is MeshInstance3D and orb.scale.x > 1.5:
+						big += 1
+			_check(big > 0, "and on the 11th they're bigger and brighter (%d)" % big)
+			_check(_fin.get("_skylab") != null, "Skylab is still going over")
+			_fin._move_skylab(20.0)
+			_check(_fin.get("_skylab") == null, "and then it's gone")
+			people.porch_light_on = true
+		640:
+			_check(story.choice(&"eleventh_july") == &"went_in" and story.ending() == &"late_city", "porch light on: into the lights, The Late City ('%s')" % story.ending())
+			_check(story.has_night(&"eleventh_went_in") and _fin.get("_road_lights") == null, "in the Nights log, and the lights are gone")
+			var state: Dictionary = _fin.save_state()
+			_fin.load_state({})
+			_check(_fin.night_day == -1, "loading an empty save clears it")
+			_fin.load_state(JSON.parse_string(JSON.stringify(state)))
+			_check(_fin.save_state() == state, "and it saves and loads")
+			story.load_state({})
+			story.act_override = 0
+			clock.set_time(14.0)
+			return true
+	return false
+
+
+## The endings: each scene, played quickly, and what it leaves behind.
+var _end  # Endings
+var _end_lit := 0
+
+
+func _endings(story: Node, clock: Node) -> bool:
+	var late := root.get_node("LateCity")
+	match _frames:
+		1:
+			_end = _main.find_child("Endings", true, false)
+			_check(_end != null, "the endings are in the world")
+			if _end == null or _fin == null:
+				return true
+			_end.finish_scene()
+			_check(not _end.playing(), "a scene can be played through")
+			# City of Light.
+			_fin_reset(story)
+			clock.day = _fin.night_day
+			clock.set_time(23.0)
+			_check(_fin.lit() >= _fin.lit_needed(), "enough of the city is lit")
+			_fin.choose(&"lights_on")
+			_check(_end.playing(), "City of Light plays")
+			_end.finish_scene()
+			_end_lit = _end.lights_left_on()
+			_check(_end_lit > 0, "the regulars leave their lights on (%d)" % _end_lit)
+			_check(story.has_night(&"mick_last_tape"), "Mick's last tape")
+			_check(late.gone() and late.flicker_level() == 0 and not late.allowed_now(), "the late city is gone, the birds don't flicker")
+			clock.day = _fin.night_day + 1
+			clock.set_time(7.0)
+		40:
+			_check(_end.lights_left_on() == 0, "in the morning the lights are off again")
+			var radio: Object = root.get_node("Audio").get("radio")
+			clock.set_time(22.0)
+			if radio:
+				radio.call("set_station", "nottefm")
+		80:
+			if root.get_node("Audio").get("radio"):
+				_check(_end.song_played and story.has_night(&"dee_song_for_mick"), "the next night Dee plays a song for Mick")
+			# Half Light: fewer lights.
+			_fin_reset(story)
+			clock.day = _fin.night_day
+			clock.set_time(23.0)
+			_end._on_chosen(&"lights_on", &"half_light")
+			_end.finish_scene()
+			_check(_end.lights_left_on() > 0 and _end.lights_left_on() < _end_lit, "Half Light: only some lights (%d of %d)" % [_end.lights_left_on(), _end_lit])
+			# Night Drive 13.
+			_fin_reset(story)
+			clock.set_time(23.0)
+			_fin.choose(&"tape_13")
+			_end.finish_scene()
+			_check(_end.dawn_day == clock.day + 1 and not _end.mick_left, "the 500 L will be there at dawn")
+			clock.day += 1
+			clock.set_time(6.5)
+		120:
+			_check(_end.mick_left and _main.find_child("MicksCar", true, false) != null, "at dawn Mick's 500 L is at the end of the lane")
+			var garage := root.get_node("Garage")
+			_check(garage.owns_car("classic_500l") and root.get_node("Classics").can_drive("classic_500l"), "and it's yours to drive")
+			_check(story.has_night(&"mick_home"), "in the Nights log")
+			_check(not (_end.get("_old") != null and _end.get("_old").dressed), "the days are normal")
+			clock.set_time(1.0)
+		160:
+			_check(_end.get("_old") != null and _end.get("_old").dressed, "after midnight the traffic's 1979")
+			var st: Node = _main.find_child("Street1979", true, false)
+			_check(not st._ready_to_start(), "so the 1979 street doesn't need to happen")
+			clock.set_time(10.0)
+		200:
+			_check(not _end.get("_old").dressed, "and in the morning it's now again")
+			# Lights Out: the late city fades over a few days.
+			_fin_reset(story)
+			clock.set_time(23.0)
+			_fin.choose(&"switch_off")
+			_end.finish_scene()
+			_check(not late.gone(), "Lights Out: the late city doesn't go all at once")
+			clock.day += late.FADE_DAYS + 1
+			_check(late.gone() and late.flicker_level() == 0, "but it's gone a few days later")
+			# The Late City.
+			_fin_reset(story)
+			clock.day = _fin.night_day + 1
+			clock.set_time(2.8)
+			_fin.choose(&"went_in")
+			_check(_end.playing(), "The Late City plays")
+		480:
+			# The house from the lane, in 1979.
+			var cam: Camera3D = (_main.get_node("LoFi/SubViewport") as Viewport).get_camera_3d()
+			_check(cam != null and cam.name == &"LateCityCamera", "the house from the lane ('%s')" % (cam.name if cam else ""))
+			_check(_main.find_child("SecondCar", true, false) != null, "two little cars in the carport")
+			_check(_end.get("_old") != null and _end.get("_old").dressed, "1979")
+			_end.finish_scene()
+			_check(not _end.playing() and not _car.freeze, "after the credits you're back in the car")
+			_check(story.has_night(&"late_city_credits"), "in the Nights log")
+			clock.set_time(10.0)
+		520:
+			_check(clock.time_of_day >= _end.EVENING - 0.01, "and it's always night (%.1f)" % clock.time_of_day)
+			var state: Dictionary = _end.save_state()
+			_end.load_state({})
+			_end.load_state(JSON.parse_string(JSON.stringify(state)))
+			_check(_end.save_state() == state, "the endings save and load")
+			story.load_state({})
+			story.act_override = 0
+			clock.set_time(14.0)
+		560:
+			_check(not _end.get("_old").dressed, "with no ending, it's today again")
+			return true
+	return false
+
+
+## Back to the night of the 11th with nothing chosen, the porch answered.
+func _fin_reset(story: Node) -> void:
+	story.load_state({})
+	story.make_choice(&"porch_light", &"on")
+	_fin.chose_on = -1
+
+
 ## William Street through Northbridge, up the strip of venues.
 func _william_street() -> PackedVector3Array:
 	var g := MapData.shared().routes
@@ -873,6 +1209,10 @@ func _sided(node: Node, side: int) -> int:
 func _next() -> void:
 	_stage += 1
 	_frames = 0
+	if _stage == 1:
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("from="):
+				_stage = maxi(1, int(arg.get_slice("=", 1)))
 
 
 func _check(ok: bool, what: String) -> void:
