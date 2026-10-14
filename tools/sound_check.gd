@@ -23,10 +23,12 @@ extends SceneTree
 ##   (after the Ambient bus, which the Weather bus feeds) and leaves the radio.
 ##   At the wheel in the chase view the radio still sits over the storm. In
 ##   both views the idling engine is heard over the rain.
-## - Driving at city speeds (50 km/h in both views, 62 in the chase view)
+## - Driving at city speeds (50 km/h in both views, 62 in the chase view,
+##   80 in the interior view)
 ##   with the radio on, the radio sits over your own engine and tyres at
 ##   default levels, and with Your car all the way up your engine sits
-##   clearly over the radio.
+##   clearly over the radio. The road noise sits under your engine: barely
+##   there in the chase view, well under it in the interior view.
 ## - Menu clicks (opening the pause menu) sit with the game, not over it.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/sound_check.gd -- --no-save
@@ -67,9 +69,13 @@ const STORM_LOUDEST := {"rain_heavy_out": 20.0, "wind": 8.0, "rain_heavy_roof": 
 const CAR_UNDER_RADIO_DB := 4.0
 ## With Your car all the way up, how far your engine must sit over the radio.
 const ENGINE_OVER_RADIO_AT_MAX_DB := 2.0
+## How far the tyres' road noise must sit under your engine, per view: barely
+## there from the chase camera, well under the engine from the driver's seat
+## (dB, mean of the meters; the Pop measured about 14 and 10 under at 76 km/h).
+const TYRES_UNDER_ENGINE_DB := {"chase": 10.0, "interior": 7.0}
 ## The runs: view and speed (km/h). The chase view at 60+ is where the tyres
-## used to creep up on the radio.
-const CRUISES := [["interior", 50.0], ["chase", 50.0], ["chase", 62.0]]
+## used to creep up on the radio; at 80 in the car the road roar is loudest.
+const CRUISES := [["interior", 50.0], ["chase", 50.0], ["chase", 62.0], ["interior", 80.0]]
 ## Where in the radio's song (the station's first listen, song 15) each
 ## cruise starts (s). The part that is read sits at the song's usual level
 ## on the Radio bus (-22.4 dB; the song's 6 s stretches read -22.1 to -24),
@@ -522,6 +528,9 @@ func _check_radio_over_car(traffic: Node) -> void:
 		_check(radio - engine >= CAR_UNDER_RADIO_DB and radio - tyres >= CAR_UNDER_RADIO_DB,
 				"at %.0f km/h in the %s view the radio is heard over your engine and tyres (%.1f and %.1f dB over)"
 				% [kmh, view, radio - engine, radio - tyres])
+		_check(engine - tyres >= TYRES_UNDER_ENGINE_DB[view],
+				"at %.0f km/h in the %s view the road noise sits under your engine (%.1f dB under, at least %.0f)"
+				% [kmh, view, engine - tyres, TYRES_UNDER_ENGINE_DB[view]])
 		# Your car all the way up: the Car fader comes after the engine's
 		# compressor, so the engine is that much louder as heard.
 		var boost: float = _audio.car_slider_db(1.0) - _audio.car_slider_db(settings.volume_car)

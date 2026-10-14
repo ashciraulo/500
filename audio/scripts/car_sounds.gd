@@ -30,7 +30,6 @@ var _seat: Node3D
 var _horn: AudioStreamPlayer3D
 var _wipers: AudioStreamPlayer3D
 var _indicator: AudioStreamPlayer3D
-var _buffet: AudioStreamPlayer3D
 var _wiper_speed := 0
 var _handbrake_up := false
 var _squeak_timer := 0.0
@@ -49,8 +48,6 @@ func _ready() -> void:
 	_horn = _player("Body", 9.0)
 	_wipers = _player("Cabin", 2.0)
 	_indicator = _player("Cabin", 2.0)
-	_buffet = _player("Weather", 4.0)
-	_buffet.stream = Audio.stream("weather/weather_wind_buffet", true)
 
 
 ## Cars with rear-hinged "suicide" doors, and the doorless beach car.
@@ -97,15 +94,7 @@ func _process(delta: float) -> void:
 	_update_wipers(delta)
 	if _car and _car.has_method("get_telemetry"):
 		var t: Dictionary = _car.get_telemetry()
-		# Wind buffeting rises with speed, more so on windy days.
-		var w: float = clampf((float(t.get("speed_kmh", 0.0)) - 40.0) / 80.0, 0.0, 1.0) \
-				* (0.4 + 0.6 * Audio.ambience.wind)
-		if w > 0.01 and _buffet.stream:
-			if not _buffet.playing:
-				_buffet.play(randf() * _buffet.stream.get_length())
-			_buffet.volume_db = linear_to_db(w) - 4.0
-		elif _buffet.playing:
-			_buffet.stop()
+		# No wind buffeting: at speed it sat on top of the engine.
 		var hb: float = t.get("handbrake", 0.0)
 		if hb > 0.5 and not _handbrake_up:
 			_handbrake_up = true
