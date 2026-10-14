@@ -31,6 +31,7 @@ from . import common as C
 from . import furniture as F
 from . import city_vehicles as CV
 from . import carkit as K
+from mathutils import Vector
 
 bx, cyl = F.bx, F.cyl
 _m = CV._m
@@ -42,6 +43,7 @@ AXLE_F = YF - 0.808
 AXLE_R = AXLE_F - WB
 HW = W / 2
 TYRE_R = 0.305
+TRACK_X = HW - 0.115   # the wheels' centre planes, either side
 BELT = 0.955
 ROOF = H - 0.012
 
@@ -595,9 +597,10 @@ def _trim(M, body):
     return p
 
 
-def _interior(M):
+def _interior(M, wheel=True):
     """What shows through the glass: floor, bench seats, parcel shelf, the
-    dash and a big thin steering wheel on the right."""
+    dash and a big thin steering wheel on the right (wheel=False leaves it
+    out, for the car to drive, which turns its own)."""
     from . import cabin as CB
     t, d = M["trim"], M["dark"]
     p = [bx((-0.72, -1.25, 0.4), (0.72, 0.8, 0.42), d)]
@@ -611,12 +614,17 @@ def _interior(M):
     p.append(_smoothed(_prism("dash", [(0.55, 0.78), (0.8, 0.78), (0.8, 0.945), (0.68, 0.985), (0.56, 0.97)],
                               "x", -0.75, 0.75, t), 40))
     p.append(bx((0.24, 0.55, 0.87), (0.52, 0.565, 0.95), d))           # instrument cluster
-    wheel = CB.torus_rim("steer", 0.205, 0.011, 28, d, ts=6)
-    wheel.rotation_euler = (math.radians(-28), 0, 0)
-    wheel.location = (0.38, 0.4, 0.95)
-    p.append(wheel)
+    if wheel:
+        rim = CB.torus_rim("steer", 0.205, 0.011, 28, d, ts=6)
+        rim.rotation_euler = (math.radians(-28), 0, 0)
+        rim.location = STEER_HUB
+        p.append(rim)
     p.append(cyl(0.02, 0.3, (0.38, 0.52, 0.89), d, segs=8, axis="Y"))
     return p
+
+
+STEER_HUB = (0.38, 0.4, 0.95)
+STEER_TILT = -28   # degrees about X: the wheel faces the driver, the column runs down to the dash
 
 
 def _tail(M):
@@ -664,26 +672,31 @@ def _front_bumper(M):
 def _wheels(M):
     """Steel wheels in body colour with small domed dog-dish caps, on tyres
     with a rounded sidewall and a thin white stripe."""
+    p = []
+    for y in (AXLE_F, AXLE_R):
+        for sx in (-1, 1):
+            p += _wheel(M, sx, (sx * TRACK_X, y, TYRE_R))
+    return p
+
+
+def _wheel(M, sx, loc):
+    """One wheel at loc, its outer face toward sx (+1 the driver's side)."""
     tyre = [(0.19, -0.083), (0.262, -0.087), (0.293, -0.074), (TYRE_R, -0.045), (TYRE_R, 0.045),
             (0.293, 0.074), (0.262, 0.087), (0.232, 0.088), (0.222, 0.088), (0.19, 0.086)]
     cap = [(0.19, 0.084), (0.12, 0.086), (0.098, 0.088), (0.09, 0.094), (0.06, 0.1), (0.0, 0.102)]
     p = []
-    x_w = HW - 0.115
-    for y in (AXLE_F, AXLE_R):
-        for sx in (-1, 1):
-            loc = (sx * x_w, y, TYRE_R)
 
-            def side(prof):
-                return [(r, sx * o) for r, o in (prof if sx > 0 else reversed(prof))]
-            n = len(tyre) - 1
-            p.append(K.revolve("tyre", side(tyre), 32,
-                               lambda i, n=n, sx=sx: M["white"] if (i == 7 if sx > 0 else i == n - 8) else M["tyre"],
-                               loc=loc))
-            capm = len(cap) - 1
-            p.append(K.revolve("wheel", side(cap), 32,
-                               lambda i, capm=capm, sx=sx: M["paint"] if (i == 0 if sx > 0 else i == capm - 1)
-                               else M["chrome"], loc=loc))
-            p.append(cyl(0.19, 0.16, loc, M["paint"], segs=32, axis="X"))
+    def side(prof):
+        return [(r, sx * o) for r, o in (prof if sx > 0 else reversed(prof))]
+    n = len(tyre) - 1
+    p.append(K.revolve("tyre", side(tyre), 32,
+                       lambda i, n=n, sx=sx: M["white"] if (i == 7 if sx > 0 else i == n - 8) else M["tyre"],
+                       loc=loc))
+    capm = len(cap) - 1
+    p.append(K.revolve("wheel", side(cap), 32,
+                       lambda i, capm=capm, sx=sx: M["paint"] if (i == 0 if sx > 0 else i == capm - 1)
+                       else M["chrome"], loc=loc))
+    p.append(cyl(0.19, 0.16, loc, M["paint"], segs=32, axis="X"))
     for o in p:
         if o.type == "MESH" and o.name.startswith(("tyre", "wheel")):
             C.apply_transform(o)
@@ -815,3 +828,129 @@ def valiant():
 VEHICLES = {
     "valiant": valiant,
 }
+
+
+# ------------------------------------------------------------------ to drive
+#
+# The same Valiant on the cars/ contract (art/models/README.md), for the car
+# yard: origin on the ground midway between the axles, the wheels out as their
+# own glbs (wheel_vc_l/_r) with Hub_* empties at their centres, the steering
+# wheel its own node, an interior mirror, seats, exits and mounts, and the
+# material names the game drives (LampHead, LampTail, Glass, Plate). The body,
+# paint and lamps are the prop's, unchanged.
+
+CAR_PLATE = "UHV-266"   # made up: a 1960s WA plate, white on black
+AXLE_MID = (AXLE_F + AXLE_R) / 2
+WHEEL_STYLE = "vc"
+HIP = (0.38, 0.08, 0.62)          # driver's hip point on the bench
+EYE = (0.38, 0.02, 1.22)          # driver's eye
+
+
+def _car_mats():
+    from . import textures as TX
+    M = _mats()
+    M.update({
+        "glass": C.mat("Glass", "#6d8893", rough=0.03, metal=0.35, alpha=0.5),
+        "head": _m("LampHead", "#e4ebe8", 0.04, 0.45),
+        "tail": _m("LampTail", "#a3171a", 0.25),
+        "plate": C.mat("Plate", image=TX.plate(CAR_PLATE, ink=(0.93, 0.92, 0.88), bg=(0.07, 0.07, 0.08)),
+                       rough=0.6),
+    })
+    return M
+
+
+def _car_steering_wheel(M):
+    """The prop's thin rim, with a hub and two spokes so it reads as turning;
+    faces Y before the tilt, so it turns about the column (Godot local Z)."""
+    from . import cabin as CB
+    d = M["dark"]
+    rim_r = 0.205
+    bits = [CB.torus_rim("rim", rim_r, 0.011, 28, d, ts=6)]
+    bits.append(C.cylinder("hub", 0.045, 0.05, segs=12, axis="Y", material=d))
+    bits.append(K.lamp_disc("horn", 0.034, 0.01, (0, -0.028, 0), (0, -1, 0), M["chrome"], segs=12))
+    for a in (-0.32, math.pi + 0.32):
+        sp = C.box("spoke", (rim_r - 0.04, 0.012, 0.024),
+                   (math.cos(a) * (rim_r / 2 + 0.02), 0, math.sin(a) * (rim_r / 2 + 0.02)), d)
+        sp.rotation_euler = (0, -a, 0)
+        C.apply_transform(sp)
+        bits.append(sp)
+    sw = C.join(bits, "SteeringWheel")
+    sw.rotation_euler = (math.radians(STEER_TILT), 0, 0)
+    sw.location = STEER_HUB
+    return sw
+
+
+def _car_mirror(M):
+    """Interior mirror at the top of the windscreen, on a short stem."""
+    y, z = WS_T - 0.06, ROOF - 0.075
+    return [bx((-0.11, y - 0.012, z - 0.03), (0.11, y + 0.004, z + 0.03), M["dark"]),
+            bx((-0.103, y - 0.016, z - 0.024), (0.103, y - 0.012, z + 0.024), M["chrome"]),
+            cyl(0.008, 0.07, (0.0, y - 0.004, z + 0.055), M["dark"], segs=6)]
+
+
+def valiant_car():
+    """Build the driveable Valiant into the scene: returns the wheel builder
+    (sx -> parts at the origin) for the wheel glbs. Everything is shifted so
+    the origin sits midway between the axles."""
+    from mathutils import Matrix
+    M = _car_mats()
+    body, ref = _shell(M)
+    p = [body] + _glass_and_frames(M, ref, body) + _trim(M, body) + _nose(M) + _interior(M, wheel=False) + _tail(M)
+    p += _front_bumper(M) + _car_mirror(M)
+    bpy.data.objects.remove(ref, do_unlink=True)
+    lamps = _lamps(M)
+    _vee(p + [o for _, parts, _, _ in lamps for o in parts])
+    for o in p:
+        if o.type == "MESH" and o.data.materials and o.data.materials[0] is M["plate"]:
+            C.apply_transform(o)
+            # read from in front of the car its right is -X, from behind +X
+            K.planar_uv(o, 0, 2, flip_u=o.data.vertices[0].co.y > 0)
+    made = [F.item("Valiant", p, (0, 0, 0))]
+    for name, parts, _, _ in lamps:
+        o = F.item(name, parts, (0, 0, 0))
+        bpy.context.view_layer.update()
+        vs = [o.matrix_world @ v.co for v in o.data.vertices]
+        C.set_origin(o, sum(vs, Vector()) / len(vs))
+        made.append(o)
+    made.append(_car_steering_wheel(M))
+
+    def em(name, loc, rx=0.0, rz=0.0):
+        e = C.empty(name, loc, size=0.08)
+        e.rotation_euler = (math.radians(rx), 0, math.radians(rz))
+        return e
+    em("WheelStyle_" + WHEEL_STYLE, (0, 0, 0))
+    for nm, sx, y in (("FL", -1, AXLE_F), ("FR", 1, AXLE_F), ("RL", -1, AXLE_R), ("RR", 1, AXLE_R)):
+        em("Hub_" + nm, (sx * TRACK_X, y, TYRE_R))
+    em("Cam_Cockpit", EYE)
+    for nm, sx in (("L", -1), ("R", 1)):
+        em("Seat_" + nm, (sx * HIP[0], HIP[1], HIP[2]))
+        # beside the front door, facing away from the car (Godot -Z out)
+        em("Exit_" + nm, (sx * (HW + 0.5), 0.2, 0.0), rz=90 * -sx)
+        em("Mount_MudFlap_" + nm, (sx * TRACK_X, AXLE_R - 0.4, _ZB(AXLE_R - 0.4)))
+    # A fitted wheel: Godot -Z down the column toward the dash, +Y to twelve.
+    em("Mount_SteeringWheel", STEER_HUB, rx=STEER_TILT)
+    em("Mount_Exhaust", (-0.45, YR + 0.04, 0.3))
+    em("Mount_Roof", (0.0, (WS_T + BL_T) / 2, ROOF))
+    em("Mount_Spotlights", (0.0, YF - 0.05, 0.56))
+    em("Mount_BumperF", (0.0, YF + 0.01, 0.46))
+    em("Mount_BumperR", (0.0, YR - 0.01, 0.46))
+    em("Mount_TowBar", (0.0, YR, 0.28))
+    em("Mount_Mirror", (0.0, WS_T - 0.065, ROOF - 0.11))
+    em("Mount_Dash", (-0.3, 0.66, 0.985))
+    em("Mount_Shelf", (-0.35, -1.16, 0.95))
+    em("Mount_Gear", (0.0, 0.62, 0.43))
+    em("Mount_Glovebox", (-0.36, 0.72, 0.84))
+    bpy.context.view_layer.update()
+    for o in bpy.data.objects:
+        if o.parent is None:
+            o.matrix_world = Matrix.Translation((0, -AXLE_MID, 0)) @ o.matrix_world
+    bpy.context.view_layer.update()
+    return made
+
+
+def valiant_wheel(sx):
+    """One road wheel at the origin, axle along X, its face toward sx (the
+    left wheel's face is -X). The centre is the body colour."""
+    M = _mats()
+    M["paint"] = _m("VC_WheelPaint", "#657f57", 0.45, 0.05)
+    return C.join(_wheel(M, sx, (0, 0, 0)), "Wheel")

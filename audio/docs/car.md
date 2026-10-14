@@ -28,6 +28,7 @@ Loops are seamless with no fades: play them looped from sample 0.
 | car_indicator_classic | yes | Thermal (bimetal) flasher, ~75/min, slightly irregular (6.4 s) | P2 | Duller clack/tock with plastic-can resonance, jittered timing that sums exactly to the loop |
 | car_horn_classic_meep | no | Classic 500 'meep' | P2 | Recording of a small, thin, buzzy single disc horn, pitched up to ~460 Hz, no low end |
 | car_horn_abarth | no | Abarth horn | P2 | Recording of a bright twin horn, pitched to ~545 + 655 Hz, driven harder, short reflection |
+| car_horn_valiant | no | The Valiant's 1960s horn (0.6 s) | P3 | Synthesised: two vibrating-diaphragm notes (~332 + 443 Hz) as narrow pulses, the pitch sagging as it starts, through the flare's honk at 1.25 and 2.4 kHz, saturated, short street reflection (`gen_car.py valiant`) |
 | car_window_modern_up / _down | no | Electric window run (3.6 s) | P3 | DC-motor harmonics spinning up, brush noise, felt-channel drag, stall clunk at the end (up) |
 | car_window_crank_classic | no | Hand-crank window | P3 | Gear-tooth ticks at 14x crank rate, felt drag, a squeak once per turn |
 | car_boot_open / car_boot_close | no | Hatch release + strut lift / hatch shut | P3 | Solenoid clunk + gas-strut hiss + stop; close = ~70 Hz thunk, latch, parcel-shelf rattle |
@@ -44,7 +45,8 @@ Loops are seamless with no fades: play them looped from sample 0.
 | car_parking_sensor | yes | Parking sensor beeps, mid distance, 4/s (2 s) | P3 | Clean 2.4 kHz piezo beep (the real object is a pure tone), wrapped placement |
 | car_door_close_abarth_01..03 / car_door_open_abarth_01..02 | no | Abarth door: heavier, lower, stiffer seals | P2 | The modern door with its body modes ~20% lower, longer thud, thicker seal peel |
 | car_door_close_suicide_01..03 / car_door_open_suicide_01..02 | no | Rear-hinged doors of the Nuova, Sport, D and Giardiniera | P2 | Classic shell rung a touch lower, a lower, drier front latch; the open swings forward on a longer, lower hinge groan |
-| car_door_slam_<family>_01..02 | no | Door shut hard (modern, abarth, classic, suicide) | P2 | Same build swung harder: shorter air cushion, bigger thud, longer panel ring, glass buzz in its channel |
+| car_door_close_valiant_01..03 / car_door_open_valiant_01..02 | no | The Valiant's big steel sedan doors | P3 | The modern door built 45% heavier (body modes lower, longer thud); the open is the classic push-button and latch with a lower, shorter hinge creak. Slams and inside versions as the others (`gen_car.py valiant`) |
+| car_door_slam_<family>_01..02 | no | Door shut hard (modern, abarth, classic, suicide, valiant) | P2 | Same build swung harder: shorter air cushion, bigger thud, longer panel ring, glass buzz in its channel |
 | car_door_<open/close/slam>_<family>_in_01(..02) | no | The same doors heard from the driver's seat | P2 | Top end dulled by trim and glass, low thunk lifted (+5 dB at 140 Hz), small boxy cabin reflection; modern and Abarth shuts add the sealed cabin's 28 Hz air "whump" |
 | car_seatbelt_unbuckle | no | Belt off: button, tongue springs out, webbing reels in, tongue knocks the pillar | P2 | Plastic click, two-part spring tick, webbing zip with ratchet ticks slowing, small trim knock |
 | car_ignition_key_out | no | Key back to off and pulled, keyring swings | P2 | Detent tick, pin ticks along the blade, 9 small metal taps settling |

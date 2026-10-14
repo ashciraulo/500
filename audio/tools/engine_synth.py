@@ -492,6 +492,18 @@ FAMILIES: dict[str, Engine] = {
                             intake=0.22, intake_band=(900, 3400), whine=0.0, fan=0.10,
                             tin=0.06, overrun_pops=0.5, body=0.8, sharp=0.95,
                             level_curve=0.9, drive=3.2),
+    # The Valiant's 225 slant six (1966/67 VC): an even, deep burble through
+    # one long pipe and a big round muffler. Three firings a revolution, so it
+    # hums rather than buzzes; solid lifters tick under the bonnet, the
+    # single-barrel carb huffs on load and the fan belt whines a little.
+    "slant6": Engine("slant6", 6, 600, 4400, pipe_ms=(14.5, 8.2), pipe_fb=(0.40, 0.31),
+                     muffler_hz=360, muffler_order=2, chamber_hz=115, chamber_db=5.0,
+                     lowcut_hz=24, pulse_ms=0.75, cyl_gain_spread=0.05, cyl_time_spread=0.02,
+                     jitter_on=0.05, jitter_off=0.3, misfire_off=0.04, rasp=0.05,
+                     rasp_band=(700, 3400), mech=0.10, block_modes=(880, 1850, 3050),
+                     valves_per_cyl=2, intake=0.13, intake_band=(450, 1900), whine=0.012,
+                     whine_ratio=2.1, body=2.3, body_k=2.0, sharp=0.32, air_hz=6000,
+                     level_curve=0.8, load_db=7.5, drive=1.3),
 }
 
 # Plan table names, for the docs.
@@ -503,4 +515,5 @@ FAMILY_INFO = {
     "classic": ("Classic twin, air-cooled", "Nuova, Sport, D, F, L, R, Jolly", "P2"),
     "classicflat": ("Classic flat twin, air-cooled", "Giardiniera", "P2"),
     "classicabarth": ("Classic Abarth", "Abarth 595 and 695 classics", "P3"),
+    "slant6": ("225 slant six", "Valiant VC", "P3"),
 }
