@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_part")
 id = &"wheels_vc_whitewall"
-display_name = "Wide whitewalls"
-description = "The factory hubcaps on new wide-whitewall tyres. Very 1966."
+display_name = "Whitewalls and full wheel covers"
+description = "The Regal's full chrome wheel covers on wide-whitewall tyres. Very 1966."
 slot = &"wheels"
 price = 420
 modifiers = {}

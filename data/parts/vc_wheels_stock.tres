@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_part")
 id = &"vc_wheels_stock"
-display_name = "Steel wheels and full hubcaps (stock)"
-description = "Body-coloured 14-inch steel wheels under the factory hubcaps."
+display_name = "Steel wheels and dog-dish caps (stock)"
+description = "Body-coloured 14-inch steel wheels, small chrome caps and a thin white stripe."
 slot = &"wheels"
 modifiers = {}
 ladders = PackedStringArray("period")
