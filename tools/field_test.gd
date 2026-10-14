@@ -823,13 +823,25 @@ func _check_prints() -> void:
 		return out
 	var text := "\n".join(page.call("wrong_frogmouth"))
 	_check(text.contains("sort of") and text.contains("Mick's field guide"), "the journal: seen, sort of, and in Mick's guide")
-	# The endings.
+	# The endings (the frogmouth's tape found, so it's due at 1 am).
+	var frog: Dictionary = _fj.bird("wrong_frogmouth")
+	root.get_node("Discoveries").discover(String(frog.after))
+	_check(_birds.wrong_ready(frog, 1.0), "before the finale the frogmouth comes at 1 am")
 	story.set_ending(_fj.LIGHTS_OUT)
-	clock.day += 8
+	clock.day += 1
+	var half: float = _fj.page_fade()
+	_check(half > 0.0 and half < 1.0 and _birds.wrong_ready(frog, 1.0), "Lights Out: a day on, the page is fading (%.2f)" % half)
+	clock.day += 3
 	text = "\n".join(page.call("wrong_frogmouth"))
 	_check(_fj.page_fade() >= 1.0 and text.contains("gone blank"), "Lights Out: the pages go blank")
+	_check(not _birds.wrong_ready(frog, 1.0), "and then the wrong birds stop coming")
 	story.set_ending(_fj.CITY_OF_LIGHT)
-	_check(not _birds.wrong_ready(_fj.bird("wrong_frogmouth"), 1.0), "City of Light: the wrong birds stop coming")
+	_check(not _birds.wrong_ready(frog, 1.0) and _birds.ordinary_ready(frog, 1.0), "City of Light: no wrong frogmouth, an ordinary one instead")
+	var plain: Dictionary = _birds.spawn_wrong(frog, _car.global_position + Vector3(-14, 0, 6), _fj.bird(String(frog.like)))
+	_check(not plain.is_empty() and plain.id == String(frog.like) and not plain.has("wrong") and plain.get("in_place_of") == "wrong_frogmouth",
+		"in its place: a %s, an ordinary sighting" % String(plain.get("id", "nothing")))
+	if not plain.is_empty():
+		_birds._remove(plain)
 	text = "\n".join(page.call("wrong_frogmouth"))
 	_check(text.contains("just a bird"), "and their pages say so")
 	story.act_override = 0

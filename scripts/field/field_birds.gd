@@ -647,18 +647,31 @@ var _photo_spots := {}
 
 
 ## Whether a wrong bird can be out now: the mystery is far enough along, it's
-## its hour, and the late city hasn't gone (City of Light makes them ordinary).
+## its hour, and the late city hasn't gone (City of Light makes them ordinary,
+## Lights Out takes them once their pages have faded).
 static func wrong_ready(sp: Dictionary, hour: float) -> bool:
-	return sp.get("wrong", false) and Discoveries.has(String(sp.get("after", ""))) and FieldJournal.is_about(sp, hour, 0.0) \
-		and not FieldJournal.wrong_ordinary()
+	return _wrong_due(sp, hour) and not FieldJournal.wrong_ordinary() and FieldJournal.page_fade() < 1.0
+
+
+## City of Light: where a wrong bird would be, the ordinary bird it was like
+## is there instead (the frogmouth on the pole is just a tawny frogmouth now).
+static func ordinary_ready(sp: Dictionary, hour: float) -> bool:
+	return _wrong_due(sp, hour) and FieldJournal.wrong_ordinary() and not FieldJournal.bird(String(sp.get("like", ""))).is_empty()
+
+
+static func _wrong_due(sp: Dictionary, hour: float) -> bool:
+	return sp.get("wrong", false) and Discoveries.has(String(sp.get("after", ""))) and FieldJournal.is_about(sp, hour, 0.0)
 
 
 func _try_wrong(focus: Vector3) -> void:
 	var hour := _hour()
+	var ordinary := FieldJournal.wrong_ordinary()
 	for id: String in FieldJournal.bird_order:
 		var sp := FieldJournal.bird(id)
-		if not wrong_ready(sp, hour) or sightings.any(func(s: Dictionary) -> bool: return s.id == id) \
-				or not BirdModels.is_built(id):
+		var shown := String(sp.get("like", "")) if ordinary else id
+		if not (ordinary_ready(sp, hour) if ordinary else wrong_ready(sp, hour)) \
+				or sightings.any(func(s: Dictionary) -> bool: return s.get("in_place_of", s.id) == id) \
+				or not BirdModels.is_built(shown):
 			continue
 		var at := wrong_place(sp)
 		if at == Vector3.INF:
@@ -667,7 +680,7 @@ func _try_wrong(focus: Vector3) -> void:
 		# Never pop in under your nose.
 		if d > WRONG_RANGE or (d < 120.0 and _in_view(at + Vector3.UP)):
 			continue
-		spawn_wrong(sp, at)
+		spawn_wrong(sp, at, FieldJournal.bird(shown) if ordinary else {})
 
 
 ## Where a wrong bird belongs, or INF if that place isn't loaded.
@@ -724,7 +737,7 @@ func _open_ground(p: Vector3, clear: float) -> bool:
 
 
 ## Put a wrong bird (or thirteen) at its place. Returns the sighting or {}.
-func spawn_wrong(sp: Dictionary, at: Vector3) -> Dictionary:
+func spawn_wrong(sp: Dictionary, at: Vector3, as_bird := {}) -> Dictionary:
 	var spots := []
 	var props := []
 	var flock: Array = sp.get("flock", [1, 1])
@@ -805,7 +818,16 @@ func spawn_wrong(sp: Dictionary, at: Vector3) -> Dictionary:
 	var s := {"id": String(sp.id), "species": sp, "habitat": {}, "centre": spots[0].pos, "perch": String(sp.perch),
 		"birds": [], "frames": 999, "leaving": false, "cue": null, "cue_timer": 0.0,
 		"call_timer": _rng.randf_range(2.0, 6.0), "props": props, "wrong": true, "lift": 0.0}
-	if sp.has("bed"):
+	if not as_bird.is_empty():
+		# City of Light: its place and its pole, but an ordinary bird of the
+		# kind it was like, with an ordinary bird's frames and cue.
+		s = {"id": String(as_bird.id), "species": as_bird, "habitat": {}, "centre": spots[0].pos, "perch": String(sp.perch),
+			"birds": [], "frames": _rng.randi_range(2, 4), "leaving": false, "cue": _make_cue(as_bird),
+			"cue_timer": _rng.randf_range(1.0, 6.0), "call_timer": _rng.randf_range(2.0, 8.0), "props": props,
+			"in_place_of": String(sp.id)}
+		s.cue.position = s.centre + Vector3.UP * 6.0
+		add_child(s.cue)
+	elif sp.has("bed"):
 		# A sound bed while they're here (the audio side's place ambience).
 		var bed := Node3D.new()
 		bed.name = "Bed"
@@ -833,7 +855,7 @@ func spawn_wrong(sp: Dictionary, at: Vector3) -> Dictionary:
 					nest.position = b.node.position + Vector3(0, -0.08, 0)
 					add_child(nest)
 					props.append(nest)
-	if String(sp.get("behaviour", "")) == "lights":
+	if String(sp.get("behaviour", "")) == "lights" and s.has("wrong"):
 		var traffic := get_tree().get_first_node_in_group(&"traffic")
 		if traffic and traffic.has_signal("signals_changed"):
 			var cb := func(p: Vector3) -> void:

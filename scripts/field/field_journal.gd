@@ -113,7 +113,8 @@ const BUYER_NOTES := {
 ## Lights Out fades their pages to blank over a week.
 const CITY_OF_LIGHT := &"city_of_light"
 const LIGHTS_OUT := &"lights_out"
-const FADE_DAYS := 7.0
+## The same days the late city takes to go (LateCity.FADE_DAYS).
+const FADE_DAYS := 3.0
 ## The photograph (docs/STORY.md, section 10): the story sets this flag, the
 ## shutter goes off in the back seat (BackSeatPhoto), and the next roll comes
 ## back with one extra frame for Ros to keep, or you.

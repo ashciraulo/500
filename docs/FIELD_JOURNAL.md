@@ -199,7 +199,7 @@ After that the lab shows what the buyer will pay. The thirteen's print is the
 story's second choice: the guide's last night page, or $5,000. In the
 journal, their pages say you saw them "sort of", and whether Ros or the
 buyer has the print. City of Light leaves them ordinary birds; Lights Out
-fades their pages to blank over a week.
+fades their pages to blank over three days, and then they stop coming.
 
 **The photograph.** Some time in act 3, driving along, a shutter clicks
 behind you. Nobody's there. The next roll comes back with one frame you

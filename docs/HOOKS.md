@@ -618,7 +618,10 @@ after a map rebuild).
   `BUYER_NOTES`; `field/envelope` plays if the audio has it). The journal's
   wrong-bird pages say "seen, sort of" from act 3. Endings
   (`Story.ending()`): `&"city_of_light"` stops the wrong birds
-  (`FieldBirds.wrong_ready`) and their pages say they're just birds now;
+  (`FieldBirds.wrong_ready`): where one would be, the ordinary bird it was
+  `like` is there instead (`FieldBirds.ordinary_ready`, `spawn_wrong(sp, at,
+  like)`: a normal sighting with `in_place_of`), and their pages say they're
+  just birds now;
   `&"lights_out"` fades the pages to blank over `FADE_DAYS` from
   `Story.ending_day()` (`page_fade()`).
 - The photograph (STORY.md section 10): once `Story.flag(&"photo_back_seat")`
