@@ -83,8 +83,9 @@ func _ready_to_start() -> bool:
 
 
 ## The named street the car is on, from where it is onwards, joined up past
-## its junctions as far as it goes straight on: {name, points}, or {}.
-static func street_ahead(from: Vector3, heading: Vector2) -> Dictionary:
+## its junctions as far as it goes straight on: {name, points}, or {}. Only
+## streets of the `kinds` given (OSM highway kinds).
+static func street_ahead(from: Vector3, heading: Vector2, kinds: Array = KINDS) -> Dictionary:
 	var data := MapData.shared()
 	if not data.is_loaded:
 		return {}
@@ -93,7 +94,7 @@ static func street_ahead(from: Vector3, heading: Vector2) -> Dictionary:
 	var s := 0.0
 	for hit: Array in g.nearest(Vector2(from.x, from.z)):
 		var r: int = hit[0]
-		if float(hit[2]) < 8.0 and g.road_names[r] != "" and g.road_kinds[r] in KINDS:
+		if float(hit[2]) < 8.0 and g.road_names[r] != "" and g.road_kinds[r] in kinds:
 			road = r
 			s = hit[1]
 			break
