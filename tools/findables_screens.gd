@@ -3,7 +3,9 @@ extends SceneTree
 ## the mystery's clues at 1 am, the found parts, the cuttings and the barn
 ## finds by day and by night, and a few of the 500 badges. Each is shot from
 ## the chase camera with the car on the nearest road, heading toward it, FAR
-## and NEAR metres away. For checking that things are easy to spot. Needs a
+## and NEAR metres away. For checking that things are easy to spot. It owns a
+## car each found part fits (they only turn up then), and fails (exit 1) if
+## one still doesn't show. Needs a
 ## display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
@@ -24,6 +26,7 @@ var _m: Node
 var _step := -1
 var _frames := 0
 var _steps: Array = []
+var _failed := 0
 
 
 func _initialize() -> void:
@@ -55,7 +58,7 @@ func _build_steps() -> void:
 				_m.heard = id
 			_approach("clue_%s" % id, at, setup)
 	if _want("parts"):
-		for c in ["classic_500l", "classic_abarth_595"]:
+		for c in ["classic_500l", "classic_abarth_595", "valiant_vc"]:
 			if not root.get_node("Garage").owned_cars.has(c):
 				root.get_node("Garage").owned_cars.append(c)
 		for part: Node3D in get_nodes_in_group(&"found_parts"):
@@ -63,6 +66,11 @@ func _build_steps() -> void:
 			if not _want("parts", id):
 				continue
 			_approach("part_%s_day" % id, part.global_position, func() -> void: _hour(15.0))
+			_steps.append(["part_%s_shown" % id, func() -> void:
+				var shown: bool = (part.get("_visual") as Node3D).visible
+				print(("PASS " if shown else "FAIL ") + "the %s show" % id)
+				if not shown:
+					_failed += 1, 5])
 			_approach("part_%s_night" % id, part.global_position, func() -> void: _hour(22.0))
 	if _want("cuttings"):
 		for spot in _scripted(_main, "CuttingSpot"):
@@ -185,7 +193,7 @@ func _process(_delta: float) -> bool:
 			_next()
 		return false
 	if _step >= _steps.size():
-		quit(0)
+		quit(1 if _failed else 0)
 		return true
 	if _frames >= int(_steps[_step][2]):
 		var name: String = _steps[_step][0]

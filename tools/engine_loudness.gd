@@ -5,6 +5,7 @@ extends SceneTree
 ## checks measure them) per car, with the speed, gear and rpm reached.
 ## Runs in real time so the frames sample the mix as it plays (the dummy
 ## audio driver mixes too). nocomp switches the Engine bus compressor off.
+## A car id may carry parts to fit after a "+", e.g. valiant_vc+exhaust_vc_twin.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/engine_loudness.gd \
 ##       -- --no-save cars=pop_12,valiant_vc frames=200
@@ -58,8 +59,11 @@ static func _mean(xs: Array[float]) -> float:
 	return s / maxf(xs.size(), 1.0)
 
 
-func _start(id: String) -> void:
-	_car.apply_car(id)
+func _start(spec: String) -> void:
+	var bits := spec.split("+")
+	_car.apply_car(bits[0])
+	for i in range(1, bits.size()):
+		_car.install_part(PartsCatalogue.get_part(StringName(bits[i])))
 	_car.set_transmission(1)
 	if _nocomp:
 		var b := AudioServer.get_bus_index("Engine")

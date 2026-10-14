@@ -405,6 +405,16 @@ def variant(e: Engine, kind: str) -> Engine:
     straight-through (no silencer to speak of: loud, raw, crackly)."""
     if kind == "stock":
         return e
+    if kind == "sport" and e.name == "slant6":
+        # The Valiant's twin pipes: bigger, not brighter. More of the low
+        # chamber and the rounded pulse, a silencer that lets no more top
+        # through, a little more drive; the 1-2.5 kHz band stays put.
+        return replace(e, name=e.name + "_sport", muffler_hz=e.muffler_hz * 0.85,
+                       chamber_hz=e.chamber_hz * 0.92, chamber_db=e.chamber_db + 4,
+                       body=e.body * 1.4, drive=e.drive * 1.3, rasp=e.rasp * 0.8,
+                       sharp=e.sharp * 0.85, air_hz=e.air_hz * 0.85,
+                       pipe_fb=tuple(min(0.7, f * 1.15) for f in e.pipe_fb),
+                       overrun_pops=max(e.overrun_pops, 0.25), lowcut_hz=e.lowcut_hz * 0.85)
     if kind == "sport":
         return replace(e, name=e.name + "_sport", muffler_hz=e.muffler_hz * 1.7,
                        chamber_db=e.chamber_db + 2, rasp=e.rasp * 2.0, drive=e.drive * 1.5,

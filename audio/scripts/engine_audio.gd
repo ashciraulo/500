@@ -60,7 +60,10 @@ const CAR_SETS := {
 ## Audio.set_engine_threshold), when it isn't the bus's own: the worked slant
 ## six is let through about 5 dB louder than a 500 pulling away. Only for the
 ## player's car; traffic plays on Vehicles.
-const COMP_THRESHOLDS_DB := {"slant6": -27.0}
+## A set's own entry wins over its family's: the Valiant's twin pipes
+## (slant6sport) start a further 5 dB later, or the compressor flattens
+## their extra level back to the stock pipe's.
+const COMP_THRESHOLDS_DB := {"slant6": -27.0, "slant6sport": -22.0}
 
 ## Engine family -> gearbox whine in the forward gears (x the whine loop),
 ## when it isn't the 500s' faint 0.06. The slant six's lazy three-speed
@@ -206,7 +209,7 @@ func build() -> void:
 	var family := family_of(engine_set)
 	_whine_in_gear = WHINE_IN_GEAR.get(family, 0.06)
 	if bus == &"Engine":
-		Audio.set_engine_threshold(COMP_THRESHOLDS_DB.get(family, Audio.ENGINE_COMP_THRESHOLD_DB))
+		Audio.set_engine_threshold(comp_threshold_db(engine_set))
 	if _auto_pops:
 		pops = 1.0 if (engine_set.ends_with("sport") or engine_set.ends_with("straight")
 				or engine_set.ends_with("megaphone") or family in ["tjet", "classicabarth"]) else 0.0
@@ -242,6 +245,11 @@ func silence() -> void:
 	_set_loops_playing(false)
 	if _limiter:
 		_limiter.stop()
+
+
+## Where the Engine bus compressor starts for this engine set (dB).
+func comp_threshold_db(set_name: String) -> float:
+	return COMP_THRESHOLDS_DB.get(set_name, COMP_THRESHOLDS_DB.get(family_of(set_name), Audio.ENGINE_COMP_THRESHOLD_DB))
 
 
 static func family_of(set_name: String) -> String:

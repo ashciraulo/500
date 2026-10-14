@@ -6,8 +6,8 @@
 script = ExtResource("1_part")
 id = &"suspension_vc_lowered"
 display_name = "Lowering blocks and firm shocks"
-description = "Blocks under the rear leaves, the torsion bars wound down and firm shocks all round. 35 mm lower."
+description = "Blocks under the rear leaves, the torsion bars wound down and firm shocks all round. About 45 mm lower."
 slot = &"suspension"
 price = 520
-modifiers = {"spring_mult": 1.15, "damper_mult": 1.25, "anti_roll_mult": 1.25, "ride_height_add": -0.035}
+modifiers = {"spring_mult": 1.15, "damper_mult": 1.25, "anti_roll_mult": 1.25, "ride_height_add": -0.065}
 ladders = PackedStringArray("period")
