@@ -492,18 +492,19 @@ FAMILIES: dict[str, Engine] = {
                             intake=0.22, intake_band=(900, 3400), whine=0.0, fan=0.10,
                             tin=0.06, overrun_pops=0.5, body=0.8, sharp=0.95,
                             level_curve=0.9, drive=3.2),
-    # The Valiant's 225 slant six (1966/67 VC): an even, deep burble through
-    # one long pipe and a big round muffler. Three firings a revolution, so it
-    # hums rather than buzzes; solid lifters tick under the bonnet, the
-    # single-barrel carb huffs on load and the fan belt whines a little.
-    "slant6": Engine("slant6", 6, 600, 4400, pipe_ms=(14.5, 8.2), pipe_fb=(0.40, 0.31),
-                     muffler_hz=360, muffler_order=2, chamber_hz=115, chamber_db=5.0,
-                     lowcut_hz=24, pulse_ms=0.75, cyl_gain_spread=0.05, cyl_time_spread=0.02,
-                     jitter_on=0.05, jitter_off=0.3, misfire_off=0.04, rasp=0.05,
-                     rasp_band=(700, 3400), mech=0.10, block_modes=(880, 1850, 3050),
-                     valves_per_cyl=2, intake=0.13, intake_band=(450, 1900), whine=0.012,
-                     whine_ratio=2.1, body=2.3, body_k=2.0, sharp=0.32, air_hz=6000,
-                     level_curve=0.8, load_db=7.5, drive=1.3),
+    # The Valiant's 225 slant six (1966/67 VC), with work done: a lumpier
+    # cam, extractors and a big-bore exhaust. Three firings a revolution, so
+    # it hums rather than buzzes; long pipes and a low, strong chamber give
+    # the depth, a freer silencer and more drive the growl, and it crackles a
+    # little on the overrun. The carb huffs on load; the lifters still tick.
+    "slant6": Engine("slant6", 6, 600, 4400, pipe_ms=(17.5, 10.5), pipe_fb=(0.50, 0.40),
+                     muffler_hz=470, muffler_order=2, chamber_hz=82, chamber_db=9.0,
+                     lowcut_hz=17, pulse_ms=0.85, cyl_gain_spread=0.13, cyl_time_spread=0.045,
+                     jitter_on=0.09, jitter_off=0.36, misfire_off=0.05, rasp=0.09,
+                     rasp_band=(420, 2400), mech=0.07, block_modes=(880, 1850, 3050),
+                     valves_per_cyl=2, intake=0.12, intake_band=(380, 1600), whine=0.008,
+                     whine_ratio=2.1, body=3.4, body_k=1.6, sharp=0.38, air_hz=5200,
+                     level_curve=0.85, load_db=8.5, drive=2.1, overrun_pops=0.22),
 }
 
 # Plan table names, for the docs.
