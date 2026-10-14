@@ -230,6 +230,23 @@ func _run_step() -> bool:
 			_check(workshop.is_open() and paused, "the workshop opens and pauses the game")
 			workshop.close()
 			_check(not paused, "closing the workshop unpauses")
+			# Parts, Tuning and Paint keep the car in view with a camera of their own.
+			var driving_camera: Camera3D = _car.get_viewport().get_camera_3d()
+			for spot in spots:
+				if spot.offers("parts"):
+					workshop.open(spot)
+					var shop_tabs: TabContainer = workshop.get("_tabs")
+					shop_tabs.current_tab = workshop.TAB_KINDS.find("parts")
+					_check(workshop.is_car_in_view() and _car.get_viewport().get_camera_3d() != driving_camera,
+						"the car stays in view on the Parts tab")
+					shop_tabs.current_tab = workshop.TAB_KINDS.find("service")
+					_check(not workshop.is_car_in_view() and _car.get_viewport().get_camera_3d() == driving_camera,
+						"and the driving camera is back on Service")
+					shop_tabs.current_tab = workshop.TAB_KINDS.find("tuning")
+					workshop.close()
+					_check(not workshop.is_car_in_view() and _car.get_viewport().get_camera_3d() == driving_camera,
+						"closing from Tuning hands the camera back")
+					break
 			_teleport(spots[0].global_position)
 			var remap = catalogue.get_part(&"engine_ecu_remap")
 			wallet.earn(10000)
