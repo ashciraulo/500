@@ -84,6 +84,10 @@ func _process(delta: float) -> bool:
 				_check(_player.get_node("Eyes").current, "first-person camera is live")
 				_check(_player.global_position.distance_to(_car.global_position) < 3.0, "got out beside the car")
 				_check(not _car.player_controlled, "the car ignores input while you're out")
+				var audio: Node = root.get_node("Audio")
+				_check(not audio.is_player_driving(), "the sound knows you're out of the car")
+				var heard := _walkers_heard()
+				_check(heard < 0 or heard > 0, "on foot you hear people's footsteps (%d)" % heard)
 				_shot("02_out_of_car")
 				# Turned round toward the courtyard gate, the car at your back: F is for the gate.
 				_put(Vector3(2.9, 19.2, 0.0), Vector3(2.9, 17.0, 1.1))
@@ -281,8 +285,35 @@ func _process(delta: float) -> bool:
 				_check(_rig_cam.current, "the driving camera is back")
 				var steps: int = _player.get_node("FootstepAudio").steps - _steps_in
 				_check(steps == 0, "no footsteps once you're getting in (%d)" % steps)
+				_check(root.get_node("Audio").is_player_driving(), "the sound knows you're back at the wheel")
+				var heard := _walkers_heard()
+				_check(heard <= 0, "at the wheel people's footsteps stop (%d)" % heard)
 				return _finish()
 	return false
+
+
+## How many walkers' footsteps play with a few people strolling past the
+## ear (-1 when there's no traffic sound to ask).
+func _walkers_heard() -> int:
+	var ta = root.get_node("Audio").hooks.traffic
+	if ta == null:
+		return -1
+	var gs := GDScript.new()
+	gs.source_code = "extends RefCounted\nvar position := Vector3.ZERO\nvar speed := 1.4\n"
+	gs.reload()
+	var ear: Vector3 = root.get_node("Audio").listener().global_position
+	var peds: Array = []
+	for i in 3:
+		var ped: RefCounted = gs.new()
+		ped.position = ear + Vector3(3.0 + i, 0, 2.0)
+		peds.append(ped)
+	ta._assign_people(peds)
+	var n := 0
+	for voice in ta._steps:
+		if voice.ped != null and voice.player.playing:
+			n += 1
+	ta._assign_people([])
+	return n
 
 
 ## Under one of the townhouse's rain shelters (the rain shader hides drops there).
