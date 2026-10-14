@@ -496,8 +496,25 @@ func _test_car_scene(audio: Node) -> void:
 		car.apply_car("valiant_vc")
 		check(engine.engine_set == "slant6" and not engine.classic_gearbox, "Valiant -> slant6 (got %s)" % engine.engine_set)
 		check(cs.style == "valiant" and cs.door_family == "valiant" and not cs.push_start, "Valiant: its own horn and doors, a key")
+		var comp: AudioEffectCompressor = null
+		var eb := AudioServer.get_bus_index("Engine")
+		for k in AudioServer.get_bus_effect_count(eb):
+			if AudioServer.get_bus_effect(eb, k) is AudioEffectCompressor:
+				comp = AudioServer.get_bus_effect(eb, k)
+		check(comp != null and comp.threshold == EngineAudio.COMP_THRESHOLDS_DB["slant6"], "the Valiant's engine compresses later on the Engine bus")
+		# A Valiant in traffic (the 1979 street) plays on Vehicles: your car's mix stays.
+		var other := EngineAudio.new()
+		other.engine_set = "slant6"
+		other.bus = &"Vehicles"
+		other.start_on_ready = false
+		add_child(other)
 		car.apply_car("pop_12")
 		check(engine.engine_set == "fire12" and not engine.classic_gearbox, "Pop -> fire12 (got %s)" % engine.engine_set)
+		check(comp != null and comp.threshold == audio.ENGINE_COMP_THRESHOLD_DB, "back to the bus's own threshold for the Pop")
+		other.engine_set = "slant6"
+		other.build()
+		check(comp != null and comp.threshold == audio.ENGINE_COMP_THRESHOLD_DB, "a traffic slant six leaves your engine's threshold alone")
+		other.queue_free()
 	# Doors, belt and key: every family has open, close and slam, inside and out.
 	for fam in ["modern", "abarth", "classic", "suicide", "valiant"]:
 		for action in ["open", "close", "slam"]:
