@@ -74,16 +74,16 @@ func _hall() -> void:
 
 
 func _switch() -> void:
-	# On the side wall where today's switch is (PorchSwitch.AT), facing into the hall.
-	var at := Vector3(0.012, 1.57, 1.15)
-	var plate := _box(Vector3(0.012, 0.09, 0.12), at, Color(0.4, 0.28, 0.18))
+	# On the front wall where today's switch is (PorchSwitch.AT), facing into the hall.
+	var at := Vector3(0.25, 0.012, 1.3)
+	var plate := _box(Vector3(0.09, 0.012, 0.12), at, Color(0.4, 0.28, 0.18))
 	plate.name = "Switch_1979"
-	_box(Vector3(0.02, 0.025, 0.04), at + Vector3(0.012, 0, 0.012), Color(0.3, 0.2, 0.12))
+	_box(Vector3(0.025, 0.02, 0.04), at + Vector3(0, 0.012, 0.012), Color(0.3, 0.2, 0.12))
 	# Two strips of yellowed tape across it, holding it on.
-	var strip := _box(Vector3(0.004, 0.16, 0.03), at + Vector3(0.024, 0, 0.0), TAPE_YELLOW)
-	strip.rotation.x = 0.35
-	var strip2 := _box(Vector3(0.004, 0.15, 0.028), at + Vector3(0.025, 0, 0.005), TAPE_YELLOW.darkened(0.08))
-	strip2.rotation.x = -0.4
+	var strip := _box(Vector3(0.16, 0.004, 0.03), at + Vector3(0, 0.024, 0.0), TAPE_YELLOW)
+	strip.rotation.z = 0.35
+	var strip2 := _box(Vector3(0.15, 0.004, 0.028), at + Vector3(0, 0.025, 0.005), TAPE_YELLOW.darkened(0.08))
+	strip2.rotation.z = -0.4
 
 
 func _lounge_shut() -> void:
