@@ -235,7 +235,16 @@ func _build_steps() -> void:
 		var saved: Dictionary = _car.vehicle_state()
 		_check(String(saved.get("car_id", "")) == ID, "the car saves as the Valiant")
 		var garage: Dictionary = root.get_node("Garage").save_state()
-		_check(Array(garage.get("owned_cars", [])).has(ID), "and as owned"), 5, false])
+		_check(Array(garage.get("owned_cars", [])).has(ID), "and as owned")
+		root.get_node("GameClock").set_time(15.0)
+		_car.teleport(Transform3D(_home.global_basis * Basis(Vector3.UP, PI * 0.5), _h(15.0, -6.6, 0.0) + Vector3.UP * 0.8)), 90, false])
+	_steps.append(["vd_14_door_opens", func() -> void:
+		var b: Basis = _car.global_basis
+		_look(_car.global_position + b.x * 3.6 - b.z * 2.6 + Vector3.UP * 1.3, _car.global_position + b.x * 0.6 + Vector3.UP * 0.7)
+		_player.call("get_out"), 22, true])
+	_steps.append(["vd_15_out", func() -> void:
+		var door := _car.find_child("Door_R", true, false) as Node3D
+		_check(door != null, "the Valiant has opening doors"), 120, true])
 
 
 func _process(_delta: float) -> bool:

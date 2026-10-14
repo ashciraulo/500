@@ -64,18 +64,22 @@ def build_car():
         C.clear_material_cache()
         PV.valiant_wheel(sx)
         C.export_glb(WHEEL_OUT % (PV.WHEEL_STYLE, side))
+    _car()
+    made = [o for o in bpy.data.objects if o.type == "MESH"]
+    print("valiant car triangles:", C.tri_count(made))
+    C.export_glb(CAR_OUT)
+
+
+def _car():
     C.reset()
     C.clear_material_cache()
-    made = PV.valiant_car()
-    print("valiant car triangles:", C.tri_count([o for o in made if o.type == "MESH"]))
-    C.export_glb(CAR_OUT)
+    BC.build("valiant_car", table={"valiant_car": PV.valiant_car})
+    PV.valiant_car_finish()
 
 
 def render_car(prefix):
     """Preview the car with its wheels at the hubs, as the game puts them."""
-    C.reset()
-    C.clear_material_cache()
-    PV.valiant_car()
+    _car()
     for nm in ("FL", "FR", "RL", "RR"):
         hub = bpy.data.objects["Hub_" + nm]
         w = PV.valiant_wheel(1 if nm.endswith("R") else -1)
