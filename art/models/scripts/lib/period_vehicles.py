@@ -807,7 +807,11 @@ def valiant():
     body, ref = _shell(M)
     # the prop keeps its doors shut and everything inside fixed
     cab, items, trims = VC.cockpit(M, body)
-    cab += trims["L"] + trims["R"] + [o for _, parts, _, _ in items for o in parts]
+    cab += trims["L"] + trims["R"] + [o for nm, parts, _, _ in items if nm != "Trans_Auto" for o in parts]
+    for nm, parts, _, _ in items:
+        if nm == "Trans_Auto":
+            for o in parts:
+                bpy.data.objects.remove(o, do_unlink=True)
     p = [body] + _glass_and_frames(M, ref, body) + _trim(M, body) + _nose(M) + cab + _tail(M)
     p += _front_bumper(M) + _wheels(M)
     bpy.data.objects.remove(ref, do_unlink=True)
