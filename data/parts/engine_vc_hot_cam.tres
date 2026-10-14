@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"engine_vc_hot_cam"
+display_name = "Hot cam and ported head"
+description = "A wilder cam, a ported and shaved head and the springs to match. It idles like it means it."
+slot = &"engine"
+price = 2900
+modifiers = {"torque_mult": 1.17, "limiter_add": 300}
+ladders = PackedStringArray("period")

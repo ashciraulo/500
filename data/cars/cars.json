@@ -161,7 +161,6 @@
 		{
 			"id": "valiant_vc", "model": "valiant", "name": "Valiant VC", "years": "1966-1967", "ladder": "period", "tier": 2,
 			"unlock": "seen", "seen": "oddity/looking_out_1979", "price": 11000, "power_kw": 106, "eye_from_model": true, "paint_top_shade": 0.45,
-			"no_parts": ["roof", "rear_rack", "bumpers", "wheels", "exhaust", "gear_knob", "seat_covers"],
 			"blurb": "Olive, a slant six and a bench seat. Exactly like the one outside number 17.",
 			"spec": {
 				"mass": 1340, "idle_rpm": 600, "redline_rpm": 4400, "limiter_rpm": 4700,

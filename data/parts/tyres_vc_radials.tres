@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"tyres_vc_radials"
+display_name = "Steel-belted radials"
+description = "Radials on the old 14s. More grip, and far better in the wet."
+slot = &"tyres"
+price = 560
+modifiers = {"grip_mult": 1.08, "wet_penalty_mult": 0.85}
+ladders = PackedStringArray("period")

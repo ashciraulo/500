@@ -37,6 +37,7 @@ func _process(_delta: float) -> bool:
 		_found_parts()
 	elif _frames == 62:
 		_classic()
+		_valiant()
 	elif _frames == 63:
 		_field_gear()
 	elif _frames == 64:
@@ -217,7 +218,7 @@ func _found_parts() -> void:
 	_check(found_part.turned_up("wheels_campagnolo"), "and turn up once you do")
 	garage.owned_cars.remove_at(garage.owned_cars.find("classic_nuova"))
 	_check(catalogue.fits_phrase(catalogue.get_part(&"wheels_campagnolo")) == "a classic 500", "classic wheels say they're for a classic 500")
-	_check(catalogue.fits_phrase(rack) == "", "the rack goes on anything")
+	_check(catalogue.fits_phrase(rack) == "a 500", "the rack goes on any 500")
 	_check(node != null, "the surf rack is somewhere")
 	if node == null:
 		return
@@ -251,6 +252,65 @@ func _classic() -> void:
 		_car.toggle_roof()
 		_car.load_vehicle_state(state)
 		_check(_car.roof_open and open_roof.visible, "and comes back open")
+	_car.load_vehicle_state({"car_id": "pop_12"})
+
+
+## The Valiant has its own parts, and only those; the 500s never see them.
+func _valiant() -> void:
+	var catalogue: Variant = load("res://scripts/vehicle/parts_catalogue.gd")
+	var cars: Variant = load("res://scripts/vehicle/car_catalogue.gd")
+	var vc := "valiant_vc"
+	var own := 0
+	var wrong: Array[String] = []
+	for part: Resource in catalogue.all():
+		var for_vc: bool = part.ladders.has("period")
+		if catalogue.fits(part, vc) != for_vc:
+			wrong.append("%s on the Valiant" % part.id)
+		for car: Dictionary in cars.all():
+			if car.id != vc and for_vc and catalogue.fits(part, car.id):
+				wrong.append("%s on the %s" % [part.id, car.id])
+		own += 1 if for_vc and not part.is_stock() else 0
+	_check(own >= 10, "the Valiant has its own upgrades (%d)" % own)
+	_check(wrong.is_empty(), "no 500 part fits the Valiant and no Valiant part fits a 500 %s" % [wrong])
+	# One stock part per slot on every car, so the workshop names the right one.
+	for car: Dictionary in cars.all():
+		for slot: StringName in catalogue.SLOTS:
+			var stock: Array = catalogue.for_car(slot, car.id).filter(func(p: Resource) -> bool: return p.is_stock())
+			if stock.size() > 1:
+				_check(false, "%s has one stock %s (%s)" % [car.id, slot, stock.map(func(p: Resource) -> String: return p.id)])
+	for slot: StringName in catalogue.SLOTS:
+		var choices: Array = catalogue.for_car(slot, vc)
+		if choices.is_empty():
+			continue
+		_check(String(choices[0].id).begins_with("vc_") and choices[0].is_stock(), "the Valiant's %s starts at its own stock part" % slot)
+	var mags: Resource = catalogue.get_part(&"wheels_vc_slot_mags")
+	_check(mags != null and mags.found_only, "the slot mags are found, not bought")
+	_check(catalogue.fits_phrase(mags) == "the Valiant", "and say they're for the Valiant")
+	var found_part: Variant = load("res://scripts/world/found_part.gd")
+	_check(not found_part.turned_up("wheels_vc_slot_mags"), "they wait until you own the Valiant")
+	var garage := root.get_node("Garage")
+	garage.owned_cars.append(vc)
+	_check(found_part.turned_up("wheels_vc_slot_mags"), "and turn up once you do")
+	garage.owned_cars.remove_at(garage.owned_cars.find(vc))
+	# On the car: wheels, the twin pipes (and their sound), the bench covers.
+	_car.load_vehicle_state({"car_id": vc})
+	_check(_car.car_id == vc, "switched to the Valiant")
+	var body := _car.get_node("Body") as Node3D
+	for id: String in ["wheels_vc_whitewall", "wheels_vc_slot_mags"]:
+		_car.install_part(catalogue.get_part(StringName(id)))
+		var visual: String = catalogue.get_part(StringName(id)).visual
+		_check(_wheel_path().contains(visual), "%s show on the Valiant (%s)" % [id, _wheel_path()])
+	_car.install_part(catalogue.get_part(&"exhaust_vc_twin"))
+	var pipes := body.get_node_or_null(^"Part_exhaust") as Node3D
+	_check(pipes != null and pipes.position.distance_to(Vector3.ZERO) > 0.5, "the twin pipes sit at the back (%s)" % [pipes.position if pipes else null])
+	var engine := _car.get_node("Audio/Engine")
+	_check(engine.engine_set == "slant6sport", "and sound louder (%s)" % engine.engine_set)
+	_car.install_part(catalogue.get_part(&"seat_covers_vc_sheepskin"))
+	_check(body.get_node_or_null(^"Part_seat_covers") != null and body.get_node_or_null(^"Part_seat_covers_2") != null,
+		"sheepskins on both halves of the bench")
+	for slot: StringName in [&"wheels", &"exhaust", &"seat_covers"]:
+		_car.remove_part(slot)
+	_check(engine.engine_set == "slant6", "the stock pipe sounds stock again (%s)" % engine.engine_set)
 	_car.load_vehicle_state({"car_id": "pop_12"})
 
 
