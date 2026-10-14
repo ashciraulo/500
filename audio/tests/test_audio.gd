@@ -512,6 +512,17 @@ func _test_car_scene(audio: Node) -> void:
 				comp = AudioServer.get_bus_effect(eb, k)
 		check(comp != null and comp.threshold == EngineAudio.COMP_THRESHOLDS_DB["slant6"], "the Valiant's engine compresses later on the Engine bus")
 		check(engine._whine_in_gear == 0.0, "the Valiant's gearbox doesn't whir pulling away")
+		# Its twin pipes: their own louder, deeper set, let through the
+		# compressor later still, or it flattens them back to the stock pipe
+		# (tools/engine_loudness.gd cars=valiant_vc,valiant_vc+exhaust_vc_twin:
+		# about 5 dB up on the Engine bus pulling away).
+		car.install_part(PartsCatalogue.get_part(&"exhaust_vc_twin"))
+		check(engine.engine_set == "slant6sport", "the Valiant's twin pipes -> slant6sport (got %s)" % engine.engine_set)
+		check(comp != null and comp.threshold >= EngineAudio.COMP_THRESHOLDS_DB["slant6"] + 4.0,
+				"and its compressor starts at least 4 dB later than the stock pipe's (%.1f)" % (comp.threshold if comp else 0.0))
+		check(engine._whine_in_gear == 0.0, "still no gearbox whir with the twin pipes")
+		car.remove_part(&"exhaust")
+		check(engine.engine_set == "slant6" and comp.threshold == EngineAudio.COMP_THRESHOLDS_DB["slant6"], "and back to the stock pipe")
 		# A Valiant in traffic (the 1979 street) plays on Vehicles: your car's mix stays.
 		var other := EngineAudio.new()
 		other.engine_set = "slant6"

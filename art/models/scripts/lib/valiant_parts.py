@@ -51,7 +51,8 @@ def _fleece_image():
         cell = tuft[(cy * 7) % 32][(cx * 5) % 32]
         grain = tuft[y][x]
         k = 0.82 + 0.12 * cell + 0.08 * grain - (0.06 if (x + 2 * y) % 4 == 0 else 0.0)
-        return (0.90 * k, 0.85 * k, 0.75 * k)
+        # warm enough that the sky's blue fill in the cabin leaves it cream
+        return (0.97 * k, 0.72 * k, 0.40 * k)
     return C.make_image("VC_Fleece", 32, 32, px)
 
 
