@@ -802,9 +802,13 @@ def _vee(objs):
 
 
 def valiant():
+    from . import valiant_cabin as VC
     M = _mats()
     body, ref = _shell(M)
-    p = [body] + _glass_and_frames(M, ref, body) + _trim(M, body) + _nose(M) + _interior(M) + _tail(M)
+    # the prop keeps its doors shut and everything inside fixed
+    cab, items, trims = VC.cockpit(M, body)
+    cab += trims["L"] + trims["R"] + [o for _, parts, _, _ in items for o in parts]
+    p = [body] + _glass_and_frames(M, ref, body) + _trim(M, body) + _nose(M) + cab + _tail(M)
     p += _front_bumper(M) + _wheels(M)
     bpy.data.objects.remove(ref, do_unlink=True)
     lamps = _lamps(M)
