@@ -4,7 +4,9 @@ extends SceneTree
 ##   - Behind the title screen nothing of the game starts: the car's engine
 ##     stays off (no start-up), the car settling onto the ground makes no
 ##     thud, Side A's card doesn't show however long the menu sits there, and
-##     at night the classic idling at the end of the lane doesn't start, and
+##     at night the classic idling at the end of the lane doesn't start, the
+##     world is muted (only the title music and the menu are heard) and the
+##     traffic waits, and
 ##     no menu clicks at launch (the phone and journal being built aren't
 ##     menus opening).
 ##   - Each menu opened or closed makes exactly one click: Settings on the
@@ -75,6 +77,12 @@ func _process(_delta: float) -> bool:
 			_check(not _thud, "no tyre thud as the car settles at launch")
 			_check(not _card_seen, "Side A's card waits behind the title screen")
 			_check(not _lane_idle, "the lane idle doesn't start behind the title screen")
+			var heard: Array = []
+			for bus in [&"Car", &"Ambient", &"Ambience", &"Outdoors", &"Vehicles", &"Radio", &"SFX", &"Music", &"UI"]:
+				if not _bus_muted(bus):
+					heard.append(bus)
+			_check(heard == [&"Music", &"UI"], "behind the title only the music and the menu are heard (%s)" % [heard])
+			_check(_traffic().process_mode == Node.PROCESS_MODE_DISABLED, "the traffic waits behind the title screen")
 			_check(_clicks == 0, "no menu clicks at launch (heard %d)" % _clicks)
 			_click_steps = [
 				["Settings on the title", func() -> void: _title_button("Settings").pressed.emit()],
@@ -89,6 +97,9 @@ func _process(_delta: float) -> bool:
 		2:
 			if _frames == 30:
 				_check(bool(_engine.get("running")), "the engine turns over on Continue")
+				_check(not _bus_muted(&"Car") and not _bus_muted(&"Ambient") and not _bus_muted(&"SFX"),
+						"the car, the world and the effects are heard once you play")
+				_check(_traffic().process_mode != Node.PROCESS_MODE_DISABLED, "the traffic moves once you play")
 			if _frames < PLAY_FRAMES and (not _card_seen or _frames <= 30):
 				return false
 			_check(_card_seen, "Side A's card shows once you're playing")
@@ -130,6 +141,14 @@ func _run_clicks() -> void:
 		_check(_clicks == 1, "one click for %s (heard %d)" % [step[0], _clicks])
 		_click_step += 1
 		_frames = 0
+
+
+func _bus_muted(bus: StringName) -> bool:
+	return AudioServer.is_bus_mute(AudioServer.get_bus_index(bus))
+
+
+func _traffic() -> Node:
+	return _main.get_node("LoFi/SubViewport/World/Traffic")
 
 
 func _title_button(text: String) -> Button:
