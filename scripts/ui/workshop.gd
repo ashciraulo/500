@@ -23,6 +23,15 @@ const SLOT_TITLES := {"mirror": "Mirror", "dash": "Dash", "shelf": "Parcel shelf
 const PLACE_NAMES := {"parts": "workshop", "tuning": "workshop", "paint": "paint booth",
 	"dealer": "car yard", "cars": "garage", "restore": "restoration bench",
 	"fuel": "servo", "wash": "car wash"}
+## Tabs that change how the car looks: the panel moves to the right and the
+## car stays in view beside it (WorkshopCarView).
+const CAR_VIEW_TABS := ["parts", "tuning", "paint"]
+## The panel's width and gap to the screen edge while the car is in view.
+const DOCK_WIDTH := 640.0
+const DOCK_MARGIN := 20.0
+## Which part of the car each tuning slider changes.
+const TUNE_VIEWS := {"tyre_pressure": &"tyres", "ride_height_add": &"suspension",
+	"spring_mult": &"suspension", "damper_mult": &"suspension", "anti_roll_mult": &"anti_roll"}
 ## Below this speed (km/h) the prompt shows and the workshop opens.
 const STOP_SPEED_KMH := 5.0
 ## A tap of F opens the workshop on release; holding it longer gets out of the car.
@@ -52,6 +61,15 @@ var _car_name: Label
 var _stats: GridContainer
 var _change: Label
 var _close: Button
+var _root: Control
+var _box: VBoxContainer
+var _body: BoxContainer
+var _side_panel: PanelContainer
+var _car_view: WorkshopCarView
+## Catches drags and the wheel over the car while it's in view.
+var _drag: Control
+var _hint: PanelContainer
+var _hid_hud := false
 var _check_timer := 0.0
 var _press_ms := -1
 
@@ -122,6 +140,7 @@ func _set_open(open_it: bool) -> void:
 	_dim.visible = open_it
 	_prompt.visible = false
 	if not open_it:
+		_layout()
 		if is_inside_tree() and get_tree().paused:
 			get_tree().paused = false
 		return
@@ -139,7 +158,74 @@ func _set_open(open_it: bool) -> void:
 			_tabs.current_tab = i
 			break
 	_refresh()
+	_layout()
 	_close.grab_focus()
+
+
+## True while the open tab is one that shows the car.
+func is_car_in_view() -> bool:
+	return _car_view.is_active()
+
+
+## Lay the screen out for the open tab: on Parts, Tuning and Paint the panel
+## sits on the right with the car framed beside it; elsewhere it's the usual
+## centred card over a dimmed screen.
+func _layout() -> void:
+	if _side_panel == null:
+		return  # still being built
+	var kind: String = TAB_KINDS[_tabs.current_tab] if _tabs.current_tab >= 0 else ""
+	var show_car := _panel.visible and _car != null and kind in CAR_VIEW_TABS
+	_dim.visible = _panel.visible and not show_car
+	_drag.visible = show_car
+	_hint.visible = show_car
+	_body.vertical = show_car
+	if (_stats.columns == 4) != show_car:
+		_stats.columns = 4 if show_car else 2
+		if _car:
+			_refresh_stats()
+	_side_panel.custom_minimum_size.x = 0.0 if show_car else 280.0
+	_side_panel.size_flags_vertical = Control.SIZE_SHRINK_END if show_car else Control.SIZE_FILL
+	if show_car:
+		_box.custom_minimum_size = Vector2.ZERO
+		_panel.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+		_panel.offset_left = -DOCK_WIDTH - DOCK_MARGIN
+		_panel.offset_right = -DOCK_MARGIN
+		_panel.offset_top = DOCK_MARGIN
+		_panel.offset_bottom = -DOCK_MARGIN
+		_car_view.start(_car, _car_rect(), _root.size)
+		if kind != "parts":
+			_car_view.focus(&"car")
+	else:
+		_car_view.stop()
+		_box.custom_minimum_size = Vector2(1000, 590)
+		_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+		_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	# The dash and map would sit on top of the car.
+	var hud := get_parent().get_node_or_null(^"HUD") as CanvasLayer if get_parent() else null
+	if hud and show_car and hud.visible:
+		hud.visible = false
+		_hid_hud = true
+	elif hud and not show_car and _hid_hud:
+		hud.visible = true
+		_hid_hud = false
+
+
+## The part of the screen left of the panel, where the car is framed.
+func _car_rect() -> Rect2:
+	var size := _root.size
+	return Rect2(DOCK_MARGIN, DOCK_MARGIN, maxf(size.x - DOCK_WIDTH - DOCK_MARGIN * 3.0, 100.0),
+		size.y - DOCK_MARGIN * 2.0)
+
+
+func _on_drag_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and event.button_mask & (MOUSE_BUTTON_MASK_LEFT | MOUSE_BUTTON_MASK_RIGHT):
+		_car_view.orbit(-event.relative.x * 0.35, event.relative.y * 0.25)
+	elif event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_car_view.zoom(0.92)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_car_view.zoom(1.08)
 
 
 # --- Building the screen -----------------------------------------------------
@@ -149,6 +235,13 @@ func _build() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	_root = root
+	_car_view = WorkshopCarView.new()
+	_car_view.name = "CarView"
+	add_child(_car_view)
+	root.resized.connect(func() -> void:
+		if _car_view.is_active():
+			_car_view.set_rect(_car_rect(), _root.size))
 
 	_prompt = PromptChip.new()
 	_prompt.place_bottom(112.0)
@@ -157,9 +250,27 @@ func _build() -> void:
 	_dim = UiStyle.backdrop()
 	root.add_child(_dim)
 
+	_drag = Control.new()
+	_drag.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_drag.mouse_filter = Control.MOUSE_FILTER_STOP
+	_drag.mouse_default_cursor_shape = Control.CURSOR_DRAG
+	_drag.gui_input.connect(_on_drag_input)
+	root.add_child(_drag)
+	_hint = PanelContainer.new()
+	_hint.theme_type_variation = &"ChipPanel"
+	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_hint.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_hint.offset_left = DOCK_MARGIN + 4.0
+	_hint.offset_bottom = -DOCK_MARGIN - 4.0
+	_hint.offset_top = -DOCK_MARGIN - 4.0
+	UiStyle.label(_hint, "Drag to look around", "NoteLabel").autowrap_mode = TextServer.AUTOWRAP_OFF
+	root.add_child(_hint)
+
 	var card := UiStyle.centred_card(root, Vector2(1000, 590))
 	_panel = card[0]
 	var box: VBoxContainer = card[1]
+	_box = box
 
 	var head: Array = UiStyle.header(box, "", "wrench", "", "Done")
 	_title = head[0]
@@ -180,12 +291,16 @@ func _build() -> void:
 	header.add_child(purse)
 	header.move_child(purse, header.get_child_count() - 2)
 
-	var body := HBoxContainer.new()
+	# Side by side, or stacked while the car is in view.
+	var body := BoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 16)
 	box.add_child(body)
+	_body = body
 	_tabs = TabContainer.new()
 	_tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.tab_changed.connect(func(_tab: int) -> void: _layout())
 	body.add_child(_tabs)
 	_parts_list = _scroll_tab("Parts")
 	_tuning_list = _scroll_tab("Tuning")
@@ -201,6 +316,7 @@ func _build() -> void:
 	side_panel.theme_type_variation = &"WellPanel"
 	side_panel.custom_minimum_size.x = 280
 	body.add_child(side_panel)
+	_side_panel = side_panel
 	var side := VBoxContainer.new()
 	side.add_theme_constant_override("separation", 10)
 	side_panel.add_child(side)
@@ -234,6 +350,7 @@ func _scroll_tab(title: String) -> VBoxContainer:
 # --- Contents ----------------------------------------------------------------
 
 func _refresh() -> void:
+	_car_view.refresh_bounds()
 	_money.text = "$%s   %s" % [_number(Wallet.balance), GameClock.time_string()]
 	_refresh_stats()
 	_refresh_parts()
@@ -260,18 +377,27 @@ func _refresh_stats() -> void:
 		["Red line", "%d rpm" % roundi(s.limiter_rpm)],
 		["Final drive", "%.2f" % s.final_drive],
 		["Paint", _paint_name()],
+	]:
+		_stat_row(row)
+	if _stats.columns == 4:
+		return  # beside the car: just what parts, tuning and paint change
+	for row in [
 		["Odometer", "%s km" % _number(_car.odometer_km)],
 		["Charge" if _car.is_electric else "Fuel", "%.1f / %d %s" % [_car.fuel_litres, roundi(_car.tank_litres),
 			"kWh" if _car.is_electric else "L"]],
 		["Dirt", _dirt_text()],
 	]:
-		var key := Label.new()
-		key.text = row[0]
-		key.add_theme_color_override("font_color", UiStyle.INK_2)
-		_stats.add_child(key)
-		var value := Label.new()
-		value.text = row[1]
-		_stats.add_child(value)
+		_stat_row(row)
+
+
+func _stat_row(row: Array) -> void:
+	var key := Label.new()
+	key.text = row[0]
+	key.add_theme_color_override("font_color", UiStyle.INK_2)
+	_stats.add_child(key)
+	var value := Label.new()
+	value.text = row[1]
+	_stats.add_child(value)
 
 
 func _refresh_parts() -> void:
@@ -290,7 +416,7 @@ func _refresh_parts() -> void:
 			continue
 		_heading(_parts_list, SLOT_NAMES.get(String(slot), String(slot).capitalize()))
 		for part: CarPart in elsewhere:
-			_other_car_part(part)
+			_other_car_part(part, slot)
 		if choices.size() <= 1 and slot in [&"roof", &"lights"]:
 			if elsewhere.is_empty():
 				_text(_parts_list, "Nothing yet. Some parts turn up around the city.")
@@ -323,11 +449,12 @@ func _refresh_parts() -> void:
 				button.disabled = not Wallet.can_afford(part.price)
 			button.pressed.connect(_fit.bind(part))
 			row.add_child(button)
+			_look_at_slot(row, button, slot)
 			_parts_list.add_child(row)
 
 
 ## A found part that's yours but goes on a different car.
-func _other_car_part(part: CarPart) -> void:
+func _other_car_part(part: CarPart, slot: StringName) -> void:
 	var row := HBoxContainer.new()
 	var text := VBoxContainer.new()
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -347,7 +474,17 @@ func _other_car_part(part: CarPart) -> void:
 	button.text = "Not this car"
 	button.disabled = true
 	row.add_child(button)
+	_look_at_slot(row, button, slot)
 	_parts_list.add_child(row)
+
+
+## Browsing a part (hovering its row, or its button taking focus) swings the
+## car view round to where it goes.
+func _look_at_slot(row: Control, button: Control, slot: StringName) -> void:
+	button.set_meta(&"slot", slot)
+	var look := func() -> void: _car_view.focus(slot)
+	row.mouse_entered.connect(look)
+	button.focus_entered.connect(look)
 
 
 func _refresh_tuning() -> void:
@@ -379,9 +516,11 @@ func _refresh_tuning() -> void:
 		var key: String = o.key
 		slider.value_changed.connect(func(v: float) -> void: _tune(key, v))
 		row.add_child(slider)
+		_look_at_slot(row, slider, TUNE_VIEWS.get(key, &"car"))
 		var high := Label.new()
 		high.text = o.high if available else "needs %s" % _needs_text(o)
 		high.custom_minimum_size.x = 170
+		high.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		high.add_theme_font_size_override("font_size", 13)
 		if not available:
 			high.add_theme_color_override("font_color", UiStyle.RED)
