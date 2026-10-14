@@ -4,7 +4,7 @@ extends SceneTree
 ## May Drive. Needs a display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
-##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,turns,robyn,tape,out,drive,street]
+##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,turns,robyn,tape,out,drive,street,finale,endings]
 
 var _shots := "/tmp/story"
 var _only := PackedStringArray()
@@ -69,6 +69,10 @@ func _build_steps() -> void:
 		_drive_steps()
 	if _want("street"):
 		_street_steps()
+	if _want("finale"):
+		_finale_steps()
+	if _want("endings"):
+		_endings_steps()
 
 
 func _house_steps() -> void:
@@ -580,6 +584,176 @@ func _street_steps() -> void:
 	_steps.append(["street_12_reset", func() -> void:
 		root.get_node("Story").act_override = 0, 10, null, false])
 
+
+## The finale: the shed with its July calendar, M.'s table on the night of
+## the 11th, the river lights and the rain going up, the lights down over
+## Riverside Drive, and Skylab.
+func _finale_steps() -> void:
+	var fin := func() -> Node: return _main.find_child("Finale", true, false)
+	var table := func() -> Node3D: return fin.call().get("_table")
+	var story := root.get_node("Story")
+	var clock := root.get_node("GameClock")
+	_steps.append(["fin_0_setup", func() -> void:
+		_hour(14.0)
+		story.act_override = 5
+		_main.find_child("StoryPeople", true, false).set("card_act", 5)
+		_car.teleport(_home.spawn_transform(&"Spawn_Car"))
+		if _player.get("in_car") != false:
+			_player.call("get_out"), 150, null, false])
+	_steps.append(["fin_0_shed", func() -> void:
+		_home.unlock_shed()
+		if not _home.is_door_open(&"Shed_Door"):
+			_home.toggle_door(&"Shed_Door")
+		var mystery: Node = _main.find_child("Mystery", true, false)
+		var centre: Vector3 = mystery._shed_centre()
+		var door := _home.find_child("Shed_Door", true, false) as Node3D
+		var feet := centre + (door.global_position - centre).normalized() * 1.2
+		feet.y = _home.global_position.y + 0.05
+		(_player.get("_camera") as Camera3D).current = true
+		_player.call("teleport", feet, centre + Vector3.UP * 0.8), 150, null, false])
+	_steps.append(["fin_01_shed_table", func() -> void:
+		root.get_node("Notices").clear()
+		var t: Node3D = table.call()
+		_player.call("teleport", t.to_global(Vector3(0.0, 0.05, -0.85)), t.to_global(Vector3(-0.1, 1.05, 0.2))), 60])
+	_steps.append(["fin_02_calendar", func() -> void:
+		var t: Node3D = table.call()
+		_look(t.to_global(Vector3(-0.2, 1.35, -0.45)), t.to_global(Vector3(-0.25, 1.38, 0.28))), 20])
+	_steps.append(["fin_03_night_mic", func() -> void:
+		var f: Node = fin.call()
+		clock.day = f.night_day
+		_hour(22.0)
+		story.make_choice(&"porch_light", &"on")
+		root.get_node("Notices").clear()
+		(_player.get("_camera") as Camera3D).current = true
+		var t: Node3D = table.call()
+		_player.call("face", t.to_global(t.THINGS[&"mic"])), 90])
+	_steps.append(["fin_04_night_deck", func() -> void:
+		var t: Node3D = table.call()
+		_player.call("face", t.to_global(t.THINGS[&"deck"])), 30])
+	_steps.append(["fin_05_night_tx", func() -> void:
+		var t: Node3D = table.call()
+		_player.call("face", t.to_global(t.THINGS[&"tx"])), 30])
+	_steps.append(["fin_06_lights_out", func() -> void:
+		fin.call().use_table(&"tx")
+		fin.call().use_table(&"tx")
+		var t: Node3D = table.call()
+		_look(t.to_global(Vector3(0.1, 1.3, -0.7)), t.to_global(Vector3(0.05, 0.85, 0.0))), 60, func() -> void:
+			story.load_state({})
+			story.make_choice(&"porch_light", &"on")
+			fin.call().chose_on = -1])
+	_steps.append(["fin_07_to_car", func() -> void:
+		_put_player(_car.global_position + _car.global_basis.x * 1.6 + Vector3.UP * 0.4), 20, null, false])
+	_steps.append(["fin_07_get_in", func() -> void:
+		_player.call("get_in"), 90, null, false])
+	var spot := func() -> Vector3: return fin.call().get("_drive_in")
+	_steps.append(["fin_08_river_lights", func() -> void:
+		var f: Node = fin.call()
+		clock.day = f.night_day + 1
+		_hour(2.4)
+		root.get_node("Notices").clear()
+		var at: Vector3 = spot.call()
+		_car.teleport(Transform3D(Basis(), at + Vector3.UP * 1.2))
+		_look(at + Vector3(-25.0, 9.0, -8.0), at + Vector3(0.0, 4.0, 70.0)), 300])
+	_steps.append(["fin_09_rain_up", func() -> void:
+		var at: Vector3 = spot.call()
+		_look(at + Vector3(-30.0, 3.0, 30.0), at + Vector3(0.0, 7.0, 70.0)), 60])
+	_steps.append(["fin_10_skylab", func() -> void:
+		var at: Vector3 = spot.call()
+		_look(at + Vector3(0.0, 3.0, 0.0), at + Vector3(-60.0, 95.0, -40.0))
+		fin.call().skylab(), 230])
+	_steps.append(["fin_11_skylab_later", func() -> void:
+		var at: Vector3 = spot.call()
+		_look(at + Vector3(0.0, 3.0, 0.0), at + Vector3(80.0, 70.0, 60.0)), 200])
+	_steps.append(["fin_12_road_lights", func() -> void:
+		root.get_node("Notices").clear()
+		var road := _riverside_from(spot.call(), 90.0)
+		_car.teleport(Transform3D(Basis.looking_at(spot.call() - road, Vector3.UP), road + Vector3.UP * 1.2))
+		_hour(2.75)
+		_look(road + Vector3.UP * 2.2 + (road - spot.call()).normalized() * 6.0, spot.call() + Vector3.UP * 4.0), 120])
+	_steps.append(["fin_13_into_the_lights", func() -> void:
+		_car.teleport(Transform3D(_car.global_basis, spot.call() + Vector3.UP * 1.2))
+		_drive_view(), 60, func() -> void:
+			story.load_state({})
+			fin.call().chose_on = -1
+			story.act_override = 0])
+
+
+## The endings: the city lighting up and the river lights going, Mick's 500 L
+## at dawn, and The Late City's house, credits and always-night.
+func _endings_steps() -> void:
+	var fin := func() -> Node: return _main.find_child("Finale", true, false)
+	var ends := func() -> Node: return _main.find_child("Endings", true, false)
+	var story := root.get_node("Story")
+	var clock := root.get_node("GameClock")
+	var reset := func() -> void:
+		story.load_state({})
+		story.make_choice(&"porch_light", &"on")
+		fin.call().chose_on = -1
+		ends.call().finish_scene()
+	var spot := func() -> Vector3: return fin.call().get("_drive_in")
+	_steps.append(["end_0_setup", func() -> void:
+		story.act_override = 5
+		_main.find_child("StoryPeople", true, false).set("card_act", 5)
+		var f: Node = fin.call()
+		if f.night_day < 0:
+			f.night_day = clock.day
+		reset.call()
+		clock.day = f.night_day + 1
+		_hour(1.0)
+		root.get_node("Progression").add_stat("deliveries", 400.0)
+		_car.teleport(Transform3D(Basis(), spot.call() + Vector3.UP * 1.2)), 240, null, false])
+	_steps.append(["end_01_city_lighting", func() -> void:
+		root.get_node("Notices").clear()
+		fin.call().choose(&"lights_on")
+		_look(spot.call() + Vector3(-40.0, 60.0, 60.0), spot.call() + Vector3(-900.0, 0.0, -700.0)), 420])
+	_steps.append(["end_02_city_lit", func() -> void:
+		ends.call().finish_scene()
+		_look(spot.call() + Vector3(-40.0, 60.0, 60.0), spot.call() + Vector3(-900.0, 0.0, -700.0)), 30])
+	_steps.append(["end_03_river_lights_go_up", func() -> void:
+		_look(spot.call() + Vector3(-30.0, 3.0, 20.0), spot.call() + Vector3(0.0, 60.0, 70.0)), 420])
+	_steps.append(["end_04_mick_setup", func() -> void:
+		reset.call()
+		_hour(23.0)
+		fin.call().choose(&"tape_13")
+		ends.call().finish_scene()
+		root.get_node("Notices").clear()
+		clock.day += 1
+		_hour(6.6)
+		_car.teleport(_home.spawn_transform(&"Spawn_Car")), 240, null, false])
+	_steps.append(["end_05_micks_car", func() -> void:
+		root.get_node("Notices").clear()
+		var mick: Node3D = _main.find_child("MicksCar", true, false)
+		if mick:
+			_look(mick.global_position - mick.global_basis.z * 7.0 + mick.global_basis.x * 3.0 + Vector3.UP * 1.8, mick.global_position + Vector3.UP * 0.6), 420])
+	_steps.append(["end_06_late_city", func() -> void:
+		reset.call()
+		root.get_node("Notices").clear()
+		clock.day = fin.call().night_day + 1
+		_hour(2.8)
+		fin.call().choose(&"went_in"), 400])
+	_steps.append(["end_07_the_end", func() -> void: pass, 520])
+	_steps.append(["end_08_credits", func() -> void: pass, 1020])
+	_steps.append(["end_09_always_night", func() -> void:
+		ends.call().finish_scene()
+		_hour(12.0)
+		_drive_view(), 300, func() -> void:
+			reset.call()
+			story.act_override = 0])
+
+## A point on Riverside Drive about `away` metres from `at`.
+func _riverside_from(at: Vector3, away: float) -> Vector3:
+	var g := MapData.shared().routes
+	var best := at
+	var best_err := INF
+	for r in g.road_pts.size():
+		if g.road_names[r] != "Riverside Drive":
+			continue
+		for p: Vector3 in g.road_pts[r]:
+			var err := absf(p.distance_to(at) - away)
+			if err < best_err:
+				best_err = err
+				best = p
+	return best
 
 ## William Street through Northbridge, up the strip of venues.
 func _william_street() -> Dictionary:

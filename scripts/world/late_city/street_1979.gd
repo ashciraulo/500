@@ -126,6 +126,9 @@ func _init() -> void:
 
 
 func _ready_to_start() -> bool:
+	# After Night Drive 13 and The Late City every street is 1979 already.
+	if not force and Story.ending() in [&"night_drive_13", &"late_city"]:
+		return false
 	var v := speed_kmh()
 	if not force and (v < MIN_KMH or v > MAX_KMH):
 		return false
