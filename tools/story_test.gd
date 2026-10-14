@@ -29,6 +29,9 @@ extends SceneTree
 ##   - Act 4, part 2: finding Robyn (asking around Fremantle, her door, the
 ##     Polaroid, choice 3) and the tapes that run ahead (the tape, the reel
 ##     job next morning, the cat on the fence, done).
+##   - The 1979 street: on William Street after midnight the shops get their
+##     old names and the traffic turns into 1979 cars, and at the end of the
+##     street it's all now again.
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/story_test.gd -- --no-save
 ##
@@ -243,6 +246,9 @@ func _process(_delta: float) -> bool:
 			if _robyn_and_tapes(story, clock):
 				_next()
 		7:
+			if _street_1979(story, clock):
+				_next()
+		8:
 			return _finish()
 	return false
 
@@ -520,6 +526,110 @@ func _robyn_and_tapes(story: Node, clock: Node) -> bool:
 			story.act_override = 0
 			return true
 	return false
+
+
+## The 1979 street, on William Street in Northbridge.
+func _street_1979(story: Node, clock: Node) -> bool:
+	var st: Node = _main.find_child("Street1979", true, false)
+	match _frames:
+		1:
+			_check(st != null, "the 1979 street is in the world")
+			if st == null:
+				return true
+			# Dressing a car and undressing it again.
+			var old: Node = load("res://scripts/world/late_city/traffic_1979.gd").new()
+			root.add_child(old)
+			var body := Node3D.new()
+			var own := MeshInstance3D.new()
+			own.name = "Mesh"
+			body.add_child(own)
+			root.add_child(body)
+			old.dress(body, &"sedan", 7, null)
+			_check(not own.visible and body.get_node_or_null(^"Late1979") != null, "a car can be dressed as a 1979 one")
+			old.undress(body)
+			_check(own.visible and body.get_node_or_null(^"Late1979") == null, "and undressed")
+			body.free()
+			old.free()
+			story.act_override = 4
+			clock.set_time(1.0)
+			if _player.get("in_car") == false:
+				_player.call("get_in")
+		30:
+			var path := _william_street()
+			_check(path.size() >= 2, "William Street goes through Northbridge (%d points)" % path.size())
+			if path.size() < 2:
+				story.act_override = 0
+				return true
+			var cum := TrafficGraph.cumulative(path)
+			var t := TrafficGraph.tangent_at(path, cum, 10.0)
+			var dir := Vector3(t.x, 0.0, t.z).normalized()
+			_car.teleport(Transform3D(Basis.looking_at(dir, Vector3.UP), TrafficGraph.point_at(path, cum, 10.0) + TrafficGraph.left_of(dir) * -1.8 + Vector3.UP))
+		330:
+			st.force = true
+			_check(st._ready_to_start(), "a street of shops ahead (%s, %d shops)" % [st.street, (st.shops as Array).size()])
+			_check((st.shops as Array).size() >= 3, "with shopfronts found on its walls")
+			_check(st.begin() and root.get_node("LateCity").event == &"street_1979", "the deck clicks on")
+		420:
+			_check(st.turned, "and the street turns")
+			var root3d: Node3D = st.get("_root")
+			_check(root3d != null and root3d.visible and root3d.get_child_count() > 0, "the shops have their old names (%d)" % (root3d.get_child_count() if root3d else 0))
+			var venues: Array = st.get("_venues")
+			_check(venues.all(func(v: Node3D) -> bool: return not v.visible), "today's venue fronts are gone (%d)" % venues.size())
+			var old: Node = st.get("_old")
+			_check(old != null and old.count() > 0, "the cars are 1979 cars (%d)" % (old.count() if old else 0))
+			_check(st.extra > 0, "and more of them come along the street (%d)" % st.extra)
+			var pairs: Array = old.models() if old else []
+			var own_hidden := pairs.all(func(pair: Array) -> bool:
+				var m: Node3D = (pair[0] as Node3D).get_node_or_null(^"Model")
+				return m == null or not m.visible)
+			_check(own_hidden, "and today's cars under them are hidden")
+			# Near the end of the street.
+			var path: PackedVector3Array = st._path
+			var cum: PackedFloat32Array = st._cum
+			var s: float = cum[cum.size() - 1] - 6.0
+			var t := TrafficGraph.tangent_at(path, cum, s)
+			var dir := Vector3(t.x, 0.0, t.z).normalized()
+			_car.teleport(Transform3D(Basis.looking_at(dir, Vector3.UP), TrafficGraph.point_at(path, cum, s) + TrafficGraph.left_of(dir) * -1.8 + Vector3.UP))
+			st._at = maxi(path.size() - 20, 0)
+			# Forced, it would only start again on what's left of the street.
+			st.force = false
+		480:
+			_check(not st.running and root.get_node("LateCity").event == &"",
+				"at the end of the street it's now again (%s)" % root.get_node("LateCity").event)
+			_check(story.has_night(StringName("street_1979_%d" % clock.day)) and root.get_node("Discoveries").has("oddity/street_1979"), "it's in the Nights log")
+			var leftover := 0
+			for traffic: Node in get_nodes_in_group(&"traffic"):
+				for body: Node in traffic.find_children("*", "Node3D", true, false):
+					if body.name == &"Late1979" and not body.is_queued_for_deletion():
+						leftover += 1
+			_check(leftover == 0, "every car is today's again (%d left)" % leftover)
+			var venues: Array = st.get("_venues")
+			_check(venues.is_empty(), "and the venues are back")
+			st.force = false
+			story.act_override = 0
+			return true
+	return false
+
+
+## William Street through Northbridge, up the strip of venues.
+func _william_street() -> PackedVector3Array:
+	var g := MapData.shared().routes
+	var rs: GDScript = load("res://scripts/world/late_city/repeat_street.gd")
+	# From the bottom of the strip (by the Paddock) up past the venues.
+	var start := Vector2(668.0, 75.0)
+	var heading := (Vector2(509.0, 369.0) - start).normalized()
+	var at := Vector3.ZERO
+	var best_d := INF
+	for r in g.road_pts.size():
+		if g.road_names[r] != "William Street":
+			continue
+		for p: Vector3 in g.road_pts[r]:
+			var d := Vector2(p.x, p.z).distance_to(start)
+			if d < best_d:
+				best_d = d
+				at = p
+	var found: Dictionary = rs.street_ahead(at, heading, ["primary", "secondary", "tertiary"])
+	return found.get("points", PackedVector3Array())
 
 
 func _later_events(story: Node, late: Node, clock: Node) -> void:
