@@ -63,8 +63,9 @@ func _ready() -> void:
 	add_child(Robyn.new())
 	add_child(TapeAhead.new())
 	# More of the late city (story batch 3): at home, on the road, on the radio.
+	# Act 4: the 1979 street.
 	for event: Node in [LookingOut.new(), StoppedClock.new(), RepeatStreet.new(),
-			MinimapPassenger.new(), LookoutSignal.new(), StationVoice.new()]:
+			MinimapPassenger.new(), LookoutSignal.new(), StationVoice.new(), Street1979.new()]:
 		event.name = event.get_script().get_global_name()
 		add_child(event)
 	# The empty road hides the rest of the world, this node with it, so it

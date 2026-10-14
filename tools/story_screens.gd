@@ -4,7 +4,7 @@ extends SceneTree
 ## May Drive. Needs a display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
-##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,turns,robyn,tape,out,drive]
+##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,turns,robyn,tape,out,drive,street]
 
 var _shots := "/tmp/story"
 var _only := PackedStringArray()
@@ -67,6 +67,8 @@ func _build_steps() -> void:
 		_out_steps()
 	if _want("drive"):
 		_drive_steps()
+	if _want("street"):
+		_street_steps()
 
 
 func _house_steps() -> void:
@@ -379,6 +381,9 @@ func _robyn_steps() -> void:
 	_steps.append(["robyn_07_door_open_side", func() -> void:
 		_look(front.call(2.6, 1.5) + (door.call() as Node3D).global_basis.x * 2.0, front.call(0.0, 1.1)), 30])
 	_steps.append(["robyn_08_night", func() -> void:
+		# The clock jumps here; what she said is still queued from the afternoon.
+		(robyn.call().get("_lines") as Array).clear()
+		root.get_node("Notices").clear()
 		_hour(22.0)
 		_look(front.call(9.0, 1.7), front.call(0.0, 1.4)), 60])
 	_steps.append(["robyn_09_done", func() -> void:
@@ -400,9 +405,13 @@ func _tape_steps() -> void:
 		_player.call("get_in")
 		_drive_view(), 120, null, false])
 	_steps.append(["tape_01_cassette", func() -> void:
+		# Getting in at 23:30 in act 4 may have played it already (as it
+		# would for a player): play it again here, where the shot can see it.
 		root.get_node("Notices").clear()
+		tape.call().pending = {}
+		tape.call().last_day = -100
 		tape.call().force = true
-		tape.call().maybe_play(), 90])
+		print("tape plays: ", tape.call().maybe_play()), 90])
 	_steps.append(["tape_02_mick", func() -> void: pass, 7 * 60])
 	_steps.append(["tape_03_next_morning", func() -> void:
 		root.get_node("Notices").clear()
@@ -449,6 +458,148 @@ func _tape_steps() -> void:
 		tape.call().force = false, 90])
 	_steps.append(["tape_09_reset", func() -> void:
 		root.get_node("Story").act_override = 0, 10, null, false])
+
+
+## The 1979 street: William Street, Northbridge, after midnight in act 4.
+func _street_steps() -> void:
+	var ev := {}
+	var street := func() -> Node: return _main.find_child("Street1979", true, false)
+	_steps.append(["street_0a_in_the_car", func() -> void:
+		if _player.get("in_car") == false:
+			_put_player(_car.global_position + _car.global_transform.basis.x * -1.6)
+			_player.call("get_in"), 240, null, false])
+	_steps.append(["street_0_setup", func() -> void:
+		_hour(1.0)
+		root.get_node("Story").act_override = 4
+		_main.find_child("StoryPeople", true, false).card_act = 5
+		var found := _william_street()
+		ev.path = found.get("points", PackedVector3Array())
+		var path: PackedVector3Array = ev.path
+		print("1979 street path ", path.size(), " points")
+		var cum := TrafficGraph.cumulative(path)
+		var at := TrafficGraph.point_at(path, cum, 10.0)
+		var t := TrafficGraph.tangent_at(path, cum, 10.0)
+		var dir := Vector3(t.x, 0.0, t.z).normalized()
+		_car.teleport(Transform3D(Basis.looking_at(dir, Vector3.UP), at + TrafficGraph.left_of(dir) * -1.8 + Vector3.UP))
+		_drive_view(), 300, null, false])
+	_steps.append(["street_01_now", func() -> void:
+		_car.headlights_on = true
+		_car._update_lights()
+		_creep = true, 60])
+	_steps.append(["street_02_deck_clicks_on", func() -> void:
+		var st = street.call()
+		st.force = true
+		print("1979 street ready: ", st._ready_to_start(), " shops ", st.shops.size(), " on ", st.street)
+		print("1979 street begins: ", st.begin()), 600])
+	_steps.append(["street_03_ahead", func() -> void:
+		var st = street.call()
+		print("1979 street turned: ", st.turned, " cars ", st._old.count() if st._old else -1, " shops ", st.shops.size(), " venues ", st._venues.size(), " extra ", st.extra)
+		var at: Vector3 = TrafficGraph.point_at(st._path, st._cum, st._s + 2.0)
+		var to: Vector3 = TrafficGraph.point_at(st._path, st._cum, st._s + 70.0)
+		_look(at + Vector3.UP * 4.5, to + Vector3.UP * 1.0), 30])
+	for k in 3:
+		_steps.append(["street_0%d_shop_%d" % [4 + k, k], func() -> void:
+			var st = street.call()
+			var shops: Array = st.shops
+			var pick := {}
+			var seen := 0
+			for shop: Dictionary in shops:
+				if (shop.venue as bool) == (k == 2):
+					if seen == k % 2:
+						pick = shop
+						break
+					seen += 1
+			if pick.is_empty() and not shops.is_empty():
+				pick = shops[k % shops.size()]
+			if not pick.is_empty():
+				var at: Transform3D = pick.at
+				_look(at.origin + at.basis.z * 8.5 + at.basis.x * 2.0 + Vector3.UP * 2.2, at.origin + Vector3.UP * 2.6), 30])
+	# The old cars, from the street: the nearest moving one ahead, then a
+	# parked one, each seen from the middle of the road beside it.
+	var beside := func(st, body: Node3D, back: float) -> void:
+		var p: Vector3 = body.global_position
+		var best_s := 0.0
+		var best_d := INF
+		var s := 0.0
+		var total: float = st._cum[st._cum.size() - 1]
+		while s < total:
+			var d: float = TrafficGraph.point_at(st._path, st._cum, s).distance_to(p)
+			if d < best_d:
+				best_d = d
+				best_s = s
+			s += 2.0
+		var eye: Vector3 = TrafficGraph.point_at(st._path, st._cum, maxf(best_s - back, 0.0))
+		_look(eye + Vector3.UP * 1.6, p + Vector3.UP * 0.8)
+	_steps.append(["street_07_old_car", func() -> void:
+		var st = street.call()
+		var best: Node3D = null
+		var d := INF
+		for pair: Array in (st._old.models() if st._old else []):
+			var body: Node3D = pair[0]
+			var dd := body.global_position.distance_to(_car.global_position)
+			if not String(body.name).begins_with("parked_") and body.visible and dd > 8.0 and dd < d:
+				d = dd
+				best = body
+		if best:
+			beside.call(st, best, 9.0)
+			print("old moving car at ", int(d), " m"), 30])
+	_steps.append(["street_08_parked", func() -> void:
+		var st = street.call()
+		var best: Node3D = null
+		var d := INF
+		for pair: Array in (st._old.models() if st._old else []):
+			var body: Node3D = pair[0]
+			var dd: float = st._distance_to_path(body.global_position)
+			if String(body.name).begins_with("parked_") and body.visible and dd < d:
+				d = dd
+				best = body
+		if best:
+			beside.call(st, best, 7.0)
+			print("old parked car ", int(d), " m off the street"), 30])
+	_steps.append(["street_08b_down_the_street", func() -> void:
+		var st = street.call()
+		var at: Vector3 = TrafficGraph.point_at(st._path, st._cum, st._s + 120.0)
+		var to: Vector3 = TrafficGraph.point_at(st._path, st._cum, st._s + 200.0)
+		_look(at + Vector3.UP * 2.5, to + Vector3.UP * 1.0), 30])
+	_steps.append(["street_09_drive_view", func() -> void:
+		_drive_view(), 30])
+	_steps.append(["street_10_to_the_end", func() -> void:
+		var st = street.call()
+		var total: float = st._cum[st._cum.size() - 1]
+		var s := total - 18.0
+		var t := TrafficGraph.tangent_at(st._path, st._cum, s)
+		var dir := Vector3(t.x, 0.0, t.z).normalized()
+		_car.teleport(Transform3D(Basis.looking_at(dir, Vector3.UP), TrafficGraph.point_at(st._path, st._cum, s) + TrafficGraph.left_of(dir) * -1.8 + Vector3.UP))
+		st._at = maxi(st._path.size() - 20, 0), 300, null, false])
+	_steps.append(["street_11_now_again", func() -> void:
+		var st = street.call()
+		print("1979 street over: ", not st.running, " logged ", root.get_node("Story").has_night(StringName("street_1979_%d" % root.get_node("GameClock").day)),
+			" found ", root.get_node("Discoveries").has("oddity/street_1979"))
+		_creep = false
+		st.force = false, 60])
+	_steps.append(["street_12_reset", func() -> void:
+		root.get_node("Story").act_override = 0, 10, null, false])
+
+
+## William Street through Northbridge, up the strip of venues.
+func _william_street() -> Dictionary:
+	var g := MapData.shared().routes
+	# From the bottom of the strip (by the Paddock) up past the venues.
+	var start := Vector2(668.0, 75.0)
+	var heading := (Vector2(509.0, 369.0) - start).normalized()
+	var at := Vector3.ZERO
+	var best_d := INF
+	for r in g.road_pts.size():
+		if g.road_names[r] != "William Street":
+			continue
+		for p: Vector3 in g.road_pts[r]:
+			var d := Vector2(p.x, p.z).distance_to(start)
+			if d < best_d:
+				best_d = d
+				at = p
+	var found: Dictionary = _RS.street_ahead(at, heading, ["primary", "secondary", "tertiary"])
+	print("william street: ", found.get("name", "?"), " from ", at)
+	return found
 
 
 func _out_steps() -> void:
