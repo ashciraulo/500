@@ -242,14 +242,30 @@ func _plan() -> Array:
 		[func() -> void:
 			var map := _main.get_node("MapScreen")
 			_check(map.is_open(), "the map opens")
-			# Put Little Shenton Lane under the pointer, wherever it is.
-			var view: Control = map._view
-			view.centre += Vector2(-57.5, 38.8) - view.to_world(view.get_local_mouse_position())
+			# Put the front gate on Little Shenton Lane under the pointer, wherever it is.
+			var gate: Vector3 = _main.get_node("LoFi/SubViewport/World/PerthMap").get_home().spawn_transform(&"Spawn_Front").origin
+			_mark = {"at": gate}
+			_point_map_at(map, gate)
 			_key(KEY_T), 2.5],
 		[func() -> void:
-			var d := Vector2(_player.global_position.x + 57.5, _player.global_position.z - 38.8).length()
-			_check(not _main.get_node("MapScreen").is_open() and d < 12.0, "T on the map goes there (%.1f m off)" % d)
+			var at: Vector3 = _mark.at
+			var d := Vector2(_player.global_position.x - at.x, _player.global_position.z - at.z).length()
+			_check(not _main.get_node("MapScreen").is_open() and d < 15.0, "T on the map goes there (%.1f m off)" % d)
+			_check_landing("T on Little Shenton Lane")
 			_shot("15_map_t")
+			# T on top of a building: you land in the street by it, not on the roof.
+			var roof := _roof_near(_player.global_position)
+			_check(roof != Vector3.INF, "a building near home to point at")
+			_mark = {"at": roof}
+			_key(KEY_M), 0.6],
+		[func() -> void:
+			_point_map_at(_main.get_node("MapScreen"), _mark.at)
+			_key(KEY_T), 2.5],
+		[func() -> void:
+			var at: Vector3 = _mark.at
+			_check(_player.global_position.y < at.y - 2.0, "T on a roof lands below it (%.1f m under the roof)" % (at.y - _player.global_position.y))
+			_check_landing("T on a building")
+			_shot("15b_map_t_building")
 			# Snapshots.
 			_menu.open()
 			_menu._tabs.current_tab = 5, 0.5],
@@ -308,9 +324,48 @@ func _chase_camera() -> void:
 	var rig := _main.get_node("LoFi/SubViewport/World/CameraRig")
 	if rig.get("mode") != 0:
 		rig.toggle_mode()
+	# The first act card waits a while after the start: don't let it come up later.
+	_main.get_node("LoFi/SubViewport/World/GameplayPlaces/StoryPeople").set("card_act", 5)
 	for layer in root.find_children("*", "CanvasLayer", true, false):
 		if layer.has_method("show_act"):
 			layer.clear()
+
+
+## Moves the map so `at` is under the mouse pointer, wherever that is.
+func _point_map_at(map: Node, at: Vector3) -> void:
+	var view: Control = map._view
+	view.centre += Vector2(at.x, at.z) - view.to_world(view.get_local_mouse_position())
+
+
+## On foot after a teleport: standing on the ground (not a roof), with room
+## to see ahead (not nose to a wall).
+func _check_landing(what: String) -> void:
+	var space := _player.get_world_3d().direct_space_state
+	var feet := _player.global_position
+	var down := PhysicsRayQueryParameters3D.create(feet + Vector3.UP * 0.5, feet + Vector3.DOWN * 2.0, 1 | 2)
+	down.exclude = [_player.get_rid(), _car.get_rid()]
+	var hit := space.intersect_ray(down)
+	_check(not hit.is_empty() and not (hit.collider.collision_layer & 2), "%s: on the ground, not a roof" % what)
+	var eye := feet + Vector3.UP * 1.6
+	var ahead := PhysicsRayQueryParameters3D.create(eye, eye - _player.global_basis.z * 6.0, 1 | 2)
+	ahead.exclude = down.exclude
+	var wall := space.intersect_ray(ahead)
+	_check(wall.is_empty(), "%s: room to see ahead (%s)" % [what, "6 m clear" if wall.is_empty()
+		else "%.1f m to a wall" % eye.distance_to(wall.position)])
+
+
+## A building roof (layer 2) within 150 m of `near`, or Vector3.INF.
+func _roof_near(near: Vector3) -> Vector3:
+	var space := _player.get_world_3d().direct_space_state
+	for r in [30.0, 50.0, 80.0, 120.0]:
+		for i in 16:
+			var p: Vector3 = near + Vector3(sin(TAU * i / 16.0), 0.0, cos(TAU * i / 16.0)) * r
+			var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 80.0, p + Vector3.DOWN * 40.0, 1 | 2)
+			q.exclude = [_player.get_rid(), _car.get_rid()]
+			var hit := space.intersect_ray(q)
+			if not hit.is_empty() and hit.collider.collision_layer & 2 and hit.position.y > near.y + 6.0:
+				return hit.position
+	return Vector3.INF
 
 
 func _parts_for(slot: String) -> Array:
