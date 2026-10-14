@@ -191,7 +191,8 @@ func _offer(job: Dictionary) -> void:
 	row.add_theme_constant_override("separation", 10)
 	well.add_child(row)
 	var is_trial: bool = not job.get("lift", false) and job.get("type", "") != "delivery"
-	row.add_child(UiStyle.icon_rect("flag" if is_trial else ("pin" if job.get("lift", false) else "car"), 24, UiStyle.INK, UiStyle.TEAL))
+	var icon := String(job.get("icon", "flag" if is_trial else ("pin" if job.get("lift", false) else "car")))
+	row.add_child(UiStyle.icon_rect(icon, 24, UiStyle.INK, UiStyle.TEAL))
 	var text := VBoxContainer.new()
 	text.add_theme_constant_override("separation", 0)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL

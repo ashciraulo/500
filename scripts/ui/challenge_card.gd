@@ -82,7 +82,7 @@ func current() -> Dictionary:
 	var objective := Jobs.objective_text()
 	if objective != "":
 		var job: Dictionary = Jobs.active
-		return {"tag": "Trial" if job.get("type", "") == "trial" else "Job", "icon": "flag",
+		return {"tag": "Trial" if job.get("type", "") == "trial" else "Job", "icon": String(job.get("icon", "flag")),
 			"title": String(job.get("title", "")), "line": objective, "detail": "", "job": true}
 	for node in get_tree().get_nodes_in_group(&"challenges"):
 		if node.has_method("challenge_card"):

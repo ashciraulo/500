@@ -10,7 +10,7 @@ extends House1979
 ## only once you're inside.
 
 const DEEP := Color(0.1, 0.45, 0.5)
-const BIRD := Color(0.2, 0.21, 0.23)
+const BIRD := Color(0.06, 0.06, 0.07)
 const BIRD_EYE := Color(0.95, 0.7, 0.3)
 ## The water's surface just above the floor (0.15), and the far wall (house frame).
 const WATER_Z := 0.17
