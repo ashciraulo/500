@@ -4,6 +4,11 @@ extends CanvasLayer
 ## the parked car, and a quiet menu offers Continue, New game, Settings and
 ## Quit. Nothing moves the car or saves until you choose.
 ##
+## Behind it the world holds still and says nothing: every sound but the
+## title music and the menu's own clicks is muted (the street, the birds,
+## the sprinklers, the car), and the traffic waits (it used to drive round
+## and honk at a car saved on the road). Both come back when you play.
+##
 ## main.gd adds it when the game is run for real (not under a test script,
 ## and not after New game restarted the game with `-- --fresh`).
 
@@ -24,6 +29,13 @@ var _rig: Node
 var _camera: Camera3D
 var _car: CarController
 var _hud: Node  # a CanvasLayer
+## Buses that stay up behind the title: its music and the menu's clicks
+## (and the buses they go through).
+const HEARD_BUSES := [&"Master", &"MusicRadio", &"Music", &"Effects", &"UI"]
+## Buses muted here (left as they were if already muted), and the traffic.
+var _muted: Array[StringName] = []
+var _traffic: Node
+var _traffic_mode := Node.PROCESS_MODE_INHERIT
 
 
 ## True while a title screen is up (other menus stand back).
@@ -39,8 +51,38 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group(&"title_screen")
 	SaveGame.hold = true
+	_hush_world()
 	_build()
 	_take_over.call_deferred()
+
+
+func _exit_tree() -> void:
+	_wake_world()  # however the title goes (quitting from it, a test freeing it)
+
+
+## Mute everything but the music and the menu, and stop the traffic.
+func _hush_world() -> void:
+	for i in AudioServer.bus_count:
+		var bus := AudioServer.get_bus_name(i)
+		if bus in HEARD_BUSES or AudioServer.is_bus_mute(i):
+			continue
+		AudioServer.set_bus_mute(i, true)
+		_muted.append(bus)
+	_traffic = get_tree().get_first_node_in_group(&"traffic")
+	if _traffic:
+		_traffic_mode = _traffic.process_mode
+		_traffic.process_mode = Node.PROCESS_MODE_DISABLED
+
+
+func _wake_world() -> void:
+	for bus in _muted:
+		var i := AudioServer.get_bus_index(bus)
+		if i >= 0:
+			AudioServer.set_bus_mute(i, false)
+	_muted.clear()
+	if is_instance_valid(_traffic):
+		_traffic.process_mode = _traffic_mode
+	_traffic = null
 
 
 func _take_over() -> void:
@@ -139,7 +181,8 @@ func _quit() -> void:
 	SaveGame.quit_cleanly()
 
 
-## Hand the game over: camera, car and HUD back, music off, saving on.
+## Hand the game over: camera, car and HUD back, the world's sounds and
+## traffic back, music off, saving on.
 func _leave() -> void:
 	visible = false
 	SaveGame.hold = false
@@ -154,6 +197,7 @@ func _leave() -> void:
 	if audio and audio.has_method("stop_music"):
 		audio.stop_music(2.0)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_wake_world()
 	started.emit()
 	queue_free()
 
