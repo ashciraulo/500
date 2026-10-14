@@ -97,6 +97,7 @@ func _plan() -> Array:
 		# Cars, from the driver's seat.
 		[func() -> void:
 			_menu.close()
+			_chase_camera()
 			_check(_dev.tools.give_car("abarth_500") != "", "give a car")
 			_check(_car.car_id == "abarth_500" and _auto("Garage").owns_car("abarth_500"), "you're in the Abarth and it's yours"), 1.0],
 		[func() -> void:
@@ -300,6 +301,16 @@ func _press_in_row(menu: Node, row: String, text: String) -> void:
 					(b as Button).pressed.emit()
 					return
 	_check(false, "a '%s' button in the %s row" % [text, row])
+
+
+## The chase camera and no act card, so shots show the car.
+func _chase_camera() -> void:
+	var rig := _main.get_node("LoFi/SubViewport/World/CameraRig")
+	if rig.get("mode") != 0:
+		rig.toggle_mode()
+	for layer in root.find_children("*", "CanvasLayer", true, false):
+		if layer.has_method("show_act"):
+			layer.clear()
 
 
 func _parts_for(slot: String) -> Array:
