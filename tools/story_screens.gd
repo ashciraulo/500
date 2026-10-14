@@ -4,7 +4,7 @@ extends SceneTree
 ## May Drive. Needs a display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
-##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,turns,out,drive]
+##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,turns,robyn,tape,out,drive]
 
 var _shots := "/tmp/story"
 var _only := PackedStringArray()
@@ -59,6 +59,10 @@ func _build_steps() -> void:
 		_empty_steps()
 	if _want("turns"):
 		_turns_steps()
+	if _want("robyn"):
+		_robyn_steps()
+	if _want("tape"):
+		_tape_steps()
 	if _want("out"):
 		_out_steps()
 	if _want("drive"):
@@ -323,9 +327,128 @@ func _turns_steps() -> void:
 		eyes.call(_player.global_position, door + Vector3.UP * 1.0), 30])
 	_steps.append(["turns_24_back_in_the_hall", func() -> void:
 		_other.interact(), 60])
+	# For comparison: the same view of the shed solved (the mystery's own
+	# ending), yard lamps on and the bulb at full.
+	_steps.append(["turns_22b_shed_solved_compare", func() -> void:
+		var mystery := _main.find_child("Mystery", true, false)
+		mystery.call("_reveal", false)
+		var stand := (_home.find_child("Shed_Ending", true, false) as Node3D).global_position
+		var table := (_home.find_child("Shed_Sheeted", true, false) as Node3D).global_position
+		_look(stand + (stand - table).normalized() * 0.6 + Vector3.UP * 1.9, table + Vector3.UP * 0.8), 30, func() -> void:
+			var mystery := _main.find_child("Mystery", true, false)
+			var props: Node = mystery.get("_shed_props")
+			if props:
+				props.queue_free()
+			mystery.set("_shed_props", null)
+			(_home.find_child("Shed_Sheeted", true, false) as Node3D).visible = true])
 	_steps.append(["turns_25_done", func() -> void:
 		_other.force = false
 		_other.force_form = &"", 10, null, false])
+
+
+## Choice 3: Robyn's door in Arundel Street, Fremantle, and knocking.
+func _robyn_steps() -> void:
+	var robyn := func() -> Node: return _main.find_child("Robyn", true, false)
+	var door := func() -> Node3D: return robyn.call().get("_house")
+	var front := func(back: float, up: float) -> Vector3:
+		var d: Node3D = door.call()
+		return d.global_transform * Vector3(0.0, up, back)
+	_steps.append(["robyn_0_setup", func() -> void:
+		_hour(18.0)
+		root.get_node("Story").act_override = 4
+		robyn.call().step = robyn.call().KNOWN
+		_player.call("get_in"), 30, null, false])
+	_steps.append(["robyn_0_drive", func() -> void:
+		var r: Node = robyn.call()
+		_car.teleport(Transform3D(Basis.looking_at(Vector3(0.765, 0, -0.644), Vector3.UP), r.ROAD_AT + Vector3(0.765, 0, -0.644) * -8.0 + Vector3.UP * 1.0)), 240, null, false])
+	_steps.append(["robyn_01_street", func() -> void:
+		_look(front.call(11.0, 1.6) + Vector3(0.765, 0, -0.644) * -5.0, front.call(0.0, 1.4)), 40])
+	_steps.append(["robyn_02_door", func() -> void:
+		_look(front.call(3.2, 1.6), front.call(0.0, 1.2)), 30])
+	_steps.append(["robyn_03_on_foot", func() -> void:
+		_player.call("get_out"), 150, null, false])
+	_steps.append(["robyn_04_knock_hint", func() -> void:
+		(_player.get("_camera") as Camera3D).current = true
+		var feet: Vector3 = front.call(1.6, 0.0)
+		_player.call("teleport", feet, front.call(0.0, 1.3)), 60])
+	_steps.append(["robyn_05_knock", func() -> void:
+		root.get_node("Discoveries").discover("mystery/polaroid")
+		root.get_node("Notices").clear()
+		robyn.call().knock(), 120])
+	_steps.append(["robyn_06_she_talks", func() -> void: pass, 14 * 60])
+	_steps.append(["robyn_07_door_open_side", func() -> void:
+		_look(front.call(2.6, 1.5) + (door.call() as Node3D).global_basis.x * 2.0, front.call(0.0, 1.1)), 30])
+	_steps.append(["robyn_08_night", func() -> void:
+		_hour(22.0)
+		_look(front.call(9.0, 1.7), front.call(0.0, 1.4)), 60])
+	_steps.append(["robyn_09_done", func() -> void:
+		root.get_node("Story").act_override = 0, 10, null, false])
+
+
+## The tapes that run ahead: the tape at night, the reel job next morning,
+## the cat on the fence at the drop-off.
+func _tape_steps() -> void:
+	var tape := func() -> Node: return _main.find_child("TapeAhead", true, false)
+	var jobs := func() -> Node: return root.get_node("Jobs")
+	_steps.append(["tape_0_setup", func() -> void:
+		var robyn := _main.find_child("Robyn", true, false)
+		if robyn:
+			(robyn.get("_lines") as Array).clear()
+		root.get_node("Notices").clear()
+		_hour(23.5)
+		root.get_node("Story").act_override = 4
+		_player.call("get_in")
+		_drive_view(), 120, null, false])
+	_steps.append(["tape_01_cassette", func() -> void:
+		root.get_node("Notices").clear()
+		tape.call().force = true
+		tape.call().maybe_play(), 90])
+	_steps.append(["tape_02_mick", func() -> void: pass, 7 * 60])
+	_steps.append(["tape_03_next_morning", func() -> void:
+		root.get_node("Notices").clear()
+		tape.call().due_day = root.get_node("GameClock").day
+		_hour(7.5), 60, null, false])
+	_steps.append(["tape_04_phone", func() -> void:
+		var e := InputEventAction.new()
+		e.action = &"phone"
+		e.pressed = true
+		Input.parse_input_event(e)
+		var u := InputEventAction.new()
+		u.action = &"phone"
+		Input.parse_input_event(u), 60])
+	_steps.append(["tape_05_take_it", func() -> void:
+		var e := InputEventAction.new()
+		e.action = &"phone"
+		e.pressed = true
+		Input.parse_input_event(e)
+		var u := InputEventAction.new()
+		u.action = &"phone"
+		Input.parse_input_event(u)
+		for job: Dictionary in jobs.call().offers:
+			if job.get("story", "") == "tape_ahead":
+				jobs.call().accept(job)
+				break
+		jobs.call().active.stage = "to_dropoff"
+		jobs.call()._stage_changed()
+		var drop: Node3D = jobs.call().site(String(jobs.call().active.dropoff))
+		var from: Vector3 = drop.global_position + drop.global_basis.z * 25.0
+		_car.teleport(Transform3D(Basis.looking_at(drop.global_position - from, Vector3.UP), from + Vector3.UP * 1.2)), 240])
+	_steps.append(["tape_06_cat", func() -> void:
+		var cat: Node3D = tape.call().get("_cat")
+		if cat:
+			_look(cat.global_position + cat.global_basis.z * 3.0 + Vector3.UP * 1.6, cat.global_position + Vector3.UP * 1.1), 30])
+	_steps.append(["tape_07_cat_close", func() -> void:
+		var cat: Node3D = tape.call().get("_cat")
+		if cat:
+			_look(cat.global_position + cat.global_basis.z * 1.3 + Vector3.UP * 1.45, cat.global_position + Vector3.UP * 1.3), 30])
+	_steps.append(["tape_08_done", func() -> void:
+		_drive_view()
+		var job: Dictionary = jobs.call().active.duplicate()
+		jobs.call().abandon()
+		jobs.call().job_completed.emit(job, 40, "Delivered.")
+		tape.call().force = false, 90])
+	_steps.append(["tape_09_reset", func() -> void:
+		root.get_node("Story").act_override = 0, 10, null, false])
 
 
 func _out_steps() -> void:
