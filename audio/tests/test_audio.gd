@@ -444,6 +444,15 @@ func _test_car_scene(audio: Node) -> void:
 	check(engine is EngineAudio, "car has EngineAudio")
 	check(car.get_node_or_null("Audio/Tyres") is TyreAudio, "car has TyreAudio")
 	check(car.get_node_or_null("Audio/CarSounds") is CarSounds, "car has CarSounds")
+	# No wind at speed in your car's mix, and the road roar sits low (Oct 14).
+	var weather_players := 0
+	for p in car.get_node("Audio").find_children("*", "AudioStreamPlayer3D", true, false):
+		if (p as AudioStreamPlayer3D).bus == &"Weather":
+			weather_players += 1
+	check(weather_players == 0, "your car has no wind noise (%d players on Weather)" % weather_players)
+	var roll: AudioStreamPlayer3D = car.get_node("Audio/Tyres")._roll.values()[0]
+	check(roll.max_db == TyreAudio.ROLL_MAX_DB and TyreAudio.ROLL_MAX_DB <= -30.0,
+			"the road roar is capped low (%.0f dB)" % roll.max_db)
 	await create_timer(5.0).timeout
 	check(engine.running, "engine started on its own")
 	var audible := 0
@@ -502,6 +511,7 @@ func _test_car_scene(audio: Node) -> void:
 			if AudioServer.get_bus_effect(eb, k) is AudioEffectCompressor:
 				comp = AudioServer.get_bus_effect(eb, k)
 		check(comp != null and comp.threshold == EngineAudio.COMP_THRESHOLDS_DB["slant6"], "the Valiant's engine compresses later on the Engine bus")
+		check(engine._whine_in_gear == 0.0, "the Valiant's gearbox doesn't whir pulling away")
 		# A Valiant in traffic (the 1979 street) plays on Vehicles: your car's mix stays.
 		var other := EngineAudio.new()
 		other.engine_set = "slant6"
@@ -510,6 +520,7 @@ func _test_car_scene(audio: Node) -> void:
 		add_child(other)
 		car.apply_car("pop_12")
 		check(engine.engine_set == "fire12" and not engine.classic_gearbox, "Pop -> fire12 (got %s)" % engine.engine_set)
+		check(engine._whine_in_gear > 0.0, "the Pop keeps its faint gearbox whine")
 		check(comp != null and comp.threshold == audio.ENGINE_COMP_THRESHOLD_DB, "back to the bus's own threshold for the Pop")
 		other.engine_set = "slant6"
 		other.build()

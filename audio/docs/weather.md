@@ -20,4 +20,4 @@ light. Thunder and gusts are stereo one-shots, drips mono one-shots, all peak -1
 | weather_rain_windscreen | yes | Rain hitting the windscreen, close layer (30 s) | P2 | Crisp glass-tap kernels with short rings and splats, thin film fizz, a few rivulet trickles |
 | weather_cicadas | yes | Hot-day Australian cicada chorus (30 s, stereo) | P2 | 9 insects: 4-7 kHz band noise chopped by 180-420 Hz tymbal pulses, each drone/pulsing/crescendo style, near/far, panned |
 | weather_drip_01..04 | no | Drips: puddle plink, metal sill tink, leaf tap, bucket plonk | P2 | Minnaert bubble chirps, small metal modes, filtered taps, short reflection |
-| weather_wind_buffet | yes | Wind buffeting at speed, window down (8 s, stereo) | P3 | ~18 Hz cabin-resonance throb (zero-mean FM), lurching turbulent roar, flutter band gated by the throb |
+| weather_wind_buffet | yes | Wind buffeting at speed, window down (8 s, stereo). Not played: your car has no wind noise (Oct 14) | P3 | ~18 Hz cabin-resonance throb (zero-mean FM), lurching turbulent roar, flutter band gated by the throb |
