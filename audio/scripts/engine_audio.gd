@@ -72,6 +72,8 @@ const ENGINE_PARTS := {
 const EXHAUST_PARTS := {
 	"exhaust_stock": "", "exhaust_sport": "sport", "exhaust_twin": "sport",
 	"exhaust_abarth_quad": "straight",
+	# The Valiant's twin pipes.
+	"exhaust_vc_twin": "sport",
 	# The barn-find Abarth megaphone: classics only (modern cars have no
 	# megaphone set, so they keep their stock note).
 	"exhaust_abarth_classic": "megaphone",

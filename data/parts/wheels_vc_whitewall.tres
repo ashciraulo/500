@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"wheels_vc_whitewall"
+display_name = "Wide whitewalls"
+description = "The factory hubcaps on new wide-whitewall tyres. Very 1966."
+slot = &"wheels"
+price = 420
+modifiers = {}
+ladders = PackedStringArray("period")
+visual = "wheel_vc_whitewall"

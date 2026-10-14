@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"engine_vc_triple_carb"
+display_name = "Triple-carb manifold"
+description = "Three side-draughts on a long alloy manifold. Needs tuning every month and pulls hard from 2000."
+slot = &"engine"
+price = 1450
+modifiers = {"torque_mult": 1.1, "limiter_add": 150}
+ladders = PackedStringArray("period")
