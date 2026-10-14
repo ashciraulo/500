@@ -694,8 +694,13 @@ def _door_trim(sx, X):
     y0, y1 = DOOR_Y0 + 0.02, DOOR_Y1 - 0.035
     xo = 0.845                                   # the door's inner skin
     out = []
-    cap = [(xo + 0.004, 0.955), (xo - 0.012, 0.95), (xo - 0.024, 0.90), (xo - 0.022, 0.83), (xo, 0.83)]
-    c = _rprism("door_capping", [(sx * a, b) for a, b in cap], "y", y0 + 0.012, y1, X["dash"], r=0.008, cap=0.006)
+    # the padded capping under the glass follows the inner skin as it rolls
+    # in over the belt (x 0.849 at z 0.93, 0.813 at 0.945) and stops at the
+    # A pillar's foot: forward of that the door top drops under the cowl
+    cap = [(0.804, 0.944), (0.79, 0.938), (xo - 0.024, 0.90), (xo - 0.022, 0.83), (xo, 0.83), (xo + 0.002, 0.90),
+           (0.838, 0.928)]
+    c = _rprism("door_capping", [(sx * a, b) for a, b in cap], "y", y0 + 0.012, PV._a_line(PV.ZB) - 0.03,
+                X["dash"], r=0.006, cap=0.006)
     out.append(c)
     panel = _rprism("door_panel", [(sx * xo, 0.50), (sx * (xo - 0.022), 0.50), (sx * (xo - 0.022), 0.822),
                                    (sx * xo, 0.822)], "y", y0 + 0.005, y1 - 0.005, X["panel"], r=0.006, cap=0.006,
@@ -704,8 +709,8 @@ def _door_trim(sx, X):
     # flat chrome strips, tall enough not to break into dots far off
     out.append(_bar("door_strip", (sx * (xo - 0.024), y0 + 0.01, 0.826), (sx * (xo - 0.024), y1 - 0.01, 0.826),
                     0.004, 0.012, X["chrome"], up=(0, 0, 1)))
-    out.append(_uv(_rprism("door_carpet", [(sx * xo, 0.40), (sx * (xo - 0.014), 0.40), (sx * (xo - 0.014), 0.50),
-                                           (sx * xo, 0.50)], "y", y0 + 0.005, y1 - 0.005, X["door_carpet"], r=0.004),
+    out.append(_uv(_rprism("door_carpet", [(sx * (xo - 0.01), 0.40), (sx * (xo - 0.014), 0.40), (sx * (xo - 0.014), 0.50),
+                                           (sx * xo, 0.50), (sx * xo, 0.43)], "y", y0 + 0.005, y1 - 0.005, X["door_carpet"], r=0.004),
                    1, 2, 0.1, 0.1))
     out.append(_bar("door_carpet_strip", (sx * (xo - 0.016), y0 + 0.01, 0.502), (sx * (xo - 0.016), y1 - 0.01, 0.502),
                     0.004, 0.012, X["chrome"], up=(0, 0, 1)))
