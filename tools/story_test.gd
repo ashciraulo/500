@@ -26,6 +26,9 @@ extends SceneTree
 ##     the lane (stepping in puts you down the lane; walking home ends it)
 ##     and the shed (stepping in puts you in the shed; its door brings you
 ##     back to the hall).
+##   - Act 4, part 2: finding Robyn (asking around Fremantle, her door, the
+##     Polaroid, choice 3) and the tapes that run ahead (the tape, the reel
+##     job next morning, the cat on the fence, done).
 ##
 ##   godot --headless --path . --fixed-fps 60 --script res://tools/story_test.gd -- --no-save
 ##
@@ -237,6 +240,9 @@ func _process(_delta: float) -> bool:
 			if _act_4(story, clock):
 				_next()
 		6:
+			if _robyn_and_tapes(story, clock):
+				_next()
+		7:
 			return _finish()
 	return false
 
@@ -417,6 +423,100 @@ func _act_4(story: Node, clock: Node) -> bool:
 			_other.last_form = &""
 			_other.load_state(saved)
 			_check(_other.last_form == &"river", "the last one is saved")
+			story.act_override = 0
+			return true
+	return false
+
+
+## Act 4, part 2: Robyn (choice 3) and the tapes that run ahead. True when done.
+func _robyn_and_tapes(story: Node, clock: Node) -> bool:
+	var robyn: Node = _main.find_child("Robyn", true, false)
+	var tape: Node = _main.find_child("TapeAhead", true, false)
+	var jobs := root.get_node("Jobs")
+	match _frames:
+		1:
+			_check(robyn != null and tape != null, "Robyn and the tapes are in the world")
+			if robyn == null or tape == null:
+				return true
+			story.act_override = 4
+			clock.set_time(13.0)
+			story.leave_message(&"kostas_robyn", "Thea", "She still sends a card from Fremantle.")
+			story.message(&"kostas_robyn").heard = true
+		5:
+			_check(robyn.step == robyn.ASKING, "after Thea's message you can ask around for Robyn")
+			_check(String(robyn.challenge_card().get("title", "")) == "Robyn, in Fremantle", "and the card says so")
+			robyn.ask("delivery")
+			_check(robyn.step == robyn.ASKING and String(robyn.challenge_card().line).contains("Fishing Boat Harbour"),
+				"a delivery to the markets points you to the harbour")
+			robyn.ask("harbour")
+			_check(robyn.step == robyn.KNOWN and story.has_night(&"robyn_street"), "the harbour knows her street")
+			_check(String(robyn.challenge_card().get("title", "")) == "Arundel Street, Fremantle", "the card says where")
+			# On foot in Arundel Street.
+			_player.call("get_in")
+		20:
+			_car.teleport(Transform3D(Basis.looking_at(Vector3(0.765, 0, -0.644), Vector3.UP), robyn.ROAD_AT + Vector3.UP * 1.0))
+		120:
+			_player.call("get_out")
+		300:
+			var door: Node3D = robyn.get("_house")
+			_check(door != null, "her front door is on the cottage")
+			if door == null:
+				story.act_override = 0
+				return true
+			var from_road: float = Vector2(door.global_position.x - robyn.ROAD_AT.x, door.global_position.z - robyn.ROAD_AT.z).length()
+			_check(from_road > 5.0 and from_road < 16.0, "on the wall across the footpath (%.1f m from the road)" % from_road)
+			_check(robyn.interact_hint() == "Knock", "you can knock ('%s')" % robyn.interact_hint())
+			(root.get_node("Discoveries").get("_found") as Dictionary).erase("mystery/polaroid")
+			robyn.knock()
+			_check(robyn.step == robyn.KNOWN and story.has_night(&"robyn_no_answer"), "without the Polaroid nobody answers")
+			clock.set_time(23.0)
+			robyn.knock()
+			_check(robyn.step == robyn.KNOWN, "nor this late")
+			clock.set_time(13.0)
+			root.get_node("Discoveries").discover("mystery/polaroid")
+			robyn.knock()
+			_check(robyn.step == robyn.FOUND and story.choice(&"robyn") == &"found", "with it she opens the door: choice 3, found")
+			_check(story.flag(&"gave_polaroid") and story.has_night(&"robyn_found"), "the Polaroid's hers now, and it's in the Nights log")
+			_check(robyn.challenge_card().is_empty(), "and the card's done")
+			var saved: Dictionary = robyn.save_state()
+			robyn.load_state({})
+			robyn.load_state(saved)
+			_check(robyn.step == robyn.FOUND, "it's saved")
+		400:
+			# The tapes: a cassette in the deck at night...
+			_player.call("get_in")
+			clock.set_time(23.5)
+			tape.force = true
+			_check(tape.maybe_play(), "a tape in the deck at night")
+			_check(not (tape.pending as Dictionary).is_empty() and story.has_night(StringName("tape_ahead_%d" % clock.day)), "describing a drive, in the Nights log")
+			_check(not tape.maybe_play(), "only one tape at a time")
+			_check(not jobs.offers.any(func(j: Dictionary) -> bool: return j.get("story", "") == "tape_ahead"), "not on the board yet")
+			# ...and the morning after, the job he described.
+			tape.due_day = clock.day
+			clock.set_time(7.0)
+		420:
+			var offered: Array = jobs.offers.filter(func(j: Dictionary) -> bool: return j.get("story", "") == "tape_ahead")
+			_check(offered.size() == 1 and jobs.offers[0] == offered[0], "next morning it's at the top of the board")
+			if offered.is_empty():
+				tape.force = false
+				story.act_override = 0
+				return true
+			_check(String(offered[0].get("icon", "")) == "reel", "with a reel by it")
+			_check(String(offered[0].pickup) == String(tape.pending.pickup) and String(offered[0].dropoff) == String(tape.pending.dropoff), "the same drive as the tape")
+			jobs.accept(offered[0])
+			jobs.active.stage = "to_dropoff"
+			jobs._stage_changed()
+			var drop: Node3D = jobs.site(String(jobs.active.dropoff))
+			_car.teleport(Transform3D(Basis(), drop.global_position + drop.global_basis.z * 30.0 + Vector3.UP * 1.5))
+		500:
+			var cat: Node3D = tape.get("_cat")
+			_check(cat != null and cat.find_child("Cat", false, false) != null, "near the drop-off, a ginger cat on a fence")
+			var job: Dictionary = jobs.active.duplicate()
+			jobs.abandon()
+			jobs.job_completed.emit(job, 40, "Delivered.")
+			_check(tape.get("_cat") == null and (tape.pending as Dictionary).is_empty(), "done: the cat's gone, nothing waiting")
+			_check(story.has_night(StringName("tape_ahead_done_%d" % clock.day)), "exactly as he said, in the Nights log")
+			tape.force = false
 			story.act_override = 0
 			return true
 	return false
