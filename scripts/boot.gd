@@ -34,6 +34,11 @@ func _ready() -> void:
 
 
 func _play() -> void:
-	get_tree().change_scene_to_file(GAME)
-	if get_tree().current_scene != self:
-		queue_free()  # a test's copy, not the scene being changed
+	# Changing scene takes this one out of the tree straight away (no
+	# get_tree() after it) and frees it; a test's copy that isn't the
+	# current scene frees itself.
+	var tree := get_tree()
+	var is_scene := tree.current_scene == self
+	tree.change_scene_to_file(GAME)
+	if not is_scene:
+		queue_free()
