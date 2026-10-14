@@ -13,6 +13,11 @@ extends Node
 ## to neither load, write nor delete saves (the tests and PC checks do this,
 ## so they never touch a real save; Settings doesn't write either, and
 ## photos go to their own folder, see Activities.photo_dir()).
+##
+## When the game starts at the title screen the save is only read, not
+## loaded: nothing gets its section and nothing is written until you choose
+## Continue (load_game()) or New game (start_new()). The title shows the
+## save's day and money with peek().
 
 signal saved(path: String)
 signal loaded(path: String)
@@ -28,10 +33,16 @@ var slot := 1
 var enabled := true
 ## No autosaves while true (the title screen, before you've chosen to play).
 var hold := false
+## True once a game is under way (loaded, or new): only then is anything
+## written. False at the title screen, so quitting from it can't save a
+## blank game over yours.
+var live := false
 
 var _sources := {}
 ## Sections read from disk, waiting for (or already given to) their owners.
 var _pending := {}
+## The save on disk as read at the title screen, not given to anyone yet.
+var _on_disk := {}
 var _autosave_timer := 0.0
 var _quitting := false
 
@@ -40,6 +51,10 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	enabled = not OS.get_cmdline_user_args().has("--no-save")
 	get_tree().auto_accept_quit = false
+	if TitleScreen.wanted():
+		_on_disk = _read(save_path()) if enabled else {}
+		return
+	live = true
 	if enabled:
 		load_from(save_path())
 
@@ -115,7 +130,27 @@ func has_save() -> bool:
 
 ## When the save on this slot was written (system time), or "" if none.
 func saved_at() -> String:
-	return String(_pending.get("saved_at", ""))
+	return String(_pending.get("saved_at", _on_disk.get("saved_at", "")))
+
+
+## A section of the save on disk, loaded or not (the title screen's footer).
+func peek(section: String) -> Dictionary:
+	var data: Variant = _pending.get(section, _on_disk.get(section, {}))
+	return data if data is Dictionary else {}
+
+
+## Continue: load the save on this slot and start writing it again.
+func load_game() -> bool:
+	live = true
+	_on_disk = {}
+	return load_from(save_path()) if enabled else false
+
+
+## New game: forget the save (with --no-save the file stays) and start from
+## the defaults everything already has.
+func start_new() -> void:
+	delete_save()
+	live = true
 
 
 func register(section: String, source: Object) -> void:
@@ -129,7 +164,7 @@ func unregister(section: String) -> void:
 
 
 func save_game() -> bool:
-	if not enabled:
+	if not enabled or not live:
 		return false
 	return save_to(save_path())
 
@@ -157,13 +192,10 @@ func save_to(path: String) -> bool:
 
 
 func load_from(path: String) -> bool:
-	if not FileAccess.file_exists(path):
+	var data := _read(path)
+	if data.is_empty():
 		return false
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
-		push_warning("Save %s is unreadable; starting fresh." % path)
-		return false
-	_pending = _migrate(parsed)
+	_pending = data
 	for section in _sources:
 		if _pending.has(section) and _sources[section].has_method("load_state"):
 			_sources[section].load_state(_pending[section])
@@ -171,10 +203,21 @@ func load_from(path: String) -> bool:
 	return true
 
 
+func _read(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not parsed is Dictionary:
+		push_warning("Save %s is unreadable; starting fresh." % path)
+		return {}
+	return _migrate(parsed)
+
+
 ## Forget everything and start a new game on this slot. With --no-save the
 ## file on disk stays as it is.
 func delete_save() -> void:
 	_pending = {}
+	_on_disk = {}
 	if enabled and FileAccess.file_exists(save_path()):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path()))
 

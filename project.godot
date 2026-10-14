@@ -12,7 +12,7 @@ config_version=5
 
 config/name="500"
 config/description="A slow, lo-fi driving game about a little Fiat 500 in Perth, WA."
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
 

@@ -91,7 +91,7 @@ func _initialize() -> void:
 			_title_layer.get("_menu").visible = true],
 		["title_settings", func() -> void: _title_layer.call("_settings"), 20, func() -> void:
 			_node("PauseMenu").close()
-			_title_layer.call("_leave")],
+			_title_layer.queue_free()],
 		["on_foot", _get_out, 120, Callable()],
 		["wake_card", func() -> void:
 			_main.get_node("LoFi/SubViewport/World/Player").call("_ask_when_to_wake"), 20, func() -> void:
