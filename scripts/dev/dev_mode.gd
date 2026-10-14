@@ -215,7 +215,7 @@ func go_home() -> void:
 	var home := get_tree().get_first_node_in_group(&"home_base") as HomeBase
 	if _player.in_car:
 		var from := _car.global_position
-		var spot: Transform3D = map.get_spawn_transform() if map else _car.global_transform
+		var spot: Transform3D = map.get_spawn_transform(_car) if map else _car.global_transform
 		_place_car(spot)
 		_log("1", from, &"carport")
 		_say("Already at the carport: car set straight." if from.distance_to(spot.origin) < AT_CARPORT

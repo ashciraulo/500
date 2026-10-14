@@ -379,7 +379,7 @@ func _late_house() -> void:
 func _carport() -> Transform3D:
 	var map := get_tree().get_first_node_in_group(&"perth_map")
 	if map and map.has_method("get_spawn_transform"):
-		return map.get_spawn_transform()
+		return map.get_spawn_transform(_car)
 	var bay: Transform3D = _home.call("spawn_transform", &"Spawn_Car")
 	return Transform3D(bay.basis, bay.origin + Vector3.UP * 0.6)
 

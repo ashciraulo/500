@@ -204,26 +204,37 @@ func _process(_delta: float) -> bool:
 			var switch: Node = _home.find_child("PorchSwitch", false, false)
 			if _frames == 1:
 				_people(story, clock)
-				# You can use things you can see, but not through a wall: from
-				# the hall with the front door open, yes; from outside, no.
+				# The porch switch is the plate by the front door, on the hinge
+				# side: with the door open the door covers it, shut you can use it.
+				# Not from outside, and not through a wall.
 				if not _home.is_door_open(&"Door_Front"):
 					_home.toggle_door(&"Door_Front")
-				_put_player(_home.to_global(_H79.at(Vector3(1.2, 1.4, 0.2))))
+				_put_player(_home.to_global(_H79.at(Vector3(0.9, 1.0, 0.2))))
 			elif _frames == 60:
 				_player.face(switch.interact_point())
 			elif _frames == 62:
 				var t: Array = _player._target()
-				_check(t[0] == "thing" and t[1] == switch, "the porch switch can be used from the hall with the front door open (%s)" % [t[0]])
-				_put_player(_home.to_global(_H79.at(Vector3(0.9, -1.6, 0.2))))
-			elif _frames == 80:
+				_check(t[0] == "door" and t[1] == &"Door_Front", "with the front door open, the door covers the porch switch (%s)" % [t[0]])
+				_home.toggle_door(&"Door_Front")
+			elif _frames == 110:
 				_player.face(switch.interact_point())
-			elif _frames == 82:
+			elif _frames == 112:
+				var t: Array = _player._target()
+				_check(t[0] == "thing" and t[1] == switch, "with it shut, the porch switch can be used from the hall (%s)" % [t[0]])
+				_check(switch.interact_hint().begins_with("Porch light"), "and says it's the porch light ('%s')" % switch.interact_hint())
+				var plate: Node3D = _home.find_child("Dress_Switch_Front*", true, false)
+				_check(plate != null and not plate.is_visible_in_tree(), "the house's own plate makes way for it")
+				_home.toggle_door(&"Door_Front")
+				_put_player(_home.to_global(_H79.at(Vector3(0.9, -1.6, 0.2))))
+			elif _frames == 160:
+				_player.face(switch.interact_point())
+			elif _frames == 162:
 				_check(_player._nearest_thing() != switch, "but not from the step outside")
 				_home.toggle_door(&"Door_Front")
 				_put_player(_home.to_global(_H79.at(Vector3(0.3, -0.35, 0.2))))
-			elif _frames == 140:
+			elif _frames == 220:
 				_player.face(switch.interact_point())
-			elif _frames == 142:
+			elif _frames == 222:
 				var d: float = _player.global_position.distance_to(switch.interact_point())
 				_check(_player._nearest_thing() != switch, "nor through the wall from the porch with the door shut (%.1f m away)" % d)
 				_next()

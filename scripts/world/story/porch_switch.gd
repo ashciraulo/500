@@ -1,15 +1,24 @@
 class_name PorchSwitch
 extends Node3D
-## The porch light switch, on the wall just inside the front door (STORY.md,
-## choice 1). An old cream rocker plate. StoryPeople keeps whether it's on.
+## The porch light switch: the two-way plate on the front wall just inside
+## the front door (STORY.md, choice 1). The rocker nearer the door is the
+## porch light's; the other is the hall's. StoryPeople keeps whether it's on.
+##
+## The house model has this plate as set dressing (Dress_Switch_Front); this
+## hides it and stands in for it with one whose porch rocker tips. It sits on
+## the hinge side, so with the front door open the door covers it: shut the
+## door to reach it.
 ##
 ## Placed by StoryPeople, as a child of the HomeBase, in the house's frame.
 
-## House frame (x across, y back, z up): on the hall's side wall just inside
-## the front door, between the coats and the chimney breast. Not on the
-## front wall: the open door covers the hinge side, and the latch side is the
-## glass panel and the curtain.
-const AT := Vector3(0.007, 1.57, 1.15)
+## House frame (x across, y back, z up): the middle of the plate, on the
+## inside face of the front wall (build_shenton.py's Dress_Switch_Front).
+const AT := Vector3(0.25, 0.0, 1.3)
+## The porch rocker, across from the plate's middle (towards the door).
+const ROCKER_X := 0.025
+
+const PLATE := Color("#efece4")
+const ROCKER := Color("#f7f5ef")
 
 var people: StoryPeople
 var _rocker: MeshInstance3D
@@ -19,11 +28,18 @@ var _click: AudioStreamPlayer3D
 func _ready() -> void:
 	name = "PorchSwitch"
 	add_to_group(&"interactables")
+	# Facing into the house (house +y is local -z), so no turn needed.
 	position = House1979.at(AT)
-	# Built facing back into the house (-z); turned to face across the hall (+x).
-	rotation.y = -PI / 2.0
-	_box(Vector3(0.075, 0.115, 0.012), Vector3.ZERO, Color(0.88, 0.85, 0.76))
-	_rocker = _box(Vector3(0.022, 0.04, 0.012), Vector3(0.0, 0.0, -0.008), Color(0.8, 0.77, 0.68))
+	var home := get_parent()
+	if home:
+		for n in home.find_children("Dress_Switch_Front*", "Node3D", true, false):
+			(n as Node3D).visible = false
+	_box(Vector3(0.115, 0.116, 0.008), Vector3(0.0, 0.0, -0.004), PLATE)
+	_box(Vector3(0.018, 0.032, 0.005), Vector3(-ROCKER_X, 0.0, -0.0105), ROCKER)
+	_rocker = _box(Vector3(0.018, 0.032, 0.005), Vector3(ROCKER_X, 0.0, -0.0105), ROCKER)
+	# Lit like the rest of the house's insides, as the plate it stands in for was.
+	if home and home.has_method(&"_mark_indoor"):
+		home.call(&"_mark_indoor", self)
 	_click = AudioStreamPlayer3D.new()
 	_click.stream = LateSounds.make("light_switch")
 	_click.bus = "SFX"
@@ -39,7 +55,7 @@ func _process(_delta: float) -> void:
 
 
 func interact_point() -> Vector3:
-	return global_position
+	return to_global(Vector3(ROCKER_X, 0.0, -0.013))
 
 
 func interact_hint() -> String:

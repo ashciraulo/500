@@ -171,12 +171,12 @@ func _people_steps() -> void:
 		machine.call().interact(), 120])
 	_steps.append(["people_03_porch_switch_door_open", func() -> void:
 		_home.toggle_door(&"Door_Front")
-		_look(_h(1.4, 1.2, 1.6), _h(0.0, 1.57, 1.15)), 60])
+		_look(_h(1.4, 1.6, 1.6), _h(0.25, 0.0, 1.3)), 60])
 	_steps.append(["people_03a_switch_close", func() -> void:
-		_look(_h(1.1, 0.9, 1.6), _h(0.0, 1.57, 1.15)), 20])
-	_steps.append(["people_03b_hall_porch_on", func() -> void:
 		_home.toggle_door(&"Door_Front")
-		_look(_h(1.2, 2.6, 1.6), _h(1.2, 0.0, 1.4)), 60])
+		_look(_h(0.75, 0.75, 1.55), _h(0.25, 0.0, 1.3)), 60])
+	_steps.append(["people_03b_hall_porch_on", func() -> void:
+		_look(_h(1.2, 2.6, 1.6), _h(1.0, 0.0, 1.4)), 30])
 	_steps.append(["people_03c_hall_porch_off", func() -> void:
 		people.set_porch_light(false), 20])
 	_steps.append(["people_04_act_card", func() -> void:
@@ -212,7 +212,8 @@ func _empty_steps() -> void:
 	_steps.append(["empty_02_doorstep_leaves", func() -> void:
 		_look(_h(_door_x, -1.2, 1.62), _h(_door_x + 0.1, 2.5, 0.3)), 30])
 	_steps.append(["empty_03_switch_taped", func() -> void:
-		_look(_h(0.9, 1.4, 1.5), _h(0.0, 1.57, 1.15)), 30])
+		# Behind the open front door: looked at from the gap beside it.
+		_look(_h(0.2, 1.0, 1.5), _h(0.25, 0.0, 1.3)), 30])
 	_steps.append(["empty_04_lounge_sheets", func() -> void:
 		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.6)), 40])
 	_steps.append(["empty_05_lounge_back", func() -> void:
