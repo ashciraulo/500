@@ -926,6 +926,9 @@ func _endings(story: Node, clock: Node) -> bool:
 			_check(story.has_night(&"late_city_credits"), "in the Nights log")
 			clock.set_time(10.0)
 		520:
+			var carport: Transform3D = get_first_node_in_group(&"perth_map").get_spawn_transform()
+			_check(absf(_car.global_position.y - carport.origin.y) < 0.8 and _car.linear_velocity.length() < 1.0,
+				"the car is sitting in the carport, on the ground (%.2f m from its spot, %.1f m/s)" % [_car.global_position.distance_to(carport.origin), _car.linear_velocity.length()])
 			_check(clock.time_of_day >= _end.EVENING - 0.01, "and it's always night (%.1f)" % clock.time_of_day)
 			var state: Dictionary = _end.save_state()
 			_end.load_state({})

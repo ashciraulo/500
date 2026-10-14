@@ -78,6 +78,13 @@ func show_text(side: String, title: String) -> void:
 	LateCity._play_2d(LateCity.SOUND_START, -10.0)
 
 
+## Take the card down now.
+func clear() -> void:
+	_t = -1.0
+	_panel.modulate.a = 0.0
+	visible = false
+
+
 func showing() -> bool:
 	return _t >= 0.0
 

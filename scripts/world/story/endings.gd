@@ -354,7 +354,7 @@ func _late_house() -> void:
 	if _home == null or _car == null:
 		return
 	var bay: Transform3D = _home.call("spawn_transform", &"Spawn_Car")
-	_car.teleport(bay)
+	_car.teleport(_carport())
 	_car.freeze = true
 	_park_second(bay)
 	_dress_1979(true)
@@ -371,6 +371,17 @@ func _late_house() -> void:
 	_scene_cam.global_position = bay.origin - bay.basis.z * LANE_BACK + side + Vector3.UP * 2.2
 	_scene_cam.look_at(bay.origin + bay.basis.z * 4.0 + side + Vector3.UP * 1.6, Vector3.UP)
 	_scene_cam.current = true
+
+
+## Where the car sits in the carport: the map's own spawn, which stands the
+## car's body above the ground (the house's Spawn_Car marker is on it, and a
+## car put there sinks into the slab and is thrown up out of it).
+func _carport() -> Transform3D:
+	var map := get_tree().get_first_node_in_group(&"perth_map")
+	if map and map.has_method("get_spawn_transform"):
+		return map.get_spawn_transform()
+	var bay: Transform3D = _home.call("spawn_transform", &"Spawn_Car")
+	return Transform3D(bay.basis, bay.origin + Vector3.UP * 0.6)
 
 
 ## The other little car, beside yours in the carport.
@@ -393,6 +404,7 @@ func _back_in_the_car() -> void:
 		_return_cam.current = true
 	if _car:
 		_car.freeze = false
+		_car.teleport(_carport())
 	_hud(true)
 	LateCity.fade_look(0.0, 2.0)
 	Story.log_night(&"late_city_credits", "I went in after him. It's 1979 now, and it's always night.")
