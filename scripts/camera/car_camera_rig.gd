@@ -34,6 +34,11 @@ enum Mode { CHASE, INTERIOR }
 ## a camera pulled in by a wall stops this far short of it.
 const WALL_CHECK_HALF_WIDTH := 0.45
 const WALL_MARGIN := 0.3
+## When a wall leaves no room behind the car (a long car in the carport), the
+## camera rises this far over the roof rather than end up inside the body,
+## easing back down over this distance clear of it.
+const ROOF_CLEARANCE := 0.45
+const BODY_CLEARANCE_FADE := 1.2
 
 @export_group("Interior")
 ## Narrower than a chase lens, so the windscreen fills more of the view.
@@ -67,6 +72,8 @@ var _headroom := INF
 var _offset := Vector3.ZERO
 var _has_offset := false
 var _behind := false
+var _bounds := AABB()
+var _bounds_age := INF
 
 
 func _ready() -> void:
@@ -197,6 +204,7 @@ func _update_chase(delta: float) -> void:
 			clear = minf(clear, back.dot(hit.position - pivot - across))
 	if clear < reach:
 		desired = pivot + back * maxf(clear - WALL_MARGIN, 0.0)
+		desired = _over_the_roof(desired, delta)
 
 	# Smooth in the car's frame: speed doesn't leave the camera behind.
 	var offset := desired - car_pos
@@ -210,6 +218,34 @@ func _update_chase(delta: float) -> void:
 	if not global_position.is_equal_approx(target):
 		_camera.look_at(target, Vector3.UP)
 	_camera.fov = lerpf(_camera.fov, lerpf(fov_slow, fov_fast, speed_t), 1.0 - exp(-2.0 * delta))
+
+
+## A camera pulled in by a wall can end up over the car itself, inside the
+## body of a long one: lift it clear of the roof there, easing off as it gets
+## clear of the body, and keep it under any ceiling.
+func _over_the_roof(desired: Vector3, delta: float) -> Vector3:
+	_bounds_age += delta
+	if _bounds_age > 1.0:  # Parts and trinkets come and go under the same body.
+		_bounds = _car.body_bounds()
+		_bounds_age = 0.0
+	if _bounds.size.x < 0.1:
+		return desired
+	var to_car := _car.global_transform.affine_inverse()
+	var local := to_car * desired
+	var outside := maxf(maxf(_bounds.position.x - local.x, local.x - _bounds.end.x),
+			maxf(_bounds.position.z - local.z, local.z - _bounds.end.z))
+	var lift := 1.0 - clampf(outside / BODY_CLEARANCE_FADE, 0.0, 1.0)
+	var over := _bounds.end.y + ROOF_CLEARANCE
+	if lift <= 0.0 or local.y >= over:
+		return desired
+	local.y = lerpf(local.y, over, lift)
+	var lifted := _car.global_transform * local
+	_ray_query.from = desired
+	_ray_query.to = lifted + Vector3.UP * 0.2
+	var ceiling := get_world_3d().direct_space_state.intersect_ray(_ray_query)
+	if not ceiling.is_empty():
+		lifted.y = maxf(desired.y, ceiling.position.y - 0.2)
+	return lifted
 
 
 func _update_interior(delta: float) -> void:

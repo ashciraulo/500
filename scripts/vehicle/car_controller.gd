@@ -1756,6 +1756,13 @@ func _in_car_space(body: Node3D, node: Node3D) -> Transform3D:
 	return body.transform * chain
 
 
+## Bounding box of the body as it is now (parts and trinkets included), in
+## the car's space; empty without a body.
+func body_bounds() -> AABB:
+	var body := get_node_or_null(^"Body") as Node3D
+	return _model_bounds(body) if body else AABB()
+
+
 ## Bounding box of a model's meshes in the car's space.
 func _model_bounds(body: Node3D) -> AABB:
 	var box := AABB()
