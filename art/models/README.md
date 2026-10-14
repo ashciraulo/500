@@ -165,7 +165,7 @@ Wheels are separate so the car scene can put them under its suspension
 nodes: `cars/parts/wheel_<style>_l.glb` / `_r.glb`, origin at the hub, axle
 along X, outer face pointing away from the car. Styles: `pop_trim` (stock),
 `steel`, `alloy15`, `sport16`, `abarth17`, `turbine16` (the 2020 car's many
-thin spokes), `pepper15` (the 2013 500e's five-hole face). Exhausts: `cars/parts/exhaust_<style>.glb`
+thin spokes), `pepper15` (the 2013 500e's five-hole face), and the VC Valiant's `vc` (stock steel wheels with dog-dish caps), `vc_whitewall` (the Regal's full chrome covers on wide whitewalls) and `vc_slot` (cast slot mags), from `build_period.py`. Exhausts: `cars/parts/exhaust_<style>.glb`
 (`stock`, `sport`, `twin`, `abarth_quad`), origin at the mount.
 `cars/paints.json` lists period 500 colours.
 
@@ -358,6 +358,8 @@ transform:
 | `seatcover_<sheepskin\|beaded>_<modern\|classic>.glb` | `Seat_L` | Covers shaped to the Pop's and the Nuova's seats; mirror X for `Seat_R`. |
 | `foglamps_yellow.glb` | `Mount_Spotlights` | A pair of small yellow fog lamps in black bowls with the period cross-strap, either side of the front plate (`scripts/build_mod_parts.py`). The lenses use `LampFog`, so light them with the headlights. |
 | `sump_finned.glb` | `Mount_Exhaust` (classics) | The finned alloy oil sump of a big-bore and carb kit, hanging under the engine ahead of the exhaust. It's the outside tell for the classic engine kits. The turbo kit has no outside part. |
+| `seatcover_vc_sheepskin.glb` | `Seat_L` (the VC Valiant) | A cream sheepskin over the passenger's half of the split bench, from over the cushion's front edge to over the top of the backrest; mirror X for `Seat_R` (`build_period.py`, lib/valiant_parts.py). |
+| `exhaust_vc_twin.glb` | `Mount_Exhaust` (the VC Valiant) | Twin pipes with plain chrome tips out under the back bumper on the left, the outer one over the stock pipe so it hides it. |
 
 Custom number plates: `cars/plates/plate_<id>.png` (64 x 16, the same size as
 the plate texture in every car) for `standard` (1CIN-500), `ciao`, `pop_500`,

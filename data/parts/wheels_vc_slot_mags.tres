@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"wheels_vc_slot_mags"
+display_name = "Slot mags"
+description = "Old 14-inch slotted mags with a polished lip. Somebody's prized set, once."
+slot = &"wheels"
+modifiers = {"mass_add": -6}
+ladders = PackedStringArray("period")
+visual = "wheel_vc_slot"
+found_only = true

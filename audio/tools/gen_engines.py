@@ -63,12 +63,13 @@ VARIANT_DB = {"stock": 0.0, "sport": 3.0, "straight": 6.0, "megaphone": 4.5}
 VARIANTS = {"classic": ("stock", "sport", "straight", "megaphone"),
             "classicflat": ("stock", "megaphone"),
             "classicabarth": ("stock", "sport", "straight", "megaphone"),
-            # The Valiant only takes its stock exhaust (cars.json no_parts).
-            "slant6": ("stock",)}
+            # The Valiant's own parts: its stock pipe or the twin pipes (sport).
+            "slant6": ("stock", "sport")}
 # Lean encode for the sets added or re-rendered after the first batch (their content stops
 # at the engine's 7 kHz air roll-off, so 32 kHz loses nothing).
 LEAN = {"classicmegaphone", "classicflat", "classicflatmegaphone", "classicabarth",
-        "classicabarthsport", "classicabarthstraight", "classicabarthmegaphone", "electric2020", "slant6"}
+        "classicabarthsport", "classicabarthstraight", "classicabarthmegaphone", "electric2020", "slant6",
+        "slant6sport"}
 LEAN_ENC = dict(quality=4, rate=32000)
 # Families levelled against another set rather than to their own peak, so
 # the classics sit together: (reference set, dB above its 2500 rpm on-load

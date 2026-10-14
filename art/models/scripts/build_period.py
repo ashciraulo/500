@@ -22,10 +22,16 @@ import bpy  # noqa: E402,F401
 import build_city as BC  # noqa: E402
 from lib import common as C  # noqa: E402
 from lib import period_vehicles as PV  # noqa: E402
+from lib import valiant_parts as VP  # noqa: E402
 
 OUT = "art/models/vehicles/period/"
 CAR_OUT = "art/models/cars/valiant/valiant.glb"
 WHEEL_OUT = "art/models/cars/parts/wheel_%s_%s.glb"
+PART_OUT = "art/models/cars/parts/%s.glb"
+# The Valiant's bolt-ons (lib/valiant_parts.py): glb name -> builder.
+PARTS = {"seatcover_vc_sheepskin": VP.seatcover_sheepskin, "exhaust_vc_twin": VP.exhaust_twin}
+# Its other wheels: style -> builder(sx), written as wheel_<style>_l/_r.
+WHEELS = {"vc_whitewall": VP.wheel_whitewall, "vc_slot": VP.wheel_slot}
 SIZE = {}
 
 
@@ -53,6 +59,7 @@ def main():
             C.render(prefix + "_" + name + "_back.png")
     if not only or "valiant" in only:
         build_car()
+        build_parts()
     if "--car-render" in sys.argv:
         render_car(sys.argv[sys.argv.index("--car-render") + 1])
 
@@ -68,6 +75,22 @@ def build_car():
     made = [o for o in bpy.data.objects if o.type == "MESH"]
     print("valiant car triangles:", C.tri_count(made))
     C.export_glb(CAR_OUT)
+
+
+def build_parts():
+    """The Valiant's bolt-on parts, each at its mount, and its wheels."""
+    for style, fn in WHEELS.items():
+        for side, sx in (("l", -1), ("r", 1)):
+            C.reset()
+            C.clear_material_cache()
+            fn(sx)
+            C.export_glb(WHEEL_OUT % (style, side))
+    for name, fn in PARTS.items():
+        C.reset()
+        C.clear_material_cache()
+        objs = fn()
+        print(name, "triangles:", C.tri_count(objs))
+        C.export_glb(PART_OUT % name)
 
 
 def _car():

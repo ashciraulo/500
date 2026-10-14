@@ -40,12 +40,18 @@ static func for_slot(slot: StringName) -> Array[CarPart]:
 const COMBUSTION_SLOTS: Array[StringName] = [&"engine", &"intake", &"exhaust", &"gearbox", &"flywheel"]
 
 
+## The 500s' ladders, for parts that don't name theirs.
+const FIVE_HUNDREDS: PackedStringArray = ["modern", "electric", "classic"]
+
+
 ## True when a part can go on a car.
 static func fits(part: CarPart, car_id: String) -> bool:
 	if not part.fits.is_empty():
 		return part.fits.has(car_id)
 	var car := CarCatalogue.get_car(car_id)
-	if not part.ladders.is_empty() and not part.ladders.has(String(car.get("ladder", "modern"))):
+	# A part that names no ladder is a 500 part: the Valiant has its own.
+	var ladders := part.ladders if not part.ladders.is_empty() else FIVE_HUNDREDS
+	if not ladders.has(String(car.get("ladder", "modern"))):
 		return false
 	# Open-topped cars (the 500C, the Jolly) have nothing to bolt a rack to,
 	# and some cars only take stock parts in some slots (no_parts).
@@ -58,13 +64,14 @@ static func fits(part: CarPart, car_id: String) -> bool:
 	return true
 
 
-## Which cars a part is for, in words ("a classic 500"), or "" when any
-## car can take it.
+## Which cars a part is for, in words ("a classic 500", "a 500").
 static func fits_phrase(part: CarPart) -> String:
 	var words: Array[String] = []
 	if not part.fits.is_empty():
 		for car_id in part.fits:
 			words.append("the " + String(CarCatalogue.get_car(car_id).get("name", car_id)))
+	elif part.ladders.is_empty():
+		words.append("a 500")
 	else:
 		for ladder in part.ladders:
 			words.append(LADDER_WORDS.get(ladder, "a %s 500" % ladder))
