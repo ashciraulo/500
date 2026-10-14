@@ -200,6 +200,8 @@ def _cab_mats(M):
         "emblem": C.mat("VC_Emblem", "#b39b62", rough=0.3, metal=0.8),
         "needle": C.mat("VC_Needle", "#f07a1c", rough=0.4, emit="#ff8a2a", emit_strength=0.25),
         "lens": C.mat("VC_WarnLens", "#5a1210", rough=0.2),
+        "quadrant": C.mat("VC_Quadrant", image=_quadrant_tex(), rough=0.3, emit="#d9e2ea", emit_strength=0.15,
+                          emit_image=True),
         "radio": C.mat("VC_RadioDial", image=_radio_tex(), rough=0.3, emit="#ffd9a0", emit_strength=0.15,
                        emit_image=True),
         "speedo": C.mat("VC_Speedo", image=CB.dial_tex("vc_speedo", 120, 10, face=(0.035, 0.035, 0.04),
@@ -597,19 +599,53 @@ def _floor(X):
     out.append(_uv(_rprism("tunnel", tunnel, "y", -1.0, 0.86, X["carpet"], r=0.03, smooth=40), 0, 1, 0.12, 0.12))
     out.append(_rprism("parcel_shelf", [(-1.29, 0.935), (-1.13, 0.935), (-1.13, 0.95), (-1.29, 0.95)], "x",
                        -0.74, 0.74, X["dash"], r=0.004, smooth=30))
-    # hanging clutch and brake, the throttle on the toe board (RHD: from the
-    # tunnel out, clutch, brake, throttle)
-    for x, w, nm in ((0.215, 0.06, "clutch"), (0.34, 0.07, "brake")):
-        out.append(_tube(nm + "_arm", [(x, 0.70, 0.66), (x, 0.79, 0.58), (x, 0.80, 0.54)], 0.007, X["knob"]))
-        pad = _rprism(nm, [(-0.006, -0.026), (0.006, -0.026), (0.006, 0.026), (-0.006, 0.026)], "x",
-                      x - w / 2, x + w / 2, X["rubber"], r=0.005, smooth=30)
-        pad.data.transform(Matrix.Translation((0, 0.795, 0.535)) @ Matrix.Rotation(math.radians(-20), 4, "X"))
-        out.append(pad)
     thr = _rprism("throttle", [(-0.006, -0.06), (0.006, -0.06), (0.006, 0.06), (-0.006, 0.06)], "x", 0.465, 0.51,
                   X["rubber"], r=0.005, smooth=30)
-    thr.data.transform(Matrix.Translation((0, 0.86, 0.55)) @ Matrix.Rotation(math.radians(-45), 4, "X"))
+    thr.data.transform(Matrix.Translation((0, 0.80, 0.50)) @ Matrix.Rotation(math.radians(-45), 4, "X"))
     out.append(thr)
     return out
+
+
+def _pedal(x, w, nm, X):
+    out = [_tube(nm + "_arm", [(x, 0.76, 0.63), (x, 0.73, 0.56), (x, 0.715, 0.51)], 0.007, X["knob"])]
+    pad = _rprism(nm, [(-0.006, -0.026), (0.006, -0.026), (0.006, 0.026), (-0.006, 0.026)], "x",
+                  x - w / 2, x + w / 2, X["rubber"], r=0.005, smooth=30)
+    pad.data.transform(Matrix.Translation((0, 0.708, 0.50)) @ Matrix.Rotation(math.radians(-20), 4, "X"))
+    return out + [pad]
+
+
+def _gearbox_parts(X):
+    """What changes with the gearbox (the game shows one set: Trans_Manual
+    or Trans_Auto). The 3-speed manual: hanging clutch and brake (RHD, from
+    the tunnel out: clutch, brake, then the throttle). The TorqueFlite: one
+    wide brake pedal, and the gear quadrant on top of the column reading
+    1 2 D N R P, as in the photos."""
+    manual = _pedal(0.215, 0.06, "clutch", X) + _pedal(0.34, 0.07, "brake", X)
+    auto = _pedal(0.31, 0.13, "brake_wide", X)
+    m = _column_frame()
+    d = (m.to_3x3() @ Vector((0, 1, 0))).normalized()
+    up = (m.to_3x3() @ Vector((0, 0, 1))).normalized()
+    # a half-moon housing on the column top, its window facing the driver
+    c = HUB + d * 0.16 + up * 0.052
+    n = (up - d).normalized()                    # up and back, toward the driver's eyes
+    face = CB._frame(c, (1, 0, 0), n.cross(Vector((1, 0, 0))))
+    housing = CB._rbox("quadrant", (-0.05, -0.016, -0.014), (0.05, 0.016, 0.0), X["chrome"], 0.012)
+    auto.append(CB._place(housing, face))
+    auto.append(CB._quad("quadrant_scale", 0.084, 0.02, face @ Matrix.Translation((0, 0, 0.0008)), X["quadrant"]))
+    auto.append(_tube("quadrant_stem", [c - n * 0.004 - up * 0.012, HUB + d * 0.16 + up * 0.02], 0.012, X["knob"]))
+    return manual, auto
+
+
+def _quadrant_tex():
+    """1 2 D N R P in white on black, the pointer (red) at D."""
+    w, h = 64, 12
+    px = [(0.04, 0.04, 0.045)] * (w * h)
+    for k, t in enumerate("12DNRP"):
+        CB._put_text(px, w, h, t, 7 + k * 10, 7, (0.9, 0.9, 0.86))
+    for y in range(0, 3):
+        for x in range(25, 30):
+            px[y * w + x] = (0.85, 0.12, 0.08)
+    return CB._image("vc_quadrant", w, h, px)
 
 
 def _headliner(X, body):
@@ -698,8 +734,9 @@ def _door_trim(sx, X):
 def cockpit(M, body):
     """The whole inside. Returns (parts that stay with the body, items for
     the moving nodes, {"L": door trim parts, "R": ...}). Items: the
-    SteeringWheel (origin on the hub), GearKnob and the needles, in
-    lib/city_vehicles.py's form. Call `orient()` after build_city's build
+    SteeringWheel (origin on the hub), GearKnob, the needles and the two
+    gearbox sets Trans_Manual and Trans_Auto (the game shows the one that
+    matches the gearbox setting), in lib/city_vehicles.py's form. Call `orient()` after build_city's build
     to give the wheel and needles their axes."""
     X = _cab_mats(M)
     FRAMES.clear()
@@ -711,7 +748,9 @@ def cockpit(M, body):
     for o in wheel:
         C.apply_transform(o)
         o.data.transform(m)
-    items = [("SteeringWheel", wheel, tuple(HUB), None), ("GearKnob", [knob], None, None)]
+    manual, auto = _gearbox_parts(X)
+    items = [("SteeringWheel", wheel, tuple(HUB), None), ("GearKnob", [knob], None, None),
+             ("Trans_Manual", manual, None, None), ("Trans_Auto", auto, None, None)]
     FRAMES["SteeringWheel"] = m
     for o, fm in needles:
         name = o.name
