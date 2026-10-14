@@ -20,6 +20,11 @@ extends CanvasLayer
 ##   3  Car to me (on foot): the car is parked beside you
 ##   X  Mark this spot: its position goes on the clipboard and into
 ##      user://dev_marks.txt, for reporting stuck spots
+##   F4 The dev menu (DevMenu): any car, any part, money, time, weather,
+##      game speed, traffic, going anywhere, the career tier and the story,
+##      and snapshots of the game
+##
+## On the map (M), T takes you to the spot under the cursor.
 ##
 ## None of these keys are bound to game actions, and they do nothing while
 ## dev mode is off.
@@ -27,6 +32,10 @@ extends CanvasLayer
 const SETTINGS_PATH := "user://dev_mode.cfg"
 const MARKS_PATH := "user://dev_marks.txt"
 const TOGGLE_KEY := KEY_F3
+const MENU_KEY := KEY_F4
+## Frames a teleport holds you over the new spot while the map builds the
+## ground there.
+const GO_FRAMES := 6
 ## Car breadcrumbs: one every CAR_TRAIL_STEP metres driven upright on the
 ## ground, the last CAR_TRAIL_SIZE kept.
 const CAR_TRAIL_STEP := 4.0
@@ -44,6 +53,9 @@ const OPEN_RISE := 1.5
 const AT_CARPORT := 4.0
 
 var enabled := false
+## What the dev menu changes, and the menu itself.
+var tools: DevTools
+var menu: DevMenu
 ## Where the on/off setting and marked spots go (tests point these elsewhere).
 var settings_path := SETTINGS_PATH
 var marks_path := MARKS_PATH
@@ -60,6 +72,10 @@ var _car_trail: Array[Transform3D] = []
 ## Keys pressed since the last physics step, done in the next one: a car moved
 ## while input is being handled can be put straight back by the physics step.
 var _queued: Array[Key] = []
+## Things the dev menu asked for that move the car or you, done the same way.
+var _jobs: Array[Callable] = []
+## A trip under way (go_to): {at, what, frames}.
+var _going := {}
 
 
 ## Dev mode exists in editor runs and debug exports, never in release builds.
@@ -71,6 +87,10 @@ func _ready() -> void:
 	layer = 60
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
+	tools = DevTools.new(self)
+	menu = DevMenu.new(self, tools)
+	menu.name = "DevMenu"
+	add_child(menu)
 	var cfg := ConfigFile.new()
 	if cfg.load(settings_path) == OK:
 		enabled = bool(cfg.get_value("dev", "enabled", false))
@@ -87,6 +107,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not enabled or get_tree().paused:
 		return
+	if key.keycode == MENU_KEY:
+		if TitleScreen.is_showing(get_tree()):
+			return
+		menu.open()
+		get_viewport().set_input_as_handled()
+		return
 	if key.keycode in [KEY_U, KEY_V, KEY_1, KEY_2, KEY_3, KEY_X]:
 		_queued.append(key.keycode)
 		get_viewport().set_input_as_handled()
@@ -95,6 +121,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func set_enabled(on: bool) -> void:
 	enabled = on
 	_panel.visible = on
+	if not on:
+		menu.close()
+		menu.let_go()
 	if not on and _find() and _player.noclip:
 		_player.noclip = false
 	var cfg := ConfigFile.new()
@@ -119,6 +148,10 @@ func _physics_process(_delta: float) -> void:
 				bring_car()
 			KEY_X:
 				mark_spot()
+	while not _jobs.is_empty():
+		_jobs.pop_front().call()
+	if not _going.is_empty():
+		_step_going()
 	_track_car()
 
 
@@ -134,9 +167,12 @@ func _process(delta: float) -> void:
 	var tile := "%d_%d" % [floori(p.x / 500.0), floori(-p.z / 500.0)]
 	var state := "in the car" if _player.in_car else ("flying" if _player.noclip
 		else ("on the ground" if _player.is_on_floor() else "in the air"))
-	_where.text = "%.1f, %.1f, %.1f   tile %s\n%s" % [p.x, p.y, p.z, tile, state]
-	_keys.text = "U unstuck   V fly   X mark spot\n1 home   2 to the car   3 car to me" if not _player.in_car \
-		else "U unstuck   X mark spot\n1 home (carport)"
+	_where.text = "%.1f, %.1f, %.1f   tile %s\n%s%s\n%d fps   %s   speed %sx\nday %d %s   tier %d act %d" % [p.x, p.y, p.z,
+		tile, state, "   %d km/h" % roundi(absf(_car.speed_kmh())) if _player.in_car else "",
+		Engine.get_frames_per_second(), GameClock.time_string(), DevMenu._speed_text(Engine.time_scale),
+		GameClock.day, Garage.weekday().left(3), mini(Progression.tier_index + 1, Progression.tiers.size()), Story.act()]
+	_keys.text = ("U unstuck   V fly   X mark spot\n1 home   2 to the car   3 car to me" if not _player.in_car \
+		else "U unstuck   X mark spot\n1 home (carport)") + "\nF4 dev menu   T on the map: go there"
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +276,94 @@ func mark_spot() -> String:
 	DisplayServer.clipboard_set("%.2f, %.2f, %.2f" % [p.x, p.y, p.z])
 	_say("Spot marked and copied.")
 	return line
+
+
+## The car you drive, and you (null before the game's loaded).
+func car() -> CarController:
+	return _car if _find() else null
+
+
+func player() -> OnFoot:
+	return _player if _find() else null
+
+
+## Where you are: the car if you're in it.
+func here() -> Vector3:
+	return _here() if _find() else Vector3.ZERO
+
+
+## A line on the dev panel.
+func say(text: String) -> void:
+	_say(text)
+
+
+## Runs `job` in the next physics step (anything that moves the car or you).
+func queue(job: Callable) -> void:
+	_jobs.append(job)
+
+
+## Takes you there: in the car, onto the nearest road (or open ground) by it;
+## on foot, onto the ground there. `at.y` can be NAN when it isn't known. The
+## map builds the ground there while you wait over it for a few frames.
+func go_to(at: Vector3, what := "") -> void:
+	if is_nan(at.y):
+		at.y = _road_height(Vector2(at.x, at.z))
+	_going = {"at": at, "what": what, "frames": GO_FRAMES}
+
+
+func _step_going() -> void:
+	var at: Vector3 = _going.at
+	var hold := at + Vector3.UP * 3.0
+	_going.frames -= 1
+	if _going.frames > 0:
+		if _player.in_car:
+			var yaw := _car.global_rotation.y
+			_car.teleport(Transform3D(Basis(Vector3.UP, yaw), hold))
+		else:
+			_player.noclip = false
+			_player.teleport(hold, hold + _player.global_basis * Vector3.FORWARD)
+		return
+	var what: String = _going.what
+	_going = {}
+	if _player.in_car:
+		var spot := _road_spot(at, 40.0)
+		if spot == Transform3D.IDENTITY:
+			spot = _open_spot(at)
+		if spot == Transform3D.IDENTITY:
+			var ground := _ground(at + Vector3.UP * 40.0, 80.0)
+			if ground != Vector3.INF:
+				spot = Transform3D(Basis(Vector3.UP, _car.global_rotation.y), ground + Vector3.UP * 0.6)
+		if spot == Transform3D.IDENTITY:
+			_place_car(Transform3D(Basis(Vector3.UP, _car.global_rotation.y), hold))
+			_say("No ground found at %s." % what)
+			return
+		_place_car(spot)
+	else:
+		var feet := Vector3.INF
+		for offset: Vector3 in [Vector3.ZERO, Vector3(2, 0, 0), Vector3(-2, 0, 0), Vector3(0, 0, 2), Vector3(0, 0, -2),
+				Vector3(5, 0, 0), Vector3(-5, 0, 0), Vector3(0, 0, 5), Vector3(0, 0, -5)]:
+			feet = _ground(at + offset + Vector3.UP * 30.0, 60.0)
+			if feet != Vector3.INF:
+				break
+		if feet == Vector3.INF:
+			_say("No ground found at %s." % what)
+			return
+		_player.teleport(feet + Vector3.UP * 0.05, at + Vector3.UP * 1.2 if feet.distance_to(at) > 1.0 \
+			else feet + _player.global_basis * Vector3.FORWARD * 4.0 + Vector3.UP * 1.5)
+	print("[dev] go: %s (%.1f, %.1f, %.1f)" % [what, at.x, at.y, at.z])
+	_say("At %s." % what if what != "" else "There.")
+
+
+## The height of the road nearest a map spot, or 30 m (the ground is found
+## from above anyway).
+func _road_height(xz: Vector2) -> float:
+	var data := MapData.shared()
+	if data.is_loaded:
+		var graph := data.routes
+		for near: Array in graph.nearest(xz):
+			var r: int = near[0]
+			return TrafficGraph.point_at(graph.road_pts[r], graph.road_cum[r], float(near[1])).y
+	return 30.0
 
 
 # ---------------------------------------------------------------------------

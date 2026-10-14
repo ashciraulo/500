@@ -7,7 +7,9 @@ extends SceneTree
 ## Menus you open with F at a spot in the world are closed with F too. The
 ## record crate and decorate are walked up to on foot and opened with F
 ## where the player can pick them out; the lab and tackle counters and the
-## workshop are opened directly. Exits with code 1 if any check fails.
+## workshop are opened directly. The dev menu opens with F4 once dev mode
+## is on (F3), with the setting kept in a scratch file. Exits with code 1 if
+## any check fails.
 ##
 ## With a display and shots=<dir> it saves each menu open and just after its
 ## key shut it:
@@ -15,6 +17,7 @@ extends SceneTree
 ##   xvfb-run godot --path . --fixed-fps 60 --script res://tools/menu_keys_test.gd -- --no-save shots=/tmp/keys
 
 const WAIT := 0.25
+const DEV_SETTINGS := "user://menu_keys_dev_mode.cfg"
 
 var _quitting := false
 var _main: Node
@@ -106,6 +109,7 @@ func _build_cases() -> Array:
 		["The photo lab counter", _field("LabScreen").open, _field("LabScreen").is_open, KEY_F],
 		["The tackle shop counter", _field("TackleScreen").open, _field("TackleScreen").is_open, KEY_F],
 		["The workshop", workshop.open.bind(spot), workshop.is_open, KEY_F],
+		["The dev menu", _dev_menu, _node("DevMode").menu.is_open, KEY_F4],
 		["The pause menu", KEY_ESCAPE, _node("PauseMenu").is_open, KEY_ESCAPE],
 	]
 
@@ -159,6 +163,14 @@ func _walk_up(spot_name: StringName) -> void:
 	spot.call("interact")
 
 
+## Dev mode on (with its setting kept in a scratch file), then F4.
+func _dev_menu() -> void:
+	var dev := _node("DevMode")
+	dev.settings_path = DEV_SETTINGS
+	dev.set_enabled(true)
+	_press(KEY_F4)
+
+
 func _press(code: Key) -> void:
 	var ev := InputEventKey.new()
 	ev.keycode = code
@@ -196,6 +208,7 @@ func _check(ok: bool, what: String) -> void:
 
 
 func _finish() -> void:
+	DirAccess.remove_absolute(DEV_SETTINGS)
 	print("menu keys: %d failure(s)" % _failures.size())
 	_quitting = true
 	quit(1 if not _failures.is_empty() else 0)

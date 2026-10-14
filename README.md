@@ -81,6 +81,38 @@ and these keys work:
 | 2 | To the car (on foot) |
 | 3 | Bring the car to you (on foot) |
 | X | Mark this spot: its position goes on the clipboard and into `dev_marks.txt` in the user data folder, to report a stuck spot |
+| F4 | The dev menu (below) |
+| T on the map (M) | Go to the spot under the cursor |
+
+The panel also shows the frame rate, game speed, time, day, tier and act.
+
+The **dev menu** (F4) is for trying things without playing through to them.
+It pauses the game; F4 or Esc closes it.
+
+- **Cars:** drive any car straight away (classics come restored; on foot it
+  turns up beside you), a classic as a wreck for the restoration bench, or
+  every car at once.
+- **Parts:** fit any part that suits the car you're in, free and instant
+  (found parts count as found), every part on the shelf for this car or all
+  your cars, back to stock; the best field gear and every bird in the journal.
+- **World:** money (not counted as earnings), time of day, stop the clock,
+  weather, game speed (0.25x to 4x), traffic and people (none, normal,
+  busy), clear the streets, send a siren past, fill up and fix the car.
+- **Places:** go anywhere: home, the job's next stop, workshops and shops,
+  challenges, photo spots, barn finds (hears the rumour), found parts,
+  badges not found yet, the next mystery clue (sets it up after midnight),
+  venues, birding and fishing spots, or typed coordinates. In the car you
+  land on the nearest road; on foot, the car stays where it is.
+- **Story:** jump the career tier (the act follows), finish this tier's
+  challenges (moves up the normal way), finish the job you're on or get new
+  offers, make or unmake the story's choices, pick an ending, and ready any
+  of the late city's strange nights so it happens the next time it can.
+- **Saves:** keep this run out of your save, and three snapshots of the
+  whole game to save and load (`dev_snapshot_<n>.json` in the user data
+  folder).
+
+What it changes goes into your save like anything else, unless you keep the
+run out of it.
 
 To find spots you can get into on foot but not back out of, without
 walking them: `tools/stuck_sweep.gd` checks the map tiles' colliders (and the
@@ -114,6 +146,7 @@ godot --headless --path . --fixed-fps 60 --script res://tools/mystery_test.gd --
 godot --headless --path . --fixed-fps 60 --script res://tools/parts_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/kerb_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/dev_mode_test.gd -- --no-save
+godot --headless --path . --fixed-fps 60 --script res://tools/dev_menu_test.gd -- --no-save
 godot --headless --path . --fixed-fps 60 --script res://tools/stuck_test.gd -- --no-save
 # A real-time playthrough from whatever save you have (or none): load, drive
 # out of the carport, workshop, a job, switching cars, walking, sleeping.
