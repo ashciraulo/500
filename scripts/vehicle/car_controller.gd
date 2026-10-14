@@ -800,6 +800,7 @@ func set_transmission(mode: Transmission) -> void:
 	transmission = mode
 	if mode == Transmission.AUTOMATIC and gear == 0:
 		_begin_shift(1)
+	_apply_transmission_parts()
 	transmission_changed.emit(mode == Transmission.AUTOMATIC)
 
 
@@ -1533,7 +1534,20 @@ func _apply_part_visuals() -> void:
 	if body.has_method("set_plate"):
 		var plate: CarPart = parts.get(&"plate")
 		body.set_plate(plate.visual if plate else "")
+	_apply_transmission_parts()
 	_apply_field_gear()
+
+
+## Bodies built for both gearboxes carry Trans_Manual and Trans_Auto (the
+## Valiant: clutch pedal and a plain column, or one wide brake pedal and the
+## column's gear quadrant); show the set that matches the gearbox setting.
+func _apply_transmission_parts() -> void:
+	var body := get_node_or_null("Body")
+	if body == null:
+		return
+	var auto := transmission == Transmission.AUTOMATIC
+	for node: Node in body.find_children("Trans_*", "Node3D", true, false):
+		(node as Node3D).visible = (node.name == "Trans_Auto") == auto
 
 
 ## The model to show for a part on this car: `<visual>_classic` or

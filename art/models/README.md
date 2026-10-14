@@ -152,6 +152,7 @@ fuzzy dash mat, phone holder, and gaffer tape on the driver's seat bolster.
 | `Odometer_<digit height in mm>` | Empty at the centre of the blank odometer window, for the game to put the digits on: `Odometer_7` in the modern cars' LCD, `Odometer_5` on the Nuova-style speedo, `Odometer_3` on the 500 L's speedo. Its local X runs along the digits (to the driver's right), Y up the dial and Z out toward the driver, so a `Label3D` child at the origin, with its default orientation, reads the right way round. Size the text so the digits are that tall; five or six digits fit the window. |
 | `Lights_Head`, `Lights_Tail` | Lamp lenses; materials `LampHead` / `LampTail` are driven by `car_body.gd`. |
 | `Cam_Cockpit` | Driver's eye point. |
+| `Trans_Manual`, `Trans_Auto` | Optional: the bits that differ with the gearbox (the VC Valiant: clutch and brake pedals, or one wide brake pedal and the column's 1 2 D N R P quadrant). The car shows the set that matches the gearbox setting and hides the other. |
 | `Mount_Exhaust`, `Mount_Roof` | Where exhaust and roof parts attach. |
 | `Mount_BumperF`, `Mount_BumperR` | On the bumper face, centred (every car): over-riders and the nudge bar attach here. |
 | `Mount_TowBar` | Under the rear bumper, centred, at hitch height (every car). |
