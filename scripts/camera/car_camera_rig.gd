@@ -30,6 +30,10 @@ enum Mode { CHASE, INTERIOR }
 ## much further up the road, so the car doesn't hide what's coming.
 @export var speed_rise := 0.45
 @export var speed_look_ahead := 7.0
+## The wall check runs this far either side of the camera's line as well, and
+## a camera pulled in by a wall stops this far short of it.
+const WALL_CHECK_HALF_WIDTH := 0.45
+const WALL_MARGIN := 0.3
 
 @export_group("Interior")
 ## Narrower than a chase lens, so the windscreen fills more of the view.
@@ -177,13 +181,22 @@ func _update_chase(delta: float) -> void:
 		desired.y = maxf(desired.y, ground.position.y + 0.9)
 
 	# Keep the camera out of walls: check from above the car's roof, so the
-	# road itself never counts as a wall.
+	# road itself never counts as a wall. The check is as wide as the view
+	# near the lens, so the camera can't slip through a doorway (the shed's,
+	# behind the carport) and film the room from inside.
 	var pivot := car_pos + Vector3.UP * minf(height, look_height + 0.5)
-	_ray_query.from = pivot
-	_ray_query.to = desired
-	var hit := get_world_3d().direct_space_state.intersect_ray(_ray_query)
-	if not hit.is_empty():
-		desired = hit.position + (pivot - desired).normalized() * 0.3
+	var reach := pivot.distance_to(desired)
+	var back := (desired - pivot) / maxf(reach, 0.001)
+	var side := turn.x * WALL_CHECK_HALF_WIDTH
+	var clear := reach
+	for across: Vector3 in [Vector3.ZERO, side, -side]:
+		_ray_query.from = pivot + across
+		_ray_query.to = desired + across
+		var hit := get_world_3d().direct_space_state.intersect_ray(_ray_query)
+		if not hit.is_empty():
+			clear = minf(clear, back.dot(hit.position - pivot - across))
+	if clear < reach:
+		desired = pivot + back * maxf(clear - WALL_MARGIN, 0.0)
 
 	# Smooth in the car's frame: speed doesn't leave the camera behind.
 	var offset := desired - car_pos
