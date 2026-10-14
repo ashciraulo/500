@@ -733,6 +733,10 @@ func _target() -> Array:
 			if hit.is_empty() or (not low.is_empty() and from.distance_to(hit.position) > waist.distance_to(low.position)):
 				door = _door_hit(home, low)
 		if door != &"":
+			# Something you'd use can stand in for the door (OtherHouse's shed).
+			var stand_in := _nearest_thing()
+			if stand_in and stand_in.has_method("claims_door") and stand_in.claims_door(door):
+				return ["thing", stand_in]
 			return ["door", door]
 	if _car and _driver_door().distance_to(global_position) < CAR_REACH and _facing_car():
 		return ["car", null]

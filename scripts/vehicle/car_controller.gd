@@ -175,10 +175,12 @@ const FIELD_GEAR_PATH := "res://art/models/props/field/%s.glb"
 const FIELD_GEAR := [&"fishing_rod", &"esky", &"tackle_box", &"binoculars", &"camera"]
 ## Where each piece sits in the modern cars, from the passenger's hip point:
 ## [offset, yaw, on the driver's side]. Cushions are 11 cm below the hip; the
-## back seat is 55 to 85 cm behind it.
+## back seat is 55 to 85 cm behind it. The esky and tackle box sit in from
+## the doors so they stay clear of the rear wheel tubs (x 0.53): any further
+## out and they show through the wheel arches.
 const FIELD_GEAR_MODERN := {
-	&"esky": [Vector3(0.0, -0.1, 0.68), 0.0],
-	&"tackle_box": [Vector3(0.02, -0.11, 0.7), 0.2, true],
+	&"esky": [Vector3(0.12, -0.1, 0.68), 0.0],
+	&"tackle_box": [Vector3(-0.08, -0.11, 0.7), 0.2, true],
 	&"binoculars": [Vector3(0.03, -0.1, 0.1), 0.5],
 	&"camera": [Vector3(-0.12, -0.11, 0.0), -0.3],
 }

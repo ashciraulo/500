@@ -17,10 +17,31 @@ extends Node3D
 ## From act 3 it's the second form: the same house abandoned since 1979
 ## (HouseAbandoned), dust sheets and leaves and a stain down the stairwell,
 ## the porch switch taped on, and a cassette on the stairs.
+##
+## From act 4 it's something else each time, never the same twice running:
+##   darkroom  lit red, lines of your own prints, a few of places you haven't
+##             been yet that you can take down (HouseDarkroom)
+##   river     black water for a floor, wrong birds on the stair rail, the far
+##             wall the river at night (HouseRiver)
+##   lane      step in and you're at the far end of Little Shenton Lane,
+##             looking back at your house; walk home
+##   shed      step in and you're in the shed, years before you could open
+##             it, the transmitter's light on; back out its door to the hall
 
 const EVENT := &"other_house"
 const FROM_ACT := 2
 const EVERY_DAYS := 3
+## Act 4's forms, one picked each time, never the last one again.
+const ACT_4_FORMS := [&"darkroom", &"river", &"lane", &"shed"]
+## The forms that take you somewhere else when you step in.
+const AWAY_FORMS := [&"lane", &"shed"]
+## The lane: how far along it from your gate (m, house x) and out from the
+## house you're standing, and how close to the front door counts as home.
+const LANE_ALONG := 32.0
+const LANE_OUT := 3.5
+const LANE_HOME := 2.2
+## Wander this far (m) from where you were put and it lets go.
+const AWAY_LET_GO := 90.0
 ## The doors in from outside.
 const DOORS := [&"Door_Front", &"Door_Sliding"]
 ## The house box in its own frame (x across, y back, z up), and how far past
@@ -44,18 +65,32 @@ const RETINT := {
 	&"StairCarpet": "carpet", &"FloorTiles": "lino", &"Ceiling": "ceiling",
 	&"WallTiles": "tiles", &"Firebox": "firebox",
 }
+## Act 4 turns the inside doors and the white trim too.
+const ACT_4_RETINT := {&"DoorWhite": "door", &"TrimWhite": "trim"}
+## And the darkroom blacks out the windows.
+const DARKROOM_RETINT := {&"WindowGlass": "blackout"}
 
 ## Tests and the dev panel: ignore the act, the clock and the gap between nights.
 var force := false
 var last_day := -100
-## Which house is behind the door: &"1979" (act 2) or &"abandoned" (act 3 on).
-## Tests can set `force_form`.
+## Which house is behind the door: &"1979" (act 2), &"abandoned" (act 3), or
+## one of ACT_4_FORMS. Tests can set `force_form`.
 var form: StringName = &"1979"
 var force_form: StringName = &""
+## The act 4 form last time, so the next is different.
+var last_form: StringName = &""
 
 var _home: HomeBase
 var _active := false
-var _dressing: House1979   # or HouseAbandoned
+var _dressing: House1979   # or HouseAbandoned, HouseDarkroom, HouseRiver
+## lane and shed: whether you've been taken there yet, where, and the shed's
+## reveal if it was built for this.
+var _moved := false
+var _away_at := Vector3.ZERO
+var _shed_props: Node3D
+var _shed_sheet: Node3D
+## Lights near the shed put out while you're in it (they shine through its walls).
+var _shed_dark: Array[Light3D] = []
 ## 0 off, 1 looking in from outside, 2 inside (what the shader is told).
 var portal_mode := 0
 var _overrides: Array = []   # [MeshInstance3D, surface, previous override]
@@ -104,6 +139,9 @@ func _process(delta: float) -> void:
 			_home.slept.connect(func(_d: int) -> void: swap_out())
 		return
 	if not _active:
+		return
+	if form in AWAY_FORMS:
+		_process_away(delta)
 		return
 	_update_view(delta)
 	# Back outside with the doors shut, or well clear of the house: it's yours again.
@@ -156,11 +194,24 @@ func swap_in() -> void:
 	_was_inside = false
 	last_day = GameClock.day
 	_measure_doors()
+	form = _pick_form()
+	if form in ACT_4_FORMS:
+		last_form = form
+	if form in AWAY_FORMS:
+		# Nothing changes until you step in: then you're somewhere else.
+		_moved = false
+		return
 	_today_aside()
 	_shelve_today()
-	form = force_form if force_form != &"" else (&"abandoned" if Story.act() >= 3 else &"1979")
 	_retint(true)
-	if form == &"abandoned":
+	if form == &"darkroom":
+		var room := HouseDarkroom.new()
+		room.photos = _album(24)
+		room.unseen = _places_not_been()
+		_dressing = room
+	elif form == &"river":
+		_dressing = HouseRiver.new()
+	elif form == &"abandoned":
 		var empty := HouseAbandoned.new()
 		empty.tidy = Story.gentle()
 		empty.took_tape = _took_tape
@@ -171,6 +222,18 @@ func swap_in() -> void:
 	_dress_1979(_dressing)
 	_update_view(0.0)
 	LateCity.set_hiss(true)
+	if form == &"darkroom":
+		Discoveries.discover("oddity/other_house_darkroom")
+		Story.log_night(&"other_house_darkroom",
+			"Opened the door and the house was a darkroom: red light, and lines strung through every room pegged with my own photos. Some of places I haven't been.")
+		return
+	if form == &"river":
+		for bird in (_dressing as HouseRiver).birds:
+			LateCity.add_shimmer(bird, 0.3)
+		Discoveries.discover("oddity/other_house_river")
+		Story.log_night(&"other_house_river",
+			"Opened the door onto black water where the floor should be. Birds on the stair rail that shouldn't be there, and the river at night where the back wall was.")
+		return
 	if form == &"abandoned":
 		Discoveries.discover("oddity/other_house_abandoned")
 		Story.log_night(&"other_house_abandoned",
@@ -215,9 +278,181 @@ func swap_out() -> void:
 		_radio.stop()
 		_radio.queue_free()
 		_radio = null
+	if _shed_props:
+		_shed_props.queue_free()
+		_shed_props = null
+	if _shed_sheet and is_instance_valid(_shed_sheet):
+		_shed_sheet.visible = true
+	_shed_sheet = null
+	for l in _shed_dark:
+		if is_instance_valid(l):
+			l.visible = true
+	_shed_dark.clear()
+	_moved = false
 	portal_mode = 0
 	RenderingServer.global_shader_parameter_set(&"late_portal", 0.0)
 	LateCity.end(EVENT)
+
+
+## Which house is behind the door this time.
+func _pick_form() -> StringName:
+	if force_form != &"":
+		return force_form
+	if Story.act() >= 4:
+		var choices: Array = ACT_4_FORMS.filter(func(f: StringName) -> bool: return f != last_form)
+		return choices.pick_random()
+	return &"abandoned" if Story.act() >= 3 else &"1979"
+
+
+## Your album's photo files, newest first.
+static func _album(most: int) -> Array[String]:
+	var out: Array[String] = []
+	var list: Array = Activities.photos
+	for i in range(list.size() - 1, -1, -1):
+		var file := String((list[i] as Dictionary).get("file", ""))
+		if file != "" and FileAccess.file_exists(file):
+			out.append(file)
+			if out.size() >= most:
+				break
+	return out
+
+
+## Photo spots you haven't found yet: [{id, title}], in a shuffled order.
+static func _places_not_been() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(GameplayPlaces.PLACES_PATH))
+	if parsed is Dictionary:
+		for p: Dictionary in (parsed as Dictionary).get("photo_spots", []):
+			if not Discoveries.has("photo/" + String(p.id)):
+				out.append({"id": String(p.id), "title": String(p.get("title", p.id))})
+	out.shuffle()
+	return out
+
+
+# --- The lane and the shed ------------------------------------------------------
+
+## Before you step in, the house is only itself; once you do, you're taken
+## to the lane or the shed. Then it lets go when you're home again.
+func _process_away(delta: float) -> void:
+	var eyes := _eyes()
+	if not _moved:
+		if eyes and _past_threshold(eyes.global_position):
+			_move_away()
+			return
+		_out_time += delta
+		var shut := true
+		for d in DOORS:
+			shut = shut and not _door_showing(d)
+		if _out_time > 0.4 and (shut or eyes == null or not _in_box(eyes.global_position, LET_GO)):
+			swap_out()
+		return
+	var feet := _feet()
+	if feet == Vector3.INF:
+		return
+	if feet.distance_to(_away_at) > AWAY_LET_GO and form == &"lane":
+		swap_out()
+	elif form == &"lane" and (feet.distance_to(_home.spawn_transform(&"Spawn_Front").origin) < LANE_HOME or _in_box(feet, 0.0)):
+		Story.log_night(&"lane_again", "Walked back up the lane to my own front door.")
+		swap_out()
+	elif form == &"shed" and feet.distance_to(_away_at) > 6.0:
+		swap_out()
+
+
+func _move_away() -> void:
+	_moved = true
+	var player := _player()
+	if player == null:
+		swap_out()
+		return
+	# The door you came in by is shut behind you, wherever you are now.
+	for d in DOORS:
+		if _home.is_door_open(d):
+			_home.toggle_door(d)
+	LateCity._play_2d(LateCity.SOUND_START, -6.0)
+	LateCity.fade_look(1.0, 0.6)
+	var front := _home.spawn_transform(&"Spawn_Front").origin
+	if form == &"lane":
+		var basis := _home.global_basis.orthonormalized()
+		var at := front + basis.z * LANE_OUT + basis.x * LANE_ALONG
+		at.y = _ground(at)
+		_away_at = at
+		player.call("teleport", at, front + Vector3.UP * 1.6)
+		Discoveries.discover("oddity/other_house_lane")
+		Story.log_night(&"other_house_lane",
+			"Stepped in through my front door and I was at the far end of the lane, looking back at my house.")
+		return
+	# The shed: at the table, the sheet off, the transmitter's light on.
+	_shed_sheet = _home.find_child("Shed_Sheeted", true, false) as Node3D
+	var stand := _home.find_child("Shed_Ending", true, false) as Node3D
+	if _shed_sheet == null or stand == null:
+		swap_out()
+		return
+	if _shed_sheet.visible:
+		var sheet := _shed_sheet as MeshInstance3D
+		var box := sheet.get_aabb()
+		var base := Vector3(box.get_center().x, box.position.y, box.get_center().z)
+		_shed_props = MysteryProps.build_shed(box.size * sheet.global_basis.get_scale())
+		_shed_props.name = "ShedNight"
+		_home.add_child(_shed_props)
+		_shed_props.global_transform = Transform3D(sheet.global_basis.orthonormalized(), sheet.global_transform * base)
+		_shed_sheet.visible = false
+		# The bulb low: mostly the transmitter's light and the deck's.
+		for c in _shed_props.get_children():
+			if c is OmniLight3D:
+				(c as OmniLight3D).light_energy = 0.2
+	else:
+		_shed_sheet = null  # already open in this game: the table's there
+	_away_at = stand.global_position
+	# The yard's lamps shine through the shed's walls: out while you're in there.
+	var near := _lights(_home)
+	var world := _home.get_parent()
+	while world and world.name != &"World":
+		world = world.get_parent()
+	if world and world.has_node(^"Car"):
+		near.append_array(_lights(world.get_node(^"Car")))
+	for l in near:
+		if l.visible and l.global_position.distance_to(_away_at) < 8.0 \
+				and not (_shed_props and _shed_props.is_ancestor_of(l)):
+			l.visible = false
+			_shed_dark.append(l)
+	var table := (_home.find_child("Shed_Sheeted", true, false) as Node3D).global_position
+	player.call("teleport", _away_at, table + Vector3.UP * 0.9)
+	# Nothing in here can be touched.
+	for n in get_tree().get_nodes_in_group(&"interactables"):
+		if n != self and n.has_method("interact_point") and (n.interact_point() as Vector3).distance_to(_away_at) < 4.0:
+			n.remove_from_group(&"interactables")
+			_shelved.append(n)
+	Discoveries.discover("oddity/other_house_shed")
+	Story.log_night(&"other_house_shed",
+		"Stepped in through my front door and I was in the shed. The table, the tapes, the transmitter's red light. Years before I had a key.")
+
+
+## Out of the shed's door and into your hall.
+func _back_to_hall() -> void:
+	var player := _player()
+	if player:
+		var door_x := _home.to_local(_home.spawn_transform(&"Spawn_Front").origin).x
+		var hall := _home.to_global(House1979.at(Vector3(door_x + 0.2, 1.4, 0.0)))
+		hall.y = _ground(hall)
+		player.call("teleport", hall, _home.to_global(House1979.at(Vector3(door_x + 0.2, 6.0, 1.6))))
+	LateCity._play_2d(LateCity.SOUND_START, -8.0)
+	swap_out()
+
+
+func _player() -> Node3D:
+	var player := get_tree().root.find_child("Player", true, false) as Node3D
+	return player if player and player.get("in_car") == false else null
+
+
+func _feet() -> Vector3:
+	var player := _player()
+	return player.global_position if player else Vector3.INF
+
+
+func _ground(at: Vector3) -> float:
+	var q := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 3.0, at + Vector3.DOWN * 6.0, 1 | 2)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	return (hit.position as Vector3).y + 0.02 if not hit.is_empty() else at.y
 
 
 ## Today's things you can use (the cat's bowl, the answering machine...)
@@ -236,13 +471,38 @@ func _shelve_today() -> void:
 func interact_point() -> Vector3:
 	if not _active or _home == null:
 		return Vector3(0, -10000, 0)
+	if form == &"shed":
+		var door := _home.find_child("Shed_Door", true, false) as Node3D
+		if door == null or not _moved:
+			return Vector3(0, -10000, 0)
+		# Just inside the door, so you can see it from the table.
+		var inward := _away_at - door.global_position
+		inward.y = 0.0
+		return door.global_position + Vector3.UP * 1.0 + inward.normalized() * 0.3
+	if form == &"darkroom":
+		var eyes := _eyes()
+		var p: Dictionary = (_dressing as HouseDarkroom).nearest(eyes.global_position) if eyes and _dressing else {}
+		return HouseDarkroom.face_at(p) if not p.is_empty() else Vector3(0, -10000, 0)
+	if form in ACT_4_FORMS:
+		return Vector3(0, -10000, 0)
 	if form == &"abandoned":
 		return Vector3(0, -10000, 0) if _took_tape else _home.to_global(House1979.at(HouseAbandoned.TAPE_AT))
 	return Vector3(0, -10000, 0) if _took_drawing else _home.to_global(House1979.at(House1979.DRAWING_AT))
 
 
+## The shed's own door, while you're in there, is the way back to the hall.
+func claims_door(door: StringName) -> bool:
+	return _active and form == &"shed" and _moved and door == &"Shed_Door"
+
+
 func interact_hint() -> String:
 	if not _active:
+		return ""
+	if form == &"shed":
+		return "Go back out" if _moved else ""
+	if form == &"darkroom":
+		return "Take the print" if interact_point().y > -1000.0 else ""
+	if form in ACT_4_FORMS:
 		return ""
 	if form == &"abandoned":
 		return "" if _took_tape else "Pick up the cassette"
@@ -251,6 +511,15 @@ func interact_hint() -> String:
 
 func interact() -> void:
 	if not _active:
+		return
+	if form == &"shed":
+		if _moved:
+			_back_to_hall()
+		return
+	if form == &"darkroom":
+		_take_print()
+		return
+	if form in ACT_4_FORMS:
 		return
 	if form == &"abandoned":
 		_take_tape()
@@ -263,6 +532,24 @@ func interact() -> void:
 	Story.set_flag(&"drawing_1979")
 	Notices.post("A child's drawing in crayon: a small round car, a lane, a shed. Signed ROBYN, 8.", "odd")
 	Story.log_night(&"drawing_1979", "Took a drawing off the 1979 fridge. A little round car, the lane, the shed. ROBYN, 8.")
+
+
+## A print of somewhere you haven't been yet, off the darkroom's line and
+## into your album, with where it is pencilled on the back.
+func _take_print() -> void:
+	var eyes := _eyes()
+	var room := _dressing as HouseDarkroom
+	if eyes == null or room == null:
+		return
+	var p := room.nearest(eyes.global_position)
+	if p.is_empty():
+		return
+	p.taken = true
+	(p.node as Node3D).visible = false
+	Activities.add_photo(p.image as Image)
+	Story.set_flag(&"darkroom_print")
+	Notices.post("A print of somewhere you haven't been yet. On the back, in pencil: %s." % p.title, "odd")
+	Story.log_night(&"darkroom_print", "Took a print down off the line in the red light: %s. I've never been there." % p.title)
 
 
 ## The cassette on the stairs: Mick on the lookouts (LookoutSignal).
@@ -485,13 +772,24 @@ func _retint(on: bool) -> void:
 	var shell := _home.get_node_or_null(^"House")
 	if shell == null:
 		return
+	var retint := _retint_map()
 	for mi in _meshes(shell):
-		if String(mi.name).begins_with("Door") or mi.name == &"Late1979":
+		if mi.name == &"Late1979":
 			continue
+		# Doors keep today's look, except (act 4) the ones well inside, and
+		# the darkroom's blacked-out glass in the outside doors.
+		var turns := retint
+		if String(mi.name).begins_with("Door"):
+			if not form in ACT_4_FORMS:
+				continue
+			if not _in_box(mi.global_transform * mi.get_aabb().get_center(), -0.3):
+				if form != &"darkroom":
+					continue
+				turns = DARKROOM_RETINT
 		var surfaces: Array[int] = []
 		for i in mi.mesh.get_surface_count():
 			var m := mi.mesh.surface_get_material(i)
-			if m != null and RETINT.has(StringName(m.resource_name)):
+			if m != null and turns.has(StringName(m.resource_name)):
 				surfaces.append(i)
 		if surfaces.is_empty():
 			continue
@@ -509,6 +807,17 @@ func _retint(on: bool) -> void:
 				mi.set_surface_override_material(i, late_material(m, 1))
 
 
+## The shell's materials this form turns, and into what.
+func _retint_map() -> Dictionary:
+	if form in ACT_4_FORMS:
+		var both := RETINT.duplicate()
+		both.merge(ACT_4_RETINT)
+		if form == &"darkroom":
+			both.merge(DARKROOM_RETINT)
+		return both
+	return RETINT
+
+
 ## Just the papered surfaces of `mesh`, in their 1979 materials (kept for next time).
 func _papered(mesh: Mesh, surfaces: Array[int]) -> ArrayMesh:
 	var key := "%d:%s" % [mesh.get_instance_id(), form]
@@ -517,7 +826,7 @@ func _papered(mesh: Mesh, surfaces: Array[int]) -> ArrayMesh:
 	var out := ArrayMesh.new()
 	for i in surfaces:
 		out.add_surface_from_arrays(mesh.surface_get_primitive_type(i), mesh.surface_get_arrays(i))
-		var kind: String = RETINT[StringName(mesh.surface_get_material(i).resource_name)]
+		var kind: String = _retint_map()[StringName(mesh.surface_get_material(i).resource_name)]
 		out.surface_set_material(out.get_surface_count() - 1, late_material(_material(kind), 2))
 	_papered_cache[key] = out
 	return out
@@ -553,6 +862,11 @@ func _material(kind: String) -> ShaderMaterial:
 	if _materials.has(key):
 		return _materials[key]
 	var m: ShaderMaterial
+	if form == &"darkroom" or form == &"river":
+		m = _act_4_material(kind)
+		m.set_meta(&"late_1979", true)
+		_materials[key] = m
+		return m
 	if form == &"abandoned":
 		m = _abandoned_material(kind)
 		m.set_meta(&"late_1979", true)
@@ -576,6 +890,28 @@ func _material(kind: String) -> ShaderMaterial:
 	m.set_meta(&"late_1979", true)
 	_materials[key] = m
 	return m
+
+
+## The darkroom: every surface gone dark, so the safelights make it red.
+## The river: dark walls, and black glass for floors.
+func _act_4_material(kind: String) -> ShaderMaterial:
+	if form == &"darkroom":
+		match kind:
+			"wallpaper", "door", "trim":
+				return PS1Material.make(Color(0.2, 0.17, 0.16))
+			"ceiling":
+				return PS1Material.make(Color(0.12, 0.1, 0.1))
+			"firebox", "blackout":
+				return PS1Material.make(Color(0.04, 0.03, 0.03))
+		return PS1Material.make(Color(0.1, 0.08, 0.07))
+	match kind:
+		"wallpaper", "tiles", "door", "trim":
+			return PS1Material.make(Color(0.16, 0.2, 0.24))
+		"ceiling":
+			return PS1Material.make(Color(0.07, 0.09, 0.11))
+		"firebox":
+			return PS1Material.make(Color(0.02, 0.03, 0.04))
+	return PS1Material.make(Color(0.02, 0.035, 0.05), 0.2)
 
 
 ## The same house after decades shut up: the wallpaper faded and stained,
@@ -706,10 +1042,11 @@ static func _meshes(node: Node) -> Array[MeshInstance3D]:
 
 
 func save_state() -> Dictionary:
-	return {"last_day": last_day, "took_drawing": _took_drawing, "took_tape": _took_tape}
+	return {"last_day": last_day, "took_drawing": _took_drawing, "took_tape": _took_tape, "last_form": String(last_form)}
 
 
 func load_state(data: Dictionary) -> void:
 	last_day = int(data.get("last_day", -100))
 	_took_drawing = bool(data.get("took_drawing", false))
 	_took_tape = bool(data.get("took_tape", false))
+	last_form = StringName(String(data.get("last_form", "")))

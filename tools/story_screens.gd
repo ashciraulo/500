@@ -4,7 +4,7 @@ extends SceneTree
 ## May Drive. Needs a display (or xvfb):
 ##
 ##   xvfb-run godot --path . --fixed-fps 60 --resolution 1280x720 \
-##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,out,drive]
+##     --script res://tools/story_screens.gd -- --no-save shots=/tmp/story [only=house,road,people,empty,turns,out,drive]
 
 var _shots := "/tmp/story"
 var _only := PackedStringArray()
@@ -57,6 +57,8 @@ func _build_steps() -> void:
 		_people_steps()
 	if _want("empty"):
 		_empty_steps()
+	if _want("turns"):
+		_turns_steps()
 	if _want("out"):
 		_out_steps()
 	if _want("drive"):
@@ -233,6 +235,97 @@ func _empty_steps() -> void:
 		_other.force = false
 		_look(_h(_door_x + 0.6, -6.0, 1.7), _h(_door_x + 0.6, 3.0, 1.4))
 		_home.toggle_door(&"Door_Front"), 90, func() -> void: pass, false])
+
+
+## Act 4: the house turns. The darkroom, the river, then the lane and the
+## shed (stepped into for real, through the player's own eyes).
+func _turns_steps() -> void:
+	var street := func() -> void: _look(_h(_door_x + 0.6, -6.0, 1.7), _h(_door_x + 0.6, 3.0, 1.4))
+	var doorstep := func() -> void: _look(_h(_door_x, -1.2, 1.62), _h(_door_x + 0.4, 4.0, 1.0))
+	var open := func(form: StringName) -> void:
+		_put_player(_home.spawn_transform(&"Spawn_Front").origin)
+		_other.force = true
+		_other.force_form = form
+		_home.toggle_door(&"Door_Front")
+		street.call()
+	var shut := func() -> void:
+		_other.force = false
+		_put_player(_home.spawn_transform(&"Spawn_Front").origin)
+		street.call()
+		if _home.is_door_open(&"Door_Front"):
+			_home.toggle_door(&"Door_Front")
+	var eyes := func(feet: Vector3, target: Vector3) -> void:
+		(_player.get("_camera") as Camera3D).current = true
+		_player.call("teleport", feet, target)
+	var print_at := func() -> Vector3:
+		var room: Node = _other.get("_dressing")
+		return room.face_at(room.takeable[0]) if room and not room.takeable.is_empty() else _h(3.0, 3.4, 1.8)
+	_steps.append(["turns_0_setup", func() -> void:
+		_hour(1.0)
+		_main.find_child("StoryPeople", true, false).card_act = 5
+		_door_x = _home.to_local(_home.spawn_transform(&"Spawn_Front").origin).x
+		_player.call("get_out"), 200, func() -> void:
+			# A few photos in the album, for the darkroom's lines.
+			var shot := root.get_texture().get_image()
+			for r: Rect2i in [Rect2i(0, 0, 1280, 720), Rect2i(0, 0, 640, 360), Rect2i(640, 0, 640, 360), Rect2i(320, 180, 640, 360)]:
+				root.get_node("Activities").add_photo(shot.get_region(r)), false])
+	# The darkroom.
+	_steps.append(["turns_01_darkroom_street", func() -> void: open.call(&"darkroom"), 90])
+	_steps.append(["turns_02_darkroom_doorstep", doorstep, 30])
+	_steps.append(["turns_03_darkroom_lounge", func() -> void:
+		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 1.2)), 40])
+	_steps.append(["turns_04_darkroom_kitchen", func() -> void:
+		_look(_h(3.8, 9.4, 1.75), _h(1.4, 10.7, 1.4)), 30])
+	_steps.append(["turns_05_darkroom_stairs", func() -> void:
+		_look(_h(0.6, 10.6, 1.5), _h(0.4, 7.5, 1.4)), 30])
+	_steps.append(["turns_06_darkroom_upstairs", func() -> void:
+		_look(_h(2.8, 8.8, 3.16 + 1.55), _h(1.0, 10.4, 3.16 + 1.2)), 30])
+	_steps.append(["turns_07_darkroom_print", func() -> void:
+		var at: Vector3 = print_at.call()
+		_look(at + _home.global_basis.z * 0.5 + Vector3.UP * 0.05, at), 30])
+	_steps.append(["turns_08_darkroom_taken", func() -> void:
+		_other.interact(), 40])
+	_steps.append(["turns_09_darkroom_shut", shut, 90, null, false])
+	# The river.
+	_steps.append(["turns_10_river_street", func() -> void: open.call(&"river"), 90])
+	_steps.append(["turns_11_river_doorstep", doorstep, 30])
+	_steps.append(["turns_12_river_far_wall", func() -> void:
+		_look(_h(3.6, 7.6, 1.6), _h(2.7, 11.9, 1.3)), 30])
+	_steps.append(["turns_13_river_birds", func() -> void:
+		_look(_h(2.6, 9.6, 2.4), _h(1.0, 7.0, 2.0)), 30])
+	_steps.append(["turns_13b_river_bird_close", func() -> void:
+		var bird: Node3D = _other.get("_dressing").birds[2]
+		_look(bird.global_position + _home.global_basis.x * 1.1 + Vector3.UP * 0.25, bird.global_position), 30])
+	_steps.append(["turns_14_river_lounge", func() -> void:
+		_look(_h(1.0, 0.5, 1.6), _h(4.6, 2.9, 0.4)), 30])
+	_steps.append(["turns_15_river_shut", shut, 90, null, false])
+	# The lane: step in and you're down the lane, looking back.
+	_steps.append(["turns_16_lane_street", func() -> void: open.call(&"lane"), 60])
+	_steps.append(["turns_17_lane_step_in", func() -> void:
+		eyes.call(_h(_door_x, 0.4, 0.05), _h(_door_x, 6.0, 1.6)), 60])
+	_steps.append(["turns_18_lane_wide", func() -> void:
+		var p: Vector3 = _player.global_position
+		var front: Vector3 = _home.spawn_transform(&"Spawn_Front").origin
+		_look(p + (p - front).normalized() * 6.0 + Vector3.UP * 3.0, front + Vector3.UP * 1.5), 30])
+	_steps.append(["turns_19_lane_home", func() -> void:
+		var front: Vector3 = _home.spawn_transform(&"Spawn_Front").origin
+		eyes.call(front + _home.global_basis.z * 0.3, _h(_door_x, 3.0, 1.6)), 60])
+	# The shed: step in and you're at its table.
+	_steps.append(["turns_20_shed_street", func() -> void: open.call(&"shed"), 60, null, false])
+	_steps.append(["turns_21_shed_step_in", func() -> void:
+		eyes.call(_h(_door_x, 0.4, 0.05), _h(_door_x, 6.0, 1.6)), 60])
+	_steps.append(["turns_22_shed_wide", func() -> void:
+		var stand := (_home.find_child("Shed_Ending", true, false) as Node3D).global_position
+		var table := (_home.find_child("Shed_Sheeted", true, false) as Node3D).global_position
+		_look(stand + (stand - table).normalized() * 0.6 + Vector3.UP * 1.9, table + Vector3.UP * 0.8), 30])
+	_steps.append(["turns_23_shed_door", func() -> void:
+		var door := (_home.find_child("Shed_Door", true, false) as Node3D).global_position
+		eyes.call(_player.global_position, door + Vector3.UP * 1.0), 30])
+	_steps.append(["turns_24_back_in_the_hall", func() -> void:
+		_other.interact(), 60])
+	_steps.append(["turns_25_done", func() -> void:
+		_other.force = false
+		_other.force_form = &"", 10, null, false])
 
 
 func _out_steps() -> void:

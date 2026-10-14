@@ -36,11 +36,11 @@ DOOR_Y0, DOOR_Y1 = -0.745, 0.48
 KEYS = [
     (-1.814, (0.12, 0.4, 0.47, 0.528, 0.105, 0.548, 0.075, 0.56)),
     (-1.808, (0.22, 0.3, 0.48, 0.619, 0.195, 0.647, 0.15, 0.66)),
-    (-1.795, (0.31, 0.25, 0.5, 0.69, 0.28, 0.723, 0.215, 0.74)),
-    (-1.775, (0.39, 0.225, 0.51, 0.75, 0.35, 0.783, 0.27, 0.8)),
-    (-1.745, (0.465, 0.212, 0.52, 0.785, 0.42, 0.822, 0.325, 0.838)),
-    (-1.700, (0.545, 0.205, 0.53, 0.807, 0.49, 0.847, 0.38, 0.862)),
-    (-1.650, (0.61, 0.202, 0.54, 0.817, 0.52, 0.861, 0.43, 0.878)),
+    (-1.790, (0.31, 0.25, 0.5, 0.69, 0.28, 0.723, 0.215, 0.74)),
+    (-1.765, (0.39, 0.225, 0.51, 0.75, 0.35, 0.783, 0.27, 0.8)),
+    (-1.732, (0.465, 0.212, 0.52, 0.785, 0.42, 0.822, 0.325, 0.838)),
+    (-1.688, (0.545, 0.205, 0.53, 0.807, 0.49, 0.847, 0.38, 0.862)),
+    (-1.642, (0.61, 0.202, 0.54, 0.817, 0.52, 0.861, 0.43, 0.878)),
     (-1.580, (0.675, 0.2, 0.56, 0.826, 0.58, 0.877, 0.48, 0.895)),
     (-1.480, (0.74, 0.198, 0.58, 0.83, 0.67, 0.89, 0.545, 0.915)),
     (-1.350, (0.792, 0.195, 0.6, 0.836, 0.73, 0.901, 0.57, 0.935)),
@@ -286,7 +286,7 @@ def shell(abarth=False):
     st = stations(abarth)
     verts, faces, tags, uvs = K.loft(st, lambda *a: K.T_PAINT)
     obj = K.shell_object("shell", verts, faces, tags, uvs)
-    K.cut_arches(obj, (AXLE_F, AXLE_R), ARCH_R, (0.44, 0.53), 0.30)
+    K.cut_arches(obj, (AXLE_F, AXLE_R), ARCH_R, (0.44, 0.53), 0.30, segs=28)
     return obj, st
 
 
@@ -420,13 +420,17 @@ def _cut_frame_edge(obj, frame):
     along the roof to the B-pillar), so the door's faces end on that line
     instead of a staircase of whole loft faces. Only the 2020 body's long
     raked pillar needs it."""
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
     # the frame's upper run: from its front foot up the pillar and back along
     # the roof, until the outline turns forward again along the belt
     edge = [(y, z) for y, z in frame if z > 1.0]
     turn = next((i for i in range(1, len(edge)) if edge[i][0] < edge[i - 1][0]), len(edge))
-    edge = edge[:turn]
+    _slice_sides(obj, edge[:turn])
+
+
+def _slice_sides(obj, edge):
+    """Cut the side faces along a (y, z) polyline seen from the side."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
     for (y0, z0), (y1, z1) in zip(edge, edge[1:]):
         n = Vector((0, -(z1 - z0), y1 - y0)).normalized()
         lo_y, hi_y = min(y0, y1) - 0.01, max(y0, y1) + 0.01
@@ -437,7 +441,6 @@ def _cut_frame_edge(obj, frame):
             ys = [v.co.y for v in f.verts]
             zs = [v.co.z for v in f.verts]
             return min(ys) < hi_y and max(ys) > lo_y and min(zs) < hi_z and max(zs) > lo_z
-
         faces = [f for f in bm.faces if abs(f.calc_center_median().x) > 0.40 and near(f)]
         if not faces:
             continue
@@ -447,12 +450,37 @@ def _cut_frame_edge(obj, frame):
     bm.free()
 
 
+# The gen1 door below the window, measured off Ash's side photo: the front
+# edge bows forward a little and sweeps back into a big round lower corner,
+# the bottom edge rises toward the back, and the rear lower corner is round.
+DOOR_LOWER = [
+    (-0.745, 1.30), (-0.745, 0.95), (-0.743, 0.80), (-0.737, 0.66), (-0.725, 0.55), (-0.708, 0.47),
+    (-0.684, 0.415), (-0.652, 0.378), (-0.612, 0.358), (-0.56, 0.352), (-0.30, 0.362), (0.00, 0.376),
+    (0.25, 0.388), (0.33, 0.393), (0.388, 0.402), (0.43, 0.418), (0.459, 0.444), (0.475, 0.478),
+    (0.48, 0.52), (0.48, 1.30),
+]
+
+
+def door_edge_y(z, front=True):
+    """y of the gen1 door's front (or rear) shut line at height z."""
+    run = DOOR_LOWER[:10] if front else DOOR_LOWER[12:]
+    run = sorted(run, key=lambda p: p[1])
+    if z <= run[0][1]:
+        return run[0][0]
+    for (y0, z0), (y1, z1) in zip(run, run[1:]):
+        if z <= z1:
+            return y0 + (y1 - y0) * (z - z0) / (z1 - z0)
+    return run[-1][0]
+
+
 def classify(obj):
     """Retag the shell by geometry: doors and underside (window openings are
     already cut and tagged Glass by cut_windows)."""
     door_frame = door_frame_poly()
     if BODY == "gen2":
         _cut_frame_edge(obj, door_frame)
+    else:
+        _slice_sides(obj, DOOR_LOWER[2:-2])
     me = obj.data
     _, f = _curves()
     belt = f[3]
@@ -466,7 +494,9 @@ def classify(obj):
         if n.z < -0.55 and c.z < 0.32:
             tag = K.T_UNDER
         elif side and c.y < DOOR_Y1 and c.z > 0.34 and (
-                (c.y > DOOR_Y0 and c.z < belt(c.y) + 0.01) or K.inside_poly((c.y, c.z), door_frame)):
+                (c.y > DOOR_Y0 and c.z < belt(c.y) + 0.01
+                 and (BODY == "gen2" or K.inside_poly((c.y, c.z), DOOR_LOWER)))
+                or K.inside_poly((c.y, c.z), door_frame)):
             tag = K.T_DL if sx > 0 else K.T_DR
         p.material_index = tag
 
