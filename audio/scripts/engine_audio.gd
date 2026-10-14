@@ -53,6 +53,7 @@ const CAR_SETS := {
 	"classic_500f": "classic", "classic_500l": "classic", "classic_500r": "classic",
 	"classic_jolly": "classic", "classic_sport": "classicsport",
 	"classic_abarth_595": "classicabarth", "classic_abarth_695": "classicabarthsport",
+	"valiant_vc": "slant6",
 }
 
 ## Engine part id -> engine family. Parts not listed keep the current family

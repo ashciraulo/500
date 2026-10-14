@@ -4,6 +4,8 @@ handbrake, ignition, windows, soft-top roof, trim rattle, cargo, seat/belt and
 parking sensor. Writes audio/car/*.ogg.
 
     python3 audio/tools/gen_car.py
+    python3 audio/tools/gen_car.py doors      # only the door families
+    python3 audio/tools/gen_car.py valiant    # only the Valiant's doors and horn
 
 Everything is synthesised from noise bursts and decaying modes (sums of damped
 sines) shaped after the physics of the real object, except the horns, which
@@ -1065,6 +1067,63 @@ def ev_power_off():
     return fade(room(peak_eq(hp(x, 300), 2500, 3, 1), 0.12, 0.1, 6000, 113), fout=0.15)
 
 
+# --------------------------------------------------------------------------
+# The Valiant (a 1966 VC sedan): its doors and its horn
+# --------------------------------------------------------------------------
+
+
+def door_close_valiant(v, slam=False):
+    """A big steel sedan door: heavier and lower than the 500's, a deep
+    'thunk' with a chunky rotary latch and a long wind-down glass buzz."""
+    return door_close_modern(v, 1.45, slam, seed=3000)
+
+
+def door_open_valiant(v):
+    """Push-button handle, the latch letting go with a clack, and a short
+    low creak from the hinge as the long door swings."""
+    return door_open_classic(v, seed=3050, creak_f=0.62, swing=0.5)
+
+
+def horn_valiant(seed=3100):
+    """A 1960s vibrating-diaphragm horn: a buzzy low note (~330 Hz) with a
+    higher one a fourth up behind it, the pitch sagging a touch as it
+    starts, through the flare's honk around 1.2-2.4 kHz. 0.6 s, one-shot."""
+    dur = 0.62
+    n = secs(dur)
+    t = t_axis(n)
+    r = rng(seed)
+    out = np.zeros(n)
+    for f0, amp in ((332.0, 1.0), (443.0, 0.55)):
+        sag = 1 + 0.035 * np.exp(-t / 0.03)
+        f = f0 * sag * (1 + 0.004 * smooth_noise(n, 9, seed=int(f0), periodic=False))
+        ph = np.cumsum(f) / SR
+        # the diaphragm slaps its stop: a narrow pulse, rich in harmonics
+        pulse = (np.mod(ph, 1.0) < 0.22).astype(float) - 0.22
+        out += amp * pulse
+    x = bp(out, 250, 6000, 2)
+    x = peak_eq(x, 1250, 8, 1.2)
+    x = peak_eq(x, 2400, 5, 1.5)
+    x = softclip(x / np.max(np.abs(x)) * 2.2, 1.0)
+    env = np.minimum(1, t / 0.012) * np.minimum(1, (dur - t) / 0.05)
+    x = x * env + 0.004 * r.standard_normal(n)
+    return fade(room(np.concatenate([x, np.zeros(secs(0.3))]), 0.3, 0.12, 3500, 63), fout=0.05)
+
+
+def render_valiant():
+    """Run with `gen_car.py valiant` (writes only the Valiant's files)."""
+    for v in range(3):
+        save(f"{OUT}/car_door_close_valiant_{v + 1:02d}", door_close_valiant(v))
+    for v in range(2):
+        save(f"{OUT}/car_door_open_valiant_{v + 1:02d}", door_open_valiant(v))
+    for v in range(2):
+        save(f"{OUT}/car_door_slam_valiant_{v + 1:02d}", door_close_valiant(v + 2, slam=True))
+    for v in range(2):
+        save(f"{OUT}/car_door_close_valiant_in_{v + 1:02d}", inside(door_close_valiant(v), 150 + v, 0.85))
+    save(f"{OUT}/car_door_open_valiant_in_01", inside(door_open_valiant(0), 160))
+    save(f"{OUT}/car_door_slam_valiant_in_01", inside(door_close_valiant(3, slam=True), 170, 1.2))
+    save(f"{OUT}/car_horn_valiant", horn_valiant())
+
+
 def render_doors():
     """Door families (modern, abarth, classic, suicide), inside versions,
     slams and the seatbelt/key/start controls. Run on its own with
@@ -1150,7 +1209,9 @@ def main():
 
 
 if __name__ == "__main__":
-    if "doors" in sys.argv[1:]:
+    if "valiant" in sys.argv[1:]:
+        render_valiant()
+    elif "doors" in sys.argv[1:]:
         render_doors()
     else:
         main()

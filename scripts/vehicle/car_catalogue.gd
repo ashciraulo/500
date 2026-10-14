@@ -1,9 +1,9 @@
 class_name CarCatalogue
 extends RefCounted
 ## Every car in the game, from data/cars/cars.json, loaded on first use.
-## Each entry: id, name, years, ladder (modern / electric / classic), tier,
-## unlock (starter / tier / barn_find / secret), price, power_kw, blurb and a
-## `spec` of CarController values. See that file's comment.
+## Each entry: id, name, years, ladder (modern / electric / classic / period),
+## tier, unlock (starter / tier / barn_find / secret / seen), price, power_kw,
+## blurb and a `spec` of CarController values. See that file's comment.
 
 const PATH := "res://data/cars/cars.json"
 const STARTER := "pop_12"
@@ -29,6 +29,23 @@ static func ladder(name: String) -> Array:
 ## Cars a dealer sells (bought with money once their tier is reached).
 static func for_sale() -> Array:
 	return all().filter(func(c: Dictionary) -> bool: return c.unlock == "tier")
+
+
+## Cars that turn up on the car yard's lot once the player has seen one in
+## the story (unlock "seen": the discovery id in `seen`), and are then for
+## sale whatever the tier. The Valiant, after the 1979 lane.
+static func rare() -> Array:
+	return all().filter(func(c: Dictionary) -> bool: return c.unlock == "seen")
+
+
+## True when a rare car is on the lot: its discovery has happened.
+static func on_the_lot(car: Dictionary) -> bool:
+	if car.get("unlock", "") != "seen":
+		return false
+	# Through the tree: tool scripts compile this before the autoloads exist.
+	var tree := Engine.get_main_loop() as SceneTree
+	var found: Node = tree.root.get_node_or_null("Discoveries") if tree else null
+	return found != null and found.has(String(car.get("seen", "")))
 
 
 ## True when a car has its own numbers yet. Classics come with the barn

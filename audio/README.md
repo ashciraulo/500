@@ -51,7 +51,7 @@ Exhaust upgrades are their own sets: `fire12sport`, `fire12straight`.
 
 | Folder | What | Docs |
 | --- | --- | --- |
-| `engine/` | 9 engine families (Fire 1.2, 1.4 16v, TwinAir, T-Jet, classic twin, Giardiniera flat twin, classic Abarth, electric, Abarth 500e generator), each petrol one with sport and straight-through exhausts (the classics also with the Abarth megaphone), plus extras (gear clunks, turbo, blow-off, backfires, gearbox whine, carb gulp) | [engine](docs/engine.md) |
+| `engine/` | 10 engine families (Fire 1.2, 1.4 16v, TwinAir, T-Jet, classic twin, Giardiniera flat twin, classic Abarth, the Valiant's slant six, electric, Abarth 500e generator), each petrol one with sport and straight-through exhausts (the classics also with the Abarth megaphone), plus extras (gear clunks, turbo, blow-off, backfires, gearbox whine, carb gulp) | [engine](docs/engine.md) |
 | `engine/sedan`, `diesel`, `busdiesel`, `traffic/` | Other traffic: car, ute/van and bus engines, horns, bus air brake, trains | [traffic](docs/traffic.md) |
 | `car/` | Doors, horns, indicators, wipers, radio clicks, windows, roof, cargo... | [car](docs/car.md) |
 | `tyre/`, `impact/` | Rolling on each surface, skids, splashes, road features, crashes, street objects | [tyre](docs/tyre.md), [impact](docs/impact.md) |
