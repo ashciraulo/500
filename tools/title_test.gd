@@ -70,6 +70,7 @@ func _process(_delta: float) -> bool:
 		_boot = load("res://scenes/boot.tscn").instantiate()
 		_boot.set("with_title", true)
 		root.add_child(_boot)
+		current_scene = _boot  # as the game runs it, so changing scene takes it out
 		_title = _boot.get_node("TitleScreen")
 		_clock_at = float(root.get_node("GameClock").get("time_of_day"))
 		return false
