@@ -633,11 +633,6 @@ func _test_traffic(audio: Node) -> void:
 		check(audio.has("traffic/" + n), "city sound " + n)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
-	# Run as a scene, main adds the title screen, which mutes the world and
-	# holds the traffic; this is about play, so it goes.
-	var title := main.get_node_or_null("TitleScreen")
-	if title:
-		title.free()
 	await create_timer(4.0).timeout
 	var ta: Node = audio.hooks.traffic
 	check(ta != null, "traffic audio found the TrafficManager")
