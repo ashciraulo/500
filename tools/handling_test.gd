@@ -1,13 +1,16 @@
 extends SceneTree
 ## How the Pop drives: holding a corner at full keyboard lock at town and
 ## open-road speeds, stopping from 80, riding a lumpy road and a row of bumps
-## at 60, and reversing out of a spin with the brake key. Each case runs on
+## at 60, reversing with the brake key, stopping a backwards slide after a
+## spin with either pedal, and the handbrake at low and high speed. Each case runs on
 ## its own flat world with the gearbox in automatic, like most players drive.
 ##
 ##   godot --headless --path . --fixed-fps 120 --script res://tools/handling_test.gd -- --no-save
 ##
 ## Add car=<id> to drive another car, report to only print the numbers, and
-## jitter=<n> to start every case from start n (see _build), for sweeps.
+## jitter=<n> to start every case from start n (see _build), for sweeps, and
+## trace to print the car's speed along it (km/h, minus going backwards)
+## every 0.05 s for charts.
 ## Exits with code 1 if any check fails.
 
 ## The profile road sits this high over the ground, after a flat run-up from
@@ -79,6 +82,14 @@ const CASES := [
 	{"name": "rolling_back", "kind": "rollback", "kmh": 0.0},
 	{"name": "rolling_back_manual", "kind": "rollback", "kmh": 0.0, "manual": true},
 	{"name": "stopped_reverse", "kind": "stopped", "kmh": 0.0},
+	{"name": "backwards_brake_40", "kind": "backwards", "kmh": 40.0, "pedal": "brake"},
+	{"name": "backwards_brake_40_manual", "kind": "backwards", "kmh": 40.0, "pedal": "brake", "manual": true},
+	{"name": "backwards_accel_40", "kind": "backwards", "kmh": 40.0, "pedal": "accel"},
+	{"name": "backwards_accel_40_manual", "kind": "backwards", "kmh": 40.0, "pedal": "accel", "manual": true},
+	{"name": "handbrake_20", "kind": "handbrake", "kmh": 20.0},
+	{"name": "handbrake_80", "kind": "handbrake", "kmh": 80.0},
+	{"name": "handbrake_turn_60", "kind": "handbrake_turn", "kmh": 60.0},
+	{"name": "spin_then_brake_70", "kind": "spin", "kmh": 70.0},
 ]
 
 var _world: Node3D
@@ -96,10 +107,12 @@ var _land_vy := 0.0
 var _cases: Array[Dictionary] = []
 var _bend_s := 0.0
 var _jitter := 0
+var _trace := false
 
 
 func _initialize() -> void:
 	_report = OS.get_cmdline_user_args().has("report")
+	_trace = OS.get_cmdline_user_args().has("trace")
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("jitter="):
 			_jitter = int(arg.trim_prefix("jitter="))
@@ -151,6 +164,8 @@ func _tick() -> void:
 	if _time < 0.8:
 		return  # settle
 	var c: Dictionary = _cases[_case]
+	if _trace and _phase >= 1 and posmod(roundi(_phase_time * 120.0), 6) == 0:
+		print("TRACE %s %.3f %.2f %d" % [c.name, _phase_time, _car.forward_speed * 3.6, _car.gear])
 	if _step(c, delta):
 		_judge(c)
 		_world.queue_free()
@@ -238,7 +253,7 @@ func _step(c: Dictionary, delta: float) -> bool:
 				_m.jolt = maxf(_m.jolt, absf(v.y - _land_vy))
 				_landed = -1.0
 	match kind:
-		"corner", "swerve", "brake", "brake_corner", "lumpy", "bumps", "rough", "rough_corner", "profile", "bend":
+		"corner", "swerve", "brake", "brake_corner", "lumpy", "bumps", "rough", "rough_corner", "profile", "bend", "handbrake", "handbrake_turn", "spin":
 			if _phase == 0:
 				_hold(float(c.kmh), speed)
 				_car.steer_input = 0.0
@@ -277,6 +292,51 @@ func _step(c: Dictionary, delta: float) -> bool:
 						_m.stop_s = _phase_time
 						_m.yaw_change = rad_to_deg(absf(wrapf(_car.global_rotation.y - _m.start_yaw, -PI, PI)))
 						return true
+				"handbrake":
+					# Off the accelerator and pull the handbrake, wheel straight.
+					_car.throttle_input = 0.0
+					_car.brake_input = 0.0
+					_car.handbrake_input = 1.0
+					_steer_straight()
+					if _phase_time <= 1.5:
+						_m.lost_1s5 = float(c.kmh) - speed * 3.6
+					if speed < 0.3 or _phase_time > 10.0:
+						_m.stop_m = (_car.global_position - _m.start).length()
+						_m.stop_s = _phase_time
+						return true
+				"handbrake_turn":
+					# Full lock and a pull on the handbrake for 0.6 s, then let go.
+					_car.throttle_input = 0.0
+					_car.brake_input = 0.0
+					_car.steer_input = 1.0
+					_car.handbrake_input = 1.0 if _phase_time < 0.6 else 0.0
+					if _phase_time > 1.2:
+						_m.yaw_change = rad_to_deg(absf(wrapf(_car.global_rotation.y - _m.start_yaw, -PI, PI)))
+						_m.end_kmh = speed * 3.6
+						_car.handbrake_input = 0.0
+						return true
+				"spin":
+					# Throw it round with the handbrake until it's sliding
+					# backwards, then stand on the brake key.
+					_car.throttle_input = 0.0
+					if _phase_time < 1.5 and _car.forward_speed > -2.0 and not _m.has("spun_at"):
+						_car.steer_input = 1.0
+						_car.handbrake_input = 1.0
+						_car.brake_input = 0.0
+					else:
+						if not _m.has("spun_at"):
+							_m.spun_at = _phase_time
+							_m.back_kmh = -_car.forward_speed * 3.6
+							_m.start = _car.global_position
+						_car.steer_input = 0.0
+						_car.handbrake_input = 0.0
+						_car.brake_input = 1.0
+						if speed < 0.5 and not _m.has("stop_s"):
+							_m.stop_s = _phase_time - _m.spun_at
+							_m.stop_m = (_car.global_position - _m.start).length()
+						if _m.has("stop_s") or _phase_time > 12.0:
+							_m.end_speed = _car.forward_speed
+							return true
 				"brake_corner":
 					# Turn in, then brake hard while still turning.
 					_car.steer_input = 1.0
@@ -329,6 +389,28 @@ func _step(c: Dictionary, delta: float) -> bool:
 				_m.end_speed = _car.forward_speed
 				_m.end_gear = _car.gear
 				return true
+		"backwards":
+			# Sliding backwards in third after a spin, then one pedal held:
+			# either one stops it before anything else happens.
+			if _phase == 0:
+				_car.linear_velocity = _car.global_basis.z * float(c.kmh) / 3.6
+				_car.gear = 3
+				_m.start = _car.global_position
+				_m.picked_reverse_at = 0.0
+				_next()
+				return false
+			var hold := 1.0
+			_car.brake_input = hold if c.pedal == "brake" else 0.0
+			_car.throttle_input = hold if c.pedal == "accel" else 0.0
+			if _car.gear == -1 and _m.picked_reverse_at == 0.0:
+				_m.picked_reverse_at = -_car.forward_speed * 3.6
+			if absf(_car.forward_speed) < 0.5 and not _m.has("stop_s"):
+				_m.stop_s = _phase_time
+				_m.stop_m = (_car.global_position - _m.start).length()
+			if _phase_time > 5.0:
+				_m.end_speed = _car.forward_speed
+				_m.end_gear = _car.gear
+				return true
 		"stopped":
 			if _phase <= 1:
 				_car.brake_input = 1.0
@@ -352,7 +434,7 @@ func _step(c: Dictionary, delta: float) -> bool:
 
 func _judge(c: Dictionary) -> void:
 	var line := "%-20s" % c.name
-	for key in ["on_grass", "off_road", "flying", "hops", "jolt", "end_kmh", "max_lat_g", "max_yaw_rate", "max_slip", "max_roll", "max_pitch", "airborne", "drift", "stop_m", "stop_s", "yaw_change", "end_speed", "end_gear"]:
+	for key in ["on_grass", "off_road", "flying", "hops", "jolt", "end_kmh", "max_lat_g", "max_yaw_rate", "max_slip", "max_roll", "max_pitch", "airborne", "drift", "stop_m", "stop_s", "lost_1s5", "back_kmh", "picked_reverse_at", "yaw_change", "end_speed", "end_gear"]:
 		if _m.has(key):
 			var val = _m[key]
 			line += "  %s=%s" % [key, ("%.2f" % val) if val is float else str(val)]
@@ -401,6 +483,27 @@ func _judge(c: Dictionary) -> void:
 			_check(_m.get("on_grass", 0.0) > 0.2, "%s: runs wide onto the grass (%.1f s of tyre on grass)" % [c.name, _m.get("on_grass", 0.0)])
 			_check(not _m.spun, "%s: running onto the grass and back doesn't spin it (%.0f deg slide)" % [c.name, _m.max_slip])
 			_check(_m.end_off < 0.5 and _m.end_kmh > 25.0, "%s: back on the road and away (%.1f m off, %.0f km/h)" % [c.name, _m.end_off, _m.end_kmh])
+		"backwards":
+			# Before, the brake key picked reverse at 40 km/h backwards and
+			# never stopped it, and the accelerator took 23 m (auto) or more
+			# than 5 s (manual, in third). Now either stops it in about 6 m.
+			_check(_m.has("stop_s") and _m.stop_m < 10.0, "%s: stops a backwards slide within 10 m (%.1f m)" % [c.name, _m.get("stop_m", 99.0)])
+			_check(_m.picked_reverse_at < 2.0, "%s: no reverse until it has stopped (picked at %.0f km/h)" % [c.name, _m.picked_reverse_at])
+			if c.pedal == "accel":
+				_check(_m.end_gear >= 1 and _m.end_speed > 1.5, "%s: then drives forwards (gear %d, %.1f m/s)" % [c.name, _m.end_gear, _m.end_speed])
+			elif c.get("manual", false):
+				_check(absf(_m.end_speed) < 0.5, "%s: then stays stopped in manual (%.1f m/s)" % [c.name, _m.end_speed])
+		"handbrake":
+			# Before: 6.1 m to stop from 20, 14 km/h off in 1.5 s from 80.
+			if float(c.kmh) <= 20.0:
+				_check(_m.stop_m < 3.5, "%s: the handbrake alone stops it within 3.5 m (%.1f m)" % [c.name, _m.stop_m])
+			else:
+				_check(_m.lost_1s5 > 20.0, "%s: the handbrake scrubs over 20 km/h in 1.5 s (%.0f)" % [c.name, _m.lost_1s5])
+		"handbrake_turn":
+			# Throws the tail out: 95 degrees in 1.2 s before the handbrake got stronger.
+			_check(_m.yaw_change > 60.0, "%s: a handbrake pull swings it round (%.0f deg)" % [c.name, _m.yaw_change])
+		"spin":
+			_check(_m.has("stop_s") and _m.stop_s < 3.0, "%s: the brake key stops it after a spin (%.1f s)" % [c.name, _m.get("stop_s", 99.0)])
 		"rollback", "stopped":
 			_check(_m.end_gear == -1, "%s: the brake key picks reverse (gear %d)" % [c.name, _m.end_gear])
 			_check(_m.end_speed < -1.5, "%s: and drives backwards (%.1f m/s)" % [c.name, _m.end_speed])

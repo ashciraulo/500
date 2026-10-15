@@ -155,6 +155,17 @@ const LIGHT_STEADY := 3.0
 const HUG_TIME := 0.5
 const HUG_DAMP := 6.0
 const BRAKE_ASSIST := 1.45
+## The handbrake's rear wheels keep their full grip below the first speed
+## (km/h), so it stops the car and holds it, and skid on handbrake_grip above
+## the second, so it throws the tail out.
+const HANDBRAKE_GRIP_KMH := Vector2(12.0, 35.0)
+## Share of the handbrake force that also drags on the front wheels, so a
+## pull at speed scrubs some off rather than only swinging the tail. Too
+## little to lock them: the front still steers.
+const HANDBRAKE_FRONT := 0.18
+## Rolling backwards faster than this (m/s), after a spin say, the brake key
+## brakes rather than picking reverse; and the accelerator brakes too.
+const BACK_BRAKE_SPEED := 4.0
 ## The highest step a tyre rides up, in tyre radii (a 13 cm kerb is 0.45; the
 ## map's kerbs reach 22 cm where streets slope, and 40 cm is still a wall).
 const STEP_CLIMB := 0.9
@@ -212,11 +223,13 @@ const FIELD_GEAR_PERIOD := {
 @export var tire_grip := 1.05
 ## Share of sideways slide the tyre corrects per physics step (before the grip limit).
 @export_range(0.0, 1.0) var lateral_stiffness := 0.7
-## Rear grip multiplier while the handbrake is held.
-@export var handbrake_grip := 0.3
+## Rear grip multiplier while the handbrake is held at speed (see
+## HANDBRAKE_GRIP_KMH): the locked rear wheels skid, so the tail swings out.
+@export var handbrake_grip := 0.35
 ## Total braking force at full pedal, N.
 @export var brake_force := 9000.0
-@export var handbrake_force := 3500.0
+## Handbrake force on the rear wheels, N: enough to lock them on any car.
+@export var handbrake_force := 14000.0
 @export var rolling_resistance := 0.014
 @export var drag_coefficient := 0.42
 
@@ -392,6 +405,7 @@ var _shift_timer := 0.0
 var _pending_gear := 1
 var _reverse_hold := 0.0
 var _brake_reverse := false  # reverse was picked with the brake key
+var _brake_to_stop := false  # the brake key went down while moving fast
 var _air_time := 0.0  # since the last wheel touched the road
 var _last_slide := 0.0  # sideways slip angle last step, rad (see step 6)
 var _cushions: Array[Vector3] = []  # the underside's lowest points; see step 7
@@ -572,10 +586,13 @@ func _physics_process(delta: float) -> void:
 			longitudinal += _drive_share(drive_torque * 0.5 / wheel_radius, wheel, opposite)
 		wheel.cap = sqrt(maxf(max_force * max_force - lateral * lateral, 0.0))
 		var braking := brake * brake_force * BRAKE_ASSIST * wear_brakes * (0.3 if wheel.front else 0.2)
-		if not wheel.front:
-			braking += handbrake_input * handbrake_force * 0.5
-			if handbrake_input > 0.1:
-				max_force *= lerpf(1.0, handbrake_grip, handbrake_input)
+		if handbrake_input > 0.0:
+			if wheel.front:
+				braking += handbrake_input * handbrake_force * 0.5 * HANDBRAKE_FRONT
+			else:
+				braking += handbrake_input * handbrake_force * 0.5
+				var skid := clampf((absf(v_long) * 3.6 - HANDBRAKE_GRIP_KMH.x) / (HANDBRAKE_GRIP_KMH.y - HANDBRAKE_GRIP_KMH.x), 0.0, 1.0)
+				max_force *= lerpf(1.0, lerpf(1.0, handbrake_grip, skid), handbrake_input)
 		braking += rolling_resistance * surface_info.rolling * wheel.grip_load
 		longitudinal -= signf(v_long) * minf(braking, stop_force)
 
@@ -1853,11 +1870,21 @@ func _update_transmission_logic(delta: float) -> void:
 	throttle = throttle_input
 	brake = brake_input
 	# The brake key means "go backwards" once the car is already rolling back
-	# (after a spin, say), or in automatic once it's stopped: it picks reverse straight away and
-	# drives, rather than braking to a stop first. While reverse was picked
-	# this way the pedals swap, so the accelerator brakes, then picks first.
-	var stopped := absf(forward_speed) < 1.0
-	var rolling_back := forward_speed < -0.5
+	# slowly (down a hill, say), or in automatic once it's stopped: it picks
+	# reverse straight away and drives, rather than braking to a stop first.
+	# While reverse was picked this way the pedals swap, so the accelerator
+	# brakes, then picks first.
+	# Moving faster than BACK_BRAKE_SPEED any way at all (sliding backwards
+	# out of a spin, say), the brake key is a brake: like a real pedal it
+	# stops the wheels whichever way they turn, and that press doesn't pick
+	# reverse on the way down. Let go and press again for reverse.
+	var flat_speed := (linear_velocity - global_basis.y * linear_velocity.dot(global_basis.y)).length()
+	var stopped := flat_speed < 1.0
+	if brake_input < 0.1:
+		_brake_to_stop = false
+	elif flat_speed > BACK_BRAKE_SPEED and gear >= 0:
+		_brake_to_stop = true
+	var rolling_back := forward_speed < -0.5 and not _brake_to_stop
 	var arcade := transmission == Transmission.AUTOMATIC or _brake_reverse
 	# In manual a standstill hold stays a brake (you're waiting at the lights
 	# in first); only rolling backwards picks reverse.
@@ -1865,8 +1892,10 @@ func _update_transmission_logic(delta: float) -> void:
 	if gear >= 0 and not (is_shifting and _pending_gear == -1) and brake_input > 0.5 and throttle_input < 0.1 and wants_back:
 		_reverse_hold += delta
 		# A moment's hold at a standstill (so a tap at the lights stays a
-		# brake); none at all when it's already rolling backwards.
-		if rolling_back or _reverse_hold > 0.2:
+		# brake), a longer one after stopping a slide (so mashing the brake
+		# out of a spin doesn't reverse away at once); none at all when it's
+		# already rolling backwards.
+		if rolling_back or _reverse_hold > (0.6 if _brake_to_stop else 0.2):
 			_begin_shift(-1)
 			_brake_reverse = true
 			arcade = true
@@ -1882,6 +1911,12 @@ func _update_transmission_logic(delta: float) -> void:
 		brake = throttle_input
 	elif is_shifting and _pending_gear == 1 and gear == -1:
 		brake = 0.0
+	elif forward_speed < -0.3 and not (is_shifting and _pending_gear == -1):
+		# Rolling backwards in a forward gear (a spin, or a hill start): the
+		# accelerator brakes as well as drives, so it stops the car, then
+		# pulls away. The brake fades out as it stops so it can't hold the
+		# car against the engine.
+		brake = maxf(brake, throttle_input * clampf(-forward_speed - 0.3, 0.0, 1.0))
 	if transmission == Transmission.AUTOMATIC and gear >= 1 and not is_shifting:
 		if rpm > auto_upshift_rpm and gear < gear_ratios.size() and throttle > 0.1:
 			_begin_shift(gear + 1)
