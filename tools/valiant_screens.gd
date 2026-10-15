@@ -29,6 +29,7 @@ var _failed := 0
 var _driving := false
 var _top_kmh := 0.0
 var _top_gear := 0
+var _pull_from := 0
 var _torch: OmniLight3D
 var _footwell: Image
 ## Every card Notices put on screen, as "kind: text".
@@ -156,7 +157,7 @@ func _engine_set() -> String:
 
 
 func _build_steps() -> void:
-	# [name, call at the start, frames to wait, shoot]
+	# [name, call at the start, frames to wait, shoot, optional: done early when this returns true]
 	_steps.append(["vd_00_start", func() -> void:
 		# Long after the first day (the opening keeps the machine's cards quiet).
 		var first: Node = _main.find_child("FirstDay", true, false)
@@ -306,9 +307,14 @@ func _build_steps() -> void:
 		_car.set_transmission(1)
 		_top_kmh = 0.0
 		_top_gear = 0, 60, false])
+	# Held until it's past the 5300 rpm upshift (about 45-50 km/h), not for a
+	# count of frames: at --fixed-fps 60 100 frames was only ~32 km/h. Gives up
+	# after 8 s of physics time.
 	_steps.append(["vd_11_pulling_away", func() -> void:
 		_driving = true
-		_hold(&"accelerate", true), 100, true])
+		_pull_from = Engine.get_physics_frames()
+		_hold(&"accelerate", true), 100000, true, func() -> bool:
+			return _top_kmh > 55.0 or Engine.get_physics_frames() - _pull_from > 8 * Engine.physics_ticks_per_second])
 	_steps.append(["vd_11b_chase_moving", func() -> void:
 		print("top speed %.1f km/h, gear %d" % [_top_kmh, _top_gear])
 		_check(_top_kmh > 15.0, "automatic pulls away (%.0f km/h)" % _top_kmh)
@@ -397,7 +403,7 @@ func _process(_delta: float) -> bool:
 		print("valiant: %s" % ("all passed" if _failed == 0 else "%d failed" % _failed))
 		quit(1 if _failed else 0)
 		return true
-	if _frames >= int(_steps[_step][2]):
+	if _frames >= int(_steps[_step][2]) or (_steps[_step].size() > 4 and (_steps[_step][4] as Callable).call()):
 		var name: String = _steps[_step][0]
 		if _steps[_step][3]:
 			root.get_texture().get_image().save_png(_shots.path_join(name + ".png"))
