@@ -232,11 +232,11 @@ func _animate(a: Dictionary, delta: float) -> void:
 						a.target = g.pos
 						a.state = &"walk"
 				if a.kind == Kind.MAGPIE and _call_timer <= 0.0 and _rng.randf() < 0.3:
-					_call_timer = _rng.randf_range(6.0, 14.0)
-					_sound("amb/amb_bird_magpie", node.global_position, -4.0)
+					_call_timer = _rng.randf_range(CALL_GAP_S.x, CALL_GAP_S.y)
+					_sound("amb/amb_bird_magpie", node.global_position, CALL_DB)
 				elif a.kind == Kind.IBIS and _call_timer <= 0.0 and _rng.randf() < 0.15:
-					_call_timer = _rng.randf_range(8.0, 18.0)
-					_sound("traffic/traffic_ibis_grunt", node.global_position, -6.0)
+					_call_timer = _rng.randf_range(CALL_GAP_S.x * 1.3, CALL_GAP_S.y * 1.3)
+					_sound("traffic/traffic_ibis_grunt", node.global_position, CALL_DB - 2.0)
 		&"fly":
 			a.vel.y = minf(a.vel.y + 2.5 * delta, 4.0)
 			node.position += a.vel * delta
@@ -280,13 +280,22 @@ func _flee(a: Dictionary, away: Vector3) -> void:
 		node.get_node("WingR").visible = true
 		_sound("traffic/traffic_wings_takeoff_01" if a.kind == Kind.MAGPIE else "traffic/traffic_wings_takeoff_02", node.global_position, -6.0)
 		if a.kind == Kind.MAGPIE and _rng.randf() < 0.35:
-			_sound("amb/amb_bird_magpie", node.global_position, -2.0)
+			_sound("amb/amb_bird_magpie", node.global_position, CALL_DB + 2.0)
+
+
+## Calls and wings: how loud at the bird (dB), how they fall off (unit size,
+## m) and how far they carry (m), and the gap between calls (s). Heard when
+## you're near the birds, not from a street away (the same as field_birds).
+const CALL_DB := -12.0
+const CALL_UNIT := 3.0
+const CALL_REACH := 100.0
+const CALL_GAP_S := Vector2(15.0, 35.0)
 
 
 func _sound(sound_name: String, p: Vector3, db: float) -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("play_at") and (not audio.has_method("has") or audio.has(sound_name)):
-		audio.play_at(sound_name, p, db, "Outdoors")
+		audio.play_at(sound_name, p, db, "Outdoors", 0.04, CALL_UNIT, CALL_REACH)
 
 
 # --- Models -------------------------------------------------------------------

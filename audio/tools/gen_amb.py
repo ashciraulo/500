@@ -3441,7 +3441,10 @@ def surf_breaks(n, seed, every=7.5):
 # home (Little Shenton Lane) ---------------------------------------------------
 # The few streets round the townhouse: a quiet back lane, a place to wind down.
 # No people, no music, no cars close by; the city is a faint wash over the
-# rooftops. Kept well under the other beds (-30 LUFS).
+# rooftops. Kept well under the other beds (-30 LUFS, the day -34).
+# By day the bed holds no birds: the odd magpie or wagtail is a 3D one-shot
+# from somewhere near (ambience_manager.gd SPRINKLES), dry and placed, not a
+# roomy call baked into a 100 s loop that comes round again and again.
 
 @builder("amb_home_day")
 def home_day():
@@ -3451,11 +3454,7 @@ def home_day():
     B.add(S.circ_lp(texture(src("traffic_night", True), dur, 24011, chunk=20), 900), -44)  # over the rooftops
     B.add(city_hum(n, 24012, 30, 180), -47)
     B.add(gum_wind(n, 24013, gust_rate=0.03, crisp=0.5), -44)  # the courtyard tree
-    B.scatter(bird_pools(), 4, gain_db=(-24, -15), dist=(0.45, 0.85))
-    wg = snips("wagtail1", 2000, 8000, thresh_db=14, min_len=0.6, max_len=3.0, gap=0.35)
-    B.scatter(wg, 2, gain_db=(-24, -18), dist=(0.4, 0.7))
-    B.scatter(raven_pool(), 1, gain_db=(-26, -24), dist=(0.75, 0.9))
-    save_loop("amb/amb_home_day", B.x, norm="lufs:-30", **LEAN)
+    save_loop("amb/amb_home_day", B.x, norm="lufs:-34", **LEAN)
 
 
 @builder("amb_home_night")
@@ -3479,11 +3478,13 @@ def home_dawn():
     B.add(dawn_crickets(dur, 24031), -44)
     B.add(S.circ_lp(texture(src("traffic_night", True), dur, 24032, chunk=20), 800), -47)
     B.add(gum_wind(n, 24033, gust_rate=0.03, crisp=0.5), -47)
-    B.scatter(bird_pools(), 8, gain_db=(-20, -10), dist=(0.35, 0.8))  # magpies carolling
+    # magpies carolling, a wagtail, a few small birds: fewer, and dry (an
+    # open lane has no room to ring), not the big hall a 1.4 s room gave them
+    B.scatter(bird_pools(), 4, gain_db=(-22, -14), dist=(0.3, 0.6), room=0.35)
     wg = snips("wagtail1", 2000, 8000, thresh_db=14, min_len=0.6, max_len=3.0, gap=0.35)
-    B.scatter(wg, 3, gain_db=(-22, -15), dist=(0.3, 0.6))
-    B.scatter([twitter(24100 + i) for i in range(8)], 5, gain_db=(-26, -17), dist=(0.3, 0.6))
-    save_loop("amb/amb_home_dawn", B.x, norm="lufs:-30", **LEAN)
+    B.scatter(wg, 2, gain_db=(-24, -17), dist=(0.25, 0.5), room=0.35)
+    B.scatter([twitter(24100 + i) for i in range(8)], 3, gain_db=(-28, -19), dist=(0.25, 0.5), room=0.35)
+    save_loop("amb/amb_home_dawn", B.x, norm="lufs:-32", **LEAN)
 
 
 # ---- Northbridge's cafes, restaurants, bars and pubs (scripts/world/venue.gd)

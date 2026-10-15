@@ -318,12 +318,81 @@ func _test_retic(amb: Node) -> void:
 	amb.rain = keep[2]
 
 
+## A new game at home isn't constant noise: no sprinkler by home, no cicadas
+## at home or in the morning and only in spells elsewhere, a calm day's wind
+## barely there, and the bed falling quiet now and then.
+func _test_quiet(amb: Node) -> void:
+	print("quiet spells")
+	var keep := [amb.zone, amb.time_of_day, amb.rain, amb.wind, amb.storm, amb.home_at, amb.day]
+	# A sprinkler that's running, with home just over the road.
+	var spot: Vector3 = Vector3.INF
+	for cell in amb._retic:
+		spot = amb._retic[cell][0]
+		break
+	for d in 7:
+		for q in 96:
+			if amb.retic_running(spot, d, q * 0.25):
+				amb.day = d
+				amb.time_of_day = q * 0.25
+	amb.rain = 0.0
+	amb.home_at = spot + Vector3(60, 0, 0)
+	amb.update_places(spot + Vector3(6, 0, 0))
+	check(not amb._place_near.has("retic"), "no sprinkler near home")
+	amb.home_at = Vector3.INF
+	amb.update_places(spot + Vector3(6, 0, 0))
+	check(amb._place_near.has("retic"), "but there is one in a park away from home")
+	# Cicadas: count the seconds they sing over ten minutes.
+	var sung := func(zone: String, hours: float) -> int:
+		amb.zone = zone
+		amb.time_of_day = hours
+		amb._cicada_timer = -1.0
+		amb._cicadas_on = false
+		var on := 0
+		for i in 600:
+			if amb._cicada_amount(1.0) > 0.0:
+				on += 1
+		return on
+	check(sung.call("home", 13.0) == 0, "no cicadas at home")
+	check(sung.call("suburbs", 8.5) == 0, "no cicadas in the morning")
+	var spells: int = sung.call("suburbs", 13.0)
+	check(spells > 0 and spells < 400, "cicadas in the suburbs on a hot afternoon, in spells (%d s of 600)" % spells)
+	# Wind on a calm day.
+	amb.wind = 0.15
+	amb.storm = 0.0
+	check(linear_to_db(amb.wind_level()) < -20.0, "a calm day's wind is barely there (%.1f dB)" % linear_to_db(amb.wind_level()))
+	amb.storm = 1.0
+	check(amb.wind_level() > 0.9, "a storm's wind is loud")
+	# The bed's quiet spells at home.
+	amb.zone = "home"
+	amb._lull_timer = -1.0
+	amb._in_lull = false
+	amb._lull_db = 0.0
+	var lowest := 0.0
+	var back := false
+	for i in 1200:
+		amb._update_lull(0.5)
+		lowest = minf(lowest, amb._lull_db)
+		if lowest <= -20.0 and amb._lull_db > -0.5:
+			back = true
+	check(lowest <= -20.0 and back, "the home bed falls quiet and comes back (down to %.0f dB)" % lowest)
+	amb.zone = keep[0]
+	amb.time_of_day = keep[1]
+	amb.rain = keep[2]
+	amb.wind = keep[3]
+	amb.storm = keep[4]
+	amb.home_at = keep[5]
+	amb.day = keep[6]
+	amb._lull_db = 0.0
+	amb._in_lull = false
+
+
 func _test_ambience(audio: Node) -> void:
 	print("ambience")
 	var amb: Node = audio.ambience
 	amb.set_zone("kingspark")
 	amb.set_weather(0.8, 1.0)
 	_test_retic(amb)
+	_test_quiet(amb)
 	audio.set_player_inside(true)
 	for i in 20:
 		await process_frame

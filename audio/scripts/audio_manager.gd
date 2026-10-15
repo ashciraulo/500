@@ -420,6 +420,11 @@ const CHASE_RADIO_DB := -3.0
 const CHASE_RADIO_LP_HZ := 4000.0
 const CHASE_WEATHER_DB := -22.0
 const CHASE_AMBIENCE_DB := -6.0
+## Life outside (birds, people, the city) heard from the car: in it and at
+## the wheel in the chase view. It's for when you're on foot; from the car
+## only what's close comes through.
+const INSIDE_OUTDOORS_DB := -10.0
+const CHASE_OUTDOORS_DB := -8.0
 
 
 func _apply_inside() -> void:
@@ -435,7 +440,8 @@ func _apply_inside() -> void:
 	# Cabin sounds (indicator, wipers, rain on the roof) are distant from outside.
 	# The radio applies its own trim (radio.gd asks radio_trim_db() on the signals).
 	var levels := {"Cabin": CABIN_DB if _inside else CABIN_OUT_DB, "Roof": CABIN_DB if _inside else CABIN_OUT_DB,
-			"UI": UI_DB, "Outdoors": 0.0, "Body": 0.0}
+			"UI": UI_DB, "Body": 0.0}
+	levels["Outdoors"] = INSIDE_OUTDOORS_DB if _inside else (CHASE_OUTDOORS_DB if chase else 0.0)
 	# Inside, the street and the weather drop well under the radio and engine.
 	levels["Ambience"] = -9.0 if _inside else (CHASE_AMBIENCE_DB if chase else 0.0)
 	levels["Weather"] = -18.0 if _inside else (CHASE_WEATHER_DB if chase else -4.0)
