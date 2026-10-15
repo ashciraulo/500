@@ -9,7 +9,10 @@ extends Node
 ##   amb_<zone>_late (01:00-05:00), then amb_<zone>_day / _night, skipping
 ##   any that don't exist. A change of rain or time crossfades it again.
 ## - Weather: rain beds outside and on the roof (inside the car), wind,
-##   thunder after lightning, cicadas on clear days.
+##   thunder after lightning, cicadas in spells on hot afternoons in the bush
+##   and the suburbs.
+## - Quiet spells: the bed isn't a constant wash. Every minute or so it falls
+##   away for a while (LULL_DB, deepest at home) and comes back.
 ##
 ## - Home: within HOME_RADIUS of the townhouse the zone is "home", a quiet
 ##   back lane (zone_here()). Indoors (Audio.set_indoors) the street and the
@@ -29,6 +32,29 @@ const FADE_S := 4.0
 ## The zone bed sits under the sounds that come from somewhere (traffic,
 ## people, places), so moving about is what you hear change.
 const BED_DB := -4.0
+## Zones whose bed sits under BED_DB (dB): home is the quiet place.
+const BED_TRIM_DB := {"home": -6.0}
+## Quiet spells: the bed dips this far (dB) for LULL_S seconds, every
+## LULL_EVERY_S seconds, fading over LULL_FADE_S. At home it all but goes.
+const LULL_DB := {"home": -24.0, "suburbs": -14.0, "kingspark": -14.0, "wetland": -14.0}
+const LULL_DEFAULT_DB := -8.0
+const LULL_EVERY_S := Vector2(30.0, 90.0)
+const LULL_S := Vector2(15.0, 45.0)
+const LULL_FADE_S := 5.0
+## Cicadas: only where there's bush or gardens to sing from, only in the heat
+## of the day, and in spells (a chorus, then a long quiet), never a constant
+## hiss. CICADA_ON_S / CICADA_OFF_S are the spell lengths (s).
+const CICADA_ZONES := {"kingspark": 0.6, "suburbs": 0.45, "wetland": 0.45}
+const CICADA_HOURS := Vector2(10.0, 17.5)
+const CICADA_ON_S := Vector2(20.0, 60.0)
+const CICADA_OFF_S := Vector2(60.0, 180.0)
+## Ambience birds (SPRINKLES): how loud at the bird (dB), how they fall off
+## (unit size and reach, m), and how far off they are (m). Heard when one's
+## close, gone past a street or two; never over your car from nowhere.
+const BIRD_DB := Vector2(-12.0, -6.0)
+const BIRD_UNIT := 4.0
+const BIRD_REACH := 140.0
+const BIRD_DIST := Vector2(35.0, 120.0)
 ## Rain on the roof (and on the windscreen, SCREEN_TRIM) sits well under the
 ## radio and engine in the cabin mix.
 const ROOF_TRIM := 0.12
@@ -57,8 +83,8 @@ const SPRINKLES := {
 	],
 	# Home is for winding down: a magpie or a wagtail now and then, no more.
 	"home": [
-		["amb/amb_bird_magpie", "day", 50.0, 150.0],
-		["amb/amb_bird_wagtail", "day", 70.0, 180.0],
+		["amb/amb_bird_magpie", "day", 90.0, 240.0],
+		["amb/amb_bird_wagtail", "day", 120.0, 300.0],
 	],
 	"suburbs": [
 		["amb/amb_dog_bark_far", "any", 25.0, 80.0],
@@ -106,6 +132,9 @@ const RETIC_RADIUS := 25.0
 const RETIC_CELL := 200.0
 const RETIC_CONTROLLER := 300.0
 const RETIC_DAYS := 3
+## No sprinklers this close to home (m): home is the quiet place, and the
+## lawns round the lane were the first thing a new game heard.
+const RETIC_HOME_CLEAR := 160.0
 const RETIC_HOURS := 1.5
 var _retic := {}               # Vector2i cell -> PackedVector3Array of spots
 var _retic_loaded := false
@@ -196,6 +225,12 @@ var _bed_key := ""       # zone|wet|period the current bed was picked for
 var _wet := false        # rain bed wanted (see RAIN_WET_ON/OFF)
 var _layers := {}        # layer id -> AudioStreamPlayer
 var _sprinkle_timers := {}
+var _fade := {}          # bed player -> 0..1 (its crossfade)
+var _lull_db := 0.0      # the bed's quiet-spell dip now (dB)
+var _lull_timer := -1.0  # s until the next quiet spell starts (or, in one, ends)
+var _in_lull := false
+var _cicada_timer := -1.0  # s until the cicadas start or stop
+var _cicadas_on := false
 var _source: Node
 var _pushed := false     # set_weather() was called: stop polling autoloads
 
@@ -314,7 +349,9 @@ func update_places(pos: Vector3) -> void:
 			near[type] = [p[1], r]
 	if not near.has("retic") and rain < RAIN_WET_OFF:
 		var spot := nearest_retic(pos)
-		if spot != Vector3.INF and retic_running(spot, day, time_of_day):
+		var by_home := home_at != Vector3.INF and spot != Vector3.INF \
+				and Vector2(spot.x - home_at.x, spot.z - home_at.z).length() < RETIC_HOME_CLEAR
+		if spot != Vector3.INF and not by_home and retic_running(spot, day, time_of_day):
 			near["retic"] = [spot, RETIC_RADIUS]
 	_place_near = near
 
@@ -612,15 +649,16 @@ func _update_bed(instant := false) -> void:
 	if s == null:
 		return
 	_bed_name = want
-	var incoming := _bed_b if _bed_a.playing and _bed_a.volume_db > -60.0 else _bed_a
+	var incoming := _bed_b if _bed_a.playing and _fade.get(_bed_a, 0.0) > 0.001 else _bed_a
 	var outgoing := _bed_a if incoming == _bed_b else _bed_b
 	incoming.stream = s
-	incoming.volume_db = -60.0
+	_fade[incoming] = 0.0
+	_mix_bed(incoming)
 	incoming.play(randf() * incoming.stream.get_length())
 	var dur := 0.01 if instant else FADE_S
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(incoming, "volume_db", BED_DB, dur).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(outgoing, "volume_db", -80.0, dur)
+	tw.tween_method(func(v: float) -> void: _fade[incoming] = v, 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE)
+	tw.tween_method(func(v: float) -> void: _fade[outgoing] = v, _fade.get(outgoing, 0.0), 0.0, dur)
 	tw.chain().tween_callback(outgoing.stop)
 	var radio: Node = get_parent().get("radio") if get_parent() else null
 	if radio:
@@ -646,9 +684,11 @@ func _process(delta: float) -> void:
 	_set_layer("rain_light_fabric", light * (1.0 - roof) * ROOF_TRIM * (1.0 if inside else 0.0), delta)
 	_set_layer("rain_heavy_fabric", heavy * (1.0 - roof) * ROOF_TRIM * (1.0 if inside else 0.0), delta)
 	_set_layer("rain_screen", maxf(light, heavy) * SCREEN_TRIM * (1.0 if inside else 0.0), delta)
-	_set_layer("wind", (0.15 + 0.85 * maxf(wind, storm)) * out, delta)
-	var clear_day := (1.0 if not is_night and hot_day else 0.0) * (1.0 - clampf(rain * 3.0, 0.0, 1.0))
-	_set_layer("cicadas", clear_day * (1.0 if zone in ["kingspark", "suburbs"] else 0.35), delta)
+	_set_layer("wind", wind_level() * out, delta)
+	_set_layer("cicadas", _cicada_amount(delta), delta)
+	_update_lull(delta)
+	_mix_bed(_bed_a)
+	_mix_bed(_bed_b)
 	var radio: Node = get_parent().get("radio") if get_parent() else null
 	if radio:
 		radio.storm = storm > 0.5
@@ -699,9 +739,13 @@ func _sprinkle(delta: float) -> void:
 			# Somewhere off in the trees or the next street, falling away
 			# with distance like anything else.
 			var ang := randf() * TAU
-			var dist := randf_range(30.0, 110.0)
+			var bird := key.contains("bird")
+			var dist := randf_range(BIRD_DIST.x, BIRD_DIST.y) if bird else randf_range(30.0, 110.0)
 			var pos := cam.global_position + Vector3(cos(ang) * dist, randf_range(3.0, 15.0), sin(ang) * dist)
-			Audio.play_at(key, pos, randf_range(-6.0, 0.0), "Ambience", 0.06, 10.0, 260.0)
+			if bird:
+				Audio.play_at(key, pos, randf_range(BIRD_DB.x, BIRD_DB.y), "Ambience", 0.06, BIRD_UNIT, BIRD_REACH)
+			else:
+				Audio.play_at(key, pos, randf_range(-6.0, 0.0), "Ambience", 0.06, 10.0, 260.0)
 
 
 ## True when the city's traffic (with its trains) has sound of its own.
@@ -710,3 +754,46 @@ func _real_trains() -> bool:
 	var ta = hooks.get("traffic") if hooks else null
 	return ta is Node and is_instance_valid(ta) and ta.manager != null and "trains_enabled" in ta.manager \
 			and bool(ta.manager.trains_enabled)
+
+
+## The wind bed's level (0..1) outside: a calm day's breeze is barely there,
+## a storm's wind as loud as ever.
+func wind_level() -> float:
+	return pow(maxf(wind, storm), 1.5)
+
+
+## The bed's level now: its crossfade, the zone's trim and the quiet spell.
+func _mix_bed(p: AudioStreamPlayer) -> void:
+	var f: float = _fade.get(p, 0.0)
+	p.volume_db = linear_to_db(maxf(f, 0.00001)) + BED_DB + BED_TRIM_DB.get(zone, 0.0) + _lull_db
+
+
+## Quiet spells: now and then the bed falls away and comes back.
+func _update_lull(delta: float) -> void:
+	if _lull_timer < 0.0:
+		_lull_timer = randf_range(LULL_EVERY_S.x, LULL_EVERY_S.y) * 0.5
+	_lull_timer -= delta
+	if _lull_timer <= 0.0:
+		_in_lull = not _in_lull
+		_lull_timer = randf_range(LULL_S.x, LULL_S.y) if _in_lull else randf_range(LULL_EVERY_S.x, LULL_EVERY_S.y)
+	var want: float = LULL_DB.get(zone, LULL_DEFAULT_DB) if _in_lull else 0.0
+	var depth := absf(LULL_DB.get(zone, LULL_DEFAULT_DB))
+	_lull_db = move_toward(_lull_db, want, maxf(depth, absf(_lull_db)) / LULL_FADE_S * delta)
+
+
+## How loud the cicadas are now (0..1): in spells on hot afternoons, only in
+## CICADA_ZONES, not in the rain.
+func _cicada_amount(delta: float) -> float:
+	var level: float = CICADA_ZONES.get(zone, 0.0)
+	var hot := hot_day and time_of_day >= CICADA_HOURS.x and time_of_day < CICADA_HOURS.y
+	if level <= 0.0 or not hot:
+		_cicadas_on = false
+		_cicada_timer = -1.0
+		return 0.0
+	if _cicada_timer < 0.0:
+		_cicada_timer = randf_range(CICADA_OFF_S.x, CICADA_OFF_S.y) * 0.3
+	_cicada_timer -= delta
+	if _cicada_timer <= 0.0:
+		_cicadas_on = not _cicadas_on
+		_cicada_timer = randf_range(CICADA_ON_S.x, CICADA_ON_S.y) if _cicadas_on else randf_range(CICADA_OFF_S.x, CICADA_OFF_S.y)
+	return level * (1.0 if _cicadas_on else 0.0) * (1.0 - clampf(rain * 3.0, 0.0, 1.0))

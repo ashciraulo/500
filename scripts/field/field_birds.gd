@@ -991,12 +991,12 @@ func _make_cue(species: Dictionary) -> Node3D:
 func _update_cue(s: Dictionary, delta: float) -> void:
 	s.call_timer -= delta
 	if s.call_timer <= 0.0 and not s.leaving:
-		s.call_timer = _rng.randf_range(7.0, 18.0)
+		s.call_timer = _rng.randf_range(CALL_GAP_S.x, CALL_GAP_S.y)
 		var focus := player_position()
-		if focus != Vector3.INF and s.centre.distance_to(focus) < 220.0 and not s.birds.is_empty():
+		if focus != Vector3.INF and s.centre.distance_to(focus) < CALL_REACH and not s.birds.is_empty():
 			var caller: Dictionary = s.birds[_rng.randi() % s.birds.size()]
 			if caller.state != "gone" and s.species.get("behaviour", "") != "silent":
-				_sound(_call_for(s.species), caller.node.global_position, -6.0)
+				_sound(_call_for(s.species), caller.node.global_position, CALL_DB)
 	var cue: Node3D = s.cue
 	if cue == null or not is_instance_valid(cue):
 		return
@@ -1047,10 +1047,19 @@ static func call_sound(id: String) -> String:
 	return "field/bird_" + id
 
 
+## Calls: how loud at the bird (dB), how they fall off with distance (unit
+## size, m) and how far they carry (m), and the gap between one sighting's
+## calls (s). Heard when you're near the birds, gone a street or so away.
+const CALL_DB := -14.0
+const CALL_UNIT := 3.0
+const CALL_REACH := 100.0
+const CALL_GAP_S := Vector2(12.0, 30.0)
+
+
 func _sound(sound_name: String, p: Vector3, db: float) -> void:
 	var audio := get_node_or_null("/root/Audio")
 	if audio and audio.has_method("play_at") and (not audio.has_method("has") or audio.has(sound_name)):
-		audio.play_at(sound_name, p, db, "Outdoors")
+		audio.play_at(sound_name, p, db, "Outdoors", 0.04, CALL_UNIT, CALL_REACH)
 
 
 # --- props ------------------------------------------------------------------------------------------
