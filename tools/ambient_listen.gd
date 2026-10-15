@@ -17,6 +17,7 @@ var _hour := 8.5
 var _lines: PackedStringArray = []
 var _rec: AudioEffectRecord
 var _started := false
+var _drive := ""   # drive=<car id>: switch to it from the dev menu's tools 8 s in
 
 
 func _process(_delta: float) -> bool:
@@ -28,6 +29,8 @@ func _process(_delta: float) -> bool:
 				_wav = arg.trim_prefix("wav=")
 			elif arg.begins_with("log="):
 				_log = arg.trim_prefix("log=")
+			elif arg.begins_with("drive="):
+				_drive = arg.trim_prefix("drive=")
 			elif arg.begins_with("hour="):
 				_hour = float(arg.trim_prefix("hour="))
 		_main = load("res://scenes/main.tscn").instantiate()
@@ -46,11 +49,16 @@ func _run() -> void:
 	AudioServer.add_bus_effect(0, _rec)
 	_rec.set_recording_active(true)
 	var next := 0.0
+	var step := 0.25 if _drive != "" else 1.0
 	while (Time.get_ticks_msec() - t0) / 1000.0 < _secs:
 		var now := (Time.get_ticks_msec() - t0) / 1000.0
+		if _drive != "" and _drive != "-" and now >= 8.0:
+			var dev: Node = _main.get_node_or_null("DevMode")
+			_lines.append("=== drive %s: %s" % [_drive, dev.tools.give_car(_drive) if dev else "no DevMode"])
+			_drive = "-"
 		if now >= next:
 			_snapshot(now)
-			next += 1.0
+			next += step
 		await process_frame
 	_rec.set_recording_active(false)
 	var clip := _rec.get_recording()

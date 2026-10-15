@@ -104,6 +104,8 @@ func _plan() -> Array:
 			_dev.tools.give_car("valiant_vc")
 			_check(_car.car_id == "valiant_vc", "the Valiant without the 1979 lane"), 2.0],
 		[func() -> void:
+			var heard := _garage_sounds()
+			_check(heard.is_empty(), "switching cars isn't heard as a fill-up (%s)" % ", ".join(heard))
 			_shot("07_valiant")
 			_dev.tools.give_car("classic_500l")
 			_check(_car.car_id == "classic_500l" and _auto("Classics").can_drive("classic_500l"), "a classic comes restored and drives"), 2.0],
@@ -391,6 +393,16 @@ func _far_place(far: float) -> Array:
 		if node.global_position.distance_to(_car.global_position) > far:
 			return [String(node.get("display_name")), node.global_position]
 	return []
+
+
+## Garage sounds (the bowser, the wash, the spray shop) playing now.
+func _garage_sounds() -> Array[String]:
+	var out: Array[String] = []
+	for p in root.find_children("*", "AudioStreamPlayer3D", true, false):
+		var a := p as AudioStreamPlayer3D
+		if a.playing and a.stream and a.stream.resource_path.get_file().begins_with("garage_"):
+			out.append(a.stream.resource_path.get_file())
+	return out
 
 
 func _auto(name: String) -> Node:

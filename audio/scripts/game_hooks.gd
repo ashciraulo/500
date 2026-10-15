@@ -235,7 +235,13 @@ func _find_nodes() -> void:
 			_last_fuel = -1.0
 			_last_look = {}
 			if _car.has_signal("car_changed"):
-				_car.car_changed.connect(func(_id: String) -> void: _last_look = {})
+				# Another car (the garage, the dev menu) has its own fuel, dirt
+				# and paint: start watching it afresh, so a switch isn't heard
+				# as a fill-up, a wash or a respray.
+				_car.car_changed.connect(func(_id: String) -> void:
+					_last_look = {}
+					_last_fuel = -1.0
+					_last_dirt = -1.0)
 			if _car.has_signal("impact"):
 				_car.impact.connect(_on_impact)
 			if _car.has_signal("parts_changed"):
@@ -371,16 +377,21 @@ func _spray_sounds(kind: String) -> void:
 			Audio.play_2d("garage/garage_spray_gun", "UI", -6.0)
 
 
+## A fill-up at the bowser, heard beside the car with the rest of the mix
+## (they were at 0 dB, 3 m away: the loudest thing in the game).
+const FUEL_DB := -12.0
+
+
 func _fuel_sounds(litres: float) -> void:
 	var pos: Vector3 = _car.global_position
-	Audio.play_at("garage/garage_fuel_nozzle_in", pos)
-	var flow := Audio.play_at("garage/garage_fuel_flow", pos, -2.0)
+	Audio.play_at("garage/garage_fuel_nozzle_in", pos, FUEL_DB)
+	var flow := Audio.play_at("garage/garage_fuel_flow", pos, FUEL_DB - 2.0)
 	var dur := clampf(litres / 12.0, 1.2, 3.5)
 	get_tree().create_timer(dur).timeout.connect(func() -> void:
 		if flow and flow.playing:
 			flow.stop()
-		Audio.play_at("garage/garage_fuel_nozzle_out", pos)
-		Audio.play_at("garage/garage_servo_chime", pos, -6.0))
+		Audio.play_at("garage/garage_fuel_nozzle_out", pos, FUEL_DB)
+		Audio.play_at("garage/garage_servo_chime", pos, FUEL_DB - 8.0))
 
 
 func _wash_sounds() -> void:
