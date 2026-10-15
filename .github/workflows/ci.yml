@@ -219,6 +219,17 @@ jobs:
             exit 1
           fi
 
+      - name: Valiant eye test
+        if: env.ALREADY_TESTED != 'true'
+        run: |
+          set -o pipefail
+          ~/godot/godot --headless --path . --fixed-fps 60 --script res://tools/valiant_eye_test.gd -- --no-save 2>&1 \
+            | tee valiant_eye.log | grep -E "PASS|FAIL|valiant eye|SCRIPT ERROR"
+          if grep -q "SCRIPT ERROR" valiant_eye.log; then
+            echo "::error::GDScript errors in the Valiant eye test"
+            exit 1
+          fi
+
       - name: Field journal test
         if: env.ALREADY_TESTED != 'true'
         run: |

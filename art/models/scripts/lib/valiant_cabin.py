@@ -172,7 +172,9 @@ DIAL_Z = 0.849
 SPEEDO_X, GAUGE_X = 0.292, 0.478
 COL_TILT = 30                    # the column, degrees below level toward the dash
 HUB = Vector((DRIVER_X, 0.40, 0.875))
-EYE = Vector((DRIVER_X, -0.12, 1.20))
+# The driver's eye: a head's depth ahead of the bench back's face (-0.07 at
+# shoulder height) and clear above its top (1.066), not over the bench.
+EYE = Vector((DRIVER_X, 0.02, 1.22))
 RIM_R = 0.205
 # Needle full scales (art/models/README.md): the speedo reads 120 mph at the
 # end of its 240 degree sweep, which is 193 km/h; the fuel needle crosses
