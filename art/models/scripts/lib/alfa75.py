@@ -118,20 +118,19 @@ _W = K.pchip([Y0, Y0 + 0.01, Y0 + 0.03, Y0 + 0.06, Y0 + 0.1, -1.8, -1.6, -1.3, 1
 _ZBOT = K.pchip([Y0, -1.78, -1.55, 1.62, 1.8, Y1], [0.46, 0.34, 0.275, 0.275, 0.34, 0.46])
 
 
-# the black band's centre in side view (ba_co6.jpg): one straight line
-# rising gently from the windscreen's foot to the tail, falling away along
-# the wing's shoulder to the headlamp's corner at the front and kicking up
-# into the lip spoiler at the back
+# the black band's centre in side view (ba_co6.jpg, measured along the
+# whole car): one straight line rising from the windscreen's foot right to
+# the tail, where the lip spoiler comes down to meet it; at the front it
+# falls away along the wing's shoulder to the headlamp's corner
 def _band_lin(y):
-    return 0.902 - 0.0381 * (y + 0.55)
+    return 0.85 - 0.0464 * (y - 0.756)
 
 
-BAND = K.pchip([Y0 + 0.04, Y0 + 0.1, Y0 + 0.14, -1.85, -1.75] + [-1.5, -0.5, 0.5, 1.0] + [1.3, 1.54, 1.75, 1.95],
-               [0.986, 0.972, 0.963, 0.954, 0.948] + [_band_lin(y) for y in (-1.5, -0.5, 0.5, 1.0)] +
-               [0.822, 0.785, 0.748, 0.705])
+BAND = K.pchip([Y0 + 0.04, -1.5, -0.5, 0.5, 1.0] + [1.3, 1.54, 1.75, 1.95],
+               [_band_lin(y) for y in (Y0 + 0.04, -1.5, -0.5, 0.5, 1.0)] + [0.822, 0.785, 0.748, 0.705])
 # it is even under the glass and tapers along the wing to a thin line at
 # the headlamp's corner
-BAND_W = K.pchip([Y0 + 0.04, -1.85, -1.0, 0.72, 1.0, 1.4, 1.95], [0.04, 0.044, 0.046, 0.046, 0.04, 0.028, 0.012])
+BAND_W = K.pchip([Y0 + 0.04, -1.0, 0.72, 1.0, 1.4, 1.95], [0.044, 0.046, 0.046, 0.04, 0.028, 0.012])
 
 
 def band_at(y):
@@ -156,15 +155,19 @@ def ZB(y):
 # the bonnet: its centre and its edge along the top of each wing
 # (the shoulder runs just over the band; the bonnet stays high and crowned
 # and only falls away over the last 0.4 m)
-_ZD_F = K.pchip([WS_B, 1.2, 1.6, Y1], [0.876, 0.866, 0.803, 0.712])
-_ZE_F = K.pchip([WS_B, 1.2, 1.6, Y1], [0.874, 0.862, 0.80, 0.725])
-_CROWN_F = 0.04
+# (its centre in side view is nearly a straight wedge down to the nose, as
+# the side photo traces it: no hump)
+_ZD_F = K.pchip([WS_B, 1.0, 1.2, 1.4, 1.6, 1.8, Y1], [0.915, 0.888, 0.859, 0.826, 0.785, 0.739, 0.698])
+_ZE_F = K.pchip([WS_B, 1.2, 1.6, Y1], [0.884, 0.852, 0.796, 0.712])   # just over the band's top edge
+_CROWN_F = 0.02
 # the boot: a flat, very slightly falling deck, and its edge over the quarters
 # (it falls about 6 cm from the screen's foot to the lip: the tail tapers
 # down in side view)
-_ZD_R = K.pchip([Y0, -1.8, BL_B], [0.985, 1.017, 1.045])
-_ZE_R = K.pchip([Y0, -1.8, BL_B, -1.15], [0.976, 0.99, 0.99, 0.95])
-_CROWN_R = 0.015
+# and over its last 12 cm the lid rolls down round the tail, where the lip
+# spoiler wraps it at the band's height
+_ZD_R = K.pchip([Y0, Y0 + 0.04, Y0 + 0.12, -1.8, BL_B], [0.962, 0.99, 1.01, 1.026, 1.048])
+_ZE_R = K.pchip([Y0, Y0 + 0.04, Y0 + 0.12, -1.8, BL_B, -1.15], [0.955, 0.985, 1.003, 1.008, 1.0, 0.95])
+_CROWN_R = 0.012
 
 
 def _screen_frac(t, top):
@@ -184,16 +187,26 @@ def _deck(y, w):
         zd, ze, c = _ZD_F(y), _ZE_F(y), _CROWN_F
     else:
         zd, ze, c = _ZD_R(y), _ZE_R(y), _CROWN_R
-    xe, z2 = w - 0.085, ze + 0.012
+    xe, z2 = w - 0.07, ze + 0.006
     zt = max(zd + c, z2 + 0.004)
-    return [(w - 0.046, ze), (xe, z2), _crown(xe, z2, zt, 0.66), _crown(xe, z2, zt, 0.33), (0.0, zt)]
+    return [(w - 0.044, ze), (xe, z2), _crown(xe, z2, zt, 0.66), _crown(xe, z2, zt, 0.33), (0.0, zt)]
 
 
-def _cabin(y, w):
+def roof_drop(y):
+    """How far the roof sits below ZR / ZRE at y: it slopes down slightly
+    toward the front, most over the front seats."""
+    return (0.012 * min(max((y + 1.0) / 0.8, 0.0), 1.0) +
+            0.022 * min(max((y + 0.2) / 0.5, 0.0), 1.0))
+
+
+def _cabin(y, w, k=1.0):
     """Upper five points through the greenhouse: out over the belt, the side
-    glass leaning in to the roof rail, the roof."""
-    zb = ZB(y)
-    return [(w - 0.046, zb - 0.006), (w - 0.085, zb), (WR, ZRE), _crown(WR, ZRE, ZR, 0.5), (0.0, ZR)]
+    glass leaning in to the roof rail, the roof. k < 1 flattens the crown
+    (over the backlight, so the C pillars stand as high as the glass and
+    hide it from the side)."""
+    zb, dz = ZB(y), roof_drop(y)
+    zr, zre = ZR - dz, ZR - dz - (ZR - ZRE) * k
+    return [(w - 0.044, zb - 0.006), (w - 0.07, zb), (WR, zre), _crown(WR, zre, zr, 0.5), (0.0, zr)]
 
 
 def _controls(y):
@@ -207,12 +220,13 @@ def _controls(y):
         top = [(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
                for a, b in zip(_deck(WS_B, w), _cabin(y, w))]
     elif BL_B < y <= BL_T:
-        f = _screen_frac((y - BL_B) / (BL_T - BL_B), 0.92)
+        u = (y - BL_B) / (BL_T - BL_B)
+        f = _screen_frac(u, 0.92)
         top = [(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
-               for a, b in zip(_deck(BL_B, w), _cabin(y, w))]
+               for a, b in zip(_deck(BL_B, w), _cabin(y, w, 0.25 + 0.75 * u ** 3))]
     else:
         top = _cabin(y, w)
-    zs = top[0][1] - 0.012                 # the shoulder, under the deck edge or the belt
+    zs = top[0][1] - 0.006                 # the shoulder, under the deck edge or the belt: a crisp edge
     zc = min(max(float(CREASE_U(y)), zb + 0.14), zs - 0.06)
     # the side: tucked under at the sill, plumb up to the character line,
     # then leaning in about 3.5 cm to the shoulder
@@ -270,7 +284,7 @@ def _stations():
 
 def _a_line(z):
     """Side view (y) of the A pillar's outer edge at height z."""
-    return 0.724 - (0.724 - 0.28) * (z - 0.868) / (ZRE - 0.868)
+    return 0.724 - (0.724 - 0.28) * (z - 0.868) / (ZRE - roof_drop(0.28) - 0.868)
 
 
 def _c_line(z):
@@ -278,9 +292,14 @@ def _c_line(z):
     return -1.44 + (-1.06 + 1.44) * (z - 1.05) / (ZRE - 1.05)
 
 
-DLO_Z1 = ZRE - 0.04                 # top of the side glass
-B_FRONT, B_REAR = -0.16, -0.245     # the B pillar between the door glasses
-GLASS_REAR = (-1.12, -0.915)        # the rear door glass's back edge, at the belt and at the top
+DLO_Z1 = ZRE - 0.04                 # top of the side glass (at the back: it follows the roof down)
+B_FRONT, B_REAR = -0.215, -0.275    # the B pillar between the door glasses: narrow, body colour
+GLASS_REAR = (-1.08, -0.895)        # the rear door glass's back edge, at the belt and at the top
+REAR_DIVIDER = -0.858               # the bar splitting the rear door glass from its fixed quarter light
+
+
+def dlo_top(y):
+    return DLO_Z1 - roof_drop(y)
 
 
 def _dlo(y0, y1, z_inset=0.016):
@@ -291,14 +310,15 @@ def side_front():
     """Front door glass (y, z): the A pillar, the belt, the B pillar."""
     zb = _dlo(0, 0)
     ya0 = _a_line(zb(0.7)) - 0.035
-    ya1 = _a_line(DLO_Z1) - 0.035
-    return _round_poly([(ya0, zb(ya0)), (B_FRONT, zb(B_FRONT)), (B_FRONT, DLO_Z1), (ya1, DLO_Z1)], 0.03)
+    ya1 = _a_line(dlo_top(0.3)) - 0.035
+    return _round_poly([(ya0, zb(ya0)), (B_FRONT, zb(B_FRONT)), (B_FRONT, dlo_top(B_FRONT)), (ya1, dlo_top(ya1))],
+                       0.03)
 
 
 def side_rear():
     zb = _dlo(0, 0)
     g0, g1 = GLASS_REAR
-    return _round_poly([(B_REAR, zb(B_REAR)), (g0, zb(g0)), (g1, DLO_Z1), (B_REAR, DLO_Z1)], 0.05)
+    return _round_poly([(B_REAR, zb(B_REAR)), (g0, zb(g0)), (g1, dlo_top(g1)), (B_REAR, dlo_top(B_REAR))], 0.05)
 
 
 def windscreen():
@@ -307,13 +327,14 @@ def windscreen():
 
 
 def backlight():
-    return _round_poly([(-0.68, BL_B + 0.025), (-(WR - 0.07), BL_T - 0.025), (WR - 0.07, BL_T - 0.025),
-                        (0.68, BL_B + 0.025)], 0.06)
+    # narrow enough at its foot that the C pillars hide it from the side
+    return _round_poly([(-0.6, BL_B + 0.025), (-(WR - 0.08), BL_T - 0.025), (WR - 0.08, BL_T - 0.025),
+                        (0.6, BL_B + 0.025)], 0.06)
 
 
 ARCH_F, ARCH_R = 0.345, 0.34      # the openings, inside the flares
 FLARE_F, FLARE_R = 0.413, 0.40     # the flares' outer edges
-ARCH_N, ARCH_TOP = 2.8, 0.96       # the arches' tops flatten off: a superellipse, a little lower
+ARCH_N, ARCH_TOP = 3.4, 0.95       # the arches' tops flatten off: a superellipse, a little lower
 
 
 def arch_pt(a_deg, r):
@@ -332,11 +353,12 @@ def arch_poly(y0, r, step=6):
 
 # the nose (x, z) under the bonnet's lip, NOSE_Y back from the lip
 NOSE_Y = 1.958
-NOSE = [(-0.69, 0.53), (0.69, 0.53), (0.69, 0.707), (-0.69, 0.707)]
+NOSE = [(-0.69, 0.523), (0.69, 0.523), (0.69, 0.707), (-0.69, 0.707)]
 # the tail lamps' strip (x, z), TAIL_Y in from the tail panel
 TAIL_Y = -2.035
-TAIL = [(-0.665, 0.626), (0.665, 0.626), (0.665, 0.82), (-0.665, 0.82)]
-TAIL_SPLIT = 0.712                 # the amber indicators over the red, outboard
+TAIL = [(-0.665, 0.61), (0.665, 0.61), (0.665, 0.80), (-0.665, 0.80)]
+TAIL_Z0, TAIL_Z1, TAIL_TOP = 0.64, 0.762, 0.79   # the lamps, and the amber strip over them to TAIL_TOP
+PLATE_Z0 = 0.622                   # the rear plate, low in its recess
 TAIL_X1 = 0.66                     # the lamps' flat part ends here; they then wrap the corner
 
 
@@ -476,7 +498,7 @@ def _ribbon(name, target, pts, frame, width, mat, offset, across=4):
     return _smoothed(C.mesh_obj(name, verts, faces, mat), 50)
 
 
-SILL_Z0, SILL_Z1 = 0.278, 0.338    # the dark skirt between the arches; a bright strip over it
+SILL_Z0, SILL_Z1 = 0.278, 0.338    # the body-colour skirt between the arches; a bright strip over it
 CREASE_Z = 0.535                   # the crease along the doors from arch to arch
 
 
@@ -489,7 +511,7 @@ def _sills(M, ref):
         fr = K.side_frame(sx)
         mid = (SILL_Z0 + SILL_Z1) / 2
         p.append(_facing(_ribbon("sill", ref, _dense([(y0, mid), (y1, mid)], 0.05), fr, SILL_Z1 - SILL_Z0,
-                                 M["trim"], 0.007), (sx, 0, 0)))
+                                 M["paint"], 0.007), (sx, 0, 0)))
         p.append(_facing(_ribbon("sill_strip", ref, _dense([(y0, SILL_Z1 + 0.006), (y1, SILL_Z1 + 0.006)], 0.05), fr,
                                  0.01, M["chrome"], 0.007, across=2), (sx, 0, 0)))
         c0, c1 = AXLE_R + FLARE_R + 0.01, AXLE_F - FLARE_F - 0.01
@@ -507,12 +529,12 @@ def _sills(M, ref):
 # in a body-coloured panel, and the shield standing down through it over
 # the bumper's band.
 
-LAMP_X0, LAMP_X1, LAMP_Z0, LAMP_Z1 = 0.40, 0.675, 0.542, 0.697
-GRILLE_X, GRILLE_Z0, GRILLE_Z1 = 0.386, 0.542, 0.70
+LAMP_X0, LAMP_X1, LAMP_Z0, LAMP_Z1 = 0.40, 0.675, 0.535, 0.70
+GRILLE_X, GRILLE_Z0, GRILLE_Z1 = 0.386, 0.535, 0.703
 # the indicators sit on the nose's cut corners, from the headlamp's end back
 # along the cut (x, y)
 CORNER_A, CORNER_B = (0.685, 1.97), (0.79, 1.865)
-SHIELD_W, SHIELD_TOP, SHIELD_TIP = 0.13, 0.70, 0.528
+SHIELD_W, SHIELD_TOP, SHIELD_TIP = 0.13, 0.703, 0.521
 
 
 def _plan_front(x):
@@ -520,7 +542,7 @@ def _plan_front(x):
     return NOSE_Y
 
 
-SHIELD_LOW = 0.545                 # below this the shield lies over the bumper
+SHIELD_LOW = 0.538                 # below this the shield lies over the bumper
 
 
 def _apron_y(z):
@@ -658,7 +680,7 @@ def _head_lamps(M, ref):
 # Both bumpers are a black rubbing strip over a body-coloured lower half,
 # wrapping round the corners back to the wheel arches.
 
-BUMPER_F_TOP = 0.532              # the front band's top edge, just under the lamps
+BUMPER_F_TOP = 0.525              # the front band's top edge, just under the lamps
 APRON_DEPTH, APRON_RISE = 0.12, 0.01    # its apron back and up to under the lamps
 
 
@@ -695,7 +717,7 @@ def _bumpers(M):
              (0.735, YF - 0.11, 1), (0.775, YF - 0.155, 1), (0.805, YF - 0.21, 1), (0.822, YF - 0.28, 1),
              (0.828, 1.70, 1), (0.83, 1.56, 1)]
     # the front's black strip is a thin one, under the lamps
-    lo, up = _bumper_profile(0.245, 0.462, BUMPER_F_TOP, 0.03, apron=True)
+    lo, up = _bumper_profile(0.245, 0.455, BUMPER_F_TOP, 0.03, apron=True)
     p.append(_arch_trim(_sweep("bumper_f", fplan, lo, (0.0, YF - 1.0), M["paint"])))
     p.append(_arch_trim(_sweep("bumper_f_band", fplan, up, (0.0, YF - 1.0), M["band"])))
     # the tail is only 11 cm behind the body, so the rear corners turn
@@ -703,7 +725,7 @@ def _bumpers(M):
     rplan = [(0.0, YR, 1), (0.3, YR + 0.006, 1), (0.5, YR + 0.018, 1), (0.62, YR + 0.036, 1), (0.69, YR + 0.06, 1),
              (0.735, YR + 0.095, 1), (0.762, YR + 0.14, 1), (0.78, YR + 0.2, 1), (0.795, YR + 0.3, 1),
              (0.808, -1.72, 1), (0.818, -1.6, 1), (0.822, -1.4, 1)]
-    lo, up = _bumper_profile(0.25, 0.47, 0.605, 0.045)
+    lo, up = _bumper_profile(0.25, 0.5, 0.628, 0.04)
     p.append(_arch_trim(_sweep("bumper_r", rplan, lo, (0.0, YR + 1.0), M["paint"])))
     p.append(_arch_trim(_sweep("bumper_r_band", rplan, up, (0.0, YR + 1.0), M["band"])))
     # a groove along the front bumper's lower half, following its face
@@ -717,34 +739,41 @@ def _bumpers(M):
 def _tail(M, ref):
     out, p = [], []
     yb = TAIL_Y
-    # the plate recess between the lamps: black, with the plate in it
-    p.append(_prism("plate_recess", _box_pts(-0.205, 0.205, 0.632, 0.776), "y", yb - 0.004, yb + 0.006,
+    z0, z1, zt = TAIL_Z0, TAIL_Z1, TAIL_TOP
+    # the plate recess between the lamps: black, down to the bumper, with
+    # the plate in it
+    p.append(_prism("plate_recess", _box_pts(-0.205, 0.205, PLATE_Z0 - 0.01, z1), "y", yb - 0.004, yb + 0.006,
                     M["black"]))
     for name, sx in (("TailL", -1), ("TailR", 1)):
         x0, x1 = 0.215, TAIL_X1
         wrap, wrap_ln = _corner_frame(sx, (x1 - 0.004, Y0 + 0.004), (float(_W(-1.905)) - 0.006, -1.905))
+        # its end on the quarter slants: full height at the corner, its top
+        # cut back along the side
+        end = [(0.0, z0), (wrap_ln, z0), (wrap_ln * 0.5, zt), (0.0, zt)]
+        end_in = [(0.004, z0 + 0.004), (wrap_ln - 0.012, z0 + 0.004), (wrap_ln * 0.5 - 0.006, zt - 0.004),
+                  (0.004, zt - 0.004)]
         # one red lens from the plate recess out to the corner and round it
         # onto the quarter (the game lights it for the brakes); over it, a
-        # white reversing lamp by the plate and the amber indicator on the
-        # outer third and round the corner, all under the amber top strip
-        lens = [_prism("tail_red", _box_pts(*sorted((sx * x0, sx * x1)), 0.636, 0.776), "y", yb - 0.008, yb,
-                       M["tail"]),
-                _facing(K.project_poly("tail_wrap", ref, _box_pts(0.0, wrap_ln, 0.636, 0.812), wrap,
-                                       M["tail"], offset=0.004, cuts=4), (sx, -1, 0))]
+        # white reversing lamp by the plate and the amber indicator at the
+        # outer end and round the corner, all under the amber top strip
+        lens = [_prism("tail_red", _box_pts(*sorted((sx * x0, sx * x1)), z0, z1), "y", yb - 0.008, yb, M["tail"]),
+                _facing(K.project_poly("tail_wrap", ref, end, wrap, M["tail"], offset=0.004, cuts=4), (sx, -1, 0))]
         out.append((name, lens, None, None))
-        p.append(_prism("tail_reverse", _box_pts(*sorted((sx * 0.215, sx * 0.29)), 0.636, 0.776),
+        p.append(_prism("tail_reverse", _box_pts(*sorted((sx * 0.215, sx * 0.29)), z0, z1),
                         "y", yb - 0.011, yb - 0.007, M["reverse"]))
-        p.append(_prism("tail_amber", _box_pts(*sorted((sx * 0.585, sx * (x1 - 0.004))), 0.636, 0.776),
+        p.append(_prism("tail_amber", _box_pts(*sorted((sx * (x1 - 0.06), sx * (x1 - 0.004))), z0, z1),
                         "y", yb - 0.011, yb - 0.007, M["amber"]))
-        p.append(_facing(K.project_poly("tail_wrap_amber", ref, _box_pts(0.004, wrap_ln - 0.004, 0.64, 0.808),
-                                        wrap, M["amber"], offset=0.0065, cuts=4), (sx, -1, 0)))
+        p.append(_facing(K.project_poly("tail_wrap_amber", ref, end_in, wrap, M["amber"], offset=0.0065, cuts=4),
+                         (sx, -1, 0)))
         # the lens's ribs: one across the middle, and between the colours
-        p.append(bx((min(sx * 0.29, sx * (x1 - 0.004)), yb - 0.013, 0.704), (max(sx * 0.29, sx * (x1 - 0.004)),
-                    yb - 0.009, 0.708), M["black"]))
-        for xr in (0.29, 0.585):
-            p.append(bx((sx * xr - 0.0025, yb - 0.013, 0.638), (sx * xr + 0.0025, yb - 0.009, 0.774), M["black"]))
+        zm = 0.5 * (z0 + z1)
+        p.append(bx((min(sx * 0.29, sx * (x1 - 0.06)), yb - 0.013, zm - 0.002), (max(sx * 0.29, sx * (x1 - 0.06)),
+                    yb - 0.009, zm + 0.002), M["black"]))
+        for xr in (0.29, x1 - 0.06):
+            p.append(bx((sx * xr - 0.0025, yb - 0.013, z0 + 0.002), (sx * xr + 0.0025, yb - 0.009, z1 - 0.002),
+                        M["black"]))
     # an amber strip right across the top of the lamps and the recess
-    p.append(_prism("tail_strip", _box_pts(-TAIL_X1, TAIL_X1, 0.776, 0.812), "y", yb - 0.008, yb, M["reflector"]))
+    p.append(_prism("tail_strip", _box_pts(-TAIL_X1, TAIL_X1, z1, zt), "y", yb - 0.008, yb, M["reflector"]))
     return out, p
 
 
@@ -757,12 +786,11 @@ def band_line():
 
 
 BAND_REAR = -1.48                  # the side band hands over to the rear sweep here
-LIP_FROM, LIP_TO = -1.72, -1.98    # along the quarter the band rises to the boot lid's edge between these
-LIP_Z = 0.975                      # the lip's root along the tail
-# the lip spoiler's section across the tail (d out from its root, z): a
-# thin blade kicking up and back off the boot lid's edge
-LIP = [(-0.06, 0.995), (0.0, 0.99), (0.03, 1.0), (0.05, 1.018), (0.045, 1.028), (-0.02, 1.03), (-0.07, 1.022)]
-LIP_SIDE_Z = 0.994                 # the band's centre where it meets the lip at the corners
+LIP_Z = 0.97                       # the lip's root along the tail, on the boot lid's roll
+# the lip spoiler's section across the tail (d out from its root, z): the
+# band, carried round the back at its own height and kicked out and up
+# into a thin blade
+LIP = [(-0.06, 0.958), (0.0, 0.956), (0.03, 0.966), (0.052, 0.988), (0.046, 1.0), (-0.02, 1.008), (-0.07, 1.004)]
 
 
 def _band_section(y):
@@ -773,20 +801,13 @@ def _band_section(y):
             (0.0, zc + h), (-0.03, zc + h)]
 
 
-def _lip_t(y):
-    t = min(max((LIP_FROM - y) / (LIP_FROM - LIP_TO), 0.0), 1.0)
-    return t * t * (3 - 2 * t)
-
-
 def _lip_section(y, back):
-    """Along the quarter the band climbs to the boot lid's edge; it becomes
-    the blade only where it faces back (`back` 0 on the sides, 1 across the
-    tail), so the blade's ends fair into the band rather than stand out."""
-    t = _lip_t(y)
-    band = [(d, z + (LIP_SIDE_Z - band_at(y)[0]) * t) for d, z in _band_section(y)]
-    u = min(max((back - 0.45) / 0.5, 0.0), 1.0)
+    """The band stays on its straight line along the quarter; round the
+    tail's corners it turns into the blade, which faces back (`back` 0 on
+    the sides, 1 across the tail), so the blade's ends fair into the band."""
+    u = min(max((back - 0.3) / 0.6, 0.0), 1.0)
     u = u * u * (3 - 2 * u)
-    return [(bd + (ld - bd) * u, bz + (lz - bz) * u) for (bd, bz), (ld, lz) in zip(band, LIP)]
+    return [(bd + (ld - bd) * u, bz + (lz - bz) * u) for (bd, bz), (ld, lz) in zip(_band_section(y), LIP)]
 
 
 def _band_rear(M, ref):
@@ -798,8 +819,7 @@ def _band_rear(M, ref):
         return (loc.x, loc.y) if ok else None
 
     def z_of(y):
-        t = _lip_t(y)
-        return band_at(y)[0] * (1 - t) + LIP_Z * t
+        return band_at(y)[0]
 
     half = []
     for x in (0.0, 0.15, 0.3, 0.4, 0.48):
@@ -859,8 +879,8 @@ def _trim(M, ref, body):
         arch = [(AXLE_R + dy, TYRE_R + dz) for dy, dz in (arch_pt(a, FLARE_R + 0.012) for a in range(90, 9, -10))
                 if AXLE_R + dy >= -1.10]
         lines = [
-            [(0.735, ZB(0.735) - 0.004), (0.74, SILL_Z1 + 0.012), (-0.19, SILL_Z1 + 0.012), (-0.19, ZB(-0.19))],
-            [(-0.215, ZB(-0.215)), (-0.215, SILL_Z1 + 0.012), (arch[-1][0], SILL_Z1 + 0.012)] + list(reversed(arch))
+            [(0.735, ZB(0.735) - 0.004), (0.74, SILL_Z1 + 0.012), (-0.236, SILL_Z1 + 0.012), (-0.236, ZB(-0.236))],
+            [(-0.252, ZB(-0.252)), (-0.252, SILL_Z1 + 0.012), (arch[-1][0], SILL_Z1 + 0.012)] + list(reversed(arch))
             + [(-1.10, 0.97)],
         ]
         for ln in lines:
@@ -870,23 +890,31 @@ def _trim(M, ref, body):
             zc = float(BAND(y)) - 0.05
             p.append(K.project_poly("handle", ref, _round_poly(_box_pts(y - 0.06, y + 0.06, zc - 0.02, zc + 0.02), 0.008, 2),
                                     fr, M["black"], offset=0.008, cuts=1))
-        # the B pillar's black cover between the glasses
-        p.append(K.project_poly("bpillar", ref, _box_pts(B_REAR + 0.01, B_FRONT - 0.01, ZB(-0.2) + 0.01,
-                                                         DLO_Z1 + 0.01), fr, M["black"], offset=0.006, cuts=2))
+        # between the glasses the doors' body-colour frames meet over a thin
+        # black gap; the rear door's glass is split by a black bar from its
+        # fixed quarter light
+        yb_ = 0.5 * (B_FRONT + B_REAR)
+        p.append(K.project_poly("bpillar", ref, _box_pts(yb_ - 0.007, yb_ + 0.007, ZB(yb_) + 0.01,
+                                                         dlo_top(yb_) + 0.012), fr, M["black"], offset=0.006, cuts=2))
+        yd = REAR_DIVIDER
+        p.append(K.project_poly("divider", ref, _box_pts(yd - 0.008, yd + 0.008, ZB(yd) + 0.004, dlo_top(yd)), fr,
+                                M["black"], offset=0.004, cuts=2))
         # amber repeater on the wing behind the front arch
         p.append(K.project_poly("repeater", ref, _round_poly(_box_pts(0.97, 1.03, 0.595, 0.613), 0.008, 2), fr,
                                 M["amber"], offset=0.006, cuts=1))
         # door mirror: a body-coloured pod on a stalk at the glass's front corner
-        my, mz = 0.62, 0.945
+        # (a small, low, rounded pod)
+        my, mz = 0.6, 0.93
         xg = MIRROR_X
-        x0, x1 = sorted((sx * (xg + 0.02), sx * (xg + 0.15)))
-        pod = _smoothed(_prism("mirror", _round_poly([(x0, mz - 0.042), (x1, mz - 0.048), (x1, mz + 0.04),
-                                                       (x0, mz + 0.046)], 0.03, 4), "y", my - 0.04, my + 0.05,
+        x0, x1 = sorted((sx * (xg + 0.02), sx * (xg + 0.125)))
+        xo, xi = (x1, x0) if sx > 0 else (x0, x1)
+        pod = _smoothed(_prism("mirror", _round_poly([(xi, mz - 0.03), (xo, mz - 0.034), (xo, mz + 0.03),
+                                                       (xi, mz + 0.036)], 0.028, 4), "y", my - 0.03, my + 0.045,
                                M["paint"]), 50)
         p.append(pod)
-        p.append(bx((min(sx * (xg - 0.01), sx * (xg + 0.03)), my - 0.03, mz - 0.045),
-                    (max(sx * (xg - 0.01), sx * (xg + 0.03)), my + 0.07, mz + 0.015), M["black"]))
-        p.append(bx((x0 + 0.008, my - 0.044, mz - 0.036), (x1 - 0.008, my - 0.04, mz + 0.034), M["glass"]))
+        p.append(bx((min(sx * (xg - 0.01), sx * (xg + 0.03)), my - 0.02, mz - 0.034),
+                    (max(sx * (xg - 0.01), sx * (xg + 0.03)), my + 0.06, mz + 0.01), M["black"]))
+        p.append(bx((x0 + 0.008, my - 0.034, mz - 0.026), (x1 - 0.008, my - 0.03, mz + 0.026), M["glass"]))
     # fuel flap on the right rear quarter
     p.append(K.project_poly("fuel_flap", ref, [(-1.54 + 0.045 * math.cos(a * math.pi / 8), 0.875 +
                                                 0.045 * math.sin(a * math.pi / 8)) for a in range(16)],
@@ -929,8 +957,8 @@ def _exhaust(M):
 def _plates(M):
     """Front plate on the bumper's middle, over the band; rear plate in its
     recess."""
-    return [bx((-0.186, YF + 0.012, 0.36), (0.186, YF + 0.02, 0.49), M["plate"]),
-            bx((-0.186, TAIL_Y - 0.006, 0.642), (0.186, TAIL_Y + 0.001, 0.770), M["plate"])]
+    return [bx((-0.186, YF + 0.012, 0.35), (0.186, YF + 0.02, 0.48), M["plate"]),
+            bx((-0.186, TAIL_Y - 0.006, PLATE_Z0), (0.186, TAIL_Y + 0.001, PLATE_Z0 + 0.13), M["plate"])]
 
 
 def _exterior(M):

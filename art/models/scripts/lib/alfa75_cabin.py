@@ -380,10 +380,18 @@ def _headliner(X, body):
     xs = [-0.58 + 0.058 * i for i in range(21)]
     ys = [-1.04 + (0.26 + 1.04) * j / 13 for j in range(14)]
     vs, fs = [], []
+
+    def up(x, y):
+        # out at the edges a ray can slip through the side glass's opening:
+        # step in until it meets the roof
+        for k in (1.0, 0.94, 0.88, 0.8, 0.7):
+            h = tree.ray_cast(Vector((x * k, y, 1.1)), Vector((0, 0, 1)), 1.0)[0]
+            if h:
+                return h.z
+        return A.ZR - A.roof_drop(y)
     for y in ys:
         for x in xs:
-            h = tree.ray_cast(Vector((x, y, 1.1)), Vector((0, 0, 1)), 1.0)[0]
-            vs.append((x, y, (h.z if h else A.ZR) - 0.016))
+            vs.append((x, y, up(x, y) - 0.016))
     nx = len(xs)
     for j in range(len(ys) - 1):
         for i in range(nx - 1):
@@ -394,8 +402,7 @@ def _headliner(X, body):
     out = [PV._smoothed(o, 40)]
 
     def roof(x, y):
-        h = tree.ray_cast(Vector((x, y, 1.1)), Vector((0, 0, 1)), 1.0)[0]
-        return (h.z if h else A.ZR) - 0.018
+        return up(x, y) - 0.018
     for sx in (-1, 1):
         lo, hi = sorted((sx * 0.06, sx * 0.56))
         zl = roof((lo + hi) / 2, 0.15)
