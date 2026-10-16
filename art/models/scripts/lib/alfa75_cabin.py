@@ -130,7 +130,7 @@ DIAL_R = 0.06
 DIAL_Z = 0.885
 SPEEDO_X, TACH_X = 0.265, 0.465
 COL_TILT = 22
-HUB = Vector((DRIVER_X, 0.25, 0.74))   # the column runs up out of the dash to it
+HUB = Vector((DRIVER_X, 0.25, 0.87))   # high, as the 75s is: the dials show through the top of the rim
 RIM_R = 0.19
 SPEED_FULL, REV_FULL = 220, 8
 DASH_X = 0.78
@@ -143,11 +143,11 @@ def _cab_mats(M):
         "vinyl": C.mat("A75_Velour", velour, rough=0.9),
         "pleat": C.mat("A75_VelourPleat", image=VC._pleat_tex(velour), rough=0.9),
         "panel": C.mat("A75_DoorCard", "#7a7c7f", rough=0.85),
-        # a light grey dash, its modules (dials, check panel, vents, heater,
+        # a mid grey dash, its modules (dials, check panel, vents, heater,
         # radio, switch pods) set into it in near black
-        "dash": C.mat("A75_Dash", "#9a9b9d", rough=0.75),
-        "dark": C.mat("A75_DashDark", "#27282b", rough=0.6),
-        "mid": C.mat("A75_DashMid", "#4f5154", rough=0.8),
+        "dash": C.mat("A75_Dash", "#6c6d70", rough=0.75),
+        "dark": C.mat("A75_DashDark", "#1d1e21", rough=0.6),
+        "mid": C.mat("A75_DashMid", "#3f4144", rough=0.8),
         "hood": C.mat("A75_DashHood", "#1b1c1e", rough=0.8),
         "lcd": C.mat("A75_Lcd", "#3f6b3a", rough=0.3, emit="#7fd06a", emit_strength=0.2),
         "red": C.mat("A75_KnobRed", "#b3322b", rough=0.5),
@@ -240,7 +240,12 @@ def _dash(X):
     # rounded lower edge over the knees
     prof = [(0.86, 0.872), (0.62, 0.902), (0.48, 0.905), (0.455, 0.89), (0.45, 0.80), (0.47, 0.66),
             (0.56, 0.585), (0.70, 0.57), (0.86, 0.60)]
-    out.append(_rprism("dash", prof, "x", -DASH_X, DASH_X, X["dash"], r=0.02, cap=0.012))
+    # under the hood the face steps back to the dial panel's foot, so the
+    # dials sit whole in a binnacle with a ledge below them
+    binnacle = [(0.86, 0.872), (0.62, 0.902), (0.525, 0.902), (0.525, 0.806), (0.455, 0.804), (0.45, 0.78),
+                (0.47, 0.66), (0.56, 0.585), (0.70, 0.57), (0.86, 0.60)]
+    for x0, x1, pr in ((-DASH_X, 0.10, prof), (0.10, 0.64, binnacle), (0.64, DASH_X, prof)):
+        out.append(_rprism("dash", pr, "x", x0, x1, X["dash"], r=0.02 if pr is prof else 0.008))
     # the hood over the dials, in the dash's grey; the long panel inside it
     # near black
     hood = [(0.40, 0.985), (0.62, 0.958), (0.62, 0.90), (0.50, 0.90), (0.47, 0.96), (0.42, 0.968)]
