@@ -72,6 +72,9 @@ class Engine:
     tin: float = 0.0                    # tinny sheet-metal ring (classics)
     tin_modes: tuple = (620, 1340, 2150, 3050)
     overrun_pops: float = 0.0           # crackles on overrun (sport exhausts, Abarth)
+    howl: float = 0.0                   # tuned-runner induction howl (on load)
+    howl_modes: tuple = (650, 1500, 2600)  # runner/plenum resonances the firing rings
+    howl_rpm: float = 4000              # where the howl hardens: upper resonances open up
     body: float = 1.0                   # rounded low pulse (fundamental)
     body_k: float = 2.2                 # body pulse corner, x firing frequency
     sharp: float = 0.6                  # sharp pulse through the pipes (harmonics)
@@ -334,6 +337,9 @@ def render(e: Engine, rpm: np.ndarray, load: np.ndarray, seed: int = 1,
         tin = _resbank(imp_all + 0.6 * mech_imp, e.tin_modes, 30, periodic)
         out = out + e.tin * tin / (np.std(tin) + 1e-12)
 
+    if e.howl > 0:
+        out = out + e.howl * _howl(imp_all, rpm, rpm_norm, load, e, periodic)
+
     if e.overrun_pops > 0:
         out = out + _overrun_pops(n, rpm_norm, load, e, seed, periodic)
 
@@ -343,6 +349,22 @@ def render(e: Engine, rpm: np.ndarray, load: np.ndarray, seed: int = 1,
     out = _sos(signal.butter(1, 22, "highpass", fs=SR, output="sos"), out, periodic)
     out = _sos(signal.butter(2, e.air_hz, "lowpass", fs=SR, output="sos"), out, periodic)
     return out
+
+
+def _howl(imp, rpm, rpm_norm, load, e: Engine, periodic):
+    """Induction howl of an engine breathing through individual tuned
+    runners: every intake stroke rings the runners and the plenum, so the
+    firing harmonics come through as a tonal, vowel-like howl that sweeps
+    up with the revs. Above howl_rpm the upper resonances open up and it
+    hardens. Mostly on load (the throttles are open)."""
+    lo = _resbank(imp, e.howl_modes[:1], 7, periodic)
+    hi = _resbank(imp, e.howl_modes[1:], 9, periodic)
+    lo /= np.std(lo) + 1e-12
+    hi /= np.std(hi) + 1e-12
+    k = np.clip((rpm - e.howl_rpm) / 1400 + 0.5, 0, 1)
+    k = k * k * (3 - 2 * k)
+    x = lo * (0.6 + 0.4 * rpm_norm) + hi * (0.15 + 1.1 * k)
+    return x * (0.12 + 0.88 * load) * (0.25 + rpm_norm)
 
 
 def _overrun_pops(n, rpm_norm, load, e: Engine, seed, periodic):
@@ -415,6 +437,18 @@ def variant(e: Engine, kind: str) -> Engine:
                        sharp=e.sharp * 0.85, air_hz=e.air_hz * 0.85,
                        pipe_fb=tuple(min(0.7, f * 1.15) for f in e.pipe_fb),
                        overrun_pops=max(e.overrun_pops, 0.25), lowcut_hz=e.lowcut_hz * 0.85)
+    if kind == "sport" and e.name == "busso":
+        # The Alfa's stainless sport system: a straighter, freer silencer, so
+        # louder and rasping as it revs, with a bigger, lower chamber that
+        # makes it deeper and boomier at low rpm, and a bit of crackle when
+        # you lift. The induction howl is the same engine, so it stays.
+        return replace(e, name=e.name + "_sport", muffler_hz=e.muffler_hz * 1.6,
+                       chamber_hz=e.chamber_hz * 0.78, chamber_db=e.chamber_db + 4,
+                       body=e.body * 1.45, body_k=e.body_k * 0.9, drive=e.drive * 1.6,
+                       rasp=e.rasp * 2.6, rasp_band=(800, 5200), sharp=e.sharp * 1.15,
+                       pipe_fb=tuple(min(0.7, f * 1.25) for f in e.pipe_fb),
+                       jitter_off=e.jitter_off * 1.3, overrun_pops=0.3,
+                       lowcut_hz=e.lowcut_hz * 0.7)
     if kind == "sport":
         return replace(e, name=e.name + "_sport", muffler_hz=e.muffler_hz * 1.7,
                        chamber_db=e.chamber_db + 2, rasp=e.rasp * 2.0, drive=e.drive * 1.5,
@@ -517,6 +551,24 @@ FAMILIES: dict[str, Engine] = {
                      valves_per_cyl=2, intake=0.06, intake_band=(250, 1100), whine=0.0,
                      whine_ratio=2.1, body=3.4, body_k=1.6, sharp=0.30, air_hz=3600,
                      level_curve=0.6, load_db=8.5, drive=2.1, overrun_pops=0.22),
+    # The Alfa 75's 2.5 "Busso" V6 (60 degrees, a belt-driven cam per bank,
+    # L-Jetronic into six individual runners off a cast plenum). Even firing,
+    # three a revolution, and a stiff, well-balanced block, so it's smooth and
+    # creamy where the slant six is lumpy: little cylinder-to-cylinder
+    # spread, a higher, lighter chamber and less of the low pulse. Its voice
+    # is the induction: the runners howl on load, and above 4,000 rpm the
+    # upper resonances open up and it hardens into the famous metallic wail.
+    # The block and the valve gear ring a little bright and metallic; it
+    # revs freely to 6,200.
+    "busso": Engine("busso", 6, 850, 6200, pipe_ms=(12.2, 7.4), pipe_fb=(0.44, 0.34),
+                    muffler_hz=640, muffler_order=2, chamber_hz=135, chamber_db=5.0,
+                    lowcut_hz=32, pulse_ms=0.48, cyl_gain_spread=0.04, cyl_time_spread=0.015,
+                    jitter_on=0.035, jitter_off=0.22, misfire_off=0.02, rasp=0.06,
+                    rasp_band=(1100, 4200), mech=0.045, block_modes=(1350, 2750, 3900),
+                    valves_per_cyl=2, intake=0.10, intake_band=(900, 3600), whine=0.004,
+                    whine_ratio=2.6, howl=0.30, howl_modes=(700, 1400, 2250), howl_rpm=4000,
+                    body=1.5, body_k=2.6, sharp=0.55, air_hz=7000, level_curve=1.0,
+                    load_db=7.0, drive=1.5),
 }
 
 # Plan table names, for the docs.
@@ -529,4 +581,5 @@ FAMILY_INFO = {
     "classicflat": ("Classic flat twin, air-cooled", "Giardiniera", "P2"),
     "classicabarth": ("Classic Abarth", "Abarth 595 and 695 classics", "P3"),
     "slant6": ("225 slant six", "Valiant VC", "P3"),
+    "busso": ("Alfa 2.5 V6 (Busso)", "Alfa Romeo 75 2.5 V6", "P3"),
 }
