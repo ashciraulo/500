@@ -374,7 +374,7 @@ func _refresh_stats() -> void:
 		["Weight", "%d kg" % roundi(s.mass_kg)],
 		["Grip", "%.2f" % s.grip],
 		["Brakes", "%d" % roundi(s.brake_force)],
-		["Red line", "%d rpm" % roundi(s.limiter_rpm)],
+		["Red line", "%d rpm" % roundi(s.redline_rpm)],
 		["Final drive", "%.2f" % s.final_drive],
 		["Paint", _paint_name()],
 	]:

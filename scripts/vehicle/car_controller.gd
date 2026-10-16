@@ -1290,6 +1290,7 @@ func get_stats() -> Dictionary:
 		"mass_kg": mass,
 		"grip": tire_grip,
 		"brake_force": brake_force,
+		"redline_rpm": redline_rpm,
 		"limiter_rpm": limiter_rpm,
 		"final_drive": final_drive,
 	}

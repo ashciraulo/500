@@ -331,15 +331,18 @@ def _seats(X):
 
 
 def _floor(X):
-    out = [_uv(C.box_minmax("floor", (-0.78, -1.55, 0.31), (0.78, 0.76, 0.33), X["carpet"]), 0, 1, 0.12, 0.12)]
+    # the floor, narrowing between the rear wheel wells
+    out = [_uv(C.box_minmax("floor", (-0.78, -0.84, 0.31), (0.78, 0.76, 0.33), X["carpet"]), 0, 1, 0.12, 0.12),
+           _uv(C.box_minmax("floor_rear", (-0.52, -1.55, 0.31), (0.52, -0.84, 0.33), X["carpet"]), 0, 1, 0.12, 0.12)]
     toe = [(0.72, 0.31), (0.74, 0.33), (0.94, 0.60), (0.95, 0.80), (1.0, 0.80), (1.0, 0.31)]
     out.append(_uv(_rprism("toe_board", toe, "x", -0.78, 0.78, X["carpet"], r=0.03, smooth=30), 0, 1, 0.12, 0.12))
     tunnel = [(-0.14, 0.32), (0.14, 0.32), (0.11, 0.42), (0.0, 0.44), (-0.11, 0.42)]
     out.append(_uv(_rprism("tunnel", tunnel, "y", -1.45, 0.86, X["carpet"], r=0.03, smooth=40), 0, 1, 0.12, 0.12))
-    # rear wheel tubs either side of the back seat
-    tub = [(-1.62, 0.31), (-0.84, 0.31), (-0.86, 0.55), (-0.98, 0.66), (-1.48, 0.66), (-1.6, 0.55)]
+    # rear wheel tubs either side of the back seat, inboard of the wells'
+    # liners (lib/alfa75.py) so they don't show through the arches
+    tub = [(-1.54, 0.31), (-0.87, 0.31), (-0.89, 0.55), (-0.99, 0.66), (-1.42, 0.66), (-1.52, 0.55)]
     for sx in (-1, 1):
-        lo, hi = sorted((sx * 0.57, sx * 0.80))
+        lo, hi = sorted((sx * 0.45, sx * 0.525))
         out.append(_uv(_rprism("wheel_tub", tub, "x", lo, hi, X["carpet"], r=0.04, cap=0.02, smooth=40), 1, 2,
                        0.12, 0.12))
     out.append(_rprism("parcel_shelf", [(-1.97, 0.955), (-1.48, 0.955), (-1.48, 0.97), (-1.97, 0.97)], "x",
