@@ -87,6 +87,8 @@ def _mats():
         "red": _m("A75_BadgeRed", "#a01b1e", 0.4),
         # the bonnet's creases: a hair darker than the paint
         "crease": _m("A75_Crease", "#a39a88", 0.45, 0.3),
+        # the bonnet's contour lines: a soft shadow beside a highlight
+        "crease_soft": _m("A75_CreaseSoft", "#b3ab9c", 0.4, 0.35),
         "tyre": _m("A75_Tyre", "#18181a", 0.92),
     })
     return M
@@ -338,7 +340,7 @@ def backlight():
 
 
 ARCH_F, ARCH_R = 0.345, 0.34      # the openings, inside the flares
-FLARE_F, FLARE_R = 0.413, 0.40     # the flares' outer edges
+FLARE_F, FLARE_R = 0.398, 0.388    # the flares' outer edges
 ARCH_N, ARCH_TOP = 2.6, 0.975      # the arches' tops flatten off: a superellipse, a little lower
 
 
@@ -703,8 +705,8 @@ def _bumper_profile(z0, z_split, z1, lean, step, apron=False):
     runs back and up to the lamps, closing the gap under them."""
     # (a lip along its foot stands out a little; above the step at `step`
     # the face sits back)
-    lower = [(-0.07, z0 + 0.01), (-0.012, z0), (0.004, z0 + 0.012), (0.006, step - 0.008), (-0.006, step),
-             (-0.008, step + 0.006), (-0.008, z_split - 0.012), (-0.01, z_split), (-0.06, z_split)]
+    lower = [(-0.07, z0 + 0.01), (-0.022, z0), (-0.008, z0 + 0.012), (-0.006, step - 0.008), (-0.018, step),
+             (-0.02, step + 0.006), (-0.02, z_split - 0.012), (-0.022, z_split), (-0.06, z_split)]
     upper = [(-0.06, z_split - 0.002), (0.004, z_split - 0.002), (0.008, z_split + 0.008),
              (0.006 - 0.25 * lean, z_split + 0.25 * (z1 - z_split)), (0.002 - lean, z1 - 0.004), (-0.006 - lean, z1),
              (-0.06 - lean, z1)]
@@ -750,17 +752,16 @@ def _bumpers(M):
     # front: 12 cm ahead of the lamps at the centre, round the body's
     # corners just clear of them and back along the sides to the arch
     # (both run on into the wheel arches and are cut round the flares)
-    fplan = [(0.0, YF, 1), (0.3, YF - 0.005, 1), (0.48, YF - 0.02, 1), (0.6, YF - 0.045, 1), (0.68, YF - 0.075, 1),
-             (0.735, YF - 0.11, 1), (0.775, YF - 0.155, 1), (0.805, YF - 0.21, 1), (0.822, YF - 0.28, 1),
-             (0.828, 1.70, 1), (0.83, 1.56, 1)]
+    fplan = [(0.0, YF, 1), (0.4, YF - 0.006, 1), (0.6, YF - 0.02, 1), (0.7, YF - 0.04, 1), (0.76, YF - 0.07, 1),
+             (0.8, YF - 0.11, 1), (0.82, YF - 0.17, 1), (0.828, YF - 0.26, 1), (0.828, 1.70, 1), (0.83, 1.56, 1)]
     # the front's black strip is a thin one, under the lamps
     lo, up = _bumper_profile(0.245, 0.455, BUMPER_F_TOP, 0.045, 0.4, apron=True)
     p.append(_arch_trim(_sweep("bumper_f", fplan, lo, (0.0, YF - 1.0), M["paint"])))
     p.append(_arch_trim(_sweep("bumper_f_band", fplan, up, (0.0, YF - 1.0), M["band"])))
     # the tail is only 11 cm behind the body, so the rear corners turn
     # tighter to stay outside it, and follow its taper forward
-    rplan = [(0.0, YR, 1), (0.3, YR + 0.006, 1), (0.5, YR + 0.018, 1), (0.62, YR + 0.036, 1), (0.69, YR + 0.06, 1),
-             (0.735, YR + 0.095, 1), (0.762, YR + 0.14, 1), (0.78, YR + 0.2, 1), (0.795, YR + 0.3, 1),
+    rplan = [(0.0, YR, 1), (0.4, YR + 0.006, 1), (0.58, YR + 0.02, 1), (0.67, YR + 0.04, 1), (0.72, YR + 0.07, 1),
+             (0.755, YR + 0.11, 1), (0.778, YR + 0.17, 1), (0.792, YR + 0.24, 1), (0.8, YR + 0.3, 1),
              (0.808, -1.72, 1), (0.818, -1.6, 1), (0.822, -1.4, 1)]
     lo, up = _bumper_profile(0.25, 0.53, BUMPER_R_TOP, 0.055, 0.41)
     p.append(_arch_trim(_sweep("bumper_r", rplan, lo, (0.0, YR + 1.0), M["paint"])))
@@ -971,9 +972,9 @@ def _trim(M, ref, body):
     # the bonnet's two contour lines, running in from its back corners
     # toward the shield's shoulders: a soft crease, lit on its inner side
     for sx in (-1, 1):
-        pts = [(sx * 0.37, WS_B + 0.12), (sx * 0.3, 1.35), (sx * 0.22, 1.7), (sx * 0.15, Y1 - 0.03)]
-        p.append(_line("crease", ref, pts, top, 0.006, M["crease"], 0.002))
-        p.append(_line("crease_hi", ref, [(x - sx * 0.006, y) for x, y in pts], top, 0.005, M["crease_hi"], 0.002))
+        pts = [(sx * 0.48, WS_B + 0.1), (sx * 0.38, 1.3), (sx * 0.26, 1.65), (sx * 0.15, Y1 - 0.03)]
+        p.append(_line("crease", ref, pts, top, 0.01, M["crease_soft"], 0.002))
+        p.append(_line("crease_hi", ref, [(x - sx * 0.008, y) for x, y in pts], top, 0.007, M["crease_hi"], 0.002))
     # wipers
     for x0, x1 in ((-0.62, -0.05), (0.08, 0.62)):
         p.append(_line("wiper", ref, [(x0, WS_B - 0.05), (x1, WS_B - 0.035)], top, 0.012, M["black"], 0.012))
