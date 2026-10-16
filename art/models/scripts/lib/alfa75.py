@@ -100,11 +100,11 @@ def _mats():
 
 Y0, Y1 = -2.05, 1.99                 # shell ends: the tail panel, the nose (bumpers beyond)
 WS_B, WS_T = 0.80, 0.30              # windscreen base and top (centre line)
-BL_B, BL_T = -1.44, -1.06            # backlight base and top
+BL_B, BL_T = -1.60, -1.06            # backlight base and top: a long, flat screen (about 27 deg)
 ZR = 1.355                           # roof centre
 WR = 0.545                           # roof edge half width: the glass leans well in
 ZRE = 1.305                          # roof edge (the rail over the side glass)
-FIL_F, FIL_R = 0.03, 0.03            # end fillet radii (in side view)
+FIL_F, FIL_R = 0.015, 0.03           # end fillet radii (in side view): a thin bonnet lip
 
 # half width in plan: the ends draw in round the corners
 # (the nose's corners are cut back at 45 degrees from y 1.85, with the
@@ -160,9 +160,11 @@ _ZD_F = K.pchip([WS_B, 1.2, 1.6, Y1], [0.876, 0.866, 0.803, 0.712])
 _ZE_F = K.pchip([WS_B, 1.2, 1.6, Y1], [0.874, 0.862, 0.80, 0.725])
 _CROWN_F = 0.04
 # the boot: a flat, very slightly falling deck, and its edge over the quarters
-_ZD_R = K.pchip([Y0, -1.8, BL_B], [1.008, 1.03, 1.06])
-_ZE_R = K.pchip([Y0, -1.8, BL_B, -1.15], [0.99, 0.996, 0.99, 0.95])
-_CROWN_R = 0.03
+# (it falls about 6 cm from the screen's foot to the lip: the tail tapers
+# down in side view)
+_ZD_R = K.pchip([Y0, -1.8, BL_B], [0.985, 1.017, 1.045])
+_ZE_R = K.pchip([Y0, -1.8, BL_B, -1.15], [0.976, 0.99, 0.99, 0.95])
+_CROWN_R = 0.015
 
 
 def _screen_frac(t, top):
@@ -330,7 +332,7 @@ def arch_poly(y0, r, step=6):
 
 # the nose (x, z) under the bonnet's lip, NOSE_Y back from the lip
 NOSE_Y = 1.958
-NOSE = [(-0.69, 0.55), (0.69, 0.55), (0.69, 0.707), (-0.69, 0.707)]
+NOSE = [(-0.69, 0.53), (0.69, 0.53), (0.69, 0.707), (-0.69, 0.707)]
 # the tail lamps' strip (x, z), TAIL_Y in from the tail panel
 TAIL_Y = -2.035
 TAIL = [(-0.665, 0.626), (0.665, 0.626), (0.665, 0.82), (-0.665, 0.82)]
@@ -505,12 +507,12 @@ def _sills(M, ref):
 # in a body-coloured panel, and the shield standing down through it over
 # the bumper's band.
 
-LAMP_X0, LAMP_X1, LAMP_Z0, LAMP_Z1 = 0.40, 0.675, 0.562, 0.697
-GRILLE_X, GRILLE_Z0, GRILLE_Z1 = 0.386, 0.562, 0.70
+LAMP_X0, LAMP_X1, LAMP_Z0, LAMP_Z1 = 0.40, 0.675, 0.542, 0.697
+GRILLE_X, GRILLE_Z0, GRILLE_Z1 = 0.386, 0.542, 0.70
 # the indicators sit on the nose's cut corners, from the headlamp's end back
 # along the cut (x, y)
 CORNER_A, CORNER_B = (0.685, 1.97), (0.79, 1.865)
-SHIELD_W, SHIELD_TOP, SHIELD_TIP = 0.13, 0.70, 0.548
+SHIELD_W, SHIELD_TOP, SHIELD_TIP = 0.13, 0.70, 0.528
 
 
 def _plan_front(x):
@@ -518,7 +520,7 @@ def _plan_front(x):
     return NOSE_Y
 
 
-SHIELD_LOW = 0.565                 # below this the shield lies over the bumper
+SHIELD_LOW = 0.545                 # below this the shield lies over the bumper
 
 
 def _apron_y(z):
@@ -656,7 +658,7 @@ def _head_lamps(M, ref):
 # Both bumpers are a black rubbing strip over a body-coloured lower half,
 # wrapping round the corners back to the wheel arches.
 
-BUMPER_F_TOP = 0.552              # the front band's top edge, just under the lamps
+BUMPER_F_TOP = 0.532              # the front band's top edge, just under the lamps
 APRON_DEPTH, APRON_RISE = 0.12, 0.01    # its apron back and up to under the lamps
 
 
@@ -693,7 +695,7 @@ def _bumpers(M):
              (0.735, YF - 0.11, 1), (0.775, YF - 0.155, 1), (0.805, YF - 0.21, 1), (0.822, YF - 0.28, 1),
              (0.828, 1.70, 1), (0.83, 1.56, 1)]
     # the front's black strip is a thin one, under the lamps
-    lo, up = _bumper_profile(0.245, 0.482, BUMPER_F_TOP, 0.03, apron=True)
+    lo, up = _bumper_profile(0.245, 0.462, BUMPER_F_TOP, 0.03, apron=True)
     p.append(_arch_trim(_sweep("bumper_f", fplan, lo, (0.0, YF - 1.0), M["paint"])))
     p.append(_arch_trim(_sweep("bumper_f_band", fplan, up, (0.0, YF - 1.0), M["band"])))
     # the tail is only 11 cm behind the body, so the rear corners turn
@@ -927,7 +929,7 @@ def _exhaust(M):
 def _plates(M):
     """Front plate on the bumper's middle, over the band; rear plate in its
     recess."""
-    return [bx((-0.186, YF + 0.012, 0.385), (0.186, YF + 0.02, 0.515), M["plate"]),
+    return [bx((-0.186, YF + 0.012, 0.36), (0.186, YF + 0.02, 0.49), M["plate"]),
             bx((-0.186, TAIL_Y - 0.006, 0.642), (0.186, TAIL_Y + 0.001, 0.770), M["plate"])]
 
 
