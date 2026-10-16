@@ -118,15 +118,19 @@ def _cut_runs(objs):
 # ------------------------------------------------------------------ cockpit
 
 DRIVER_X = 0.36
-HIP = (DRIVER_X, -0.40, 0.56)       # a little over the cushion, as the game seats people
+# The front seats' profiles below are drawn SEAT_DY further back than they
+# sit: the backs come up just behind the B pillar, the cushions' fronts a
+# good stride short of the pedals.
+SEAT_DY = 0.30
+HIP = (DRIVER_X, -0.16, 0.56)       # a little over the cushion, as the game seats people
 # the driver's eye: a head ahead of the seat back's face, well under the roof
-EYE = Vector((DRIVER_X, -0.40, 1.115))
+EYE = Vector((DRIVER_X, -0.13, 1.15))
 FACE_Y = 0.468                     # the dial panel inside the hood
 DIAL_R = 0.06
 DIAL_Z = 0.885
 SPEEDO_X, TACH_X = 0.265, 0.465
 COL_TILT = 22
-HUB = Vector((DRIVER_X, 0.10, 0.80))
+HUB = Vector((DRIVER_X, 0.25, 0.74))   # the column runs up out of the dash to it
 RIM_R = 0.19
 SPEED_FULL, REV_FULL = 220, 8
 DASH_X = 0.78
@@ -134,17 +138,25 @@ FRAMES = {}
 
 
 def _cab_mats(M):
-    velour = "#5d5f62"
+    velour = "#707276"
     return {
         "vinyl": C.mat("A75_Velour", velour, rough=0.9),
         "pleat": C.mat("A75_VelourPleat", image=VC._pleat_tex(velour), rough=0.9),
-        "panel": C.mat("A75_DoorCard", "#55575a", rough=0.85),
-        "dash": C.mat("A75_Dash", "#26272a", rough=0.75),
+        "panel": C.mat("A75_DoorCard", "#7a7c7f", rough=0.85),
+        # a light grey dash, its modules (dials, check panel, vents, heater,
+        # radio, switch pods) set into it in near black
+        "dash": C.mat("A75_Dash", "#9a9b9d", rough=0.75),
+        "dark": C.mat("A75_DashDark", "#27282b", rough=0.6),
+        "mid": C.mat("A75_DashMid", "#4f5154", rough=0.8),
         "hood": C.mat("A75_DashHood", "#1b1c1e", rough=0.8),
+        "lcd": C.mat("A75_Lcd", "#3f6b3a", rough=0.3, emit="#7fd06a", emit_strength=0.2),
+        "red": C.mat("A75_KnobRed", "#b3322b", rough=0.5),
+        "blue": C.mat("A75_KnobBlue", "#2f5fb0", rough=0.5),
+        "badge": C.mat("A75_WheelBadge", "#c9cbcc", rough=0.3, metal=0.7),
         "knob": C.mat("A75_Knob", "#111113", rough=0.4),
-        "carpet": C.mat("A75_Carpet", image=TX.carpet("a75_carpet", "#26272a", 5, 16), rough=1.0),
+        "carpet": C.mat("A75_Carpet", image=TX.carpet("a75_carpet", "#34363a", 5, 16), rough=1.0),
         "rubber": C.mat("A75_Rubber", "#141415", rough=0.9),
-        "rim": C.mat("A75_WheelRim", "#161618", rough=0.55),
+        "rim": C.mat("A75_WheelRim", "#2a2b2e", rough=0.6),
         "needle": C.mat("A75_Needle", "#f07a1c", rough=0.4, emit="#ff8a2a", emit_strength=0.25),
         "speedo": C.mat("A75_Speedo", image=CB.dial_tex("a75_speedo", SPEED_FULL, 20, face=(0.03, 0.03, 0.035),
                                                          ink=(0.9, 0.9, 0.86), tick_step=10, units="KMH"),
@@ -207,46 +219,98 @@ def _face_frame(x, z, y=FACE_Y):
     return CB._frame((x, y, z), (1, 0, 0), (0, 0, 1))
 
 
+def _inset(name, x0, x1, z0, z1, mat, y=0.448, r=0.008, depth=0.006):
+    """A flat module on the dash's face, standing `depth` proud of it."""
+    return _rprism(name, _box(x0, x1, z0, z1), "y", y - depth, y, mat, r=r)
+
+
+def _box(x0, x1, z0, z1):
+    return [(x0, z0), (x1, z0), (x1, z1), (x0, z1)]
+
+
 def _dash(X):
+    """After the 75's dash (ref/r10.jpg, mirrored for right-hand drive): a
+    light grey moulding with its modules set into it in near black: the
+    long dial panel under its hood with a pod of switches either side, the
+    check panel over a cubby at the top of the centre stack, the badge strip,
+    two vents side by side, the heater panel and the radio, a recessed tray
+    across the passenger's side over the glovebox."""
     out = []
     # the main dash: a deep top under the windscreen's foot, a face, a
     # rounded lower edge over the knees
     prof = [(0.86, 0.872), (0.62, 0.902), (0.48, 0.905), (0.455, 0.89), (0.45, 0.80), (0.47, 0.66),
             (0.56, 0.585), (0.70, 0.57), (0.86, 0.60)]
     out.append(_rprism("dash", prof, "x", -DASH_X, DASH_X, X["dash"], r=0.02, cap=0.012))
-    # the hood over the dials, a deep rectangular visor
+    # the hood over the dials, in the dash's grey; the long panel inside it
+    # near black
     hood = [(0.40, 0.985), (0.62, 0.958), (0.62, 0.90), (0.50, 0.90), (0.47, 0.96), (0.42, 0.968)]
-    out.append(_rprism("dial_hood", hood, "x", 0.12, 0.61, X["hood"], r=0.012, cap=0.012))
-    panel = [(0.13, 0.81), (0.60, 0.81), (0.60, 0.96), (0.13, 0.96)]
-    out.append(_rprism("dial_panel", panel, "y", FACE_Y, 0.52, X["hood"], r=0.02))
+    out.append(_rprism("dial_hood", hood, "x", 0.10, 0.64, X["dash"], r=0.012, cap=0.012))
+    panel = [(0.11, 0.81), (0.63, 0.81), (0.63, 0.96), (0.11, 0.96)]
+    out.append(_rprism("dial_panel", panel, "y", FACE_Y, 0.52, X["dark"], r=0.02))
     for x, mat in ((SPEEDO_X, X["speedo"]), (TACH_X, X["tach"])):
         m = _face_frame(x, DIAL_Z)
-        out.append(CB._ring("dial_rim", DIAL_R - 0.001, DIAL_R + 0.005, 0.012, m, X["hood"], segs=32))
+        out.append(CB._ring("dial_rim", DIAL_R - 0.001, DIAL_R + 0.005, 0.012, m, X["mid"], segs=32))
         out.append(CB._disc("dial", DIAL_R, m @ Matrix.Translation((0, 0, 0.002)), mat, segs=32))
         out.append(C.sphere("dial_cap", 0.009, tuple(m @ Vector((0, 0, 0.007))), X["knob"], segs=12, rings=4,
                             scale=(1, 0.45, 1)))
-    # vents at the dash ends and either side of the stack
-    for x in (-0.68, -0.19, 0.19, 0.69):
-        vm = _face_frame(x, 0.86, 0.452)
-        out.append(CB._place(CB._rbox("vent", (-0.05, -0.022, -0.004), (0.05, 0.022, 0.004), X["knob"], 0.006),
-                             vm))
+    # the small gauges (oil, water, fuel) between and outboard of the dials
+    gm = _face_frame(0.365, 0.86)
+    out.append(CB._quad("minor_gauges", 0.075, 0.025, gm @ Matrix.Translation((0, 0, 0.001)), X["minor"]))
+    # a pod of rocker switches either side of the hood
+    for x0, x1 in ((0.062, 0.10), (0.645, 0.685)):
+        out.append(_inset("switch_pod", x0, x1, 0.78, 0.92, X["dark"], y=0.452, depth=0.03))
         for k in range(3):
-            out.append(CB._place(C.box_minmax("vent_vane", (-0.045, -0.016 + k * 0.014, 0.004),
-                                              (0.045, -0.012 + k * 0.014, 0.008), X["dash"]), vm))
-    # glovebox lid on the passenger's side
-    gb = [(-0.66, 0.68), (-0.26, 0.68), (-0.26, 0.79), (-0.66, 0.79)]
-    out.append(_rprism("glovebox", gb, "y", 0.448, 0.47, X["dash"], r=0.012))
-    # the centre stack: three small dials over the radio and a row of
-    # switches, running down into the console on the tunnel
+            z = 0.80 + k * 0.04
+            out.append(C.box_minmax("rocker", (x0 + 0.01, 0.418, z), (x1 - 0.01, 0.424, z + 0.025), X["mid"]))
+    # the driver's knee panel: a dark cubby outboard of the column
+    out.append(_inset("knee_cubby", 0.47, 0.66, 0.67, 0.73, X["dark"], y=0.462, depth=0.004))
+    # vents at the dash ends, in dark surrounds
+    for x in (-0.70, 0.732):
+        out.append(_inset("vent_surround", x - 0.042, x + 0.042, 0.835, 0.885, X["dark"], y=0.452, depth=0.004))
+        vm = _face_frame(x, 0.86, 0.446)
+        for k in range(3):
+            out.append(CB._place(C.box_minmax("vent_vane", (-0.034, -0.016 + k * 0.014, 0.0),
+                                              (0.034, -0.012 + k * 0.014, 0.004), X["mid"]), vm))
+    # across the passenger's side: a recessed tray, darker, over the
+    # glovebox lid
+    out.append(_inset("tray", -0.70, -0.17, 0.745, 0.815, X["mid"], y=0.452, depth=0.004))
+    out.append(C.box_minmax("tray_lip", (-0.70, 0.436, 0.742), (-0.17, 0.452, 0.752), X["dash"]))
+    gb = [(-0.66, 0.665), (-0.24, 0.665), (-0.24, 0.73), (-0.66, 0.73)]
+    out.append(_rprism("glovebox", gb, "y", 0.452, 0.47, X["dash"], r=0.012))
+    out.append(C.box_minmax("glovebox_catch", (-0.48, 0.448, 0.712), (-0.42, 0.454, 0.722), X["dark"]))
+    # the centre stack, running down into the console on the tunnel
     stack = [(0.455, 0.84), (0.455, 0.56), (0.40, 0.46), (0.30, 0.43), (0.62, 0.43), (0.62, 0.84)]
     out.append(_rprism("stack", stack, "x", -0.13, 0.13, X["dash"], r=0.02, cap=0.01))
-    sm = CB._frame((0.0, 0.452, 0.80), (1, 0, 0), (0, 0, 1))
-    out.append(CB._quad("minor_gauges", 0.21, 0.07, sm, X["minor"]))
-    rm = CB._frame((0.0, 0.452, 0.71), (1, 0, 0), (0, 0, 1))
-    out.append(CB._quad("radio", 0.18, 0.045, rm, X["radio"]))
-    for k in range(5):
-        out.append(CB._place(C.box_minmax("switch", (-0.09 + k * 0.04, -0.012, 0.0), (-0.07 + k * 0.04, 0.012, 0.006),
-                                          X["knob"]), CB._frame((0.0, 0.47, 0.635), (1, 0, 0), (0, 0.6, 0.8))))
+    # at its top the check panel (a green display and its warning lamps)
+    # in a dark housing, a cubby under it
+    out.append(_inset("check_panel", -0.12, 0.05, 0.775, 0.885, X["dark"], y=0.455, depth=0.02))
+    cm = CB._frame((0.008, 0.434, 0.835), (1, 0, 0), (0, 0, 1))
+    out.append(CB._quad("check_lcd", 0.05, 0.018, cm, X["lcd"]))
+    for k in range(4):
+        out.append(CB._quad("check_lamp", 0.012, 0.012, CB._frame((-0.099 + k * 0.022, 0.434, 0.835), (1, 0, 0),
+                                                                    (0, 0, 1)), X["mid"]))
+    out.append(_inset("cubby", -0.115, 0.115, 0.715, 0.76, X["hood"], y=0.457, depth=0.002))
+    # the badge strip and the two vents side by side under it
+    out.append(_inset("badge_strip", -0.12, 0.12, 0.665, 0.700, X["dark"], y=0.457, depth=0.006))
+    out.append(C.box_minmax("strip_badge", (-0.035, 0.448, 0.677), (0.035, 0.452, 0.688), X["chrome"]))
+    out.append(_inset("vents_surround", -0.12, 0.12, 0.575, 0.655, X["dark"], y=0.457, depth=0.008))
+    for xc in (-0.058, 0.058):
+        for k in range(5):
+            z = 0.588 + k * 0.012
+            out.append(C.box_minmax("vent_vane", (xc - 0.05, 0.445, z), (xc + 0.05, 0.449, z + 0.005), X["mid"]))
+    # down the stack's slope: the heater panel (two dials, red and blue,
+    # either side of the fan knob) over the radio
+    hm = CB._frame((0.0, 0.437, 0.527), (1, 0, 0), (0, 0.48, 0.88))
+    out.append(CB._place(CB._rbox("heater_panel", (-0.115, -0.04, 0.0), (0.115, 0.04, 0.012), X["dark"], 0.006),
+                         hm))
+    for xk, ring in ((-0.06, X["red"]), (0.0, X["mid"]), (0.06, X["blue"])):
+        km = hm @ Matrix.Translation((xk, 0.0, 0.012))
+        out.append(CB._ring("heater_ring", 0.018, 0.024, 0.004, km, ring, segs=20))
+        out.append(CB._place(C.cylinder("heater_knob", 0.016, 0.016, segs=14, loc=(0, 0, 0.008),
+                                        material=X["knob"]), km))
+    rm = CB._frame((0.0, 0.415, 0.487), (1, 0, 0), (0, 0.48, 0.88))
+    out.append(CB._place(CB._rbox("radio_box", (-0.10, -0.022, 0.0), (0.10, 0.022, 0.01), X["hood"], 0.004), rm))
+    out.append(CB._quad("radio", 0.18, 0.04, rm @ Matrix.Translation((0, 0, 0.011)), X["radio"]))
     # needles and odometer
     sp, tc = _face_frame(SPEEDO_X, DIAL_Z), _face_frame(TACH_X, DIAL_Z)
     lift = 0.004
@@ -262,11 +326,21 @@ def _column_frame():
 
 
 def _wheel_pad(X):
-    """The two-spoke wheel's wide pad (no badge), in the hub frame: a
-    rounded slab across the middle, facing the driver (-Y)."""
-    pad = PV._round_poly([(-0.08, -0.045), (0.08, -0.045), (0.09, 0.005), (0.07, 0.042), (-0.07, 0.042),
-                          (-0.09, 0.005)], 0.02, 3)
-    return PV._smoothed(PV._prism("pad", pad, "y", 0.012, 0.05, X["rim"]), 40)
+    """The 75's wheel inside its rim, in the hub frame, facing the driver
+    (-Y): one broad flat spoke straight across from rim to rim a little
+    over the middle, a third tapering down from it to six o'clock, a
+    padded boss where they meet and a plain round badge (made up, no
+    marque) on it."""
+    r = RIM_R - 0.004
+    spokes = PV._round_poly([(-r, 0.038), (r, 0.038), (r, -0.032), (0.12, -0.042), (0.07, -0.08), (0.042, -r),
+                             (-0.042, -r), (-0.07, -0.08), (-0.12, -0.042), (-r, -0.032)], 0.016, 3)
+    out = [PV._smoothed(PV._prism("spokes", spokes, "y", 0.004, 0.026, X["rim"]), 40)]
+    boss = PV._round_poly([(-0.095, -0.055), (0.095, -0.055), (0.1, 0.034), (-0.1, 0.034)], 0.03, 4)
+    out.append(PV._smoothed(PV._prism("boss", boss, "y", -0.014, 0.01, X["rim"]), 40))
+    bm = CB._frame((0.0, -0.0145, -0.008), (1, 0, 0), (0, 0, 1))
+    out.append(CB._disc("badge", 0.021, bm, X["badge"], segs=20))
+    out.append(CB._disc("badge_in", 0.015, bm @ Matrix.Translation((0, 0, 0.0008)), X["knob"], segs=20))
+    return out
 
 
 def _column(X):
@@ -285,24 +359,26 @@ def _column(X):
 def _gear(X):
     """The gear lever far back on the tunnel (the transaxle's linkage) in a
     rubber boot, and the 75's hoop handbrake beside it."""
-    base = Vector((0.0, -0.06, 0.52))
-    tip = base + Vector((0.0, -0.05, 0.20))
+    base = Vector((0.0, 0.27, 0.52))
+    tip = base + Vector((0.0, -0.10, 0.17))
     out = [C.cylinder("gear_boot", 0.05, 0.05, segs=12, loc=tuple(base + Vector((0, 0, 0.02))),
                       material=X["rubber"], r_top=0.018),
            _tube("gear_lever", [base, tip], 0.007, X["chrome"], segs=8)]
     knob = C.sphere("GearKnob", 0.021, tuple(tip + Vector((0, -0.004, 0.012))), X["knob"], segs=12, rings=6,
                     scale=(1.0, 1.15, 0.9))
     # the hoop: a U of black tube lying on the console, its ends at the back
-    hoop = [(0.05, -0.38, 0.535), (0.05, -0.22, 0.56), (0.07, -0.15, 0.57), (0.10, -0.15, 0.57), (0.12, -0.22, 0.56),
-            (0.12, -0.38, 0.535)]
+    hoop = [(0.05, -0.08, 0.535), (0.05, 0.08, 0.56), (0.07, 0.15, 0.57), (0.10, 0.15, 0.57), (0.12, 0.08, 0.56),
+            (0.12, -0.08, 0.535)]
     out.append(_tube("handbrake", hoop, 0.009, X["knob"], segs=8, up=(0, 0, 1)))
     console = [(-0.12, 0.43), (0.12, 0.43), (0.11, 0.52), (-0.11, 0.52)]
-    out.append(_rprism("console", console, "y", -0.55, 0.30, X["dash"], r=0.02, cap=0.01))
+    out.append(_rprism("console", console, "y", -0.30, 0.32, X["dash"], r=0.02, cap=0.01))
     return out, knob, tip
 
 
 def _seats(X):
     out = []
+    def fwd(prof):
+        return [(y + SEAT_DY, z) for y, z in prof]
     cushion = [(-0.66, 0.40), (-0.10, 0.40), (-0.05, 0.47), (-0.06, 0.525), (-0.12, 0.54), (-0.52, 0.52),
                (-0.62, 0.50)]
     back = [(-0.57, 0.50), (-0.61, 0.62), (-0.67, 1.04), (-0.71, 1.075), (-0.77, 1.06), (-0.74, 0.62),
@@ -310,17 +386,17 @@ def _seats(X):
     for sx in (-1, 1):
         lo, hi = sorted((sx * 0.13, sx * 0.62))
         ins = [(lo + 0.08, hi - 0.08)]
-        out.append(_bench("seat_cushion", cushion, lo, hi, ins, X, "top", r=0.03))
-        out.append(_bench("seat_back", back, lo, hi, ins, X, "front", r=0.04))
+        out.append(_bench("seat_cushion", fwd(cushion), lo, hi, ins, X, "top", r=0.03))
+        out.append(_bench("seat_back", fwd(back), lo, hi, ins, X, "front", r=0.04))
         # side bolsters on the back
         for x in (lo + 0.035, hi - 0.035):
-            out.append(_rprism("bolster", [(-0.59, 0.56), (-0.64, 0.96), (-0.70, 0.98), (-0.69, 0.56)], "x",
+            out.append(_rprism("bolster", fwd([(-0.59, 0.56), (-0.64, 0.96), (-0.70, 0.98), (-0.69, 0.56)]), "x",
                                x - 0.035, x + 0.035, X["vinyl"], r=0.02, cap=0.012))
         hx = sx * 0.375
-        out.append(PV._smoothed(CB._rbox("headrest", (hx - 0.12, -0.80, 1.10), (hx + 0.12, -0.72, 1.255),
+        out.append(PV._smoothed(CB._rbox("headrest", (hx - 0.12, -0.80 + SEAT_DY, 1.10), (hx + 0.12, -0.72 + SEAT_DY, 1.255),
                                          X["vinyl"], 0.03), 40))
         for dx in (-0.07, 0.07):
-            out.append(_tube("headrest_post", [(hx + dx, -0.755, 1.06), (hx + dx, -0.755, 1.11)], 0.006,
+            out.append(_tube("headrest_post", [(hx + dx, -0.755 + SEAT_DY, 1.06), (hx + dx, -0.755 + SEAT_DY, 1.11)], 0.006,
                              X["chrome"], segs=6))
     # the back seat between the wheel tubs, its back up to the parcel shelf
     cushion_r = [(-1.42, 0.40), (-0.92, 0.40), (-0.88, 0.47), (-0.89, 0.53), (-0.95, 0.545), (-1.36, 0.53)]
@@ -455,14 +531,10 @@ def cockpit(M, body):
     parts = dash + col + gear + _seats(X) + _floor(X) + _headliner(X, body)
     # the rear doors' cards stay with the body
     parts += _door_card(-1, -1.08, -0.23, X) + _door_card(1, -1.08, -0.23, X)
-    wheel = [CB.torus_rim("a75_rim", RIM_R, 0.014, 40, X["rim"], ts=8)]
+    # a thick leather rim
+    wheel = [CB.torus_rim("a75_rim", RIM_R, 0.017, 40, X["rim"], ts=10, squash=1.15)]
     PV._smoothed(wheel[0], 60)
-    wheel.append(_wheel_pad(X))
-    drop = math.radians(10)
-    for sx in (-1, 1):
-        a = Vector((sx * 0.07, 0.03, -0.01))
-        b = Vector((sx * (RIM_R - 0.006) * math.cos(drop), 0.004, -(RIM_R - 0.006) * math.sin(drop)))
-        wheel.append(_bar("spoke", a, b, 0.045, 0.012, X["rim"], up=(0, -1, 0.25)))
+    wheel += _wheel_pad(X)
     m = _column_frame()
     for o in wheel:
         C.apply_transform(o)
