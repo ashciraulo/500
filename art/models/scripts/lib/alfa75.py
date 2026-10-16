@@ -120,14 +120,19 @@ _ZBOT = K.pchip([Y0, -1.78, -1.55, 1.62, 1.8, Y1], [0.46, 0.34, 0.275, 0.275, 0.
 
 # the black band's centre in side view (ba_co6.jpg, measured along the
 # whole car): one straight line rising from the windscreen's foot right to
-# the tail, where the lip spoiler comes down to meet it; at the front it
-# falls away along the wing's shoulder to the headlamp's corner
+# the tail, where the lip spoiler comes down to meet it; at the front a
+# second straight line, a little steeper, along the wing's shoulder to the
+# headlamp's corner (no bow over the arch), with a short blend between
 def _band_lin(y):
     return 0.85 - 0.0464 * (y - 0.756)
 
 
-BAND = K.pchip([Y0 + 0.04, -1.5, -0.5, 0.5, 1.0] + [1.3, 1.54, 1.75, 1.95],
-               [_band_lin(y) for y in (Y0 + 0.04, -1.5, -0.5, 0.5, 1.0)] + [0.822, 0.785, 0.748, 0.705])
+def _band_wing(y):
+    return 0.845 - 0.1273 * (y - 0.85)
+
+
+BAND = K.pchip([Y0 + 0.04, -1.5, -0.5, 0.3, 0.6] + [1.1, 1.5, 1.95],
+               [_band_lin(y) for y in (Y0 + 0.04, -1.5, -0.5, 0.3, 0.6)] + [_band_wing(y) for y in (1.1, 1.5, 1.95)])
 # it is even under the glass and tapers along the wing to a thin line at
 # the headlamp's corner
 BAND_W = K.pchip([Y0 + 0.04, -1.0, 0.72, 1.0, 1.4, 1.95], [0.036, 0.036, 0.036, 0.032, 0.024, 0.012])
@@ -158,7 +163,7 @@ def ZB(y):
 # (its centre in side view is nearly a straight wedge down to the nose, as
 # the side photo traces it: no hump)
 _ZD_F = K.pchip([WS_B, 1.0, 1.2, 1.4, 1.6, 1.8, Y1], [0.915, 0.888, 0.859, 0.826, 0.785, 0.739, 0.698])
-_ZE_F = K.pchip([WS_B, 1.2, 1.6, Y1], [0.884, 0.852, 0.796, 0.712])   # just over the band's top edge
+_ZE_F = K.pchip([WS_B, 1.2, 1.6, Y1], [0.884, 0.83, 0.775, 0.72])   # just over the band's top edge
 _CROWN_F = 0.02
 # the boot: a flat, very slightly falling deck, and its edge over the quarters
 # (it falls about 6 cm from the screen's foot to the lip: the tail tapers
@@ -334,7 +339,7 @@ def backlight():
 
 ARCH_F, ARCH_R = 0.345, 0.34      # the openings, inside the flares
 FLARE_F, FLARE_R = 0.413, 0.40     # the flares' outer edges
-ARCH_N, ARCH_TOP = 3.4, 0.95       # the arches' tops flatten off: a superellipse, a little lower
+ARCH_N, ARCH_TOP = 2.6, 0.975      # the arches' tops flatten off: a superellipse, a little lower
 
 
 def arch_pt(a_deg, r):
@@ -451,12 +456,17 @@ def _flares(M, ref):
     standing proud of the side at the opening and fairing back into it at
     the outer edge, turned in at the opening."""
     p = []
-    for y0, r0, r1 in ((AXLE_F, ARCH_F, FLARE_F), (AXLE_R, ARCH_R, FLARE_R)):
+    # each stops where its bumper comes up to the arch: the front's ahead
+    # of the front wheel, the rear's behind the rear wheel
+    for y0, r0, r1, front, z_cut in ((AXLE_F, ARCH_F, FLARE_F, True, BUMPER_F_TOP + 0.006),
+                                     (AXLE_R, ARCH_R, FLARE_R, False, BUMPER_R_TOP + 0.006)):
         for sx in (-1, 1):
             fr = K.side_frame(sx)
             rings = [(r0, 0.02), (r0 + 0.3 * (r1 - r0), 0.016), (r0 + 0.65 * (r1 - r0), 0.008), (r1, 0.002)]
             rows = []
             for a in range(4, 177, 4):
+                if (a < 90) == front and TYRE_R + arch_pt(a, r0)[1] < z_cut:
+                    continue
                 row = []
                 for r, lift in rings:
                     dy, dz = arch_pt(a, r)
@@ -680,31 +690,58 @@ def _head_lamps(M, ref):
 # Both bumpers are a black rubbing strip over a body-coloured lower half,
 # wrapping round the corners back to the wheel arches.
 
+BUMPER_R_TOP = 0.628              # the rear bumper's top edge
 BUMPER_F_TOP = 0.525              # the front band's top edge, just under the lamps
 APRON_DEPTH, APRON_RISE = 0.12, 0.01    # its apron back and up to under the lamps
 
 
-def _bumper_profile(z0, z_split, z1, slope, apron=False):
+def _bumper_profile(z0, z_split, z1, lean, step, apron=False):
     """Two (d, z) profiles: the lower, body-coloured part and the black strip
-    over it. d <= 0 is in from the face. The top `slope` metres lean back in
-    to the body before the face goes straight down; the foot tucks under.
-    With `apron` the strip's top runs back and up to the lamps, closing the
-    gap under them."""
-    lower = [(-0.07, z0 + 0.02), (-0.05, z0), (-0.02, z0 + 0.012), (-0.004, z0 + 0.05), (0.0, z_split - 0.02),
-             (-0.002, z_split), (-0.06, z_split)]
-    lean = 1.1 * slope
-    upper = [(-0.06, z_split - 0.004), (0.006, z_split - 0.004), (0.01, z_split + 0.012), (0.01, z1 - slope),
-             (0.006, z1 - slope + 0.008), (0.01 - lean + 0.008, z1 - 0.006), (0.01 - lean, z1), (-0.06 - lean, z1)]
+    over it. d <= 0 is in from the face. The lower part's face goes straight
+    down to a crisp foot; the black strip above it tapers in, leaning back
+    `lean` metres over its height to the body. With `apron` the strip's top
+    runs back and up to the lamps, closing the gap under them."""
+    # (a lip along its foot stands out a little; above the step at `step`
+    # the face sits back)
+    lower = [(-0.07, z0 + 0.01), (-0.012, z0), (0.004, z0 + 0.012), (0.006, step - 0.008), (-0.006, step),
+             (-0.008, step + 0.006), (-0.008, z_split - 0.012), (-0.01, z_split), (-0.06, z_split)]
+    upper = [(-0.06, z_split - 0.002), (0.004, z_split - 0.002), (0.008, z_split + 0.008),
+             (0.006 - 0.25 * lean, z_split + 0.25 * (z1 - z_split)), (0.002 - lean, z1 - 0.004), (-0.006 - lean, z1),
+             (-0.06 - lean, z1)]
     if apron:
         upper[-1:] = [(-APRON_DEPTH, z1 + APRON_RISE), (-APRON_DEPTH - 0.01, z1 - 0.01)]
     return lower, upper
 
 
+def _open_sweep(name, plan, profile, centre, mat):
+    """PV._sweep along one plan path (x, y, depth scale) as given, not
+    mirrored: a closed tube capped at both ends."""
+    n, m = len(plan), len(profile)
+    v, f = [], []
+    for i, (x, y, k) in enumerate(plan):
+        xa, ya, _ = plan[max(i - 1, 0)]
+        xb, yb, _ = plan[min(i + 1, n - 1)]
+        ln = math.hypot(xb - xa, yb - ya)
+        nx, ny = (yb - ya) / ln, -(xb - xa) / ln
+        if nx * (x - centre[0]) + ny * (y - centre[1]) < 0:
+            nx, ny = -nx, -ny
+        for d, z in profile:
+            v.append((x + nx * d * k, y + ny * d * k, z))
+    for i in range(n - 1):
+        for j in range(m):
+            jj = (j + 1) % m
+            f.append((i * m + j, (i + 1) * m + j, (i + 1) * m + jj, i * m + jj))
+    f.append(tuple(range(m)))
+    f.append(tuple((n - 1) * m + j for j in range(m)))
+    return _smoothed(_fix_normals(C.mesh_obj(name, v, f, mat)), 32)
+
+
 def _arch_trim(o):
-    """Cut a bumper's ends round the wheel arches' flares."""
-    for y, r in ((AXLE_F, FLARE_F), (AXLE_R, FLARE_R)):
+    """Cut a bumper's ends round the wheel arches' openings: the bumpers run
+    right up to the arch, under the flares' ends."""
+    for y, r in ((AXLE_F, ARCH_F), (AXLE_R, ARCH_R)):
         for sx in (-1, 1):
-            _cut(o, _cutter("arch", arch_poly(y, r + 0.004), PV._side_place(sx), 0.4, 1.2, "Under"))
+            _cut(o, _cutter("arch", arch_poly(y, r + 0.006), PV._side_place(sx), 0.4, 1.2, "Under"))
     return o
 
 
@@ -717,7 +754,7 @@ def _bumpers(M):
              (0.735, YF - 0.11, 1), (0.775, YF - 0.155, 1), (0.805, YF - 0.21, 1), (0.822, YF - 0.28, 1),
              (0.828, 1.70, 1), (0.83, 1.56, 1)]
     # the front's black strip is a thin one, under the lamps
-    lo, up = _bumper_profile(0.245, 0.455, BUMPER_F_TOP, 0.03, apron=True)
+    lo, up = _bumper_profile(0.245, 0.455, BUMPER_F_TOP, 0.045, 0.4, apron=True)
     p.append(_arch_trim(_sweep("bumper_f", fplan, lo, (0.0, YF - 1.0), M["paint"])))
     p.append(_arch_trim(_sweep("bumper_f_band", fplan, up, (0.0, YF - 1.0), M["band"])))
     # the tail is only 11 cm behind the body, so the rear corners turn
@@ -725,12 +762,15 @@ def _bumpers(M):
     rplan = [(0.0, YR, 1), (0.3, YR + 0.006, 1), (0.5, YR + 0.018, 1), (0.62, YR + 0.036, 1), (0.69, YR + 0.06, 1),
              (0.735, YR + 0.095, 1), (0.762, YR + 0.14, 1), (0.78, YR + 0.2, 1), (0.795, YR + 0.3, 1),
              (0.808, -1.72, 1), (0.818, -1.6, 1), (0.822, -1.4, 1)]
-    lo, up = _bumper_profile(0.25, 0.53, 0.628, 0.04)
+    lo, up = _bumper_profile(0.25, 0.53, BUMPER_R_TOP, 0.055, 0.41)
     p.append(_arch_trim(_sweep("bumper_r", rplan, lo, (0.0, YR + 1.0), M["paint"])))
-    p.append(_arch_trim(_sweep("bumper_r_band", rplan, up, (0.0, YR + 1.0), M["band"])))
-    # a groove along the front bumper's lower half, following its face
-    groove = [(-0.001, 0.4), (0.002, 0.4), (0.002, 0.407), (-0.001, 0.407)]
-    p.append(_sweep("groove", [pt for pt in fplan if pt[0] <= 0.6], groove, (0.0, YF - 1.0), M["under"]))
+    # its black strip stops just round the corner; along the sides the
+    # same section is body colour
+    k = next(i for i, q in enumerate(rplan) if q[1] >= YR + 0.3)
+    p.append(_sweep("bumper_r_band", rplan[:k + 1], up, (0.0, YR + 1.0), M["band"]))
+    for sx in (-1, 1):
+        path = [(sx * x, y, sc) for x, y, sc in rplan[k:]]
+        p.append(_arch_trim(_open_sweep("bumper_r_side", path, up, (0.0, YR + 1.0), M["paint"])))
     return p
 
 
@@ -928,6 +968,12 @@ def _trim(M, ref, body):
         p.append(_line("shut", ref, [(sx * (HW - 0.05), -1.47), (sx * (HW - 0.1), Y0 + 0.02)], top, 0.006,
                        M["shut"], 0.004))
     p.append(_line("shut", ref, [(-(HW - 0.06), -1.47), (HW - 0.06, -1.47)], top, 0.006, M["shut"], 0.004))
+    # the bonnet's two contour lines, running in from its back corners
+    # toward the shield's shoulders: a soft crease, lit on its inner side
+    for sx in (-1, 1):
+        pts = [(sx * 0.37, WS_B + 0.12), (sx * 0.3, 1.35), (sx * 0.22, 1.7), (sx * 0.15, Y1 - 0.03)]
+        p.append(_line("crease", ref, pts, top, 0.006, M["crease"], 0.002))
+        p.append(_line("crease_hi", ref, [(x - sx * 0.006, y) for x, y in pts], top, 0.005, M["crease_hi"], 0.002))
     # wipers
     for x0, x1 in ((-0.62, -0.05), (0.08, 0.62)):
         p.append(_line("wiper", ref, [(x0, WS_B - 0.05), (x1, WS_B - 0.035)], top, 0.012, M["black"], 0.012))
