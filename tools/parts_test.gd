@@ -38,6 +38,7 @@ func _process(_delta: float) -> bool:
 	elif _frames == 62:
 		_classic()
 		_valiant()
+		_alfa()
 	elif _frames == 63:
 		_field_gear()
 	elif _frames == 64:
@@ -311,6 +312,68 @@ func _valiant() -> void:
 	for slot: StringName in [&"wheels", &"exhaust", &"seat_covers"]:
 		_car.remove_part(slot)
 	_check(engine.engine_set == "slant6", "the stock pipe sounds stock again (%s)" % engine.engine_set)
+	_car.load_vehicle_state({"car_id": "pop_12"})
+
+
+## The Alfa 75 is a period car with its own parts (parts_ladder alfa75):
+## they fit it alone, and neither the 500s' nor the Valiant's fit it.
+func _alfa() -> void:
+	var catalogue: Variant = load("res://scripts/vehicle/parts_catalogue.gd")
+	var cars: Variant = load("res://scripts/vehicle/car_catalogue.gd")
+	var a75 := "alfa_75_v6"
+	var own := 0
+	var wrong: Array[String] = []
+	for part: Resource in catalogue.all():
+		var for_alfa: bool = part.ladders.has("alfa75")
+		if catalogue.fits(part, a75) != for_alfa:
+			wrong.append("%s on the Alfa" % part.id)
+		for car: Dictionary in cars.all():
+			if car.id != a75 and for_alfa and catalogue.fits(part, car.id):
+				wrong.append("%s on the %s" % [part.id, car.id])
+		own += 1 if for_alfa and not part.is_stock() else 0
+	_check(own >= 10, "the Alfa has its own upgrades (%d)" % own)
+	_check(wrong.is_empty(), "only the Alfa's parts fit the Alfa, and they fit nothing else %s" % [wrong])
+	for slot: StringName in catalogue.SLOTS:
+		var choices: Array = catalogue.for_car(slot, a75)
+		if choices.is_empty():
+			continue
+		_check(String(choices[0].id).begins_with("a75_") and choices[0].is_stock(), "the Alfa's %s starts at its own stock part" % slot)
+	var simmons: Resource = catalogue.get_part(&"wheels_a75_simmons")
+	_check(simmons != null and not simmons.found_only and simmons.price > 0, "the Simmons wheels are for sale")
+	_check(catalogue.fits_phrase(simmons) == "the Alfa 75", "and say they're for the Alfa 75")
+	var found_part: Variant = load("res://scripts/world/found_part.gd")
+	_check(not found_part.turned_up("wheels_a75_teledial"), "the phone dials wait until you own the Alfa")
+	var garage := root.get_node("Garage")
+	garage.owned_cars.append(a75)
+	_check(found_part.turned_up("wheels_a75_teledial"), "and turn up once you do")
+	garage.owned_cars.remove_at(garage.owned_cars.find(a75))
+	_car.load_vehicle_state({"car_id": a75})
+	_check(_car.car_id == a75, "switched to the Alfa")
+	var body := _car.get_node("Body") as Node3D
+	_check(_wheel_path().contains("a75"), "it has its own wheels (%s)" % _wheel_path())
+	for id: String in ["wheels_a75_simmons", "wheels_a75_teledial"]:
+		_car.install_part(catalogue.get_part(StringName(id)))
+		var visual: String = catalogue.get_part(StringName(id)).visual
+		_check(_wheel_path().contains(visual), "%s show on the Alfa (%s)" % [id, _wheel_path()])
+	_car.install_part(catalogue.get_part(&"exhaust_a75_sport"))
+	var pipes := body.get_node_or_null(^"Part_exhaust") as Node3D
+	_check(pipes != null and pipes.position.distance_to(Vector3.ZERO) > 0.5, "the sport exhaust sits at the back (%s)" % [pipes.position if pipes else null])
+	var engine := _car.get_node("Audio/Engine")
+	_check(engine.engine_set == "bussosport", "and sounds like it (%s)" % engine.engine_set)
+	_car.install_part(catalogue.get_part(&"seat_covers_a75_beads"))
+	_check(body.get_node_or_null(^"Part_seat_covers") != null and body.get_node_or_null(^"Part_seat_covers_2") != null,
+		"bead covers on both front seats")
+	for slot: StringName in [&"wheels", &"exhaust", &"seat_covers"]:
+		_car.remove_part(slot)
+	_check(engine.engine_set == "busso", "the stock pipe sounds stock again (%s)" % engine.engine_set)
+	# Field gear on the Alfa's own seats: the bucket and the back seat.
+	_car.set_field_gear(PackedStringArray(["esky", "tackle_box", "binoculars", "camera"]))
+	var seat := body.find_child("Seat_L", true, false) as Node3D
+	for id: String in ["esky", "tackle_box", "binoculars", "camera"]:
+		var model := body.get_node_or_null(NodePath("Gear_" + id)) as Node3D
+		_check(model != null and seat != null and absf(model.position.y - seat.position.y) < 0.1,
+			"the %s sits on a seat in the Alfa (%s)" % [id.replace("_", " "), model.position if model else null])
+	_car.set_field_gear(PackedStringArray())
 	_car.load_vehicle_state({"car_id": "pop_12"})
 
 

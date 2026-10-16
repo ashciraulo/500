@@ -148,7 +148,7 @@ fuzzy dash mat, phone holder, and gaffer tape on the driver's seat bolster.
 | `Exit_L`, `Exit_R` | On the ground between the open door and the body, about 0.4 m clear of each, facing away from the car (-Z points out). Where to stand the player on getting out. |
 | `SteeringWheel` | Turns about its local Z (the column axis). |
 | `Interior` | Dash, seats, console, mats, headliner. The cabin detail on the modern cars (instrument cluster, vents, radio, climate panel, stalks and key, gear lever, handbrake, pedals, belts, door trim) is built by `lib/cabin.py`. |
-| `Needle_<dial>_<full scale>` | Gauge needles, separate so the game can move them: `Needle_Speed_200` and `Needle_Rev_7` on the modern cars (km/h and thousands of rpm), `Needle_Speed_120` on the Nuova-style classics, and `Needle_Speed_140` plus `Needle_Fuel_1` on the black-dash 500 L. The VC Valiant's cockpit (lib/valiant_cabin.py) has `Needle_Speed_193` (its dial reads 0-120 mph: 193 km/h at the end of the sweep) and `Needle_Fuel_3`, which rests on E at the top left of its dial and swings 80 degrees to F (a full tank reads 1 of a full scale of 3). Each rests on its dial's zero, pivots on the dial centre, and turns about its local Y axis: clockwise (a negative angle) through 240 degrees from zero to the full-scale value in its name. |
+| `Needle_<dial>_<full scale>` | Gauge needles, separate so the game can move them: `Needle_Speed_200` and `Needle_Rev_7` on the modern cars (km/h and thousands of rpm), `Needle_Speed_120` on the Nuova-style classics, and `Needle_Speed_140` plus `Needle_Fuel_1` on the black-dash 500 L. The VC Valiant's cockpit (lib/valiant_cabin.py) has `Needle_Speed_193` (its dial reads 0-120 mph: 193 km/h at the end of the sweep) and `Needle_Fuel_3`, which rests on E at the top left of its dial and swings 80 degrees to F (a full tank reads 1 of a full scale of 3). The Alfa 75 (lib/alfa75_cabin.py) has `Needle_Speed_220` and `Needle_Rev_8`. Each rests on its dial's zero, pivots on the dial centre, and turns about its local Y axis: clockwise (a negative angle) through 240 degrees from zero to the full-scale value in its name. |
 | `Odometer_<digit height in mm>` | Empty at the centre of the blank odometer window, for the game to put the digits on: `Odometer_7` in the modern cars' LCD, `Odometer_5` on the Nuova-style speedo, `Odometer_3` on the 500 L's speedo. Its local X runs along the digits (to the driver's right), Y up the dial and Z out toward the driver, so a `Label3D` child at the origin, with its default orientation, reads the right way round. Size the text so the digits are that tall; five or six digits fit the window. |
 | `Lights_Head`, `Lights_Tail` | Lamp lenses; materials `LampHead` / `LampTail` are driven by `car_body.gd`. |
 | `Cam_Cockpit` | Driver's eye point. |
@@ -165,7 +165,7 @@ Wheels are separate so the car scene can put them under its suspension
 nodes: `cars/parts/wheel_<style>_l.glb` / `_r.glb`, origin at the hub, axle
 along X, outer face pointing away from the car. Styles: `pop_trim` (stock),
 `steel`, `alloy15`, `sport16`, `abarth17`, `turbine16` (the 2020 car's many
-thin spokes), `pepper15` (the 2013 500e's five-hole face), and the VC Valiant's `vc` (stock steel wheels with dog-dish caps), `vc_whitewall` (the Regal's full chrome covers on wide whitewalls) and `vc_slot` (cast slot mags), from `build_period.py`. Exhausts: `cars/parts/exhaust_<style>.glb`
+thin spokes), `pepper15` (the 2013 500e's five-hole face), and the VC Valiant's `vc` (stock steel wheels with dog-dish caps), `vc_whitewall` (the Regal's full chrome covers on wide whitewalls) and `vc_slot` (cast slot mags), from `build_period.py`, and the Alfa 75's `a75` (the stock dished alloy with 24 slots), `a75_simmons` (Simmons B45 style three-piece wheels, no maker's mark) and `a75_teledial` (the later five-hole "phone dial"), from `build_alfa75.py`. Exhausts: `cars/parts/exhaust_<style>.glb`
 (`stock`, `sport`, `twin`, `abarth_quad`), origin at the mount.
 `cars/paints.json` lists period 500 colours.
 
@@ -224,6 +224,25 @@ Both import visible; `car_body.gd` hides `Roof_Open` on load and
 rolls back; the panel with the sewn-in rear window stays on the body.
 `check_car_clipping.py` checks each state against the body, glass, interior
 and doors.
+
+### The Alfa 75
+
+`cars/alfa75/alfa75.glb` is a 1988 Alfa 75 2.5 6V Iniezione in Bianco
+Argento (a pale warm champagne, #c8bba3; it reads silver where it mirrors
+the sky), sold at Gaz's car yard. Built by `build_alfa75.py` from
+`lib/alfa75.py` (the lofted body, lamps, bumpers, the black band),
+`lib/alfa75_cabin.py` (the dash with its two big dials, buckets, the
+opening front doors) and `lib/alfa75_parts.py` (wheels and bolt-ons). It is
+on the same contract as the VC Valiant: `Hub_*`, `WheelStyle_a75`,
+`Door_L/R` with `DoorOpen_*`, `SteeringWheel`, `Needle_Speed_220`,
+`Needle_Rev_8`, `Cam_Cockpit`, `Seat_L/R`, `Exit_L/R`, `Trans_Manual` and
+`Trans_Auto`, `GearKnob` and the mounts. Its plate is made up (6BA-275) and
+its badge is a made-up round one: no real logos.
+
+Real proportions: length 4.33 m, width 1.63 m, height 1.35 m, wheelbase
+2.51 m, track 1.36 m, tyres 195/60 R14. Reference photos, matched-camera
+overlays and the strict reviews it passed are in the project's
+`alfa-75/` folder.
 
 ## Classic 500s
 
@@ -359,6 +378,8 @@ transform:
 | `foglamps_yellow.glb` | `Mount_Spotlights` | A pair of small yellow fog lamps in black bowls with the period cross-strap, either side of the front plate (`scripts/build_mod_parts.py`). The lenses use `LampFog`, so light them with the headlights. |
 | `sump_finned.glb` | `Mount_Exhaust` (classics) | The finned alloy oil sump of a big-bore and carb kit, hanging under the engine ahead of the exhaust. It's the outside tell for the classic engine kits. The turbo kit has no outside part. |
 | `seatcover_vc_sheepskin.glb` | `Seat_L` (the VC Valiant) | A cream sheepskin over the passenger's half of the split bench, from over the cushion's front edge to over the top of the backrest; mirror X for `Seat_R` (`build_period.py`, lib/valiant_parts.py). |
+| `exhaust_a75_sport.glb` | `Mount_Exhaust` (the Alfa 75) | Two big stainless tips side by side out under the back bumper on the left, over the stock pipe (`build_alfa75.py`, lib/alfa75_parts.py). |
+| `seatcover_a75_beads.glb` | `Seat_L` (the Alfa 75) | A wooden-bead cover over the passenger's bucket, from the cushion's front edge to over the top of the back; mirror X for `Seat_R`. |
 | `exhaust_vc_twin.glb` | `Mount_Exhaust` (the VC Valiant) | Twin pipes with plain chrome tips out under the back bumper on the left, the outer one over the stock pipe so it hides it. |
 
 Custom number plates: `cars/plates/plate_<id>.png` (64 x 16, the same size as

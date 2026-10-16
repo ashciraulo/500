@@ -1,5 +1,5 @@
 {
-	"_comment": "Every car in the game. Specs are approximate (power and torque from memory, gear ratios typical for the model) and get checked against a spec source before final tuning. Keys map onto CarController exports; anything missing keeps the Pop's value. unlock: 'tier' (buy at a dealer once career tier `tier` is reached), 'barn_find' (found as a wreck, later phase), 'secret', or 'seen' (on the car yard's lot from the time the player has the discovery named in `seen`: the Valiant, once the 1979 lane has shown it). no_parts lists part slots the car only takes stock parts in; eye_from_model puts the driver's seat under the model's Cam_Cockpit; paint_top_shade darkens the paint's upward faces (0-1). model is the folder and file name under art/models/cars/ (model/model.glb); cars without their own model yet borrow the Pop's.",
+	"_comment": "Every car in the game. Specs are approximate (power and torque from memory, gear ratios typical for the model) and get checked against a spec source before final tuning. Keys map onto CarController exports; anything missing keeps the Pop's value. unlock: 'tier' (buy at a dealer once career tier `tier` is reached), 'barn_find' (found as a wreck, later phase), 'secret', or 'seen' (on the car yard's lot from the time the player has the discovery named in `seen`: the Valiant, once the 1979 lane has shown it). no_parts lists part slots the car only takes stock parts in; parts_ladder names the parts a car takes when it isn't its ladder's (the Alfa 75 is a period car with its own parts, `ladders` alfa75); eye_from_model puts the driver's seat under the model's Cam_Cockpit; paint_top_shade darkens the paint's upward faces (0-1). model is the folder and file name under art/models/cars/ (model/model.glb); cars without their own model yet borrow the Pop's.",
 	"cars": [
 		{
 			"id": "pop_12", "model": "pop", "name": "500 Pop 1.2", "years": "2007-2024", "ladder": "modern", "tier": 0,
@@ -171,6 +171,22 @@
 				"spring_strength": 22000, "damper_strength": 3200, "anti_roll_strength": 3200,
 				"brake_force": 9000, "tire_grip": 0.98, "lateral_stiffness": 0.66, "drag_coefficient": 0.5,
 				"tank_litres": 68, "fuel_per_kwh": 0.55, "fuel_idle_per_hour": 1.6
+			}
+		},
+		{
+			"id": "alfa_75_v6", "model": "alfa75", "name": "Alfa 75 2.5 V6", "years": "1985-1988", "ladder": "period",
+			"parts_ladder": "alfa75", "tier": 2, "unlock": "tier", "price": 10500, "power_kw": 115, "eye_from_model": true,
+			"paint_top_shade": 0.3,
+			"blurb": "Bianco Argento, a Busso V6 up front and the gearbox at the back. Somebody in Leederville loved it.",
+			"spec": {
+				"mass": 1250, "idle_rpm": 850, "redline_rpm": 6200, "limiter_rpm": 6500,
+				"torque_curve": [[850, 150], [1500, 172], [2500, 196], [3200, 206], [4000, 205], [4800, 203], [5600, 196], [6200, 178], [6600, 135]],
+				"gear_ratios": [3.5, 1.956, 1.345, 1.026, 0.83], "final_drive": 3.73, "reverse_ratio": 3.26, "shift_time": 0.38,
+				"auto_upshift_rpm": 5400, "auto_downshift_rpm": 1800, "engine_brake_per_krpm": 6.0,
+				"rear_wheel_drive": true, "diff_lock": 0.25,
+				"spring_strength": 24000, "damper_strength": 2900, "anti_roll_strength": 5200,
+				"brake_force": 10000, "tire_grip": 1.02, "lateral_stiffness": 0.7, "drag_coefficient": 0.36,
+				"tank_litres": 49, "fuel_per_kwh": 0.5, "fuel_idle_per_hour": 1.3
 			}
 		}
 	]
