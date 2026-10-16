@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"tyres_a75_performance"
+display_name = "Performance radials"
+description = "Stickier 195s on the same rims. Better in the dry, a bit better in the wet."
+slot = &"tyres"
+price = 620
+modifiers = {"grip_mult": 1.07, "wet_penalty_mult": 0.9}
+ladders = PackedStringArray("alfa75")

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"brakes_a75_vented"
+display_name = "Vented discs and braided lines"
+description = "Vented front discs, firmer pads and braided lines. It stops when you ask."
+slot = &"brakes"
+price = 1100
+modifiers = {"brake_mult": 1.2}
+ladders = PackedStringArray("alfa75")
