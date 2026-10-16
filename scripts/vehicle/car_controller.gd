@@ -212,6 +212,16 @@ const FIELD_GEAR_PERIOD := {
 	&"binoculars": [Vector3(0.03, -0.08, 0.1), 0.5],
 	&"camera": [Vector3(-0.12, -0.09, 0.0), -0.3],
 }
+## The Alfa 75's bucket seats with the hoop handbrake between them, and a
+## back seat between the wheel tubs about 75 cm behind the front hip.
+const FIELD_GEAR_ALFA := {
+	&"esky": [Vector3(0.0, -0.02, 0.76), 0.0],
+	&"tackle_box": [Vector3(0.02, -0.02, 0.78), 0.2, true],
+	&"binoculars": [Vector3(0.03, -0.03, 0.1), 0.5],
+	&"camera": [Vector3(-0.1, -0.03, 0.0), -0.3],
+}
+## Cars whose cabin isn't their ladder's: model -> spots.
+const FIELD_GEAR_BY_MODEL := {"alfa75": FIELD_GEAR_ALFA}
 ## Soft springs (with a stiff anti-roll bar for the corners) so a wheel keeps
 ## the road over a dip of 11 cm before it lifts. The Pop's wheel markers in its
 ## scene are set for this spring's sag; see `_fit_rig` for other bodies.
@@ -1013,8 +1023,10 @@ func _field_gear_spot(body: Node3D, id: StringName) -> Variant:
 	# family so nothing floats or sinks in.
 	var seat := body.find_child("Seat_L", true, false) as Node3D
 	var hip := _in_body_space(body, seat).origin if seat else Vector3(-0.36, 0.55, 0.25)
-	var ladder: String = CarCatalogue.get_car(car_id).get("ladder", "")
-	var spots: Dictionary = {"classic": FIELD_GEAR_CLASSIC, "period": FIELD_GEAR_PERIOD}.get(ladder, FIELD_GEAR_MODERN)
+	var car := CarCatalogue.get_car(car_id)
+	var ladder: String = car.get("ladder", "")
+	var spots: Dictionary = FIELD_GEAR_BY_MODEL.get(car.get("model", ""),
+		{"classic": FIELD_GEAR_CLASSIC, "period": FIELD_GEAR_PERIOD}.get(ladder, FIELD_GEAR_MODERN))
 	if not spots.has(id):
 		return null
 	var spot: Array = spots[id]

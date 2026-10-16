@@ -49,9 +49,10 @@ static func fits(part: CarPart, car_id: String) -> bool:
 	if not part.fits.is_empty():
 		return part.fits.has(car_id)
 	var car := CarCatalogue.get_car(car_id)
-	# A part that names no ladder is a 500 part: the Valiant has its own.
+	# A part that names no ladder is a 500 part: the Valiant has its own, and
+	# so does the Alfa 75 (its parts_ladder).
 	var ladders := part.ladders if not part.ladders.is_empty() else FIVE_HUNDREDS
-	if not ladders.has(String(car.get("ladder", "modern"))):
+	if not ladders.has(String(car.get("parts_ladder", car.get("ladder", "modern")))):
 		return false
 	# Open-topped cars (the 500C, the Jolly) have nothing to bolt a rack to,
 	# and some cars only take stock parts in some slots (no_parts).
@@ -79,7 +80,7 @@ static func fits_phrase(part: CarPart) -> String:
 
 
 const LADDER_WORDS := {"classic": "a classic 500", "modern": "a modern 500", "electric": "the 500e",
-	"period": "the Valiant"}
+	"period": "the Valiant", "alfa75": "the Alfa 75"}
 
 
 ## Parts for one slot that fit a car, cheapest first.

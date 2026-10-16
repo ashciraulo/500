@@ -6,6 +6,7 @@ parking sensor. Writes audio/car/*.ogg.
     python3 audio/tools/gen_car.py
     python3 audio/tools/gen_car.py doors      # only the door families
     python3 audio/tools/gen_car.py valiant    # only the Valiant's doors and horn
+    python3 audio/tools/gen_car.py alfa       # only the Alfa 75's doors and horn
 
 Everything is synthesised from noise bursts and decaying modes (sums of damped
 sines) shaped after the physics of the real object, except the horns, which
@@ -23,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
 from scipy import signal  # noqa: E402
 
-from sfxlib import (SR, bp, env_exp, fade, hp, load, lp, noise, peak_eq, place,  # noqa: E402
+from sfxlib import (SR, bp, env_exp, fade, hp, load, lp, noise, normalise, peak_eq, place,  # noqa: E402
                     resonator, reverb, rng, save, secs, smooth_noise, softclip,
                     t_axis)
 
@@ -1124,6 +1125,102 @@ def render_valiant():
     save(f"{OUT}/car_horn_valiant", horn_valiant())
 
 
+# --------------------------------------------------------------------------
+# The Alfa Romeo 75 (a 1988 2.5 V6): its doors and its horn
+# --------------------------------------------------------------------------
+
+# The 75's doors are lighter than the Valiant's and the 500s': saved this far
+# under the usual -1 dBTP peak.
+ALFA_DOOR_DB = -2.0
+
+
+def door_close_alfa(v, slam=False, seed=3200):
+    """A light-ish 1980s steel door: a tinny, ringing latch click, a firm
+    but light thunk (body modes higher and shorter than a 500's), thin
+    panels that ring a moment, and the window giving a little rattle in its
+    frame even on an ordinary shut. Less seal, so a smaller air cushion."""
+    r = rng(seed + v)
+    force = [1.0, 0.85, 1.15, 0.92][v % 4] * (1.6 if slam else 1.0)
+    t0 = 0.04
+    a = secs(0.04)
+    air = lp(noise(a, seed + 10 + v), 350, 2) * np.linspace(0, 1, a) ** 2 * (0.08 if slam else 0.14)
+    gap = r.uniform(0.007, 0.012)
+    latch1 = add(bp(burst(0.03, 0.0015, seed + 20 + v), 1800, 9500) * 0.75, modal(
+        0.08, [(r.uniform(2300, 2600), 0.018, 0.4), (r.uniform(3600, 3900), 0.012, 0.3),
+               (r.uniform(5200, 5600), 0.007, 0.18)], seed + 30 + v))
+    latch2 = add(bp(burst(0.03, 0.0012, seed + 40 + v), 2200, 9500) * 0.25, modal(
+        0.05, [(r.uniform(4100, 4400), 0.006, 0.12)], seed + 50 + v))
+    f0 = r.uniform(108, 126)
+    ring = 1.5 if slam else 1.0
+    thunk = modal(0.4, [(f0, 0.035, 0.6), (f0 * 1.55, 0.028, 0.38), (f0 * 2.2, 0.02, 0.3)], seed + 60 + v, 0.002)
+    thud = lp(burst(0.25, 0.015, seed + 70 + v), 260, 2) * 1.3
+    panel = modal(0.6, [(r.uniform(265, 300), 0.035 * ring, 0.4), (r.uniform(400, 450), 0.032 * ring, 0.35),
+                        (r.uniform(620, 680), 0.03 * ring, 0.3), (r.uniform(960, 1050), 0.024 * ring, 0.22),
+                        (r.uniform(1450, 1600), 0.016 * ring, 0.15)], seed + 80 + v)
+    trim = hp(burst(0.05, 0.006, seed + 90 + v), 2500) * 0.05
+    parts = [(t0 - 0.04, air, force), (t0, latch1, 1.0), (t0 + gap, latch2, 1.0),
+             (t0 + 0.002, add(thunk, thud), force), (t0 + 0.003, panel, 1.4 * force),
+             (t0 + 0.016, trim, 1.0), (t0 + 0.012, glass_buzz(seed + 95 + v, 0.15, 0.12 if not slam else 0.22), force)]
+    x = mix(0.95 if slam else 0.85, parts)
+    return fade(room(x, 0.3 if slam else 0.27, 0.15 if slam else 0.13, 4000, 23 + v), fout=0.05)
+
+
+def door_open_alfa(v):
+    """Pull-up flap handle, the latch letting go with a lighter, brighter
+    'chunk' than a 500's, a thin seal peel and the check strap's detent."""
+    return door_open_modern(v, 0.86, seed=3250)
+
+
+def horn_alfa(seed=3300):
+    """An 80s Italian electric twin horn: two disc horns, ~420 and ~525 Hz
+    (a major third), each a diaphragm hammered by its interrupter contacts,
+    so a narrow, buzzy pulse. The tone discs ring hard around 1.7 and 3 kHz:
+    brighter and more nasal than the Valiant's, with a contact-chatter edge.
+    The pitch barely sags. 0.6 s, one-shot."""
+    dur = 0.6
+    n = secs(dur)
+    t = t_axis(n)
+    r = rng(seed)
+    out = np.zeros(n)
+    for f0, amp in ((421.0, 1.0), (527.0, 0.8)):
+        sag = 1 + 0.018 * np.exp(-t / 0.02)
+        f = f0 * sag * (1 + 0.003 * smooth_noise(n, 12, seed=int(f0), periodic=False))
+        ph = np.cumsum(f) / SR
+        # the contacts break with a little chatter: each slap a touch uneven
+        cyc = np.floor(ph).astype(int)
+        jit = 1 + 0.08 * r.standard_normal(cyc[-1] + 2)
+        pulse = ((np.mod(ph, 1.0) < 0.14).astype(float) - 0.14) * jit[cyc]
+        out += amp * pulse
+    x = bp(out, 380, 7500, 2)
+    x = peak_eq(x, 1700, 10, 2.0)
+    x = peak_eq(x, 3000, 7, 2.5)
+    x = peak_eq(x, 650, -4, 1.0)
+    x = softclip(x / np.max(np.abs(x)) * 2.6, 1.0)
+    env = np.minimum(1, t / 0.008) * np.minimum(1, (dur - t) / 0.04)
+    x = x * env + 0.004 * r.standard_normal(n)
+    return fade(room(np.concatenate([x, np.zeros(secs(0.3))]), 0.28, 0.11, 4500, 67), fout=0.05)
+
+
+def render_alfa():
+    """Run with `gen_car.py alfa` (writes only the Alfa 75's files)."""
+    g = 10 ** (ALFA_DOOR_DB / 20)
+
+    def put(name, x):
+        save(f"{OUT}/{name}", normalise(x, "peak") * g, norm="none")
+
+    for v in range(3):
+        put(f"car_door_close_alfa_{v + 1:02d}", door_close_alfa(v))
+    for v in range(2):
+        put(f"car_door_open_alfa_{v + 1:02d}", door_open_alfa(v))
+    for v in range(2):
+        put(f"car_door_slam_alfa_{v + 1:02d}", door_close_alfa(v + 2, slam=True))
+    for v in range(2):
+        put(f"car_door_close_alfa_in_{v + 1:02d}", inside(door_close_alfa(v), 180 + v, 0.5))
+    put("car_door_open_alfa_in_01", inside(door_open_alfa(0), 190))
+    put("car_door_slam_alfa_in_01", inside(door_close_alfa(3, slam=True), 200, 0.7))
+    save(f"{OUT}/car_horn_alfa", horn_alfa())
+
+
 def render_doors():
     """Door families (modern, abarth, classic, suicide), inside versions,
     slams and the seatbelt/key/start controls. Run on its own with
@@ -1211,6 +1308,8 @@ def main():
 if __name__ == "__main__":
     if "valiant" in sys.argv[1:]:
         render_valiant()
+    elif "alfa" in sys.argv[1:]:
+        render_alfa()
     elif "doors" in sys.argv[1:]:
         render_doors()
     else:

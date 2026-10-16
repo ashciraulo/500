@@ -58,7 +58,7 @@ func _build_steps() -> void:
 				_m.heard = id
 			_approach("clue_%s" % id, at, setup)
 	if _want("parts"):
-		for c in ["classic_500l", "classic_abarth_595", "valiant_vc"]:
+		for c in ["classic_500l", "classic_abarth_595", "valiant_vc", "alfa_75_v6"]:
 			if not root.get_node("Garage").owned_cars.has(c):
 				root.get_node("Garage").owned_cars.append(c)
 		for part: Node3D in get_nodes_in_group(&"found_parts"):

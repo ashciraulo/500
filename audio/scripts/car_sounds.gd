@@ -7,13 +7,14 @@ extends Node3D
 ## Add as a child of the car (under its "Audio" node). The car is found as
 ## the nearest ancestor with get_telemetry(); see docs/HOOKS.md.
 
-## "modern" (2013 Pop and the other new 500s), "classic", "abarth" or
-## "valiant" (the 1966 sedan: its own horn, the old flasher's tick).
-@export_enum("modern", "classic", "abarth", "valiant") var style := "modern"
+## "modern" (2013 Pop and the other new 500s), "classic", "abarth",
+## "valiant" (the 1966 sedan: its own horn, the old flasher's tick) or
+## "alfa" (the 1988 Alfa 75: its own twin horn, a relay-click flasher).
+@export_enum("modern", "classic", "abarth", "valiant", "alfa") var style := "modern"
 ## Door sounds: "modern", "abarth", "classic", "suicide" (the rear-hinged
-## early classics), "valiant" (big steel sedan doors) or "none" for a car
-## with no doors (the Jolly).
-@export_enum("modern", "abarth", "classic", "suicide", "valiant", "none") var door_family := "modern"
+## early classics), "valiant" (big steel sedan doors), "alfa" (the 75's
+## lighter 1980s steel doors) or "none" for a car with no doors (the Jolly).
+@export_enum("modern", "abarth", "classic", "suicide", "valiant", "alfa", "none") var door_family := "modern"
 ## Push-button start instead of a key (New 500e, Abarth 500e).
 @export var push_start := false
 ## Electric: key "off" plays the power-down chime instead of nothing.
@@ -65,6 +66,8 @@ func _on_car_changed(car_id: String) -> void:
 		style = "abarth"
 	elif car_id == "valiant_vc":
 		style = "valiant"
+	elif car_id == "alfa_75_v6":
+		style = "alfa"
 	else:
 		style = "modern"
 	door_family = style
@@ -132,6 +135,8 @@ func horn(down: bool) -> void:
 			s = "car/car_horn_abarth"
 		elif style == "valiant":
 			s = "car/car_horn_valiant"
+		elif style == "alfa":
+			s = "car/car_horn_alfa"
 		_horn.stream = Audio.stream(s, style == "modern")
 		_horn.play()
 	elif _horn.playing and style == "modern":

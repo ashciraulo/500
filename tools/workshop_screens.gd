@@ -1,6 +1,7 @@
 extends SceneTree
 ## The workshop at home with the car in view: the Parts, Tuning and Paint tabs
-## for the Pop and the Valiant, a set of wheels going on, a respray and a
+## for the Pop and the Valiant, the Alfa with its Simmons wheels, sport
+## exhaust and bead covers on, and out in the lane in the sun, a set of wheels going on, a respray and a
 ## night shot under the carport. Fails (exit 1) if the car view doesn't take
 ## over on those tabs or doesn't hand the camera back.
 ##
@@ -17,6 +18,7 @@ var _steps: Array = []
 var _step := -1
 var _frames := 0
 var _failed := 0
+var _cam: Camera3D
 
 
 func _initialize() -> void:
@@ -130,6 +132,48 @@ func _build_steps() -> void:
 	_steps.append(["ws_13_valiant_paint", func() -> void:
 		_shop.call("_respray", 2)
 		_tab("parts"), 90, true])
+	_steps.append(["ws_14_alfa_carport", func() -> void:
+		_shop.close()
+		root.get_node("Garage").add_car("alfa_75_v6")
+		_check(root.get_node("Garage").switch_car("alfa_75_v6", _car), "switched to the Alfa"), 90, true])
+	_steps.append(["ws_15_alfa_parts", func() -> void:
+		_shop.open(_spot)
+		_tab("parts"), 120, true])
+	_steps.append(["ws_16_alfa_wheels", func() -> void:
+		_check(_viewing(), "the car view is up for the Alfa")
+		_browse("wheels"), 90, true])
+	_steps.append(["ws_17_alfa_simmons", func() -> void:
+		_fit("wheels_a75_simmons")
+		_browse("wheels"), 60, true])
+	_steps.append(["ws_18_alfa_exhaust", func() -> void:
+		_fit("exhaust_a75_sport")
+		_browse("exhaust"), 90, true])
+	_steps.append(["ws_19_alfa_seats", func() -> void:
+		_fit("seat_covers_a75_beads")
+		_browse("seat_covers"), 90, true])
+	_steps.append(["ws_20_alfa_cockpit", func() -> void:
+		_shop.close()
+		_world.get_node("CameraRig").toggle_mode(), 60, true])
+	_steps.append(["ws_21_alfa_lane_front", func() -> void:
+		# Out in the lane in the sun, where its paint can be judged.
+		_world.get_node("CameraRig").toggle_mode()
+		var home: Node3D = get_first_node_in_group(&"home_base")
+		var h79: GDScript = load("res://scripts/world/late_city/house_1979.gd")
+		var at: Vector3 = home.to_global(h79.at(Vector3(15.0, -6.6, 0.0))) + Vector3.UP * 0.8
+		_car.teleport(Transform3D(home.global_basis * Basis(Vector3.UP, PI * 0.5), at))
+		root.get_node("GameClock").set_time(11.0), 90, false])
+	_steps.append(["ws_22_alfa_sun_front", func() -> void:
+		_cam = Camera3D.new()
+		_cam.fov = 50.0
+		_world.add_child(_cam)
+		var b: Basis = _car.global_basis
+		_cam.current = true
+		_cam.global_position = _car.global_position - b.z * 5.5 + b.x * 2.6 + Vector3.UP * 1.0
+		_cam.look_at(_car.global_position + Vector3.UP * 0.5), 20, true])
+	_steps.append(["ws_23_alfa_sun_back", func() -> void:
+		var b: Basis = _car.global_basis
+		_cam.global_position = _car.global_position + b.z * 5.5 - b.x * 2.6 + Vector3.UP * 1.0
+		_cam.look_at(_car.global_position + Vector3.UP * 0.5), 20, true])
 
 
 func _process(_delta: float) -> bool:

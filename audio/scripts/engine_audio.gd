@@ -53,7 +53,7 @@ const CAR_SETS := {
 	"classic_500f": "classic", "classic_500l": "classic", "classic_500r": "classic",
 	"classic_jolly": "classic", "classic_sport": "classicsport",
 	"classic_abarth_595": "classicabarth", "classic_abarth_695": "classicabarthsport",
-	"valiant_vc": "slant6",
+	"valiant_vc": "slant6", "alfa_75_v6": "busso",
 }
 
 ## Engine family -> where the Engine bus compressor starts for it (dB;
@@ -63,13 +63,18 @@ const CAR_SETS := {
 ## A set's own entry wins over its family's: the Valiant's twin pipes
 ## (slant6sport) start a further 5 dB later, or the compressor flattens
 ## their extra level back to the stock pipe's.
-const COMP_THRESHOLDS_DB := {"slant6": -27.0, "slant6sport": -22.0}
+## The Alfa 75's V6 (busso) pulls away about 3 dB over the Pop, and its
+## stainless sport exhaust (bussosport) about 3.5-4 dB over that
+## (tools/engine_loudness.gd cars=pop_12,alfa_75_v6,alfa_75_v6+exhaust_a75_sport).
+const COMP_THRESHOLDS_DB := {"slant6": -27.0, "slant6sport": -22.0, "busso": -29.5, "bussosport": -26.5}
 
 ## Engine family -> gearbox whine in the forward gears (x the whine loop),
 ## when it isn't the 500s' faint 0.06. The slant six's lazy three-speed
 ## doesn't whir: its whine, a 1.2 kHz tone at 60 km/h, rose over the deep
-## engine as it pulled away. Reverse whines on every car.
-const WHINE_IN_GEAR := {"slant6": 0.0}
+## engine as it pulled away. The Alfa 75 carries its five-speed at the back
+## axle (a transaxle), so a faint whine from behind is right, but at half the
+## 500s' level: it's a smooth V6 you want to hear. Reverse whines on every car.
+const WHINE_IN_GEAR := {"slant6": 0.0, "busso": 0.03}
 
 ## Engine part id -> engine family. Parts not listed keep the current family
 ## (an ECU remap or a stock engine sounds like what's fitted).
@@ -83,6 +88,8 @@ const EXHAUST_PARTS := {
 	"exhaust_abarth_quad": "straight",
 	# The Valiant's twin pipes.
 	"exhaust_vc_twin": "sport",
+	# The Alfa 75's stainless sport system.
+	"exhaust_a75_sport": "sport",
 	# The barn-find Abarth megaphone: classics only (modern cars have no
 	# megaphone set, so they keep their stock note).
 	"exhaust_abarth_classic": "megaphone",

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"diff_a75_lsd"
+display_name = "40% limited-slip"
+description = "Tighter plates in the diff. Both back wheels push out of a corner."
+slot = &"diff"
+price = 900
+modifiers = {"diff_lock_add": 0.2}
+ladders = PackedStringArray("alfa75")

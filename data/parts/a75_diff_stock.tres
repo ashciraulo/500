@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"a75_diff_stock"
+display_name = "25% limited-slip (stock)"
+description = "The factory limited-slip in the transaxle. It helps, a little."
+slot = &"diff"
+modifiers = {}
+ladders = PackedStringArray("alfa75")

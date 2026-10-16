@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CarPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/car_part.gd" id="1_part"]
+
+[resource]
+script = ExtResource("1_part")
+id = &"seat_covers_a75_beads"
+display_name = "Wooden bead seat covers"
+description = "Wooden beads over both front seats. Cool on the back of your legs in January."
+slot = &"seat_covers"
+price = 120
+modifiers = {}
+ladders = PackedStringArray("alfa75")
+visual = "seatcover_a75_beads"

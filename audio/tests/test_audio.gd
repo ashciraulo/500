@@ -122,8 +122,8 @@ func _test_index(audio: Node) -> void:
 
 func _test_engines(audio: Node) -> void:
 	print("engine sets")
-	for fam in ["fire12", "fire14", "twinair", "tjet", "classic", "classicflat", "classicabarth", "slant6", "electric",
-			"electric2020", "abarthe"]:
+	for fam in ["fire12", "fire14", "twinair", "tjet", "classic", "classicflat", "classicabarth", "slant6", "busso",
+			"electric", "electric2020", "abarthe"]:
 		var names: PackedStringArray = audio.names_in("engine/" + fam)
 		var on := 0
 		var off := 0
@@ -136,8 +136,9 @@ func _test_engines(audio: Node) -> void:
 		if fam.begins_with("classic"):
 			check(audio.names_in("engine/%smegaphone" % fam).size() >= 2 * on,
 					"%s has the Abarth megaphone set" % fam)
-		if not fam.begins_with("electric") and not fam in ["abarthe", "classicflat", "slant6"]:
-			for v in ["sport", "straight"]:
+		if not fam.begins_with("electric") and not fam in ["abarthe", "classicflat"]:
+			# The Valiant and the Alfa 75 take only their own sport pipes.
+			for v in (["sport"] if fam in ["slant6", "busso"] else ["sport", "straight"]):
 				var vn := 0
 				for n in audio.names_in("engine/" + fam + v):
 					if n.contains("load_"):
@@ -592,6 +593,26 @@ func _test_car_scene(audio: Node) -> void:
 		check(engine._whine_in_gear == 0.0, "still no gearbox whir with the twin pipes")
 		car.remove_part(&"exhaust")
 		check(engine.engine_set == "slant6" and comp.threshold == EngineAudio.COMP_THRESHOLDS_DB["slant6"], "and back to the stock pipe")
+		# The Alfa 75 V6: the Busso, its own twin horn and lighter doors, a
+		# faint transaxle whine, let through the compressor about 3 dB over
+		# the Pop; its stainless sport exhaust about 4 dB over that
+		# (tools/engine_loudness.gd cars=pop_12,alfa_75_v6,alfa_75_v6+exhaust_a75_sport).
+		car.apply_car("alfa_75_v6")
+		check(engine.engine_set == "busso" and not engine.classic_gearbox, "Alfa 75 -> busso (got %s)" % engine.engine_set)
+		check(cs.style == "alfa" and cs.door_family == "alfa" and not cs.push_start, "Alfa 75: its own horn and doors, a key")
+		check(audio.has("car/car_horn_alfa"), "the Alfa 75's horn")
+		check(comp != null and comp.threshold == EngineAudio.COMP_THRESHOLDS_DB["busso"], "the Alfa's V6 compresses later on the Engine bus")
+		check(comp.threshold > audio.ENGINE_COMP_THRESHOLD_DB and comp.threshold < EngineAudio.COMP_THRESHOLDS_DB["slant6"],
+				"later than the Pop's, sooner than the Valiant's")
+		check(engine._whine_in_gear > 0.0 and engine._whine_in_gear < 0.06, "the Alfa's transaxle whines faintly (%.2f)" % engine._whine_in_gear)
+		car.install_part(PartsCatalogue.get_part(&"exhaust_a75_sport"))
+		check(engine.engine_set == "bussosport", "the Alfa's sport exhaust -> bussosport (got %s)" % engine.engine_set)
+		check(engine.pops > 0.0, "and it crackles on the overrun")
+		check(comp != null and comp.threshold >= EngineAudio.COMP_THRESHOLDS_DB["busso"] + 2.5,
+				"and its compressor starts later than the stock exhaust's (%.1f)" % (comp.threshold if comp else 0.0))
+		car.remove_part(&"exhaust")
+		check(engine.engine_set == "busso" and comp.threshold == EngineAudio.COMP_THRESHOLDS_DB["busso"] and engine.pops == 0.0,
+				"and back to the stock exhaust")
 		# A Valiant in traffic (the 1979 street) plays on Vehicles: your car's mix stays.
 		var other := EngineAudio.new()
 		other.engine_set = "slant6"
@@ -607,7 +628,7 @@ func _test_car_scene(audio: Node) -> void:
 		check(comp != null and comp.threshold == audio.ENGINE_COMP_THRESHOLD_DB, "a traffic slant six leaves your engine's threshold alone")
 		other.queue_free()
 	# Doors, belt and key: every family has open, close and slam, inside and out.
-	for fam in ["modern", "abarth", "classic", "suicide", "valiant"]:
+	for fam in ["modern", "abarth", "classic", "suicide", "valiant", "alfa"]:
 		for action in ["open", "close", "slam"]:
 			for where in ["", "_in"]:
 				check(audio.has("car/car_door_%s_%s%s" % [action, fam, where]), "door %s %s%s" % [action, fam, where])

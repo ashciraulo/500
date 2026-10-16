@@ -8,7 +8,7 @@ Output layout (audio/engine/<set>/):
     eng_<set>_offload_<rpm>.ogg   lifting off / overrun     (seamless loop)
     eng_<set>_startup.ogg / _shutdown.ogg / _limiter.ogg     one-shots
 <set> is a family (fire12, fire14, twinair, tjet, classic, classicflat, classicabarth,
-slant6, electric, abarthe) optionally followed by an exhaust variant: fire12sport,
+slant6, busso, electric, abarthe) optionally followed by an exhaust variant: fire12sport,
 fire12straight, classicmegaphone, ... The game reads the RPM points straight from the file
 names, so loops can be added, removed or replaced freely. For the electric
 sets the number is road speed in km/h instead of RPM.
@@ -64,19 +64,23 @@ VARIANTS = {"classic": ("stock", "sport", "straight", "megaphone"),
             "classicflat": ("stock", "megaphone"),
             "classicabarth": ("stock", "sport", "straight", "megaphone"),
             # The Valiant's own parts: its stock pipe or the twin pipes (sport).
-            "slant6": ("stock", "sport")}
+            "slant6": ("stock", "sport"),
+            # The Alfa 75 V6: stock, or its stainless sport system (sport).
+            "busso": ("stock", "sport")}
 # Lean encode for the sets added or re-rendered after the first batch (their content stops
 # at the engine's 7 kHz air roll-off, so 32 kHz loses nothing).
 LEAN = {"classicmegaphone", "classicflat", "classicflatmegaphone", "classicabarth",
         "classicabarthsport", "classicabarthstraight", "classicabarthmegaphone", "electric2020", "slant6",
-        "slant6sport"}
+        "slant6sport", "busso", "bussosport"}
 LEAN_ENC = dict(quality=4, rate=32000)
 # Families levelled against another set rather than to their own peak, so
 # the classics sit together: (reference set, dB above its 2500 rpm on-load
 # loop). Peaks above -1 dBTP are soft-limited.
 LEVEL_FROM = {"classicflat": ("classic", 0.0), "classicabarth": ("classic", 3.0),
               # a worked big six with a big exhaust: well over the Pop's 1.2
-              "slant6": ("fire12", 7.0)}
+              "slant6": ("fire12", 7.0),
+              # a 2.5 V6: fuller than the Pop's 1.2, but smooth, not a big-pipe six
+              "busso": ("fire12", 5.0)}
 
 
 # --------------------------------------------------------------------------

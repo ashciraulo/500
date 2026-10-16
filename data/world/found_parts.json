@@ -9,6 +9,7 @@
 		{"part": "steering_wheel_bakelite", "near": "site:guildford_antiques", "offset": [5.5, 0.0, 3.0], "rumour": "The antique shop in Guildford put a cream steering wheel out on the grass by the side street. A sign says free to a good home."},
 		{"part": "roof_esky_basket", "near": "poi:beach_trigg_beach", "offset": [-4.5, 0.0, -2.0], "rumour": "Someone left a roof basket with an old esky in it at the Trigg Beach car park. It's been there all week."},
 		{"part": "plate_old_black", "near": "site:subiaco_markets", "offset": [6.7, 0.0, 12.0], "yaw": -1.571, "rumour": "There's an old black-and-white number plate propped against the wall by the Station Street Markets in Subiaco."},
-		{"part": "wheels_vc_slot_mags", "near": "site:albany_hwy", "offset": [7.7, 0.0, 2.0], "yaw": 0.0, "rumour": "A tyre shop on Albany Highway put four old slot mags out by the kerb with a sign: free to a good Valiant."}
+		{"part": "wheels_vc_slot_mags", "near": "site:albany_hwy", "offset": [7.7, 0.0, 2.0], "yaw": 0.0, "rumour": "A tyre shop on Albany Highway put four old slot mags out by the kerb with a sign: free to a good Valiant."},
+		{"part": "wheels_a75_teledial", "near": "photo:lake_street", "offset": [4.0, 0.0, 0.0], "yaw": 0.0, "rumour": "Someone on Lake Street put four old Alfa wheels out on the verge after the council clean-up. They're still there."}
 	]
 }

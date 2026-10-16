@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://bbfj65t5tdqdr"
+path="res://.godot/imported/alfa75_a75_tach.png-d6e2ebe12f27a259a6a79ca96e3cdf6f.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "bd09592846be07df25766ad74678d0dc"
+}
+
+[deps]
+
+source_file="res://art/models/cars/alfa75/alfa75_a75_tach.png"
+dest_files=["res://.godot/imported/alfa75_a75_tach.png-d6e2ebe12f27a259a6a79ca96e3cdf6f.ctex"]
+
+[params]
+
+compress/mode=0
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=1

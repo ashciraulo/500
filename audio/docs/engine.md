@@ -27,7 +27,8 @@ freer silencer, more rasp, overrun pops). The classics also come as
 `<set>megaphone` (+4.5 dB): the barn-find Abarth megaphone exhaust
 (`exhaust_abarth_classic`), which gives the tinny classic note its bass back
 and a hard bark, with overrun crackle. The flat twin has only stock and
-megaphone sets.
+megaphone sets; the Valiant's slant six and the Alfa 75's V6 only stock and
+their own sport sets.
 
 The classic sets are levelled together rather than each to its own peak: the
 flat twin sits level with the upright twin, and the classic Abarth 3 dB above
@@ -45,6 +46,7 @@ engines' 7 kHz air roll-off.
 | `classicflat` | Classic flat twin, air-cooled: the same engine laid flat under the Giardiniera's load floor, with a longer exhaust and a side blower. Rounder and boomier, the clatter muffled by the floor | Giardiniera | 780, 1500, 2500, 3500, 4500, 4800 | P2 |
 | `classicabarth` | Classic Abarth: the twin bored out and tuned, through an open Abarth silencer. Less clatter, a hard, angry rasp | Abarth 595 SS (695 SS uses `classicabarthsport`) | 900, 1500, 2500, 3500, 4500, 5500, 6500 | P3 |
 | `slant6` | 225 slant six with work done: a lumpy cam, extractors and a big-bore exhaust, so a deep, growling burble with a light crackle on the overrun; lifters ticking, the carb huffing on load. Its twin pipes (`exhaust_vc_twin`) swap in `slant6sport`, about 3 dB louder and a little rawer. Levelled 7 dB over the Pop's 1.2, and on the Engine bus its compressor starts 7 dB later (EngineAudio.COMP_THRESHOLDS_DB), so it pulls away about 5 dB louder than the Pop (tools/engine_loudness.gd) | Valiant VC | 600, 1500, 2500, 3500, 4400 | P3 |
+| `busso` | Alfa Romeo 2.5 "Busso" V6 (60-degree, a belt-driven cam per bank, L-Jetronic into six individual runners): smooth and even where the slant six is lumpy, a creamy baritone at cruise, a little metallic ring from the block, and above all the induction: the runners howl on load, and above 4,000 rpm the upper resonances open up and it hardens into a metallic wail (`howl` in `engine_synth.py`). Revs freely to 6,200, less low thump than the slant six. Its stainless sport exhaust (`exhaust_a75_sport`) swaps in `bussosport`: deeper and boomier at low rpm, rasping as it revs, a bit of crackle on the overrun. Levelled 5 dB over the Pop's 1.2; on the Engine bus its compressor starts at -29.5 dB (sport -26.5, EngineAudio.COMP_THRESHOLDS_DB), so it pulls away about 3 dB louder than the Pop and the sport exhaust about 3.5-4 dB louder again (tools/engine_loudness.gd). Its rear transaxle whines faintly in the forward gears (EngineAudio.WHINE_IN_GEAR 0.03, half the 500s') | Alfa Romeo 75 2.5 V6 | 850, 1500, 2500, 3500, 4500, 5500, 6200 | P3 |
 | `electric` | Electric | 500e (2013) | speeds 0, 20, 40, 60, 80, 100, 130 km/h | P2 |
 | `electric2020` | Electric, newer motor: spins faster through a taller reduction with a higher, cleaner inverter, so a brighter whine | New 500e (2020-) | speeds as `electric` | P2 |
 | `abarthe` | Abarth 500e sound generator | Abarth 500e | as T-Jet, played through a small external speaker | P3 |
