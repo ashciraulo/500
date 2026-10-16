@@ -217,7 +217,7 @@ def exhaust_sport():
 # back's face to over its top, (y, z) just outside the velour.
 BEAD_PATH = [(-0.045, 0.47), (-0.055, 0.528), (-0.12, 0.548), (-0.3, 0.542), (-0.5, 0.532), (-0.555, 0.53),
              (-0.585, 0.58), (-0.61, 0.70), (-0.64, 0.86), (-0.665, 1.0), (-0.69, 1.072), (-0.73, 1.085),
-             (-0.765, 1.065)]
+             (-0.765, 1.065)]       # drawn where the seats' profiles are; seatcover_beads adds SEAT_DY
 BEAD_HALF_W = 0.19
 
 
@@ -241,7 +241,8 @@ def seatcover_beads():
     the top of the back, origin at Seat_L; mirror X for Seat_R."""
     seat = _seat_l()
     rows, cols = 30, 9
-    pts = _resample(BEAD_PATH, rows)
+    from . import alfa75_cabin as CAB
+    pts = [(y + CAB.SEAT_DY, z) for y, z in _resample(BEAD_PATH, rows)]
     verts, faces, uvs = [], [], []
     for ri, (y, z) in enumerate(pts):
         a, b = pts[max(ri - 1, 0)], pts[min(ri + 1, rows - 1)]

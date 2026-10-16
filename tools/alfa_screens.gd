@@ -16,6 +16,8 @@ var _frames := 0
 var _failed := 0
 var _cam: Camera3D
 var _trials: Array = []
+## Another car to shoot inside after the Alfa (compare=valiant_vc).
+var _compare := ""
 
 
 func _initialize() -> void:
@@ -23,6 +25,8 @@ func _initialize() -> void:
 		if arg.begins_with("trial="):
 			var t := arg.trim_prefix("trial=").split(",")
 			_trials.append([t[0], float(t[1]), float(t[2])])
+		if arg.begins_with("compare="):
+			_compare = arg.trim_prefix("compare=")
 		if arg.begins_with("shots="):
 			_shots = arg.trim_prefix("shots=")
 	DirAccess.make_dir_recursive_absolute(_shots)
@@ -40,6 +44,35 @@ func _look(back: float, side: float, up: float, at := Vector3(0, 0.5, 0)) -> voi
 	var b: Basis = _car.global_basis
 	_cam.global_position = _car.global_position + b.z * back + b.x * side + Vector3.UP * up
 	_cam.look_at(_car.global_position + b * at)
+
+
+## Inside, in the sun: the driver's view, then from between the front
+## seats to the dash and back to the rear seat, and in through the
+## passenger's window.
+func _cabin_steps(tag: String) -> void:
+	_steps.append([tag + "_cockpit", func() -> void:
+		_cam.current = false
+		_world.get_node("CameraRig").toggle_mode(), 60, true])
+	_steps.append([tag + "_cabin_dash", func() -> void:
+		_world.get_node("CameraRig").toggle_mode()
+		_cam.current = true
+		_cam.fov = 70.0
+		_inside(Vector3(0, 0.0, 0.45), Vector3(0, -0.28, -0.8)), 20, true])
+	_steps.append([tag + "_cabin_rear", func() -> void:
+		_inside(Vector3(0, 0.02, -0.25), Vector3(0, -0.4, 1.5)), 20, true])
+	_steps.append([tag + "_cabin_window", func() -> void:
+		_inside(Vector3(-1.45, 0.12, 0.3), Vector3(0.3, -0.3, 0.2)), 20, true])
+	_steps.append([tag + "_cabin_window_r", func() -> void:
+		_inside(Vector3(1.45, 0.12, 0.3), Vector3(-0.3, -0.3, 0.2)), 20, true])
+
+
+## The camera at `from`, looking at `at`, both in the car's space from the
+## driver's eye (the seat marker): x to the right, y up, z back.
+func _inside(from: Vector3, at: Vector3) -> void:
+	var eye: Vector3 = (_car.get_node("DriverSeat") as Node3D).position + _car.EYE_ABOVE_SEAT
+	eye.x = 0.0
+	_cam.global_position = _car.to_global(eye + from)
+	_cam.look_at(_car.to_global(eye + at))
 
 
 func _build_steps() -> void:
@@ -75,6 +108,13 @@ func _build_steps() -> void:
 	_steps.append(["alfa_rear34", func() -> void: _look(5.5, -2.6, 1.0), 20, true])
 	_steps.append(["alfa_rear_arch", func() -> void: _look(2.6, -2.4, 0.6, Vector3(0.7, 0.4, 1.3)), 20, true])
 	_steps.append(["alfa_shade_rear34", func() -> void: _look(5.5, 2.6, 1.0), 20, true])
+	_cabin_steps("alfa")
+	if _compare != "":
+		_steps.append(["swap", func() -> void:
+			_cam.current = false
+			root.get_node("Garage").add_car(_compare)
+			_check(root.get_node("Garage").switch_car(_compare, _car), "switched to " + _compare), 90, false])
+		_cabin_steps(_compare)
 
 
 func _process(_delta: float) -> bool:
