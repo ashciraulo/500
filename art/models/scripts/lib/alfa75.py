@@ -697,21 +697,19 @@ BUMPER_F_TOP = 0.525              # the front band's top edge, just under the la
 APRON_DEPTH, APRON_RISE = 0.12, 0.01    # its apron back and up to under the lamps
 
 
-def _bumper_profile(z0, z_split, z1, lean, step, apron=False):
+def _bumper_profile(z0, z_split, z1, step, apron=False):
     """Two (d, z) profiles: the lower, body-coloured part and the black strip
-    over it. d <= 0 is in from the face. The lower part's face goes straight
-    down to a crisp foot; the black strip above it tapers in, leaning back
-    `lean` metres over its height to the body. With `apron` the strip's top
-    runs back and up to the lamps, closing the gap under them."""
-    # (a lip along its foot stands out a little; above the step at `step`
-    # the face sits back)
-    lower = [(-0.07, z0 + 0.01), (-0.022, z0), (-0.008, z0 + 0.012), (-0.006, step - 0.008), (-0.018, step),
-             (-0.02, step + 0.006), (-0.02, z_split - 0.012), (-0.022, z_split), (-0.06, z_split)]
-    upper = [(-0.06, z_split - 0.002), (0.004, z_split - 0.002), (0.008, z_split + 0.008),
-             (0.006 - 0.25 * lean, z_split + 0.25 * (z1 - z_split)), (0.002 - lean, z1 - 0.004), (-0.006 - lean, z1),
-             (-0.06 - lean, z1)]
+    over it. d <= 0 is in from the face. The strip has a flat top and an
+    upright face; under it the lower part steps in and tapers in all the
+    way down: a band sloping back to a groove at `step`, then the apron
+    set further back and sloping in again to its foot. With `apron` the
+    strip's top runs back to the lamps, closing the gap under them."""
+    lower = [(-0.12, z0 + 0.012), (-0.08, z0), (-0.07, z0 + 0.01), (-0.042, step - 0.008), (-0.046, step - 0.002),
+             (-0.034, step + 0.006), (-0.016, z_split - 0.01), (-0.012, z_split - 0.002), (-0.06, z_split - 0.002)]
+    upper = [(-0.06, z_split - 0.002), (-0.006, z_split - 0.002), (0.0, z_split + 0.006), (0.0, z1 - 0.007),
+             (-0.007, z1), (-0.06, z1)]
     if apron:
-        upper[-1:] = [(-APRON_DEPTH, z1 + APRON_RISE), (-APRON_DEPTH - 0.01, z1 - 0.01)]
+        upper[-1:] = [(-APRON_DEPTH, z1), (-APRON_DEPTH - 0.01, z1 - 0.01)]
     return lower, upper
 
 
@@ -755,7 +753,7 @@ def _bumpers(M):
     fplan = [(0.0, YF, 1), (0.4, YF - 0.006, 1), (0.6, YF - 0.02, 1), (0.7, YF - 0.04, 1), (0.76, YF - 0.07, 1),
              (0.8, YF - 0.11, 1), (0.82, YF - 0.17, 1), (0.828, YF - 0.26, 1), (0.828, 1.70, 1), (0.83, 1.56, 1)]
     # the front's black strip is a thin one, under the lamps
-    lo, up = _bumper_profile(0.245, 0.455, BUMPER_F_TOP, 0.045, 0.4, apron=True)
+    lo, up = _bumper_profile(0.245, 0.455, BUMPER_F_TOP, 0.37, apron=True)
     p.append(_arch_trim(_sweep("bumper_f", fplan, lo, (0.0, YF - 1.0), M["paint"])))
     p.append(_arch_trim(_sweep("bumper_f_band", fplan, up, (0.0, YF - 1.0), M["band"])))
     # the tail is only 11 cm behind the body, so the rear corners turn
@@ -763,7 +761,7 @@ def _bumpers(M):
     rplan = [(0.0, YR, 1), (0.4, YR + 0.006, 1), (0.58, YR + 0.02, 1), (0.67, YR + 0.04, 1), (0.72, YR + 0.07, 1),
              (0.755, YR + 0.11, 1), (0.778, YR + 0.17, 1), (0.792, YR + 0.24, 1), (0.8, YR + 0.3, 1),
              (0.808, -1.72, 1), (0.818, -1.6, 1), (0.822, -1.4, 1)]
-    lo, up = _bumper_profile(0.25, 0.53, BUMPER_R_TOP, 0.055, 0.41)
+    lo, up = _bumper_profile(0.25, 0.53, BUMPER_R_TOP, 0.44)
     p.append(_arch_trim(_sweep("bumper_r", rplan, lo, (0.0, YR + 1.0), M["paint"])))
     # its black strip stops just round the corner; along the sides the
     # same section is body colour
@@ -1004,7 +1002,7 @@ def _exhaust(M):
 def _plates(M):
     """Front plate on the bumper's middle, over the band; rear plate in its
     recess."""
-    return [bx((-0.186, YF + 0.012, 0.35), (0.186, YF + 0.02, 0.48), M["plate"]),
+    return [bx((-0.186, YF + 0.004, 0.345), (0.186, YF + 0.012, 0.475), M["plate"]),
             bx((-0.186, TAIL_Y - 0.006, PLATE_Z0), (0.186, TAIL_Y + 0.001, PLATE_Z0 + 0.13), M["plate"])]
 
 
