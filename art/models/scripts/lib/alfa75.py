@@ -130,7 +130,7 @@ BAND = K.pchip([Y0 + 0.04, -1.5, -0.5, 0.5, 1.0] + [1.3, 1.54, 1.75, 1.95],
                [_band_lin(y) for y in (Y0 + 0.04, -1.5, -0.5, 0.5, 1.0)] + [0.822, 0.785, 0.748, 0.705])
 # it is even under the glass and tapers along the wing to a thin line at
 # the headlamp's corner
-BAND_W = K.pchip([Y0 + 0.04, -1.0, 0.72, 1.0, 1.4, 1.95], [0.044, 0.046, 0.046, 0.04, 0.028, 0.012])
+BAND_W = K.pchip([Y0 + 0.04, -1.0, 0.72, 1.0, 1.4, 1.95], [0.036, 0.036, 0.036, 0.032, 0.024, 0.012])
 
 
 def band_at(y):
@@ -163,11 +163,11 @@ _CROWN_F = 0.02
 # the boot: a flat, very slightly falling deck, and its edge over the quarters
 # (it falls about 6 cm from the screen's foot to the lip: the tail tapers
 # down in side view)
-# and over its last 12 cm the lid rolls down round the tail, where the lip
+# and over its last 7 cm the lid rolls down round the tail, where the lip
 # spoiler wraps it at the band's height
-_ZD_R = K.pchip([Y0, Y0 + 0.04, Y0 + 0.12, -1.8, BL_B], [0.962, 0.99, 1.01, 1.026, 1.048])
-_ZE_R = K.pchip([Y0, Y0 + 0.04, Y0 + 0.12, -1.8, BL_B, -1.15], [0.955, 0.985, 1.003, 1.008, 1.0, 0.95])
-_CROWN_R = 0.012
+_ZD_R = K.pchip([Y0, Y0 + 0.03, Y0 + 0.07, -1.8, BL_B], [0.968, 0.995, 1.01, 1.024, 1.05])
+_ZE_R = K.pchip([Y0, Y0 + 0.03, Y0 + 0.07, -1.8, BL_B, -1.15], [0.96, 0.99, 1.0, 1.005, 1.0, 0.95])
+_CROWN_R = 0.008
 
 
 def _screen_frac(t, top):
@@ -223,7 +223,7 @@ def _controls(y):
         u = (y - BL_B) / (BL_T - BL_B)
         f = _screen_frac(u, 0.92)
         top = [(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
-               for a, b in zip(_deck(BL_B, w), _cabin(y, w, 0.25 + 0.75 * u ** 3))]
+               for a, b in zip(_deck(BL_B, w), _cabin(y, w, 0.1 + 0.9 * u ** 3))]
     else:
         top = _cabin(y, w)
     zs = top[0][1] - 0.006                 # the shoulder, under the deck edge or the belt: a crisp edge
@@ -328,8 +328,8 @@ def windscreen():
 
 def backlight():
     # narrow enough at its foot that the C pillars hide it from the side
-    return _round_poly([(-0.6, BL_B + 0.025), (-(WR - 0.08), BL_T - 0.025), (WR - 0.08, BL_T - 0.025),
-                        (0.6, BL_B + 0.025)], 0.06)
+    return _round_poly([(-0.57, BL_B + 0.025), (-(WR - 0.08), BL_T - 0.025), (WR - 0.08, BL_T - 0.025),
+                        (0.57, BL_B + 0.025)], 0.06)
 
 
 ARCH_F, ARCH_R = 0.345, 0.34      # the openings, inside the flares
@@ -725,7 +725,7 @@ def _bumpers(M):
     rplan = [(0.0, YR, 1), (0.3, YR + 0.006, 1), (0.5, YR + 0.018, 1), (0.62, YR + 0.036, 1), (0.69, YR + 0.06, 1),
              (0.735, YR + 0.095, 1), (0.762, YR + 0.14, 1), (0.78, YR + 0.2, 1), (0.795, YR + 0.3, 1),
              (0.808, -1.72, 1), (0.818, -1.6, 1), (0.822, -1.4, 1)]
-    lo, up = _bumper_profile(0.25, 0.5, 0.628, 0.04)
+    lo, up = _bumper_profile(0.25, 0.53, 0.628, 0.04)
     p.append(_arch_trim(_sweep("bumper_r", rplan, lo, (0.0, YR + 1.0), M["paint"])))
     p.append(_arch_trim(_sweep("bumper_r_band", rplan, up, (0.0, YR + 1.0), M["band"])))
     # a groove along the front bumper's lower half, following its face
