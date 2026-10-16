@@ -58,13 +58,13 @@ HW = W / 2
 TYRE_R = 0.295
 TRACK_X = 0.68                     # the wheels' centre planes, either side
 
-PAINT = "#ccc4b8"                  # Bianco Argento: see /mnt/project-files/alfa-75/paint/
+PAINT = "#c5a984"                  # Bianco Argento, warm so it reads champagne under the game's blue sky fill (see notes/alfa75.md)
 
 
 def _mats():
     M = CV._common()
     M.update({
-        "paint": _m("Paint", PAINT, 0.3, 0.45),
+        "paint": _m("Paint", PAINT, 0.6, 0.1),
         "glass": C.mat("A75_Glass", "#5f7480", rough=0.03, metal=0.35, alpha=0.5),
         # the band, bumper strips, window frames: a dark grey satin plastic
         "band": _m("A75_Band", "#1c1d1f", 0.8),
@@ -485,6 +485,35 @@ def _flares(M, ref):
             faces = [(i * m + j, i * m + j + 1, (i + 1) * m + j + 1, (i + 1) * m + j)
                      for i in range(len(rows) - 1) for j in range(m - 1)]
             p.append(_smoothed(_facing(C.mesh_obj("flare", verts, faces, M["paint"]), (sx, 0, 0)), 50))
+    return p
+
+
+LINER_X0, LINER_X1 = 0.53, 0.80   # the wheel wells' liners, inboard to just under the skin
+
+
+def _liners(M):
+    """A dark liner round each wheel well, just outside the opening: a
+    curved roof over the wheel and a wall on its inboard side, so nothing
+    of the cabin shows through the arches."""
+    p = []
+    for y0, r in ((AXLE_F, ARCH_F), (AXLE_R, ARCH_R)):
+        arc = [arch_pt(a, r + 0.004) for a in range(-10, 191, 6)]
+        n = len(arc)
+        for sx in (-1, 1):
+            verts = [(sx * x, y0 + dy, TYRE_R + dz) for x in (LINER_X0, LINER_X1) for dy, dz in arc]
+            faces = []
+            for i in range(n - 1):
+                f = (i, i + 1, n + i + 1, n + i)
+                # facing the wheel: towards the axle
+                (_, ya, za), (_, yb, zb) = verts[i], verts[i + 1]
+                ny, nz = (zb - za), -(yb - ya)
+                if sx < 0:
+                    ny, nz = -ny, -nz
+                cy, cz = (ya + yb) / 2 - y0, (za + zb) / 2 - TYRE_R
+                faces.append(f if ny * cy + nz * cz < 0 else f[::-1])
+            wall = C.mesh_obj("liner_wall", [verts[i] for i in range(n)], [tuple(range(n))], M["under"])
+            p.append(_facing(wall, (sx, 0, 0)))
+            p.append(C.mesh_obj("liner", verts, faces, M["under"]))
     return p
 
 
@@ -1009,7 +1038,7 @@ def _plates(M):
 def _exterior(M):
     body, ref = _shell(M)
     p = [body] + _glass(M, ref, body) + _nose(M, ref) + _bumpers(M) + _band(M, ref) + _trim(M, ref, body)
-    p += _flares(M, ref) + _sills(M, ref)
+    p += _flares(M, ref) + _sills(M, ref) + _liners(M)
     p += _plates(M) + _exhaust(M)
     heads, hp = _head_lamps(M, ref)
     tails, tp = _tail(M, ref)
