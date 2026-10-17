@@ -54,6 +54,13 @@ func _cabin_steps(tag: String) -> void:
 		_cam.current = false
 		_world.get_node("CameraRig").toggle_mode(), 60, true])
 	_steps.append([tag + "_cabin_dash", func() -> void:
+		# The rig's eye must sit where the model puts it: nothing in the
+		# cabin (a headrest, say) may count as roof and push it down.
+		var rig_eye: Vector3 = _car.to_local(_world.get_node("CameraRig").get_node("Camera3D").global_position)
+		var cam := _car.find_child("Cam_Cockpit", true, false) as Node3D
+		var want: Vector3 = _car.to_local(cam.global_position) if cam else rig_eye
+		print("eye in car space %s, model's %s" % [rig_eye, want])
+		_check(rig_eye.y > want.y - 0.02, tag + ": driver's eye at the model's height")
 		_world.get_node("CameraRig").toggle_mode()
 		_cam.current = true
 		_cam.fov = 70.0

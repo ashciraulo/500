@@ -1453,6 +1453,11 @@ func _fit_rig(body: Node3D) -> void:
 	_apply_part_visuals()
 
 
+## True while the driver's eye comes from the model's Cam_Cockpit, which
+## already sits clear of the roof: the camera rig leaves its height alone.
+var eye_from_model := false
+
+
 ## Cars whose spec says `eye_from_model` (the Valiant, much longer and lower
 ## than a 500) put the driver's seat marker under the model's own
 ## Cam_Cockpit; the rest keep the scene's.
@@ -1464,7 +1469,8 @@ func _fit_seat(body: Node3D) -> void:
 		set_meta("seat_rest", seat.position)
 	seat.position = get_meta("seat_rest")
 	var cam := body.find_child("Cam_Cockpit", true, false) as Node3D
-	if cam and CarCatalogue.get_car(car_id).get("eye_from_model", false):
+	eye_from_model = cam != null and CarCatalogue.get_car(car_id).get("eye_from_model", false)
+	if eye_from_model:
 		seat.position = _in_car_space(body, cam).origin - EYE_ABOVE_SEAT
 
 
