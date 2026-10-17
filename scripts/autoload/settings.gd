@@ -13,6 +13,7 @@ const PATH := "user://settings.cfg"
 const DAY_LENGTHS := [20, 40, 60, 90, 120]
 ## Menu and HUD size options: [name, scale on top of fitting the window].
 const UI_SIZES := [["Small", 0.85], ["Normal", 1.0], ["Large", 1.2]]
+const EMBEDDED_NOTE := "Full screen can't work while the game plays inside the Godot editor. Turn off Embed Game in the editor's Game tab."
 
 var automatic_gearbox := false
 var mouse_sensitivity := 0.0025
@@ -62,8 +63,34 @@ var route_guide := 2
 
 
 func _ready() -> void:
+	# F11 works on the title, in the menus and while paused (_input, as the
+	# title screen swallows every unhandled key).
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	load_settings()
 	apply()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
+		get_viewport().set_input_as_handled()
+		toggle_fullscreen()
+
+
+## F11: flip full screen and keep the choice.
+func toggle_fullscreen() -> void:
+	if not can_go_fullscreen():
+		Notices.post(EMBEDDED_NOTE, "", "", "Full screen")
+		return
+	fullscreen = not fullscreen
+	apply()
+	save_settings()
+
+
+## False when the game runs inside the Godot editor's Game tab (Godot 4.4+
+## embeds it by default). An embedded game can't change its window, so full
+## screen would silently do nothing.
+static func can_go_fullscreen() -> bool:
+	return not (Engine.has_method("is_embedded_in_editor") and Engine.call("is_embedded_in_editor"))
 
 
 func apply() -> void:
@@ -84,7 +111,9 @@ func apply() -> void:
 	RenderSettings.softness = softness
 	var window := get_tree().root if is_inside_tree() else null
 	if window and DisplayServer.get_name() != "headless":
-		if fullscreen and window.mode != Window.MODE_FULLSCREEN:
+		if not can_go_fullscreen():
+			pass  # the editor owns the window; see EMBEDDED_NOTE
+		elif fullscreen and window.mode != Window.MODE_FULLSCREEN:
 			window.mode = Window.MODE_FULLSCREEN
 		elif not fullscreen and window.mode == Window.MODE_FULLSCREEN:
 			window.mode = Window.MODE_WINDOWED

@@ -30,10 +30,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameClock.toggle_locked()
 	elif event.is_action_pressed("toggle_lofi"):
 		RenderSettings.toggle_lofi()
-	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
-		Settings.fullscreen = not Settings.fullscreen
-		Settings.apply()
-		Settings.save_settings()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 

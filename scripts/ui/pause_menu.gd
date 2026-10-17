@@ -196,6 +196,12 @@ func _build() -> void:
 	_fullscreen = _check(right, "Full screen (F11)", func(on: bool) -> void:
 		Settings.fullscreen = on
 		Settings.apply())
+	if not Settings.can_go_fullscreen():
+		_fullscreen.text = "Full screen: not inside the editor"
+		_fullscreen.disabled = true
+		_fullscreen.tooltip_text = Settings.EMBEDDED_NOTE
+	# F11 while the menu is open: keep the box in step.
+	Settings.changed.connect(_on_settings_changed)
 	var sizes: Array[String] = []
 	for size in Settings.UI_SIZES:
 		sizes.append(size[0])
@@ -348,6 +354,13 @@ func _option(parent: Control, text: String, items: Array, action: Callable) -> O
 			action.call(i))
 	_row(parent, text).add_child(option)
 	return option
+
+
+func _on_settings_changed() -> void:
+	if _fullscreen.button_pressed != Settings.fullscreen:
+		_syncing = true
+		_fullscreen.button_pressed = Settings.fullscreen
+		_syncing = false
 
 
 func _check(parent: Control, text: String, action: Callable) -> CheckBox:
