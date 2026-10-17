@@ -268,7 +268,10 @@ func _update_interior(delta: float) -> void:
 
 	var seat_basis := seat.global_basis.orthonormalized()
 	var eye := eye_offset
-	eye.y = minf(eye.y, _headroom_above(seat) - HEAD_CLEARANCE)
+	# A model that places its own eye has fitted it under its roof already,
+	# and its seats' headrests can sit close enough behind to look like roof.
+	if not _car.eye_from_model:
+		eye.y = minf(eye.y, _headroom_above(seat) - HEAD_CLEARANCE)
 	global_position = seat.global_position + seat_basis * (eye + _lean)
 	var look := Basis(Vector3.UP, _look_yaw) * Basis(Vector3.RIGHT, _look_pitch + deg_to_rad(eye_pitch_deg))
 	var at := global_position
