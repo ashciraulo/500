@@ -12,6 +12,8 @@ extends SceneTree
 ##     title and Esc back out of it, the phone on Tab, the pause menu on Esc
 ##     (not the button, the card and the pause all at once, and no map
 ##     rustle with the phone).
+##   - F11 on the title flips full screen and back, and the settings' box
+##     follows it (headless, so only the setting is checked, not the window).
 ##   - Continue loads the save and builds the game: the money, the day and
 ##     the car where it was left, the engine turns over, the traffic moves,
 ##     and Side A's card shows a few seconds into play.
@@ -57,6 +59,7 @@ var _click_step := 0
 var _after_clicks := 0
 var _no_save := true
 var _keep_slot := 1
+var _fullscreen_at := false
 
 
 func _process(_delta: float) -> bool:
@@ -108,7 +111,26 @@ func _process(_delta: float) -> bool:
 				["Settings on the title", func() -> void: _title_button("Settings").pressed.emit()],
 				["Esc out of the settings over the title", func() -> void: _key(KEY_ESCAPE)],
 			]
-			_start_clicks(1)
+			_start_clicks(4)
+		4:
+			_fullscreen_at = bool(root.get_node("Settings").get("fullscreen"))
+			_key(KEY_F11)
+			_frames = 0
+			_stage = 5
+		5, 6:
+			if _frames < 5:
+				return false
+			var on := bool(root.get_node("Settings").get("fullscreen"))
+			var want := not _fullscreen_at if _stage == 5 else _fullscreen_at
+			_check(on == want, "F11 on the title turns full screen %s" % ("on" if want else "off"))
+			var box := _boot.get_node("PauseMenu").get("_fullscreen") as CheckBox
+			_check(box != null and box.button_pressed == on, "the settings' full screen box follows F11")
+			if _stage == 5:
+				_key(KEY_F11)
+				_frames = 0
+				_stage = 6
+			else:
+				_stage = 1
 		1:
 			_title.call("_continue_game")
 			_card_seen = false
