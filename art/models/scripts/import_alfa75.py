@@ -207,6 +207,9 @@ def build_car():
         _bake(o)
     bpy.data.objects.remove(root, do_unlink=True)
     _materials(parts)
+    global PIPE
+    PIPE = _tailpipe([bpy.data.objects[n] for n in ("Object_31", "Object_54")])
+    _bumper_lip([bpy.data.objects[n] for n in ("Object_17", "Object_18")])
     parts += _plates()
 
     knob = _gear_knob()
@@ -227,6 +230,69 @@ def build_car():
     print("alfa75 car triangles:", tris, "body", body.name)
     _export(CAR_OUT)
     return path
+
+
+def _tailpipe(objs):
+    """The source's tailpipe leaves the silencer at about 45 degrees out
+    before its last few cm turn straight back, so from behind it reads as
+    a stick poking out sideways. Swing the angled run and the tip straight
+    back from the silencer's outlet, and slide it forward so the tip stays
+    at the bumper line. Returns the new tip (for Mount_Exhaust)."""
+    def tail(me):
+        return {i for p in me.polygons
+                if p.center.x > 0.2 and p.center.y < -1.99 and p.center.z < 0.26
+                for i in p.vertices}
+    pipe = objs[0].data
+    vs = [pipe.vertices[i].co for i in tail(pipe)]
+    top = max(v.y for v in vs)
+    inner = [v for v in vs if v.y > top - 0.02]
+    pivot = Vector((sum(v.x for v in inner) / len(inner), top, 0))
+    tip = Vector((PIPE.x, PIPE.y, 0))
+    ang = math.atan2(tip.x - pivot.x, pivot.y - tip.y)
+    length = (tip - pivot).length
+    turn = (Matrix.Translation((0, PIPE.y - (pivot.y - length), 0))
+            @ Matrix.Translation(pivot) @ Matrix.Rotation(-ang, 4, "Z") @ Matrix.Translation(-pivot))
+    for o in objs:
+        for i in tail(o.data):
+            o.data.vertices[i].co = turn @ o.data.vertices[i].co
+    new = Vector((pivot.x, PIPE.y, PIPE.z))
+    print("tailpipe straightened by %.0f degrees, tip at x %.3f" % (math.degrees(ang), new.x))
+    return new
+
+
+def _bumper_lip(objs):
+    """The rear bumper's black strip runs z 0.454 to 0.548 and ends 1.94 m
+    back on each side, but the source paints it triangle by triangle on
+    long thin faces, so teeth hang below it and stick out of its ends.
+    Cut the faces along its edges and paint each side to match."""
+    bot, top, end = 0.454, 0.548, -1.94
+    n = 0
+    for o in objs:
+        names = [m.name for m in o.data.materials]
+        black, paint = names.index("Bumper_Black_Plastic"), names.index("Paint")
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        for co, no in (((0, 0, bot), (0, 0, 1)), ((0, 0, top), (0, 0, 1)), ((0, end, 0), (0, 1, 0))):
+            faces = [f for f in bm.faces if f.material_index in (black, paint)
+                     and f.calc_center_median().y < -1.85]
+            geom = list({e for f in faces for e in f.edges}) + faces
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no)
+        for f in bm.faces:
+            c = f.calc_center_median()
+            if f.material_index not in (black, paint) or c.y > -1.85:
+                continue
+            if c.z < bot:
+                want = paint
+            elif abs(c.x) > 0.6 and c.z < top:
+                want = black if c.y < end else paint
+            else:
+                continue
+            if f.material_index != want:
+                f.material_index = want
+                n += 1
+        bm.to_mesh(o.data)
+        bm.free()
+    print("bumper strip: %d faces repainted" % n)
 
 
 def _text_to_mesh(o):

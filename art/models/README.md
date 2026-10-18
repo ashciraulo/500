@@ -247,7 +247,9 @@ loose piece inside each door's outline: skin, glass, frame and card), lifts
 the steering wheel and the speedo, rev and fuel needles out onto their own
 pivots, adds a gear knob (the source's boot has none), puts our plate
 (6BA-275, made up) over the source's plate blanks, drops the source's rear
-sticker and rewrites its radio display, and adds the empties. It is on the
+sticker and rewrites its radio display, squares off the rear bumper
+strip's edges (the source paints them triangle by triangle, leaving
+teeth), runs the tailpipe straight back, and adds the empties. It is on the
 same contract as the VC Valiant: `Hub_*`, `WheelStyle_a75`, `Door_L/R` with
 `DoorOpen_*`, `SteeringWheel`, `Needle_Speed_220`, `Needle_Rev_8`,
 `Needle_Fuel_3`, `Odometer_4`, `Cam_Cockpit`, `Seat_L/R`, `Exit_L/R`,

@@ -123,6 +123,7 @@ func _build_steps() -> void:
 	_steps.append(["alfa_doors_shut", func() -> void:
 		_car.get_node("Body").set_door_open("L", false, 0.1)
 		_car.get_node("Body").set_door_open("R", false, 0.1), 20, false])
+	_steps.append(["alfa_rear_low", func() -> void: _look(4.0, -0.5, 0.45, Vector3(0.2, 0.3, 2.1)), 20, true])
 	_steps.append(["alfa_rear_arch", func() -> void: _look(2.6, -2.4, 0.6, Vector3(0.7, 0.4, 1.3)), 20, true])
 	_steps.append(["alfa_simmons", func() -> void:
 		var catalogue: Variant = load("res://scripts/vehicle/parts_catalogue.gd")
