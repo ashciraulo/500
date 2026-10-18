@@ -50,9 +50,9 @@ WHEEL_STYLE = "a75"
 PAINT = ("#c5a984", 0.6, 0.1)   # colour, roughness, metallic
 # The cabin's hard plastics (dash, consoles, door cards). The source's
 # charcoal (#2b2c2f) draws near black in game and the wheel vanishes into
-# it; Ash chose this mid grey for the earlier Alfa's dash (#142) for the
-# same reason. `--cabin-tone #hex` tries another.
-CABIN_TONE = "#6c6d70"
+# it; the earlier Alfa's mid grey (#6c6d70, #142) read too light on this
+# one, so Ash asked for one between. `--cabin-tone #hex` tries another.
+CABIN_TONE = "#46474a"
 RADIO_TEXT = "FM 98.5"
 DOOR_OPEN = 60.0   # degrees, as the classics
 

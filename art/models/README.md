@@ -257,9 +257,9 @@ manual's). Its grille and boot badges are plain discs: no real logos.
 The source was drawn to be seen from both sides, but our shader culls back
 faces, so the script finds every face seen from behind from a ring of
 outside views and from the cabin, and adds a flipped twin of it (about
-8,800 faces). The cabin's charcoal is lifted to the mid grey of the old
-car's dash (`--cabin-tone`, default #6c6d70) and the steering wheel is
-black, so the rim reads against the dash with the dials through it. The
+8,800 faces). The cabin's charcoal is lifted to a dark grey (`--cabin-tone`,
+default #46474a, between the source's #2b2c2f and the old car's #6c6d70)
+and the steering wheel is black, so the rim reads against the dash with the dials through it. The
 bead seat covers (`cars/parts/seatcover_a75_beads.glb`) are built here
 too, along a profile cast off the new seat. `source/.gdignore` keeps Godot
 from importing the .blend: its Blender importer hangs a headless import.
