@@ -1,7 +1,8 @@
 extends SceneTree
 ## The Alfa 75 out in the lane in the sun at 11:00: both sides (sun and
-## shade), both rear and front three-quarters and the rear arch close up, to
-## judge its paint and its arches as the game draws them.
+## shade), straight front and rear, both three-quarters, the front doors
+## open and the rear arch close up, to judge its paint and its arches as
+## the game draws them.
 ##
 ##   xvfb-run godot --path . --resolution 1280x720 --fixed-fps 60 \
 ##       --script res://tools/alfa_screens.gd -- --no-save shots=/tmp/alfa
@@ -112,8 +113,38 @@ func _build_steps() -> void:
 			_look(0.0, -7.5, 0.8), 10, true])
 		_steps.append(["trial%d_side_r" % i, func() -> void: _look(0.0, 7.5, 0.8), 10, true])
 	_steps.append(["alfa_front34", func() -> void: _look(-5.5, 2.6, 1.0), 20, true])
+	_steps.append(["alfa_front", func() -> void: _look(-6.5, 0.0, 0.9), 20, true])
+	_steps.append(["alfa_rear", func() -> void: _look(6.5, 0.0, 1.0), 20, true])
 	_steps.append(["alfa_rear34", func() -> void: _look(5.5, -2.6, 1.0), 20, true])
+	_steps.append(["alfa_doors_open", func() -> void:
+		var body: Node = _car.get_node("Body")
+		_check(body.set_door_open("L", true, 0.1) and body.set_door_open("R", true, 0.1), "front doors open")
+		_look(-3.2, -3.4, 1.4), 30, true])
+	_steps.append(["alfa_doors_shut", func() -> void:
+		_car.get_node("Body").set_door_open("L", false, 0.1)
+		_car.get_node("Body").set_door_open("R", false, 0.1), 20, false])
 	_steps.append(["alfa_rear_arch", func() -> void: _look(2.6, -2.4, 0.6, Vector3(0.7, 0.4, 1.3)), 20, true])
+	_steps.append(["alfa_simmons", func() -> void:
+		var catalogue: Variant = load("res://scripts/vehicle/parts_catalogue.gd")
+		_car.install_part(catalogue.get_part(&"wheels_a75_simmons"))
+		_car.install_part(catalogue.get_part(&"seat_covers_a75_beads"))
+		_look(-4.0, 3.0, 0.9), 30, true])
+	_steps.append(["alfa_beads", func() -> void:
+		var body: Node = _car.get_node("Body")
+		body.set_door_open("L", true, 0.1)
+		body.set_door_open("R", true, 0.1)
+		var seat := _car.find_child("Seat_L", true, false) as Node3D
+		var at: Vector3 = _car.to_local(seat.global_position)
+		_look(-0.6, signf(at.x) * 2.2, 1.3, at + Vector3(0, 0.15, 0)), 30, true])
+	_steps.append(["alfa_beads_r", func() -> void:
+		var seat := _car.find_child("Seat_R", true, false) as Node3D
+		var at: Vector3 = _car.to_local(seat.global_position)
+		_look(-0.6, signf(at.x) * 2.2, 1.3, at + Vector3(0, 0.15, 0)), 20, true])
+	_steps.append(["alfa_stock_wheels", func() -> void:
+		_car.get_node("Body").set_door_open("L", false, 0.1)
+		_car.get_node("Body").set_door_open("R", false, 0.1)
+		_car.remove_part(&"wheels")
+		_car.remove_part(&"seat_covers"), 20, false])
 	_steps.append(["alfa_shade_rear34", func() -> void: _look(5.5, 2.6, 1.0), 20, true])
 	_cabin_steps("alfa")
 	if _compare != "":

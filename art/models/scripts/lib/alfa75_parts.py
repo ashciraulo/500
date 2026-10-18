@@ -236,13 +236,18 @@ def _bead_image():
     return C.make_image("A75_Beads", 32, 32, px)
 
 
-def seatcover_beads():
+def seatcover_beads(path=None, seat=None):
     """A wooden-bead cover over the passenger's bucket, front edge to over
-    the top of the back, origin at Seat_L; mirror X for Seat_R."""
-    seat = _seat_l()
+    the top of the back, origin at Seat_L; mirror X for Seat_R. `path` is
+    the seat's profile, (y, z) from the front edge up over the back, and
+    `seat` the Seat_L point (import_alfa75.py passes the bought model's);
+    by default the hand-built car's."""
     rows, cols = 30, 9
-    from . import alfa75_cabin as CAB
-    pts = [(y + CAB.SEAT_DY, z) for y, z in _resample(BEAD_PATH, rows)]
+    if path is None:
+        from . import alfa75_cabin as CAB
+        path = [(y + CAB.SEAT_DY, z) for y, z in BEAD_PATH]
+    seat = seat or _seat_l()
+    pts = _resample(path, rows)
     verts, faces, uvs = [], [], []
     for ri, (y, z) in enumerate(pts):
         a, b = pts[max(ri - 1, 0)], pts[min(ri + 1, rows - 1)]
@@ -264,7 +269,8 @@ def seatcover_beads():
     for poly in o.data.polygons:
         for li in poly.loop_indices:
             uvl.data[li].uv = uvs[o.data.loops[li].vertex_index]
-    if o.data.polygons[0].normal.z < 0:
+    # The beads face up off the cushion (the profile's flattest face).
+    if max(o.data.polygons, key=lambda p: abs(p.normal.z)).normal.z < 0:
         o.data.flip_normals()
     K.solidify(o, 0.008, C.mat("A75_BeadCord", "#2a1d14", rough=0.9))
     PV._smoothed(o, 40)

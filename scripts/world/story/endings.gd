@@ -58,6 +58,7 @@ const CREDITS := [
 	"Made by Ash",
 	"",
 	"Map data from OpenStreetMap contributors",
+	"Alfa 75 based on a model by tonielpro520 (CC BY 4.0)",
 	"Built with Godot",
 	"",
 	"Thanks for leaving the light on.",

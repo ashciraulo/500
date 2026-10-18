@@ -1,0 +1,10 @@
+﻿Driftwood FM - third-party asset credits
+=========================================
+
+"1992 Alfa Romeo 75 Milano" by tonielpro520
+https://sketchfab.com/3d-models/1992-alfa-romeo-75-milano-2041bc93f64c423b8484de0c2f74ece2
+Licensed under Creative Commons Attribution 4.0 (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+Modified: repainted, wheels replaced, ride height lowered, rendered as pixel art.
+
+Credit line for video descriptions:
+This work is based on "1992 Alfa Romeo 75 Milano" (https://sketchfab.com/3d-models/1992-alfa-romeo-75-milano-2041bc93f64c423b8484de0c2f74ece2) by tonielpro520 (https://sketchfab.com/tonielpro520) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
