@@ -210,6 +210,7 @@ def build_car():
     global PIPE
     PIPE = _tailpipe([bpy.data.objects[n] for n in ("Object_31", "Object_54")])
     _bumper_lip([bpy.data.objects[n] for n in ("Object_17", "Object_18")])
+    _bumper_cutout([bpy.data.objects[n] for n in ("Object_18", "Object_62")])
     parts += _plates()
 
     knob = _gear_knob()
@@ -237,7 +238,9 @@ def _tailpipe(objs):
     before its last few cm turn straight back, so from behind it reads as
     a stick poking out sideways. Swing the angled run and the tip straight
     back from the silencer's outlet, and slide it forward so the tip stays
-    at the bumper line. Returns the new tip (for Mount_Exhaust)."""
+    at the bumper line. Then move the silencer and pipe across so the tip
+    is in the middle of the bumper, as on Ash's car (_bumper_cutout moves
+    the bumper's notch to match). Returns the new tip (for Mount_Exhaust)."""
     def tail(me):
         return {i for p in me.polygons
                 if p.center.x > 0.2 and p.center.y < -1.99 and p.center.z < 0.26
@@ -255,9 +258,48 @@ def _tailpipe(objs):
     for o in objs:
         for i in tail(o.data):
             o.data.vertices[i].co = turn @ o.data.vertices[i].co
-    new = Vector((pivot.x, PIPE.y, PIPE.z))
-    print("tailpipe straightened by %.0f degrees, tip at x %.3f" % (math.degrees(ang), new.x))
-    return new
+    across = Matrix.Translation((-pivot.x, 0, 0))
+    for o in objs:
+        me = o.data
+        for i in {i for p in me.polygons
+                  if 0.1 < p.center.x < 0.6 and p.center.y < -1.5 and p.center.z < 0.3
+                  for i in p.vertices}:
+            me.vertices[i].co = across @ me.vertices[i].co
+    print("tailpipe straightened by %.0f degrees, moved %.3f m to the middle" % (math.degrees(ang), pivot.x))
+    return Vector((0, PIPE.y, PIPE.z))
+
+
+# The notch in the rear bumper's lower lip that the tailpipe sits under:
+# centre x, half-width and height, from the source (x 0.44 to 0.54).
+NOTCH = (0.491, 0.055, 0.0225)
+
+
+def _notch(x, c):
+    d = (x - c) / NOTCH[1]
+    return NOTCH[2] * (1 - d * d) if abs(d) < 1 else 0.0
+
+
+def _bumper_cutout(objs):
+    """Move the lower lip's exhaust notch from the right (where the source
+    has it) to the middle: drop the notch's vertices back to the lip line,
+    then cut the lip at the middle and lift a notch of the same shape."""
+    lip = lambda c: c.y < -2.12 and c.z < 0.252   # noqa: E731  (the notch tops out at 0.272)
+    for o in objs:
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        for v in bm.verts:
+            if v.co.y < -2.12 and v.co.z < 0.272:
+                v.co.z -= _notch(v.co.x, NOTCH[0])
+        for x in (-0.055, -0.04, -0.025, -0.01, 0.01, 0.025, 0.04, 0.055):
+            faces = [f for f in bm.faces if lip(f.calc_center_median()) and abs(f.calc_center_median().x) < 0.12]
+            geom = list({e for f in faces for e in f.edges}) + faces
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(x, 0, 0), plane_no=(1, 0, 0))
+        for v in bm.verts:
+            if lip(v.co):
+                v.co.z += _notch(v.co.x, 0.0)
+        bm.to_mesh(o.data)
+        bm.free()
+    print("bumper notch moved to the middle")
 
 
 def _bumper_lip(objs):
