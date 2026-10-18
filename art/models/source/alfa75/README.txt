@@ -2,8 +2,7 @@ Alfa Romeo 75 - Driftwood FM export
 ===================================
 
 alfa75.blend - a self-contained copy of the Driftwood FM Alfa Romeo 75 car model.
-All textures (Driftwood FM rear sticker) and fonts (Arial Bold, Consolas) are packed
-into the file, and there are no linked libraries, so it can be moved anywhere.
+All textures (Driftwood FM rear sticker) are packed into the file, and there are no linked libraries, so it can be moved anywhere.
 
 Made with Blender 5.2.2 LTS. Open it in 5.2.2 or newer.
 
@@ -31,3 +30,7 @@ Lights
 Credits
 - Based on a CC BY 4.0 model. See CREDITS.txt. The credit line must go in any video
   description that uses this car.
+
+In this repo: the packed Arial Bold and Consolas fonts were swapped for Blender's
+built-in font (they aren't ours to share). The game doesn't use the plate or radio
+text as drawn here.
